@@ -1,0 +1,24 @@
+[Unit]
+Description=Lunario web app (PWA) — lunario.online/app
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/lunario-app/backend
+Environment=PORT=5031
+Environment=HOST=127.0.0.1
+Environment=SITE_DIR=/opt/lunario-app/site
+Environment=DATA_DIR=/opt/lunario-app/data
+Environment=BASE_PATH=/app
+# Секреты (SMTP) — только на сервере, деплой этот файл не трогает
+EnvironmentFile=-/opt/lunario-app/.env
+ExecStart=/usr/bin/node /opt/lunario-app/backend/server.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/lunario-app/data
+
+[Install]
+WantedBy=multi-user.target

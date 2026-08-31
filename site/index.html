@@ -1,0 +1,1256 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Лунарио</title>
+<meta name="theme-color" content="#070510">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Лунарио">
+<link rel="manifest" href="/app/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/assets/icon-192.png">
+<link rel="icon" href="/app/assets/favicon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url('/app/assets/fonts/inter-var-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url('/app/assets/fonts/inter-var-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{
+  --bg:#070510;--violet:#7c4dff;--violet-2:#b07cff;--text:#f8f6ff;--muted:#bdb6d7;
+  --line:rgba(255,255,255,.10);--card:rgba(255,255,255,.055);--card-2:rgba(255,255,255,.09);
+  --gold:#e8d8a8;--ok:#9fe6bd;--warn:#ffb3b3;
+  --sp:cubic-bezier(.2,.85,.3,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg)}
+body{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);
+  background:
+    radial-gradient(circle at 18% 4%,rgba(102,56,255,.24),transparent 34%),
+    radial-gradient(circle at 88% 14%,rgba(58,90,255,.16),transparent 28%),
+    linear-gradient(180deg,#070510,#0b0717 55%,#070510);
+  background-attachment:fixed;min-height:100dvh;overscroll-behavior-y:none;
+}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.24;
+  background-image:radial-gradient(circle,rgba(255,255,255,.92) 0 1px,transparent 1.4px),radial-gradient(circle,rgba(176,124,255,.7) 0 1px,transparent 1.3px);
+  background-size:88px 88px,137px 137px;background-position:12px 20px,70px 50px}
+.wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom))}
+h1,h2,.serif{font-family:Georgia,"Times New Roman",serif;font-weight:400;letter-spacing:-.02em;margin:0}
+h1{font-size:30px;line-height:1.08}
+h2{font-size:23px;line-height:1.15}
+p{margin:0;color:var(--muted);line-height:1.62;font-size:15.5px}
+.eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:#cdbbff;display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:0 18px 60px rgba(40,18,100,.22)}
+.card+.card{margin-top:12px}
+.sec{margin-top:26px}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:54px;padding:0 20px;border:0;border-radius:999px;
+  background:linear-gradient(135deg,#8d5cff,#5a36ff);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer;
+  box-shadow:0 12px 34px rgba(94,55,255,.3);transition:transform .16s var(--sp),opacity .2s}
+.btn:active{transform:scale(.975)}
+.btn[disabled]{opacity:.45;box-shadow:none}
+.btn.ghost{background:rgba(255,255,255,.06);box-shadow:none;border:1px solid var(--line);color:var(--text)}
+.btn.sm{min-height:44px;font-size:14.5px;width:auto;padding:0 18px}
+.field{display:grid;gap:7px;margin-bottom:14px}
+.field label{font-size:12.5px;color:#cdbbff;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+input,textarea{width:100%;min-height:54px;border-radius:16px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);
+  padding:14px 16px;color:#fff;font:inherit;font-size:16px;outline:none}
+textarea{min-height:104px;resize:none;line-height:1.55}
+input:focus,textarea:focus{border-color:#8f69ff;box-shadow:0 0 0 4px rgba(143,105,255,.14)}
+input::placeholder,textarea::placeholder{color:#8a82a8}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:11px 15px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+  color:#eee9fb;font:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:rgba(126,82,255,.26);border-color:rgba(176,124,255,.6)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;padding:8px 10px calc(10px + env(safe-area-inset-bottom));
+  background:rgba(7,5,16,.82);backdrop-filter:blur(20px);border-top:1px solid var(--line)}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:54px;padding:7px 0;border:0;background:none;
+  color:#8d85ab;font:inherit;font-size:11px;cursor:pointer;border-radius:14px;transition:color .18s}
+.tabs button.on{color:var(--violet-2)}
+.view{display:none;animation:in .3s var(--sp)}
+.view.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.rise{animation:in .4s var(--sp) both;animation-delay:calc(var(--i,0)*60ms)}
+/* карта дня */
+.daycard{width:180px;height:286px;margin:14px auto 0;perspective:1000px;cursor:pointer}
+.dc-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .75s var(--sp)}
+.daycard.flip .dc-in{transform:rotateY(180deg)}
+.dc-f{position:absolute;inset:0;backface-visibility:hidden;border-radius:22px;display:grid;place-items:center;padding:18px;text-align:center}
+.dc-back{background:linear-gradient(150deg,#241743,#0c0914);border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 70px rgba(30,12,78,.7)}
+.dc-front{transform:rotateY(180deg);background:linear-gradient(160deg,#1a1136,#0d0a1c);border:1px solid rgba(232,216,168,.4);box-shadow:0 30px 70px rgba(60,30,120,.6)}
+.glow{animation:breathe 5s ease-in-out infinite}
+@keyframes breathe{0%,100%{filter:drop-shadow(0 14px 34px rgba(124,77,255,.28))}50%{filter:drop-shadow(0 18px 52px rgba(176,124,255,.42))}}
+/* настроение */
+.moods{display:flex;gap:7px}
+.mood{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 2px 9px;border-radius:16px;border:1px solid var(--line);
+  background:rgba(255,255,255,.05);color:var(--muted);font:inherit;font-size:10.5px;cursor:pointer;transition:transform .16s var(--sp),background .2s,color .2s}
+.mood.on{background:rgba(126,82,255,.26);border-color:rgba(176,124,255,.6);color:#fff}
+.mood:active{transform:scale(.93)}
+.bar{height:7px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden;flex:1}
+.bar i{display:block;height:100%;border-radius:99px;width:0;background:linear-gradient(90deg,#8d5cff,#b07cff);transition:width .9s var(--sp)}
+.barrow{display:flex;align-items:center;gap:10px;font-size:13.5px;margin-top:9px}
+.barrow .l{width:92px;color:var(--muted)}
+.barrow .v{width:34px;text-align:right;font-size:12px;color:#a99fd0}
+.msg{font-size:14px;line-height:1.5;margin-top:10px;min-height:1px}
+.msg.ok{color:var(--ok)}.msg.err{color:var(--warn)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.07);
+  border:1px solid var(--line);font-size:12.5px;color:#dcd6ef}
+.big{font-family:Georgia,serif;font-size:52px;line-height:1;text-align:center;color:var(--gold);margin:6px 0}
+.list{display:grid;gap:9px}
+.item{padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.item b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
+.item small{color:#9a92bb;font-size:12.5px}
+.sheet-bg{
+  position:fixed;inset:0;z-index:200;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(6,4,14,.68);backdrop-filter:blur(6px);padding:0 0 env(safe-area-inset-bottom);
+}
+.sheet-bg.on{display:flex}
+.sheet{
+  width:100%;max-width:520px;background:var(--card-solid,#15102a);
+  border:1px solid rgba(255,255,255,.12);border-bottom:0;
+  border-radius:26px 26px 0 0;padding:14px 22px 26px;
+  animation:sheetUp .28s cubic-bezier(.22,1,.36,1);
+}
+@keyframes sheetUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sheet-grip{width:42px;height:4px;border-radius:99px;background:rgba(255,255,255,.22);margin:0 auto 16px}
+.pw-price{
+  font-family:Georgia,serif;font-size:30px;color:var(--gold);margin-top:14px;text-align:center;
+}
+.pw-price small{display:block;font-family:inherit;font-size:13px;color:#9a92bb;margin-top:4px}
+.pw-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:9px}
+.pw-list li{font-size:14.5px;color:#ded7f2;display:flex;gap:9px;align-items:baseline}
+.pw-list li:before{content:"✦";color:var(--gold);flex:0 0 auto}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:60;
+  background:rgba(20,13,45,.94);border:1px solid rgba(176,124,255,.4);backdrop-filter:blur(18px);
+  padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;transition:.3s var(--sp);pointer-events:none;max-width:90vw}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ring{display:flex;flex-direction:column;align-items:center;gap:5px}
+.ring svg{transform:rotate(-90deg)}
+.ring circle.v{stroke-dasharray:151;stroke-dashoffset:151;transition:stroke-dashoffset 1.1s var(--sp)}
+.install{display:none;margin-top:12px}
+.sug{position:relative}
+.sug-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:#150e2e;border:1px solid var(--line);
+  border-radius:16px;overflow:hidden;box-shadow:0 22px 60px rgba(10,4,30,.7);display:none}
+.sug-list.on{display:block}
+.sug-list button{display:block;width:100%;text-align:left;padding:13px 16px;background:none;border:0;border-bottom:1px solid var(--line);
+  color:var(--text);font:inherit;font-size:15px;cursor:pointer}
+.sug-list button:last-child{border-bottom:0}
+.sug-list button:hover,.sug-list button.hl{background:rgba(126,82,255,.18)}
+.sug-list small{display:block;color:#9a92bb;font-size:12.5px;margin-top:2px}
+.geo{font-size:12.5px;color:#9a92bb;margin-top:6px;min-height:1px}
+.row a{color:#c3aaff;text-decoration:underline;text-underline-offset:3px}
+.geo b{color:var(--violet-2);font-weight:600}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ── знакомство: приветствие и витрина возможностей ── */
+.hero-mark{text-align:center;padding:20px 0 4px;line-height:0}
+.bans{display:grid;gap:12px;margin-top:24px}
+.ban{display:grid;grid-template-columns:42px 1fr;gap:14px;align-items:start;padding:18px;
+  border-radius:22px;background:var(--card);border:1px solid var(--line)}
+.ban svg{color:#c3aaff;margin-top:2px}
+.ban b{display:block;font-size:16px;font-weight:650;color:var(--text);margin-bottom:5px}
+.ban p{font-size:14px;line-height:1.55}
+.wids{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.wid{padding:15px 14px;border-radius:18px;background:var(--card);border:1px solid var(--line);
+  width:100%;text-align:left;font-family:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+button.wid{cursor:pointer;display:block;transition:transform .16s cubic-bezier(.34,1.56,.64,1),border-color .16s ease}
+button.wid:active{transform:scale(.97)}
+button.wid:hover{border-color:rgba(232,216,168,.55)}
+.wid{position:relative}
+.wid .chev{position:absolute;right:13px;top:14px;color:var(--gold);font-size:16px;line-height:1;opacity:.75}
+.wid b{display:block;font-size:14.5px;font-weight:650;color:var(--text);line-height:1.3;margin-bottom:5px}
+.wid span{display:block;font-size:12.5px;color:var(--muted);line-height:1.45}
+.wid .soon{display:inline-block;width:auto;font-size:10px;color:var(--gold);line-height:1.2}
+.wid.later{border-color:rgba(232,216,168,.3)}
+.wid.later b, .wid.later > span:not(.soon):not(.chev){padding-right:14px}
+.soon{display:inline-block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;
+  color:var(--gold);border:1px solid rgba(232,216,168,.42);border-radius:999px;padding:3px 8px;margin-bottom:8px}
+.back{display:inline-flex;align-items:center;gap:7px;font-size:14.5px;color:#c3aaff;background:none;
+  border:0;padding:8px 0;cursor:pointer;font-family:inherit;min-height:44px}
+.linkline{text-align:center;margin-top:14px;font-size:13.5px}
+.linkline button{background:none;border:0;color:#c3aaff;font:inherit;text-decoration:underline;
+  text-underline-offset:3px;cursor:pointer;padding:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+
+  <!-- ЗНАКОМСТВО: что это и зачем -->
+  <section class="view" id="v-hello">
+    <div class="hero-mark"><svg width="76" height="76" viewBox="0 0 48 48" fill="none" style="filter:drop-shadow(0 0 34px rgba(176,124,255,.5))"><circle cx="24" cy="24" r="20" stroke="#b07cff" stroke-width="1.5"/><path d="M24 6C15.2 6 8 13.2 8 22s7.2 16 16 16c-3.3 0-6-7.2-6-16S20.7 6 24 6Z" fill="#e8d8a8" opacity=".92"/></svg></div>
+    <div style="text-align:center">
+      <h1 style="margin-top:14px">Лунарио</h1>
+      <p style="margin-top:12px">Ежедневный ритуал спокойствия: подсказка, опора и второе мнение — когда вы сами знаете ответ, но хотите его услышать.</p>
+    </div>
+
+    <div class="bans">
+      <div class="ban"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="m12 8 1.2 2.5 2.8.4-2 2 .5 2.7L12 14.3 9.5 15.6l.5-2.7-2-2 2.8-.4L12 8Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><div><b>Карта дня</b><p>Утро начинается с одной карты: что она значит и что с этим делать сегодня.</p></div></div>
+      <div class="ban"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H9l-5 4V6.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="14.6" r=".9" fill="currentColor"/></svg><div><b>Ответ на ваш вопрос</b><p>«Да / Нет», руна или расклад — на конкретный вопрос, а не общий прогноз для всех.</p></div></div>
+      <div class="ban"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 20V6a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h11" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 9h5M9 12.5h3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><div><b>Приложение вас помнит</b><p>Дневник, настроение и серия дней: видно, как менялись состояния и о чём вы спрашивали.</p></div></div>
+    </div>
+
+    <p style="text-align:center;margin-top:20px;font-size:13.5px">Бесплатно. Записи хранятся в России и видны только вам.</p>
+
+    <button class="btn" style="margin-top:18px" onclick="openTour()">Посмотреть, что внутри</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="openForm()">Сразу открыть мой день</button>
+    <p class="linkline" id="hello-login" style="display:none">Уже пользовались Лунарио? <button type="button" onclick="openLogin()">Войти по почте</button></p>
+  </section>
+
+  <!-- ВИТРИНА: все виджеты и то, что закладываем -->
+  <section class="view" id="v-inside">
+    <button class="back" onclick="backFromTour()">← Назад</button>
+    <span class="eyebrow" style="margin-top:6px">Что внутри</span>
+    <h1 style="margin-top:6px">Уже работает</h1>
+    <p style="margin-top:10px" id="inside-lead">Открывается сразу после короткой анкеты — бесплатно и без ограничений.</p>
+    <div class="wids">
+      <div class="wid"><b>Карта дня</b><span>22 аркана: смысл и что с ним делать сегодня</span></div><div class="wid"><b>Прогноз дня</b><span>По вашему знаку — работа, отношения, здоровье, деньги</span></div><div class="wid"><b>Да / Нет</b><span>Короткий ответ на конкретный вопрос, с пояснением</span></div><div class="wid"><b>Руна на вопрос</b><span>24 руны старшего футарка</span></div><div class="wid"><b>Три карты</b><span>Расклад прошлое — настоящее — будущее, два в день</span></div><div class="wid"><b>Нумерология</b><span>Число судьбы, личный год и число дня — с расчётом на виду</span></div><div class="wid"><b>Настроение дня</b><span>Отмечаете смайликом, в конце месяца — итог</span></div><div class="wid"><b>Серия дней</b><span>Сколько дней подряд вы возвращаетесь</span></div><div class="wid"><b>Настрой и вопрос дня</b><span>Короткая опора утром и вопрос, чтобы подумать</span></div><div class="wid"><b>Дневник</b><span>Записи шифруются — видите только вы</span></div><div class="wid"><b>Мои желания</b><span>Список того, что хочется, с напоминанием</span></div><div class="wid"><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></div><div class="wid"><b>Итоги недели</b><span>Что повторялось в настроении и вопросах</span></div><div class="wid"><b>Фаза Луны</b><span>Какая сейчас луна и о чём она сегодня</span></div><div class="wid"><b>Установка на телефон</b><span>Иконка на экране, открывается как приложение</span></div><div class="wid"><b>Вход по почте</b><span>Дневник и серия переедут на другое устройство</span></div>
+    </div>
+
+    <span class="eyebrow" style="margin-top:32px">Готовим</span>
+    <h2 style="margin-top:6px">Что появится дальше</h2>
+    <p style="margin-top:10px">Показываем честно: это ещё не включено. Скажем, когда откроем.</p>
+    <div class="wids">
+      <button type="button" class="wid later" onclick="showPaywall('subscription')"><span class="chev" aria-hidden="true">›</span><span class="soon">скоро</span><b>Лунарио+</b><span>Развёрнутый разбор дня и расклады без ограничений</span></button><button type="button" class="wid later" onclick="showPaywall('expert')"><span class="chev" aria-hidden="true">›</span><span class="soon">скоро</span><b>Разговор с экспертом</b><span>Голосом, с практикующим тарологом или астрологом</span></button><button type="button" class="wid later" onclick="showPaywall('spreads')"><span class="chev" aria-hidden="true">›</span><span class="soon">скоро</span><b>Расклады на выбор</b><span>На отношения, Кельтский крест, год вперёд</span></button><button type="button" class="wid later" onclick="showPaywall('artifacts')"><span class="chev" aria-hidden="true">›</span><span class="soon">скоро</span><b>Артефакты</b><span>Свечи, камни и колоды под ваш запрос — с партнёром</span></button><button type="button" class="wid later" onclick="showPaywall('courses')"><span class="chev" aria-hidden="true">›</span><span class="soon">скоро</span><b>Курсы и круги</b><span>Обучение и закрытые сообщества</span></button><button type="button" class="wid later" onclick="showPaywall('constellation')"><span class="chev" aria-hidden="true">›</span><span class="soon">скоро</span><b>Своё созвездие</b><span>Личная карта из ваших вопросов, растёт со временем</span></button>
+    </div>
+
+    <div id="inside-cta">
+      <button class="btn" style="margin-top:28px" onclick="openForm()">Открыть мой день</button>
+      <p style="text-align:center;margin-top:12px;font-size:13px">Спросим имя и дату рождения. Дата нужна, чтобы прогноз, числа и совместимость были вашими, а не общими.</p>
+    </div>
+  </section>
+
+  <!-- ВХОД ПО ПОЧТЕ -->
+  <section class="view" id="v-login">
+    <button class="back" onclick="go('hello')">← Назад</button>
+    <span class="eyebrow" style="margin-top:6px">Вход</span>
+    <h1 style="margin-top:6px">Войти по почте</h1>
+    <p style="margin-top:10px">Пришлём шестизначный код — пароль не нужен. Профиль, дневник и серия дней откроются на этом устройстве.</p>
+    <div class="card sec" id="l-box"></div>
+    <div class="card sec" id="l-after" style="display:none">
+      <p style="font-size:14.5px;color:#e6e0f7;margin:0">Почта сохранена. Осталось заполнить короткий профиль — записи привяжутся к ней.</p>
+      <button class="btn" style="margin-top:12px" onclick="openForm()">Заполнить профиль</button>
+    </div>
+  </section>
+
+  <!-- ОНБОРДИНГ -->
+  <section class="view" id="v-onb">
+    <button class="back" onclick="go('inside')">← Что внутри</button>
+    <div style="text-align:center;padding:26px 0 10px">
+      <svg width="72" height="72" viewBox="0 0 48 48" fill="none" style="filter:drop-shadow(0 0 30px rgba(176,124,255,.5))">
+        <circle cx="24" cy="24" r="20" stroke="#b07cff" stroke-width="1.5"/>
+        <path d="M24 6C15.2 6 8 13.2 8 22s7.2 16 16 16c-3.3 0-6-7.2-6-16S20.7 6 24 6Z" fill="#e8d8a8" opacity=".92"/>
+      </svg>
+      <h1 style="margin-top:16px">Лунарио</h1>
+      <p style="margin-top:10px">Пространство для понимания себя. Чтобы подсказки были про вас, расскажите немного о себе.</p>
+    </div>
+    <div class="card sec">
+      <div class="field"><label>Как вас зовут</label><input id="o-name" placeholder="Имя" autocomplete="given-name" maxlength="60"></div>
+      <div class="field"><label>Дата рождения</label><input id="o-birth" type="date" required></div>
+      <div class="field"><label>Время рождения · необязательно</label><input id="o-time" type="time" placeholder="Не знаю — это не страшно"></div>
+      <div class="field">
+        <label>Город рождения</label>
+        <div class="sug">
+          <input id="o-city" placeholder="Начните вводить: Мос…" maxlength="60" autocomplete="off">
+          <div class="sug-list" id="o-city-list"></div>
+        </div>
+        <p class="geo" id="o-geo">Координаты и часовой пояс подставим сами — они понадобятся для натальной карты.</p>
+      </div>
+      <label class="row" style="gap:11px;align-items:flex-start;font-size:13.5px;line-height:1.5;color:#cdc6e4;cursor:pointer;margin:4px 0 16px">
+        <input type="checkbox" id="o-consent" style="width:20px;min-height:20px;flex:0 0 20px;margin-top:1px;accent-color:#8d5cff">
+        <span>Я даю согласие на <a href="/soglasie" target="_blank" rel="noopener">обработку персональных данных</a> и принимаю <a href="/politika" target="_blank" rel="noopener">Политику конфиденциальности</a>.</span>
+      </label>
+      <button class="btn" id="o-go">Открыть мой день</button>
+      <p class="msg" id="o-msg"></p>
+    </div>
+
+    <div class="card sec" id="o-back" style="display:none">
+      <p style="font-size:15px;color:#e6e0f7;margin:0">Уже пользовались Лунарио?</p>
+      <p style="font-size:13.5px;line-height:1.55;margin:7px 0 0">Войдите по почте — дневник, вопросы и серия дней вернутся, заполнять заново ничего не нужно.</p>
+      <div id="o-auth"></div>
+    </div>
+  </section>
+
+  <!-- СЕГОДНЯ -->
+  <section class="view" id="v-today">
+    <div class="row">
+      <div class="grow">
+        <span class="eyebrow" id="t-date"></span>
+        <h1 id="t-hello" style="margin-top:5px">Доброе утро</h1>
+      </div>
+      <span class="pill" id="t-streak">✦ 1 день</span>
+    </div>
+    <p style="margin-top:12px" id="t-moon"></p>
+    <div class="card sec" id="t-save" style="display:none;margin-top:14px;padding:16px 18px">
+      <p style="font-size:14px;line-height:1.55;margin:0;color:#e6e0f7">Пока ваши записи есть только на этом устройстве. Оставьте почту — и дневник, ответы и серия дней откроются на любом другом.</p>
+      <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="go('me');setTimeout(()=>{const e=document.getElementById('m-auth');if(e)e.scrollIntoView({block:'center'});},250)">Оставить почту</button>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="text-align:center">Ваш ритуал · карта дня</span>
+      <div class="daycard glow" id="t-card" onclick="flipCard()">
+        <div class="dc-in">
+          <div class="dc-f dc-back">
+            <svg width="72" height="72" viewBox="0 0 48 48" fill="none">
+              <circle cx="24" cy="24" r="17" stroke="#b07cff" stroke-width="1" opacity=".7"/>
+              <path d="M24 10c-6.6 0-12 5.4-12 12s5.4 12 12 12c-2.5 0-4.5-5.4-4.5-12S21.5 10 24 10Z" fill="#e8d8a8" opacity=".85"/>
+            </svg>
+          </div>
+          <div class="dc-f dc-front">
+            <div>
+              <div class="serif" id="c-name" style="font-size:21px;color:var(--gold)"></div>
+              <p style="font-size:13.5px;margin-top:10px" id="c-mean"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="t-after" style="display:none;margin-top:14px;text-align:center">
+        <p id="c-advice" style="color:#e6e0f7"></p>
+        <button class="btn ghost sm" style="margin:12px auto 0" onclick="track('share_card');share()">Поделиться карточкой</button>
+      </div>
+      <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Как вы сегодня?</span>
+      <div class="moods" id="t-moods"></div>
+      <p style="font-size:13px;margin-top:9px" id="t-moodstat"></p>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Быстрые разделы</span>
+      <div class="chips" id="t-quick"></div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Что вас сейчас беспокоит?</span>
+      <div class="chips" id="t-worry"></div>
+      <div class="chips" id="t-worry2" style="margin-top:8px"></div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Что будет дальше</span>
+      <div class="card" style="border-color:rgba(232,216,168,.28)">
+        <p class="serif" style="font-size:19px;color:#fff;margin:0">Лунарио+</p>
+        <p style="margin-top:8px" id="plus-line">Развёрнутый разбор дня, безлимитные расклады и обзор месяца.</p>
+        <p id="plus-price" class="serif" style="font-size:22px;color:var(--gold);margin:12px 0 0">490 ₽ / месяц</p>
+        <button class="btn" style="width:100%;margin-top:12px" onclick="showPaywall('subscription')">Оформить Лунарио+</button>
+        <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="showPaywall('expert')">Разговор с экспертом — 2500 ₽</button>
+        <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="openTour()">Посмотреть все планы</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Настрой дня</span>
+      <div class="card">
+        <p class="serif" style="font-size:19px;line-height:1.45;color:#fff" id="t-aff"></p>
+        <div style="height:1px;background:var(--line);margin:15px 0"></div>
+        <span class="eyebrow" style="margin-bottom:6px">Вопрос дня</span>
+        <p id="t-q" style="color:#e6e0f7"></p>
+        <button class="btn ghost sm" style="margin-top:13px" onclick="go('me');setTimeout(()=>$('j-text').focus(),300)">Ответить в дневнике</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Ваш день</span>
+      <div class="card">
+        <h2 id="f-title"></h2>
+        <p style="margin-top:9px" id="f-text"></p>
+        <div id="f-bars" style="margin-top:14px"></div>
+      </div>
+    </div>
+    <button class="btn ghost install" id="t-install" onclick="installApp()">✦ Установить на телефон</button>
+  </section>
+
+  <!-- СПРОСИТЬ -->
+  <section class="view" id="v-ask">
+    <span class="eyebrow">Ответ приходит на конкретный вопрос</span>
+    <h1 style="margin-top:5px">Спросить</h1>
+    <div class="chips sec" style="margin-top:16px">
+      <button class="chip on" data-mode="yesno" onclick="setMode('yesno')">Да / Нет</button>
+      <button class="chip" data-mode="rune" onclick="setMode('rune')">Руна</button>
+      <button class="chip" data-mode="spread" onclick="setMode('spread')">Три карты</button>
+    </div>
+    <div class="card sec">
+      <div class="field"><label id="a-label">О чём спрашиваете</label>
+        <textarea id="a-q" placeholder="Стоит ли мне соглашаться на новую роль?" maxlength="300"></textarea>
+      </div>
+      <div class="chips" id="a-examples"></div>
+      <button class="btn" style="margin-top:14px" id="a-go" disabled>Напишите вопрос</button>
+      <p class="msg" id="a-msg"></p>
+      <p style="font-size:12.5px;color:#8a82a8;margin-top:10px" id="a-hint"></p>
+    </div>
+    <div id="a-result" class="sec" style="display:none"></div>
+  </section>
+
+  <!-- Я -->
+  <section class="view" id="v-me">
+    <span class="eyebrow" id="m-sign"></span>
+    <h1 style="margin-top:5px" id="m-name">Профиль</h1>
+    <p class="geo" id="m-geo" style="margin-top:8px"></p>
+    <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="editProfile()">Изменить мои данные</button>
+    <div id="m-edit" style="display:none;margin-top:14px">
+      <div class="field"><label>Имя</label><input id="e-name" maxlength="60"></div>
+      <div class="field"><label>Дата рождения</label><input id="e-birth" type="date"></div>
+      <div class="field"><label>Время рождения · необязательно</label><input id="e-time" type="time"></div>
+      <div class="field">
+        <label>Город рождения</label>
+        <div class="sug"><input id="e-city" maxlength="60" autocomplete="off" placeholder="Начните вводить: Мос…"><div class="sug-list" id="e-city-list"></div></div>
+        <p class="geo" id="e-geo">Координаты и часовой пояс подставим сами.</p>
+      </div>
+      <button class="btn" onclick="saveProfile()">Сохранить</button>
+      <p class="msg" id="e-msg"></p>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Вход и перенос на другое устройство</span>
+      <div class="card" id="m-auth"></div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Нумерология по вашей дате</span>
+      <div id="m-num" class="list"></div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Совместимость</span>
+      <div class="card">
+        <div class="field" style="margin-bottom:10px"><label>Дата рождения партнёра</label><input id="m-cdate" type="date"></div>
+        <button class="btn ghost sm" style="width:100%" onclick="compat()">Рассчитать</button>
+        <div id="m-cres" style="display:none;margin-top:16px"></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Дневник · видите только вы</span>
+      <div class="card">
+        <textarea id="j-text" placeholder="Пара строк — для себя…" maxlength="2000"></textarea>
+        <button class="btn ghost sm" style="width:100%;margin-top:11px" onclick="saveJournal()">Сохранить запись</button>
+      </div>
+      <div class="list" id="m-journal" style="margin-top:11px"></div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Мои желания</span>
+      <div class="card">
+        <div class="row" style="gap:9px">
+          <input id="w-text" placeholder="Например: поехать к морю" maxlength="200" style="min-height:48px">
+          <button class="btn sm" onclick="addWish()" style="min-height:48px">＋</button>
+        </div>
+      </div>
+      <div class="list" id="m-wishes" style="margin-top:11px"></div>
+    </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Мои вопросы и ответы</span>
+      <div class="list" id="m-entries"></div>
+    </div>
+
+    <div class="sec">
+      <div class="card">
+        <span class="eyebrow" style="margin-bottom:8px">Напоминание</span>
+        <p style="font-size:14px">Одно короткое сообщение утром: карта дня готова. Больше ничего слать не будем.</p>
+        <div id="push-box" style="margin-top:12px"></div>
+      </div>
+      <div class="card sec">
+        <span class="eyebrow" style="margin-bottom:8px">Ваша неделя</span>
+        <p id="w-summary" style="font-size:14px">Считаем…</p>
+        <div id="w-detail" style="margin-top:10px"></div>
+      </div>
+      <div class="card sec">
+        <span class="eyebrow" style="margin-bottom:8px">Позвать подругу</span>
+        <p style="font-size:14px">Отправьте ссылку — и на неделю у вас обеих будет вдвое больше подробных разборов.</p>
+        <div id="inv-box" style="margin-top:12px"></div>
+      </div>
+      <div class="card sec">
+        <span class="eyebrow" style="margin-bottom:8px">Артефакты</span>
+        <p style="font-size:14px">Свечи, камни и колоды под ваш запрос — раздел готовим вместе с партнёрами.</p>
+        <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="showPaywall('artifacts')">Мне это интересно</button>
+      </div>
+      <div class="card sec">
+        <span class="eyebrow" style="margin-bottom:8px">Данные и приватность</span>
+        <p style="font-size:14px">Всё, что вы пишете, хранится в России и видно только вам. В аналитику уходит тип обращения и тема — без текста вопросов.</p>
+        <button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="wipe('data')">Очистить мою историю</button>
+        <button class="btn ghost sm" style="width:100%;margin-top:9px;color:var(--warn)" onclick="wipe('account')">Удалить аккаунт</button>
+      </div>
+      <p style="font-size:12.5px;color:#8a82a8;margin-top:14px;text-align:center">Контент носит рекомендательный характер и не заменяет консультации специалистов.</p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" id="tabs" style="display:none">
+  <button data-v="today" onclick="go('today')" class="on"><svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M13.2 3.1a8.8 8.8 0 1 0 7.7 13 7.2 7.2 0 0 1-7.7-13Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Сегодня</button>
+  <button data-v="ask" onclick="go('ask')"><svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H9l-5 4V6.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Спросить</button>
+  <button data-v="me" onclick="go('me')"><svg width="23" height="23" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.2" r="3.6" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Я</button>
+</nav>
+<div class="sheet-bg" id="pw-bg" onclick="closePaywall(event)">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pw-title">
+    <div class="sheet-grip"></div>
+    <span class="eyebrow" id="pw-eyebrow"></span>
+    <h2 class="serif" id="pw-title" style="font-size:25px;margin:6px 0 0"></h2>
+    <p id="pw-text" style="margin-top:10px"></p>
+    <div id="pw-price" class="pw-price"></div>
+    <ul id="pw-list" class="pw-list"></ul>
+    <button class="btn" id="pw-go" style="margin-top:16px"></button>
+    <p style="font-size:12.5px;color:#8a82a8;margin-top:10px;text-align:center" id="pw-note">Оплаты пока нет — денег не спишем. Скажем, когда откроем.</p>
+    <button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="closePaywall()">Закрыть</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const API = '/app/api';
+let S = { user:null, day:null, mood:null, limits:null, price:'', mode:'yesno', flipped:false };
+const api = async (path, opts) => {
+  const r = await fetch(API + path, Object.assign({ headers:{'Content-Type':'application/json'} }, opts));
+  const j = await r.json().catch(()=>({}));
+  if (!r.ok) throw Object.assign(new Error(j.error||'err'), { code:j.error, status:r.status });
+  return j;
+};
+/* Платных функций пока нет. Показываем честно: что появится, за сколько и когда
+   скажем. Клик записывается — это и есть замер спроса, ради которого делался МВП. */
+const PAYWALL = {
+  subscription: {
+    eyebrow:'Лунарио+', title:'Расширенный разбор дня',
+    text:'Развёрнутый прогноз на день с опорой на вашу дату рождения и то, о чём вы спрашивали раньше. Плюс безлимитные разборы и месячный обзор настроения.',
+    price:true,
+    list:['Разбор дня на 3–4 абзаца, а не одна карта','Безлимитные расклады','Обзор месяца: что менялось в состоянии','Ранний доступ к новым разделам'],
+    cta:'Хочу такой разбор',
+  },
+  expert: {
+    eyebrow:'Живые эксперты', title:'Разговор с человеком',
+    text:'Голосовая консультация с практикующим тарологом или астрологом — когда вопрос сложнее, чем карта дня. Подбираем эксперта под запрос.',
+    priceKey:'expert',
+    list:['Голосом, 30–45 минут','Эксперт под вашу тему','Запись остаётся у вас'],
+    cta:'Хочу консультацию',
+  },
+  unlimited: {
+    eyebrow:'Без ограничений', title:'Разборы закончились на сегодня',
+    text:'Два подробных разбора в день — бесплатно. Если их не хватает, скажите: откроем безлимит в Лунарио+.',
+    price:true,
+    list:['Столько разборов, сколько нужно','Остальное — карта дня, «Да / Нет», руны — и так без ограничений'],
+    cta:'Хочу безлимит',
+  },
+  spreads: {
+    eyebrow:'Расклады', title:'Расклады на выбор',
+    text:'Кроме «Трёх карт» — расклад на отношения, Кельтский крест на запутанную ситуацию и «Год вперёд» по сезонам. У каждого свои позиции и свой разбор.',
+    list:['На отношения: чувства, преграды, потенциал','Кельтский крест: суть, препятствие, итог','Год вперёд: что несёт каждый сезон'],
+    cta:'Хочу такие расклады',
+    note:'Пока не включено. Скажем, когда откроем.',
+  },
+  courses: {
+    eyebrow:'Курсы и круги', title:'Учиться и быть среди своих',
+    text:'Короткие курсы по Таро, числам и лунному циклу — и закрытые круги, где можно обсуждать своё без осуждения и советов.',
+    list:['Уроки короткими шагами','Практика после каждого урока','Круг с бережными правилами'],
+    cta:'Мне это интересно',
+    note:'Пока не включено. Скажем, когда откроем.',
+  },
+  constellation: {
+    eyebrow:'Своё созвездие', title:'Карта из ваших вопросов',
+    text:'Каждый заданный вопрос становится точкой. Со временем из них складывается ваше личное созвездие: видно, что вас занимало и как это менялось.',
+    list:['Точка за каждый вопрос','Линии между близкими темами','Карточка, которой можно поделиться'],
+    cta:'Хочу увидеть',
+    note:'Пока не включено. Скажем, когда откроем.',
+  },
+  artifacts: {
+    eyebrow:'Артефакты', title:'Свечи, камни, колоды',
+    text:'Подбираем предметы под ваш запрос — от свечей до колод — и привозим. Раздел готовим вместе с партнёрами.',
+    list:['Подбор под вашу тему, а не каталог','Проверенные поставщики','Доставка по России'],
+    cta:'Хочу посмотреть',
+  },
+};
+let pwKey = null;
+function showPaywall(key){
+  const c = PAYWALL[key]; if(!c) return;
+  pwKey = key;
+  $('pw-eyebrow').textContent = c.eyebrow;
+  $('pw-title').textContent = c.title;
+  $('pw-text').textContent = c.text;
+  const priceText = c.priceKey && S.prices ? S.prices[c.priceKey] : S.price;
+  $('pw-price').innerHTML = (c.price || c.priceKey) && priceText ? `${esc(priceText)}<small>цена ещё обсуждается — пока просто говорим, сколько это может стоить</small>` : '';
+  $('pw-list').innerHTML = c.list.map(i=>`<li>${i}</li>`).join('');
+  const go = $('pw-go');
+  const grantsPlus = (key === 'subscription' || key === 'unlimited');
+  // платить можно только с профилем: у анонима нет ни почты, ни имени — доступ потом не восстановить,
+  // а витрина «Готовим» открыта и до анкеты
+  const payable = S.payReady && onboarded() && (grantsPlus || key === 'expert');
+  if (grantsPlus && S.plusActive && payable) {
+    go.textContent = 'У вас уже есть Лунарио+'; go.disabled = true;
+    $('pw-note').textContent = 'Доступ действует до ' + (S.plusUntil || '').split('-').reverse().join('.') + '.';
+  } else if (payable) {
+    go.textContent = 'Оформить за ' + (priceText || '490 ₽'); go.disabled = false;
+    go.onclick = () => payNow(key);
+    $('pw-note').textContent = key === 'expert'
+      ? 'Оплата через Продамус: СБП или карта. После оплаты эксперт свяжется с вами.'
+      : 'Оплата через Продамус: СБП или карта. Доступ откроется сразу после оплаты.';
+  } else {
+    go.textContent = c.cta; go.disabled = false;
+    go.onclick = () => wantIt(key);
+    $('pw-note').textContent = c.note || 'Оплаты пока нет — денег не спишем. Скажем, когда откроем.';
+  }
+  $('pw-bg').classList.add('on');
+  track('paywall_view', key);
+}
+function closePaywall(e){
+  if (e && e.target !== $('pw-bg')) return;
+  $('pw-bg').classList.remove('on'); pwKey = null;
+}
+/* Оплата: заказ создаётся у нас, деньги принимает Продамус на своей странице. */
+async function payNow(key){
+  const go = $('pw-go');
+  go.disabled = true; go.textContent = 'Готовим оплату…';
+  try{
+    const r = await api('/pay',{method:'POST',body:JSON.stringify({feature:key})});
+    location.href = r.url;
+  }catch(e){
+    go.disabled = false; go.textContent = 'Оформить за ' + (S.price || '490 ₽ / месяц');
+    $('pw-note').textContent = e.code === 'pay_off'
+      ? 'Оплата ещё не подключена. Попробуйте позже.'
+      : 'Не получилось открыть оплату. Попробуйте ещё раз.';
+  }
+}
+async function wantIt(key){
+  const go = $('pw-go');
+  go.disabled = true; go.textContent = 'Записываем…';
+  try{
+    const r = await api('/interest',{method:'POST',body:JSON.stringify({ feature:key, notify:true })});
+    go.textContent = 'Записали';
+    $('pw-note').textContent = r.notify
+      ? 'Напишем на вашу почту, когда откроем. Денег не спишем.'
+      : onboarded()
+        ? 'Учли ваш интерес. Оставьте почту в разделе «Я» — и мы напишем, когда откроем.'
+        : 'Учли ваш интерес. Откройте свой день и оставьте почту — тогда напишем, когда включим.';
+    hap([0,14,45,22]);
+    setTimeout(()=>{ $('pw-bg').classList.remove('on'); toast('Спасибо — учли'); }, 1400);
+  }catch(e){
+    go.disabled = false; go.textContent = PAYWALL[key].cta;
+    $('pw-note').textContent = 'Не получилось записать. Попробуйте ещё раз.';
+  }
+}
+
+/* Аналитика продукта: только факт и тип действия, тексты вопросов не отправляем. */
+function track(t, d){
+  try{
+    const body = JSON.stringify({ t, d: d || '' });
+    if (navigator.sendBeacon) navigator.sendBeacon(API + '/event', new Blob([body], { type:'application/json' }));
+    else fetch(API + '/event', { method:'POST', headers:{'Content-Type':'application/json'}, body, keepalive:true });
+  }catch(e){ /* аналитика никогда не ломает приложение */ }
+}
+function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2600); }
+function hap(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+const esc = (s) => String(s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+function go(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  window.scrollTo(0,0);
+  if(v==='me') loadMe();
+}
+/* Знакомство идёт до анкеты: сначала объясняем, что это, потом показываем всё,
+   и только затем просим данные. Так человек понимает, кому и зачем их отдаёт. */
+function onboarded(){ return !!(S.user && S.user.onboarded); }
+function openTour(){
+  const inside = onboarded();
+  const cta = $('inside-cta'); if (cta) cta.style.display = inside ? 'none' : '';
+  const lead = $('inside-lead');
+  if (lead) lead.textContent = inside
+    ? 'Всё это уже открыто у вас — бесплатно и без ограничений.'
+    : 'Открывается сразу после короткой анкеты — бесплатно и без ограничений.';
+  go('inside');
+  // витрина — подраздел «Сегодня», поэтому вкладка остаётся подсвеченной, а не гаснет вся панель
+  if (inside) document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === 'today'));
+  track('tour_view');
+}
+function backFromTour(){ go(onboarded() ? 'today' : 'hello'); }
+function obMount(target){
+  if (obTarget !== target) { const prev = $(obTarget); if (prev) prev.innerHTML = ''; obTarget = target; }
+}
+function openForm(){
+  obMount('o-auth'); obStep='idle';
+  if (S.mailReady && $('o-back') && $('o-back').style.display !== 'none') renderObAuth();
+  go('onb'); track('onboard_start');
+}
+function openLogin(){
+  obMount('l-box'); obStep='email';
+  $('l-box').style.display=''; $('l-after').style.display='none';   // возврат после «Почта сохранена»
+  go('login'); renderObAuth(); track('login_open');
+}
+
+/* ── хаб на главной: все разделы в один тап ── */
+function meJump(id){ go('me'); const aim=()=>{ const e=$(id); if(e) e.scrollIntoView({block:'center'}); }; setTimeout(aim, 300); setTimeout(aim, 1000); setTimeout(aim, 2400); }
+function askQuick(m, text){ go('ask'); setMode(m); if(text){ $('a-q').value=text; checkQ(); track('worry_pick', text); } $('a-q').focus(); }
+const QUICK = [
+  ['Да / Нет', "askQuick('yesno')"],
+  ['Руна', "askQuick('rune')"],
+  ['Три карты', "askQuick('spread')"],
+  ['Дневник', "meJump('j-text')"],
+  ['Желания', "meJump('w-text')"],
+  ['Нумерология', "meJump('m-num')"],
+  ['Совместимость', "meJump('m-cdate')"],
+  ['Итоги недели', "meJump('w-summary')"],
+];
+const WORRIES = [
+  ['Стоит ли менять работу?', 'yesno'],
+  ['Как сложится с ним?', 'spread'],
+  ['Что мне поможет на этой неделе?', 'rune'],
+  ['Говорить ли ему честно?', 'yesno'],
+  ['Что мне сейчас мешает?', 'spread'],
+  ['Брать ли эту квартиру?', 'yesno'],
+  ['Как пройдут переговоры?', 'rune'],
+  ['Что важно понять про отношения?', 'rune'],
+];
+function renderHub(){
+  const q = $('t-quick');
+  if (q) q.innerHTML = QUICK.map(([t, fn]) => `<button class="chip" onclick="${fn}">${t}</button>`).join('');
+  const rows = [$('t-worry'), $('t-worry2')];
+  if (rows[0]) rows.forEach((row, i) => {
+    row.innerHTML = WORRIES.filter((_, k) => k % 2 === i)
+      .map(([t, m]) => `<button class="chip" onclick="askQuick('${m}', this.textContent)">${t}</button>`).join('');
+  });
+}
+
+/* ── подсказки городов: координаты подставляются по названию ── */
+function attachCity(inputId, listId, geoId){
+  const inp=$(inputId), list=$(listId), geo=$(geoId);
+  let items=[], hl=-1, picked=null, t=null;
+  const paint=()=>{
+    list.innerHTML=items.map((c,i)=>`<button type="button" class="${i===hl?'hl':''}" data-i="${i}">${c.name}<small>${[c.region,c.country].filter(Boolean).join(', ')} · ${c.lat.toFixed(2)}, ${c.lon.toFixed(2)}</small></button>`).join('');
+    list.classList.toggle('on', items.length>0);
+    list.querySelectorAll('button').forEach(b=>b.onclick=()=>choose(items[+b.dataset.i]));
+  };
+  const choose=(c)=>{ picked=c; inp.value=c.name; items=[]; hl=-1; paint();
+    geo.innerHTML=`✦ <b>${c.name}</b> — ${[c.region,c.country].filter(Boolean).join(', ')}<br>${c.lat.toFixed(4)}, ${c.lon.toFixed(4)} · ${c.tz}`; hap(9); };
+  inp.addEventListener('input',()=>{
+    picked=null; geo.textContent='Координаты и часовой пояс подставим сами — они понадобятся для натальной карты.';
+    clearTimeout(t);
+    const q=inp.value.trim();
+    if(q.length<2){ items=[]; paint(); return; }
+    t=setTimeout(async()=>{
+      try{ items=(await api('/cities?q='+encodeURIComponent(q))).items; hl=-1; paint(); }catch(e){ items=[]; paint(); }
+    },160);
+  });
+  inp.addEventListener('keydown',(e)=>{
+    if(!items.length) return;
+    if(e.key==='ArrowDown'){ e.preventDefault(); hl=(hl+1)%items.length; paint(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); hl=(hl-1+items.length)%items.length; paint(); }
+    else if(e.key==='Enter'&&hl>=0){ e.preventDefault(); choose(items[hl]); }
+    else if(e.key==='Escape'){ items=[]; paint(); }
+  });
+  inp.addEventListener('blur',()=>setTimeout(()=>{ items=[]; paint(); },160));
+  return { get picked(){ return picked; } };
+}
+const cityPick = attachCity('o-city','o-city-list','o-geo');
+
+/* ── онбординг ── */
+$('o-go').onclick = async () => {
+  const birth=$('o-birth').value, msg=$('o-msg');
+  msg.className='msg';
+  if(!birth){ msg.classList.add('err'); msg.textContent='Укажите дату рождения — без неё подсказки будут общими.'; return; }
+  if(!$('o-consent').checked){ msg.classList.add('err'); msg.textContent='Чтобы продолжить, подтвердите согласие на обработку данных.'; return; }
+  const body = JSON.stringify({ name:$('o-name').value, birth, birthTime:$('o-time').value, city:$('o-city').value, consent:true });
+  $('o-go').disabled=true; $('o-go').textContent='Готовим ваш день…';
+  let last=null;
+  for (let attempt=1; attempt<=2; attempt++){          // связь бывает рваной — пробуем дважды
+    try{
+      const r = await api('/profile', { method:'POST', body });
+      S.user=r.user; S.day=r.day; hap([0,14,45,22]); paintToday(); $('tabs').style.display='flex'; go('today');
+      return;
+    }catch(e){
+      last=e;
+      if (e.status) break;                              // сервер ответил — повтор не поможет
+      if (attempt===1){ $('o-go').textContent='Связь прервалась, пробуем ещё раз…'; await new Promise(r=>setTimeout(r,1200)); }
+    }
+  }
+  msg.classList.add('err');
+  msg.textContent = last && last.code==='no_consent' ? 'Подтвердите согласие на обработку данных.'
+    : last && last.code==='bad_birth' ? 'Проверьте дату рождения.'
+    : last && last.status ? 'Сервер не принял анкету. Напишите нам, если повторится.'
+    : 'Не удалось связаться с сервером — похоже, пропала сеть. Данные не потеряны: нажмите ещё раз.';
+  $('o-go').disabled=false; $('o-go').textContent='Открыть мой день';
+};
+
+/* ── сегодня ── */
+const MOODS=[['joy','Радостно','M11.5 18.5q4.5 4.5 9 0'],['calm','Спокойно','M12.5 19q3.5 2.4 7 0'],['tired','Устало','M12.5 19.5h7'],['anx','Тревожно','M11.5 19q2.2-2 4.5 0t4.5 0'],['sad','Грустно','M11.5 20.5q4.5-4 9 0']];
+const MOOD_LABEL = Object.fromEntries(MOODS.map(m=>[m[0],m[1].toLowerCase()]));
+function paintToday(){
+  renderHub();
+  const u=S.user, d=S.day;
+  const dt=new Date(d.date+'T12:00:00');
+  $('t-date').textContent='Лунарио · '+dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  const h=new Date().getHours();
+  $('t-hello').textContent=(h<5?'Доброй ночи':h<12?'Доброе утро':h<18?'Добрый день':'Добрый вечер')+(u.name?', '+u.name:'');
+  $('t-streak').textContent=streakLabel(u.streak);
+  $('t-moon').textContent=d.moon+(d.sign?' · вы '+d.sign:'')+'. Освещённость '+d.moonPct+'%.';
+  $('c-name').textContent=d.card.name; $('c-mean').textContent=d.card.meaning; $('c-advice').textContent=d.card.advice;
+  $('f-title').textContent=d.forecast.title; $('f-text').textContent=d.forecast.text;
+  $('t-aff').textContent='«'+d.affirmation+'»'; $('t-q').textContent=d.question;
+  $('f-bars').innerHTML=Object.entries({Работа:'work',Отношения:'love',Здоровье:'health',Финансы:'money'})
+    .map(([l,k])=>`<div class="barrow"><span class="l">${l}</span><div class="bar"><i data-w="${d.forecast.bars[k]}"></i></div><span class="v">${d.forecast.bars[k]}%</span></div>`).join('');
+  setTimeout(()=>document.querySelectorAll('#f-bars .bar i').forEach(b=>b.style.width=b.dataset.w+'%'),120);
+  renderMoods();
+}
+const plural=(n,a,b,c)=>{const m=n%100;if(m>=11&&m<=14)return c;const l=n%10;return l===1?a:l>=2&&l<=4?b:c;};
+function renderMoods(){
+  $('t-moods').innerHTML=MOODS.map(([id,label,mouth])=>`
+    <button class="mood${S.mood===id?' on':''}" onclick="pickMood('${id}')" aria-label="${label}">
+      <svg width="30" height="30" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/>
+      <circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/>
+      <path d="${mouth}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>${label}</span></button>`).join('');
+}
+async function pickMood(id){
+  hap(9);
+  try{
+    const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id})});
+    S.mood=r.mood; renderMoods(); bumpStreak(r.streak);
+    paintMoodStat(r.stats);
+  }catch(e){ toast('Не удалось сохранить'); }
+}
+function paintMoodStat(stats){
+  const parts=(stats||[]).filter(s=>s.c>0).map(s=>MOOD_LABEL[s.mood]+' — '+s.c);
+  $('t-moodstat').textContent=parts.length?'В этом месяце: '+parts.join(' · ')+'.':'';
+}
+const streakLabel=(n)=> n>0 ? '✦ '+n+' '+plural(n,'день','дня','дней') : '✦ Начать серию';
+function bumpStreak(n){ if(n==null) return; S.user.streak=n; $('t-streak').textContent=streakLabel(n); }
+function flipCard(){ if(!S.flipped) openCard(); }
+$('t-open').onclick=openCard;
+function openCard(){
+  track('card_open');
+  if(S.flipped) return;
+  S.flipped=true; hap([0,12]);
+  $('t-card').classList.add('flip'); $('t-card').classList.remove('glow');
+  $('t-open').style.display='none';
+  setTimeout(()=>{ $('t-after').style.display='block'; $('t-after').classList.add('rise'); },500);
+  api('/ritual',{method:'POST'}).then(r=>bumpStreak(r.streak)).catch(()=>{});
+  try{ localStorage.setItem('lun_card_'+S.day.date,'1'); }catch(e){}
+}
+function share(){
+  const t=`${S.day.card.name} — карта дня в Лунарио.\n${S.day.card.meaning}\n${location.origin}/app/`;
+  if(navigator.share) navigator.share({title:'Лунарио',text:t}).catch(()=>{});
+  else { navigator.clipboard.writeText(t).catch(()=>{}); toast('Скопировано — можно отправить подруге'); }
+}
+
+/* ── спросить ── */
+const EXAMPLES={
+  yesno:['Стоит ли менять работу?','Говорить ли ему честно?','Брать ли эту квартиру?'],
+  rune:['Что мне поможет на этой неделе?','Как пройдут переговоры?','Что важно понять про отношения?'],
+  spread:['Что с работой в этом месяце?','Как сложится с ним?','Что мне сейчас мешает?'],
+};
+const LABELS={yesno:'О чём спрашиваете',rune:'О чём спрашиваете руну',spread:'Ваш вопрос к картам'};
+function setMode(m){
+  S.mode=m; hap(9);
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+  $('a-label').textContent=LABELS[m];
+  $('a-examples').innerHTML=EXAMPLES[m].map(t=>`<button class="chip" onclick="useExample(this)">${t}</button>`).join('');
+  $('a-result').style.display='none'; $('a-msg').textContent='';
+  $('a-hint').textContent = m==='spread' && S.limits ? `Разбор расклада: осталось ${S.limits.spreadsLeft} из ${S.limits.spreadsTotal} на сегодня.` : 'Бесплатно и без ограничений.';
+  checkQ();
+}
+function useExample(b){ $('a-q').value=b.textContent; checkQ(); $('a-q').focus(); }
+$('a-q').addEventListener('input',checkQ);
+function checkQ(){
+  const v=$('a-q').value.trim(), ok=v.length>=10&&/\s/.test(v);
+  $('a-go').disabled=!ok;
+  $('a-go').textContent=ok?(S.mode==='spread'?'Разложить карты':S.mode==='rune'?'Вытянуть руну':'Спросить карту'):(v.length?'Допишите вопрос':'Напишите вопрос');
+}
+$('a-go').onclick=async()=>{
+  const q=$('a-q').value.trim(), msg=$('a-msg'); msg.className='msg'; msg.textContent='';
+  $('a-go').disabled=true; $('a-go').textContent='Смотрим…';
+  try{
+    if(S.mode==='spread'){
+      track('ask_spread');
+      const r=await api('/spread',{method:'POST',body:JSON.stringify({question:q})});
+      S.limits.spreadsLeft=r.left; bumpStreak(r.streak);
+      $('a-result').innerHTML=`<p style="font-style:italic;text-align:center;font-size:14px">«${esc(q)}»</p>`+
+        r.cards.map((c,i)=>`<div class="card rise" style="--i:${i}"><span class="eyebrow" style="margin-bottom:5px">${c.pos} · ${c.name}</span><p>${c.text}</p></div>`).join('');
+      $('a-hint').textContent=`Разбор расклада: осталось ${r.left} из 2 на сегодня.`;
+    } else {
+      track(S.mode==='rune'?'ask_rune':'ask_yesno');
+      const r=await api('/ask',{method:'POST',body:JSON.stringify({question:q,kind:S.mode})});
+      bumpStreak(r.streak);
+      const rune=r.kind==='rune';
+      $('a-result').innerHTML=`<div class="card rise" style="text-align:center">
+        <p style="font-style:italic;font-size:14px">«${esc(q)}»</p>
+        ${rune?`<svg width="66" height="84" viewBox="0 0 32 32" fill="none" style="margin:14px auto 6px;display:block"><path d="${r.path}" stroke="#e8d8a8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+        <div class="${rune?'serif':'big'}" style="${rune?'font-size:23px;color:var(--gold);margin-top:8px':''}">${r.title}</div>
+        <p style="margin-top:10px">${r.body}</p></div>`+
+        (r.memory?`<div class="card rise" style="--i:1;border-color:rgba(232,216,168,.35)"><span class="eyebrow" style="color:var(--gold);margin-bottom:6px">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b style="color:#fff">«${r.memory.title}»</b>, сегодня — <b style="color:#fff">«${r.title}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>`:'');
+    }
+    $('a-result').style.display='block'; hap([0,14,45,22]);
+    $('a-result').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){
+    msg.classList.add('err');
+    if(e.code==='limit') { track('spread_limit'); showPaywall('unlimited'); }
+    msg.textContent = e.code==='limit' ? 'Разборы на сегодня закончились. Карта дня, «Да/Нет» и руны остаются без ограничений.'
+      : e.code==='short_question' ? 'Допишите вопрос — ответ приходит на конкретный, а не на общий.'
+      : 'Не получилось. Попробуйте ещё раз.';
+  }
+  checkQ();
+};
+
+/* ── вход по коду на почту ── */
+let authStep = 'idle', authEmail = '';
+function renderAuth(){
+  const box = $('m-auth'), u = S.user;
+  if (u.email && authStep !== 'code') {
+    box.innerHTML = `<p style="font-size:15px;color:#e6e0f7">Вы вошли как <b>${esc(u.email)}</b></p>
+      <p style="font-size:13.5px;margin-top:7px">Записи, дневник и серия дней доступны на любом устройстве — введите этот адрес и код при входе.</p>
+      <button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="logout()">Выйти на этом устройстве</button>`;
+    return;
+  }
+  if (!S.mailReady) {
+    box.innerHTML = `<p style="font-size:15px;color:#e6e0f7">Вход по почте скоро появится</p>
+      <p style="font-size:13.5px;margin-top:7px">Пока записи хранятся на этом устройстве. Не удаляйте приложение — иначе история потеряется.</p>`;
+    return;
+  }
+  if (authStep === 'code') {
+    box.innerHTML = `<p style="font-size:15px;color:#e6e0f7">Код отправлен на <b>${esc(authEmail)}</b></p>
+      <div class="field" style="margin:12px 0 0"><label>Код из письма</label>
+        <input id="a-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
+      <button class="btn" style="margin-top:10px" onclick="authVerify()">Войти</button>
+      <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="authStep='idle';renderAuth()">Изменить адрес</button>
+      <p class="msg" id="a-authmsg"></p>`;
+    setTimeout(()=>$('a-code') && $('a-code').focus(), 60);
+    return;
+  }
+  box.innerHTML = `<p style="font-size:15px;color:#e6e0f7">Чтобы записи не потерялись</p>
+    <p style="font-size:13.5px;margin-top:7px">Оставьте почту — и дневник, вопросы и серия дней вернутся к вам на новом телефоне. Пароль придумывать не нужно: пришлём короткий код.</p>
+    <div class="field" style="margin:13px 0 0"><label>Почта</label>
+      <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru" value="${esc(S.user.email||'')}"></div>
+    <button class="btn" onclick="authRequest()">Прислать код</button>
+    <p class="msg" id="a-authmsg"></p>`;
+}
+/* Вход на стартовом экране — для тех, у кого аккаунт уже есть.
+   Без него человек на новом телефоне вынужден заново заполнять профиль. */
+let obStep = 'idle', obEmail = '';
+let obTarget = 'o-auth';
+function renderObAuth(){
+  const box = $(obTarget) || $('o-auth');
+  if (!box) return;
+  if (obStep === 'idle') {
+    box.innerHTML = `<button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="obStep='email';renderObAuth()">Войти по почте</button>`;
+    return;
+  }
+  if (obStep === 'email') {
+    box.innerHTML = `<div class="field" style="margin:13px 0 0"><label>Почта</label>
+        <input id="ob-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru"></div>
+      <button class="btn" onclick="obRequest()">Прислать код</button>
+      <p class="msg" id="ob-msg"></p>`;
+    setTimeout(()=>$('ob-email') && $('ob-email').focus(), 60);
+    return;
+  }
+  box.innerHTML = `<p style="font-size:13.5px;margin:13px 0 0">Код отправлен на <b>${esc(obEmail)}</b></p>
+    <div class="field" style="margin:10px 0 0"><label>Код из письма</label>
+      <input id="ob-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
+    <button class="btn" onclick="obVerify()">Войти</button>
+    <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="obStep='email';renderObAuth()">Изменить адрес</button>
+    <p class="msg" id="ob-msg"></p>`;
+  setTimeout(()=>$('ob-code') && $('ob-code').focus(), 60);
+}
+async function obRequest(){
+  const email = $('ob-email').value.trim().toLowerCase(), msg = $('ob-msg');
+  msg.className='msg';
+  if(!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)){ msg.classList.add('err'); msg.textContent='Проверьте адрес почты.'; return; }
+  msg.textContent='Отправляем код…';
+  try{
+    await api('/auth/request',{method:'POST',body:JSON.stringify({email})});
+    obEmail = email; obStep = 'code'; renderObAuth(); hap([0,12]);
+  }catch(e){
+    msg.classList.add('err');
+    msg.textContent = e.code==='too_often' ? 'Слишком часто. Попробуйте через несколько минут.'
+      : e.code==='mail_off' ? 'Отправка почты ещё не настроена.'
+      : 'Не получилось отправить код.';
+  }
+}
+async function obVerify(){
+  const code = $('ob-code').value.trim(), msg = $('ob-msg');
+  msg.className='msg';
+  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
+  try{
+    const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:obEmail,code})});
+    hap([0,14,45,22]);
+    if (r.user && r.user.onboarded) { location.reload(); return; }   // профиль нашёлся — открываем приложение
+    S.user = r.user;
+    if (obTarget === 'l-box') { $('l-after').style.display = 'block'; $('l-box').style.display = 'none'; return; }
+    msg.textContent = 'Почта сохранена. Осталось заполнить профиль — записи привяжутся к ней.';
+    obStep = 'idle'; renderObAuth();
+  }catch(e){
+    msg.classList.add('err');
+    msg.textContent = e.code==='wrong_code' ? 'Код не подошёл. Проверьте письмо.'
+      : e.code==='expired' ? 'Код истёк — запросите новый.'
+      : e.code==='too_many' ? 'Слишком много попыток. Запросите новый код.'
+      : 'Не получилось войти.';
+  }
+}
+async function authRequest(){
+  const email = $('a-email').value.trim().toLowerCase(), msg = $('a-authmsg');
+  msg.className='msg';
+  if(!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)){ msg.classList.add('err'); msg.textContent='Проверьте адрес почты.'; return; }
+  msg.textContent='Отправляем код…';
+  try{
+    await api('/auth/request',{method:'POST',body:JSON.stringify({email})});
+    authEmail = email; authStep = 'code'; renderAuth(); hap([0,12]);
+  }catch(e){
+    msg.classList.add('err');
+    msg.textContent = e.code==='too_often' ? 'Слишком часто. Попробуйте через несколько минут.'
+      : e.code==='mail_off' ? 'Отправка почты ещё не настроена.'
+      : e.code==='send_failed' ? 'Письмо не ушло. Проверьте адрес или попробуйте позже.'
+      : 'Не получилось отправить код.';
+  }
+}
+async function authVerify(){
+  const code = $('a-code').value.trim(), msg = $('a-authmsg');
+  msg.className='msg';
+  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
+  try{
+    const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:authEmail,code})});
+    S.user = r.user; authStep='idle'; hap([0,14,45,22]);
+    if (r.merged){ S.day = r.day; toast('С возвращением! Ваши записи на месте'); paintToday(); }
+    else toast('Почта сохранена — доступ не потеряется');
+    renderAuth(); loadMe();
+  }catch(e){
+    msg.classList.add('err');
+    msg.textContent = e.code==='wrong_code' ? 'Код не подошёл. Проверьте письмо.'
+      : e.code==='expired' ? 'Код истёк — запросите новый.'
+      : e.code==='too_many' ? 'Слишком много попыток. Запросите новый код.'
+      : 'Не получилось войти.';
+  }
+}
+async function logout(){
+  if(!confirm('Выйти на этом устройстве? Записи останутся в аккаунте и вернутся при следующем входе.')) return;
+  await api('/auth/logout',{method:'POST'});
+  location.reload();
+}
+
+/* ── я ── */
+/* Напоминание утром. Разрешение спрашиваем только по нажатию — само по себе
+   окно браузера про уведомления раздражает и его закрывают не глядя. */
+async function loadPush(){
+  const box = $('push-box');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    box.innerHTML = '<p style="font-size:13.5px;color:#9a92bb">Этот браузер не умеет присылать напоминания. На айфоне они работают, если добавить Лунарио на экран «Домой».</p>';
+    return;
+  }
+  try{
+    const s = await api('/push');
+    box.innerHTML = s.on
+      ? `<button class="btn ghost sm" style="width:100%" onclick="pushOff()">Не напоминать</button>
+         <p style="font-size:13px;color:var(--gold);margin-top:9px">Напоминание включено.</p>`
+      : `<button class="btn ghost sm" style="width:100%" onclick="pushOn()">Напоминать утром</button>`;
+  }catch(e){ box.innerHTML = ''; }
+}
+function toBytes(base64){
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const raw = atob((base64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+async function pushOn(){
+  const box = $('push-box');
+  try{
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      box.innerHTML = '<p style="font-size:13.5px;color:#9a92bb">Браузер не разрешил напоминания. Их можно включить в его настройках для этого сайта.</p>';
+      return;
+    }
+    const { key } = await api('/push');
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(key) });
+    await api('/push',{method:'POST',body:JSON.stringify({ endpoint: sub.endpoint })});
+    track('push_on'); toast('Напомним утром'); loadPush();
+  }catch(e){
+    box.innerHTML = '<p style="font-size:13.5px;color:#9a92bb">Не получилось включить напоминание. Попробуйте позже.</p>';
+  }
+}
+async function pushOff(){
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+    await api('/push',{method:'DELETE'});
+    track('push_off'); toast('Больше не напоминаем'); loadPush();
+  }catch(e){ /* уже отписаны */ }
+}
+
+/* Итог недели — по фактам: отметки состояния, записи, вопросы. */
+async function loadWeek(){
+  try{
+    const w = await api('/week');
+    $('w-summary').textContent = w.summary;
+    const parts = [];
+    if (w.moods.length) parts.push(w.moods.map(m=>`${m.mood} — ${m.count}`).join(' · '));
+    if (w.asked.length) parts.push('спрашивали: ' + w.asked.map(a=>`${a.kind} — ${a.count}`).join(' · '));
+    if (w.notes) parts.push(`записей в дневнике — ${w.notes}`);
+    $('w-detail').innerHTML = parts.length
+      ? parts.map(t=>`<p style="font-size:13.5px;color:#9a92bb;margin-top:6px">${t}</p>`).join('')
+      : '';
+  }catch(e){ $('w-summary').textContent = 'Итог недели появится, когда наберутся отметки.'; }
+}
+
+/* Приглашение: ссылка со своим кодом и подарок обеим на неделю. */
+async function loadInvite(){
+  try{
+    const i = await api('/invite');
+    const bonus = i.bonusActive ? `<p style="font-size:13px;color:var(--gold);margin-top:9px">Подарок действует до ${i.bonusUntil.split('-').reverse().join('.')} — четыре подробных разбора в день.</p>` : '';
+    const brought = i.brought ? `<p style="font-size:13px;color:#9a92bb;margin-top:9px">По вашей ссылке пришли: ${i.brought}</p>` : '';
+    $('inv-box').innerHTML = `
+      <div class="field" style="margin:0"><input id="inv-link" readonly value="${esc(i.link)}" style="font-size:13px"></div>
+      <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="copyInvite()">Скопировать ссылку</button>
+      ${bonus}${brought}`;
+  }catch(e){ $('inv-box').innerHTML = '<p style="font-size:13.5px;color:#9a92bb">Ссылка появится чуть позже.</p>'; }
+}
+async function copyInvite(){
+  const el = $('inv-link');
+  try{
+    await navigator.clipboard.writeText(el.value);
+    toast('Ссылка скопирована');
+  }catch(e){ el.select(); toast('Скопируйте ссылку вручную'); }
+  track('invite_copy');
+}
+
+/* Данные вводятся один раз при знакомстве, но жизнь меняется: город, имя,
+   уточнённое время рождения. Здесь их можно поправить. */
+let editReady = false;
+function editProfile(){
+  const box = $('m-edit');
+  const open = box.style.display === 'none';
+  box.style.display = open ? 'block' : 'none';
+  if (!open) return;
+  const u = S.user;
+  $('e-name').value = u.name || '';
+  $('e-birth').value = u.birth || '';
+  $('e-time').value = u.birthTime || '';
+  $('e-city').value = u.city || '';
+  if (!editReady) { attachCity('e-city','e-city-list','e-geo'); editReady = true; }
+  box.scrollIntoView({ block:'center', behavior:'smooth' });
+}
+async function saveProfile(){
+  const msg = $('e-msg'); msg.className='msg';
+  const birth = $('e-birth').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) { msg.classList.add('err'); msg.textContent='Проверьте дату рождения.'; return; }
+  msg.textContent = 'Сохраняем…';
+  try{
+    const r = await api('/profile',{method:'POST',body:JSON.stringify({
+      name:$('e-name').value.trim(), birth, birthTime:$('e-time').value, city:$('e-city').value.trim(), consent:true })});
+    S.user = r.user; S.day = r.day;
+    msg.className='msg'; msg.textContent='';
+    $('m-edit').style.display='none';
+    toast('Данные обновлены');
+    loadMe(); paintToday();
+  }catch(e){
+    msg.classList.add('err');
+    msg.textContent = e.code==='bad_birth' ? 'Проверьте дату рождения.' : 'Не получилось сохранить. Попробуйте ещё раз.';
+  }
+}
+
+async function loadMe(){
+  renderAuth(); loadWeek(); loadInvite(); loadPush();
+  const u=S.user;
+  $('m-name').textContent=u.name||'Профиль';
+  $('m-sign').textContent=[u.sign,u.birth?u.birth.split('-').reverse().join('.'):'',u.city].filter(Boolean).join(' · ');
+  const geoLine=$('m-geo');
+  if(u.lat!=null){
+    const off=u.tzOffset!=null?(u.tzOffset>=0?'+':'−')+Math.abs(Math.round(u.tzOffset/60)):'—';
+    geoLine.innerHTML=`Координаты для натальной карты: <b>${u.lat.toFixed(4)}, ${u.lon.toFixed(4)}</b> · ${u.tz} · на дату рождения UTC${off}`
+      +(u.natalReady?'':'<br>Добавьте время рождения — без него карта строится приблизительно.');
+  } else geoLine.textContent='Город не распознан — координаты не сохранены. Впишите город из подсказки, чтобы построить натальную карту.';
+  try{
+    const n=await api('/numerology');
+    $('m-num').innerHTML=[[n.destiny.n,n.destiny.title,n.destiny.text,n.destiny.formula],
+      [n.year.n,'Личный год · '+n.year.year,n.year.text,''],[n.day.n,'Число дня',n.day.text,'']]
+      .map(([num,title,text,f],i)=>`<div class="item rise" style="--i:${i}"><div class="row" style="gap:14px;align-items:flex-start">
+        <span class="serif" style="font-size:36px;color:var(--gold);width:44px;text-align:center">${num}</span>
+        <div class="grow"><b>${title}</b>${f?`<small>${f}</small>`:''}<p style="font-size:14px;margin-top:6px">${text}</p></div></div></div>`).join('');
+  }catch(e){ $('m-num').innerHTML='<div class="item"><p>Добавьте дату рождения, чтобы увидеть числа.</p></div>'; }
+  api('/journal').then(r=>{ $('m-journal').innerHTML=r.items.map(i=>`<div class="item"><small>${i.day.split('-').reverse().join('.')}</small><p style="font-size:14px;margin-top:5px">${esc(i.text)}</p></div>`).join('')||'<div class="item"><p>Пока пусто. Пара строк вечером — и здесь появится ваша лента.</p></div>'; });
+  api('/wishes').then(renderWishes);
+  api('/entries').then(r=>{ $('m-entries').innerHTML=r.items.map(i=>`<div class="item"><b>${i.question?esc(i.question):i.title}</b><small>${i.day.split('-').reverse().join('.')} · ${i.title}</small></div>`).join('')||'<div class="item"><p>Здесь появятся ваши вопросы и ответы на них. Видите их только вы.</p></div>'; });
+}
+function renderWishes(r){
+  $('m-wishes').innerHTML=r.items.map(w=>`<div class="item row" style="gap:12px">
+    <button onclick="toggleWish(${w.id})" style="width:28px;height:28px;min-height:28px;border-radius:50%;flex:0 0 28px;border:1.5px solid ${w.done?'transparent':'#7c4dff'};background:${w.done?'var(--gold)':'transparent'};color:#1a1136;cursor:pointer;display:grid;place-items:center">${w.done?'✓':''}</button>
+    <div class="grow"><b style="${w.done?'opacity:.55;text-decoration:line-through':''}">${esc(w.text)}</b><small>${w.done?'Сбылось ✦':'напомним через месяц'}</small></div></div>`).join('')||'<div class="item"><p>Запишите желание — через месяц бережно спросим, как оно.</p></div>';
+}
+async function addWish(){
+  track('wish_add');
+  const t=$('w-text').value.trim(); if(t.length<3){ toast('Сформулируйте чуть подробнее'); return; }
+  $('w-text').value=''; renderWishes(await api('/wishes',{method:'POST',body:JSON.stringify({text:t})})); hap([0,14,45,22]); toast('Добавлено');
+}
+async function toggleWish(id){ hap(9); renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
+async function saveJournal(){
+  track('journal_add');
+  const t=$('j-text').value.trim(); if(t.length<3){ toast('Напишите хотя бы пару слов'); return; }
+  const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t})});
+  $('j-text').value=''; bumpStreak(r.streak); hap([0,14,45,22]); toast('Записано. Видите только вы'); loadMe();
+}
+async function compat(){
+  track('compat_calc');
+  const b=$('m-cdate').value; if(!b){ toast('Укажите дату партнёра'); return; }
+  try{
+    const r=await api('/compat',{method:'POST',body:JSON.stringify({birth:b})});
+    $('m-cres').style.display='block';
+    $('m-cres').innerHTML=`<div class="big" style="font-size:46px">${r.total}%</div>
+      <p class="serif" style="text-align:center;font-size:19px;color:#fff">${r.you} и ${r.other}</p>
+      <div class="split" style="grid-template-columns:repeat(4,1fr);margin:16px 0 10px">
+      ${r.rings.map(([n,v])=>`<div class="ring"><svg width="54" height="54" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle class="v" cx="28" cy="28" r="24" fill="none" stroke="#b07cff" stroke-width="4" stroke-linecap="round" data-p="${v}"/></svg><span style="font-size:12px;color:var(--violet-2)">${v}%</span><span style="font-size:10.5px;color:var(--muted)">${n}</span></div>`).join('')}
+      </div><p style="font-size:14px">${r.text}</p>`;
+    setTimeout(()=>document.querySelectorAll('#m-cres circle.v').forEach((c,i)=>{ c.style.transitionDelay=i*90+'ms'; c.style.strokeDashoffset=151-151*(+c.dataset.p)/100; }),60);
+    hap([0,14,45,22]);
+  }catch(e){ toast('Не получилось рассчитать'); }
+}
+async function wipe(what){
+  const isAcc=what==='account';
+  if(!confirm(isAcc?'Удалить аккаунт и все данные? Это необратимо.':'Очистить всю историю вопросов, дневник и желания?')) return;
+  await api('/'+(isAcc?'account':'data'),{method:'DELETE'});
+  if(isAcc){ location.reload(); return; }
+  toast('История очищена'); loadMe();
+}
+
+/* ── установка на телефон ── */
+let deferred=null;
+window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); $('t-install').style.display='flex'; });
+async function installApp(){ if(!deferred) return; track('installed'); deferred.prompt(); await deferred.userChoice; deferred=null; $('t-install').style.display='none'; }
+
+/* ── старт ── */
+(async function(){
+  try{
+    const r=await api('/me');
+    S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=r.mailReady; S.price=r.price; S.prices=r.prices; S.payReady=r.payReady; S.plusUntil=r.plusUntil; S.plusActive=r.plusActive;
+    try{
+      const paid = new URLSearchParams(location.search).get('paid');
+      if (paid === 'ok') {
+        history.replaceState(null,'',location.pathname);
+        setTimeout(()=>toast(S.plusActive ? 'Лунарио+ включён — приятного пользования' : 'Оплата принята — спасибо'), 900);
+      } else if (paid === 'no') {
+        history.replaceState(null,'',location.pathname);
+        setTimeout(()=>toast('Оплата не прошла — ничего не списано'), 900);
+      }
+    }catch(e){}
+    try{
+      const ref = new URLSearchParams(location.search).get('ref');
+      if (ref) {
+        const inv = await api('/invite',{method:'POST',body:JSON.stringify({code:ref})});
+        if (inv.ok) { track('invite_used'); setTimeout(()=>toast('Подарок от подруги: четыре разбора в день на неделю'), 1200); }
+        history.replaceState(null,'',location.pathname);
+      }
+    }catch(e){ /* ссылка старая — просто открываем приложение */ }
+    if(!r.user.onboarded){ go('hello'); track('intro_view'); if(S.mailReady){ $('hello-login').style.display='block'; $('o-back').style.display='block'; obTarget='o-auth'; renderObAuth(); } return; }
+    $('tabs').style.display='flex'; paintToday(); setMode('yesno'); go('today');
+    if(S.mailReady && !r.user.email) $('t-save').style.display='block';
+    if(S.prices){
+      const pp=$('plus-price'); if(pp) pp.textContent=S.prices.subscription||'490 ₽ / месяц';
+      const ex=document.querySelector('#v-today [onclick*="expert"]'); if(ex) ex.textContent='Разговор с экспертом — '+((S.prices.expert||'2500 ₽').split(' / ')[0]);
+    }
+    if(S.plusActive){
+      $('plus-line').textContent = 'Подписка активна до ' + (S.plusUntil||'').split('-').reverse().join('.') + ' — безлимитные разборы уже работают.';
+      const pp=$('plus-price'); if(pp) pp.style.display='none';
+      const btn=document.querySelector('#v-today [onclick*="showPaywall(\'subscription\')"]'); if(btn) btn.style.display='none';
+    }
+    try{ if(localStorage.getItem('lun_card_'+r.day.date)){ S.flipped=true; $('t-card').classList.add('flip'); $('t-card').classList.remove('glow'); $('t-open').style.display='none'; $('t-after').style.display='block'; } }catch(e){}
+    paintMoodStat(r.moodStats);
+  }catch(e){ go('hello'); }
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('/app/sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>

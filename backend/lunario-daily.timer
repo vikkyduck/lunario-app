@@ -1,0 +1,9 @@
+[Unit]
+Description=Лунарио — напоминание каждое утро в 9:00 по Москве
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Europe/Moscow
+Persistent=true
+
+[Install]
+WantedBy=timers.target

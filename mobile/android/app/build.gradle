@@ -1,0 +1,51 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'online.lunario.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "online.lunario.app"
+        minSdk 23                 // Android 6 и новее — покрывает и старые телефоны
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        resValue "string", "app_name", "Лунарио"
+        // Адрес, который открывает обёртка. Меняется только здесь.
+        manifestPlaceholders = [
+            hostName: "lunario.online",
+            defaultUrl: "https://lunario.online/app/",
+            launcherName: "Лунарио"
+        ]
+    }
+
+    signingConfigs {
+        release {
+            // Значения берутся из ~/.gradle/gradle.properties, в репозиторий их не кладём:
+            //   LUNARIO_STORE_FILE=/путь/lunario.keystore
+            //   LUNARIO_STORE_PASSWORD=…  LUNARIO_KEY_ALIAS=lunario  LUNARIO_KEY_PASSWORD=…
+            if (project.hasProperty('LUNARIO_STORE_FILE')) {
+                storeFile file(LUNARIO_STORE_FILE)
+                storePassword LUNARIO_STORE_PASSWORD
+                keyAlias LUNARIO_KEY_ALIAS
+                keyPassword LUNARIO_KEY_PASSWORD
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (project.hasProperty('LUNARIO_STORE_FILE')) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Trusted Web Activity: официальный способ Google завернуть PWA в приложение
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

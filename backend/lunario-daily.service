@@ -1,0 +1,8 @@
+[Unit]
+Description=Лунарио — утреннее напоминание о карте дня
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/lunario-app
+EnvironmentFile=-/opt/lunario-app/.env
+ExecStart=/usr/bin/node /opt/lunario-app/backend/send-daily.mjs

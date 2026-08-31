@@ -1,0 +1,16 @@
+# секреты и данные — живут только на сервере
+.env
+data/
+*.db
+# cities.db собирается сам: node tools/build-cities.mjs (данные GeoNames, CC BY)
+backend/cities.db
+
+# локальный тулчейн и артефакты сборки
+mobile/toolchain/
+lunario-mobile.zip
+*.jks
+*.keystore
+
+# системный мусор
+.DS_Store
+node_modules/
