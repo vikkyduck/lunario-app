@@ -14,10 +14,10 @@ echo
 
 # 1. Логин — обязательно полный адрес: Яндекс авторизует по нему
 while :; do
-  read -r -p "1/3 Логин ящика (адрес целиком) [hello@vi-utkina.ru]: " SMTP_USER
-  SMTP_USER=${SMTP_USER:-hello@vi-utkina.ru}
+  read -r -p "1/3 Логин ящика (адрес целиком) [hello@example.ru]: " SMTP_USER
+  SMTP_USER=${SMTP_USER:-hello@example.ru}
   if [[ "$SMTP_USER" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[A-Za-z]{2,}$ ]]; then break; fi
-  echo "   ✗ «$SMTP_USER» — не адрес почты. Нужен вид vu@vi-utkina.ru (название бренда спросим третьим вопросом)."
+  echo "   ✗ «$SMTP_USER» — не адрес почты. Нужен вид you@example.ru (название бренда спросим третьим вопросом)."
 done
 
 # 2. Пароль приложения — 16 символов, Яндекс показывает его группами по 4

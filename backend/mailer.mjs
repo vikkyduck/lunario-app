@@ -1,6 +1,6 @@
 /* Отправка почты по SMTP без зависимостей: node:tls + разговор с сервером руками.
    Настройки — из окружения (файл /opt/lunario-app/.env, читается systemd):
-     SMTP_HOST=smtp.yandex.ru  SMTP_PORT=465  SMTP_USER=vu@vi-utkina.ru
+     SMTP_HOST=smtp.yandex.ru  SMTP_PORT=465  SMTP_USER=you@example.ru
      SMTP_PASS=<пароль приложения>  SMTP_FROM="Лунарио <vu@withoutwater.ru>"
    Пароль приложения создаётся в id.yandex.ru → Безопасность → Пароли приложений
    и доступа к самому ящику не даёт. */
