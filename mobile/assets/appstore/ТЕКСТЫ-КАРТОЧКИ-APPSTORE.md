@@ -116,6 +116,8 @@ Notes:
   third-party or social login. The only sign-in is a one-time code sent
   to the user's own e-mail, used to sync entries between devices.
 • The iOS app contains no purchases, no prices and no external payment links.
+• Every section visible in the app is fully functional and free: there are no
+  "coming soon" placeholders and no locked or empty screens.
 • Account deletion: «Я» tab → «Удалить аккаунт» (guideline 5.1.1(v)).
 • Native features: daily local-notification reminder (opt-in, «Я» tab),
   haptic feedback, native share sheet, offline screen.

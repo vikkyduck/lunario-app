@@ -903,7 +903,9 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true });
       }
       if (p === '/api/account' && req.method === 'DELETE') {
-        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'sessions']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
+        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'sessions', 'push_subs']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
+        // замер интереса остаётся (обезличенный факт клика), но почта и просьба «сообщите» уходят вместе с аккаунтом
+        db.prepare("UPDATE interest SET email = '', notify = 0 WHERE user_id = ?").run(u.id);
         db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
         res.setHeader('Set-Cookie', `lunario_app=; Path=${BASE}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
         return json(res, 200, { ok: true });
