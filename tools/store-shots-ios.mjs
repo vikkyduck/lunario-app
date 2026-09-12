@@ -41,12 +41,12 @@ const PREP = {
   '02-ask': `(async()=>{ ${TIDY} go('ask'); setMode('yesno');
     $('a-q').value='Стоит ли соглашаться на новую роль?'; checkQ(); $('a-go').click();
     await new Promise(r=>setTimeout(r,1200)); window.scrollTo(0,330); })()`,
-  '03-numbers': `(async()=>{ ${TIDY} go('me'); await new Promise(r=>setTimeout(r,1100));
+  '03-numbers': `(async()=>{ ${TIDY} go('about'); await new Promise(r=>setTimeout(r,1100));
     const n=$('m-num').closest('.sec'); n.scrollIntoView({block:'start'}); window.scrollBy(0,-14); })()`,
-  '04-compat': `(async()=>{ ${TIDY} go('me'); await new Promise(r=>setTimeout(r,800));
+  '04-compat': `(async()=>{ ${TIDY} go('around'); await new Promise(r=>setTimeout(r,800));
     $('m-cdate').value='1985-07-23'; await compat(); await new Promise(r=>setTimeout(r,1200));
     $('m-cdate').closest('.sec').scrollIntoView({block:'start'}); window.scrollBy(0,-14); })()`,
-  '05-journal': `(async()=>{ ${TIDY} go('me'); await new Promise(r=>setTimeout(r,1100));
+  '05-journal': `(async()=>{ ${TIDY} go('history'); await new Promise(r=>setTimeout(r,1100));
     $('j-text').closest('.sec').scrollIntoView({block:'start'}); window.scrollBy(0,-14); })()`,
 };
 
@@ -69,13 +69,13 @@ const frameHTML = (pngPath, caption, W, H) => `<!doctype html><meta charset="utf
 @font-face{font-family:Onest;src:url('file://${resolve('site/assets/fonts/onest-400-cyrillic.woff2')}') format('woff2');unicode-range:U+0400-045F}
 @font-face{font-family:Onest;src:url('file://${resolve('site/assets/fonts/onest-400-latin.woff2')}') format('woff2');unicode-range:U+0000-00FF}
 *{margin:0;box-sizing:border-box}
-body{width:${W}px;height:${H}px;overflow:hidden;font-family:Onest,sans-serif;
-  background:radial-gradient(circle at 50% -6%,rgba(109,91,208,.32),transparent 40%),
-             radial-gradient(circle at 92% 88%,rgba(217,184,104,.15),transparent 30%),
-             linear-gradient(180deg,#141126,#0b0a14 70%);}
-body:before{content:"";position:fixed;inset:0;opacity:.25;
-  background-image:radial-gradient(circle,rgba(245,240,224,.9) 0 3px,transparent 4.5px),radial-gradient(circle,rgba(233,199,126,.6) 0 3px,transparent 4px);
-  background-size:264px 264px,411px 411px;background-position:36px 60px,210px 150px}
+body{width:${W}px;height:${H}px;overflow:hidden;font-family:Onest,sans-serif;position:relative;
+  background:linear-gradient(180deg,#141126,#0b0a14 70%);}
+/* фон обложки: фиолетовый орб сверху, золотой снизу, ночные облака — без сетки точек */
+body:before{content:"";position:absolute;left:50%;top:-22%;width:56%;padding-top:56%;transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(circle,#6d5bd0 0%,transparent 65%);filter:blur(90px);opacity:.55}
+body:after{content:"";position:absolute;right:-8%;bottom:-12%;width:34%;padding-top:34%;border-radius:50%;
+  background:radial-gradient(circle,rgba(217,184,104,.5) 0%,transparent 65%);filter:blur(90px);opacity:.55}
 h1{position:relative;color:#f5f2ea;font-weight:600;font-size:${Math.round(W*0.072)}px;line-height:1.22;
   text-align:center;letter-spacing:-.01em;padding:${Math.round(H*0.045)}px 40px 0;white-space:pre-line}
 .shot{position:relative;margin:${Math.round(H*0.028)}px auto 0;width:${Math.round(W*0.855)}px;
@@ -115,6 +115,8 @@ try {
     for (const f of FRAMES) {
       await send('Page.navigate', { url: APP });
       await wait(1700);
+      // ждём профиль: иначе с медленной сети в кадр попадает экран приветствия
+      await send('Runtime.evaluate', { expression: `new Promise(r=>{const t0=Date.now();const t=setInterval(()=>{if((window.S&&S.user&&S.user.onboarded)||Date.now()-t0>12000){clearInterval(t);r()}},100)})`, awaitPromise: true });
       await send('Runtime.evaluate', { expression: PREP[f.file], awaitPromise: true });
       await wait(600);
       const { data } = await send('Page.captureScreenshot', { format: 'png' });

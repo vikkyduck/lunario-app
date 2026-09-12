@@ -4,8 +4,8 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v2';
-const SHELL = ['/app/', '/app/assets/fonts/inter-var-cyrillic.woff2', '/app/assets/fonts/inter-var-latin.woff2'];
+const CACHE = 'lunario-app-v5';
+const SHELL = ['/app/', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -22,6 +22,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.pathname.startsWith('/app/api/')) return;   // данные — только из сети
+  // манифест и сам воркер — мимо кэша: иначе Chrome не видит новые иконки и имя приложения
+  if (e.request.destination === 'manifest' || u.pathname === '/app/manifest.webmanifest' || u.pathname === '/app/sw.js') return;
 
   // страница приложения: сначала сеть, чтобы правки появлялись сразу
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
@@ -53,8 +55,8 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   e.waitUntil(self.registration.showNotification('Лунарио', {
     body: 'Ваша карта дня готова',
-    icon: '/app/assets/icon-192.png',
-    badge: '/app/assets/icon-192.png',
+    icon: '/app/assets/icon-192.png?v=3',
+    badge: '/app/assets/badge-96.png?v=1',   /* монохромный силуэт: Android красит альфу */
     tag: 'lunario-day',
   }));
 });

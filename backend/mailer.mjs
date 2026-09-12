@@ -112,24 +112,39 @@ export async function verifySmtp() {
   } finally { sock.destroy(); }
 }
 
-/* Письмо с кодом входа — в стиле бренда, без обещаний и давления */
+/* Письмо с кодом входа — в стиле бренда, без обещаний и давления.
+   Выглядит как обложка lunario.online: ночь, золото, луна со звёздами.
+   Луна и «Лунарио» шрифтом Comfortaa — картинкой (веб-шрифты почта режет),
+   лежит в site/assets/mail/ и грузится по абсолютному адресу.
+   Верстка таблицами и inline-стилями; rgba и градиенты — с фолбэком
+   через bgcolor/hex для клиентов на движке Word. */
+const MAIL_ASSETS = 'https://lunario.online/app/assets/mail';
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 export function loginMail(code) {
   const text = `Ваш код для входа в Лунарио: ${code}\n\nКод действует 15 минут. Если вы не запрашивали вход — просто удалите это письмо, ничего не произойдёт.`;
-  const html = `<!doctype html><html><body style="margin:0;background:#070510;font-family:Arial,Helvetica,sans-serif">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#070510"><tr><td align="center" style="padding:32px 14px">
-  <table role="presentation" width="440" cellpadding="0" cellspacing="0" style="width:440px;max-width:440px">
-    <tr><td align="center" style="padding-bottom:18px">
-      <span style="font-family:Georgia,serif;font-size:21px;color:#f8f6ff">&#9790;&nbsp;Лунарио</span>
+  const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>Код входа в Лунарио: ${code}</title></head>
+<body style="margin:0;padding:0;background-color:#0b0a14;font-family:${FONT}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0a14" style="background-color:#0b0a14;background-image:linear-gradient(180deg,#141126 0%,#0b0a14 70%)"><tr><td align="center" style="padding:24px 14px 36px">
+  <table role="presentation" width="440" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:440px;table-layout:fixed">
+    <tr><td align="center" style="padding:0 0 4px">
+      <img src="${MAIL_ASSETS}/header.png?v=1" width="440" height="210" alt="Лунарио" style="display:block;width:100%;max-width:440px;height:auto;border:0;outline:none;text-decoration:none;font-family:${FONT};font-size:24px;font-weight:300;letter-spacing:.5px;color:#f5f2ea;text-align:center">
     </td></tr>
-    <tr><td style="background:#140e2b;border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:32px 30px">
-      <p style="margin:0 0 8px;font-family:Arial,sans-serif;font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#b07cff">Вход в приложение</p>
-      <h1 style="margin:0 0 18px;font-family:Georgia,serif;font-weight:normal;font-size:26px;line-height:1.25;color:#f8f6ff">Ваш код</h1>
-      <div style="font-family:Georgia,serif;font-size:40px;letter-spacing:10px;color:#e8d8a8;background:rgba(255,255,255,.05);border-radius:14px;padding:18px 10px;text-align:center">${code}</div>
-      <p style="margin:20px 0 0;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#bdb6d7">Код действует 15 минут. Введите его в приложении — записи, дневник и серия дней перенесутся на это устройство.</p>
-      <p style="margin:16px 0 0;font-family:Arial,sans-serif;font-size:13.5px;line-height:1.6;color:#8f87a5">Если вы не запрашивали вход, просто удалите это письмо: без кода ничего не произойдёт.</p>
+    <tr><td bgcolor="#1d1738" style="background-color:#1d1738;background-image:linear-gradient(135deg,#231c45 0%,#1d1738 50%,#1f193c 100%);border:1px solid #594b3d;border-color:rgba(217,184,104,.35);border-radius:24px;padding:34px 32px 32px">
+      <p style="margin:0 0 8px;font-family:${FONT};font-size:12px;letter-spacing:1.6px;text-transform:uppercase;color:#d9b868">Вход в приложение</p>
+      <h1 style="margin:0 0 20px;font-family:${FONT};font-weight:600;font-size:26px;line-height:1.25;color:#f5f2ea">Ваш код</h1>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:22px;background-color:rgba(217,184,104,.06)"><tr><td style="padding:8px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#34293e" style="border-radius:16px;background-color:rgba(217,184,104,.12);border:1px solid #6e5c4d;border-color:rgba(217,184,104,.35)"><tr>
+          <td align="center" style="padding:20px 10px 20px 20px;font-family:${FONT};font-weight:600;font-size:40px;line-height:1.2;letter-spacing:10px;color:#f0d79a">${code}</td>
+        </tr></table>
+      </td></tr></table>
+      <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:#b9b2cf">Код действует 15 минут. Введите его в приложении — записи, дневник и серия дней перенесутся на это устройство.</p>
+      <p style="margin:16px 0 0;font-family:${FONT};font-size:13.5px;line-height:1.6;color:#8f87ad">Если вы не запрашивали вход, просто удалите это письмо: без кода ничего не произойдёт.</p>
     </td></tr>
-    <tr><td align="center" style="padding-top:16px">
-      <span style="font-family:Arial,sans-serif;font-size:12px;color:#7d7593">lunario.online · данные хранятся в России</span>
+    <tr><td align="center" style="padding:6px 0 0;line-height:0">
+      <img src="${MAIL_ASSETS}/stars.png?v=1" width="440" height="56" alt="" style="display:block;width:100%;max-width:440px;height:auto;border:0;outline:none">
+    </td></tr>
+    <tr><td align="center" style="padding:0">
+      <span style="font-family:${FONT};font-size:12px;color:#8f87ad">lunario.online · данные хранятся в России</span>
     </td></tr>
   </table>
 </td></tr></table></body></html>`;

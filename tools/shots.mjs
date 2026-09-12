@@ -51,17 +51,22 @@ try {
   const shot = async (file, prep) => {
     await send('Page.navigate', { url: APP });
     await wait(1600);
+    // ждём, пока приложение получит профиль: с медленной сети экран «Сегодня» появляется позже
+    await send('Runtime.evaluate', { expression: `new Promise(r=>{const t0=Date.now();const t=setInterval(()=>{if((window.S&&S.user&&S.user.onboarded)||Date.now()-t0>12000){clearInterval(t);r()}},100)})`, awaitPromise: true });
     if (prep) { await send('Runtime.evaluate', { expression: prep, awaitPromise: true }); await wait(1400); }
     const { data } = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`${OUT}/${file}`, Buffer.from(data, 'base64'));
     console.log(' ✓', file);
   };
 
-  await shot('01-today.png', `openCard(); new Promise(r=>setTimeout(r,900))`);
+  // подсказку «оставьте почту» прячем: у человека с привязанной почтой её нет,
+  // а в карточке магазина она занимает первый экран и читается как предупреждение
+  const hideSaveHint = `const s=document.getElementById('t-save'); if(s) s.style.display='none';`;
+  await shot('01-today.png', `${hideSaveHint} openCard(); new Promise(r=>setTimeout(r,900))`);
   await shot('02-ask.png', `(async()=>{go('ask');setMode('yesno');$('a-q').value='Стоит ли менять работу сейчас?';checkQ();$('a-go').click();await new Promise(r=>setTimeout(r,1200));window.scrollTo(0,320);})()`);
-  await shot('03-me.png', `(async()=>{go('me');await new Promise(r=>setTimeout(r,900));window.scrollTo(0,60);})()`);
-  await shot('04-compat.png', `(async()=>{go('me');await new Promise(r=>setTimeout(r,800));$('m-cdate').value='1985-07-23';await compat();await new Promise(r=>setTimeout(r,900));document.getElementById('m-cres').scrollIntoView({block:'center'});})()`);
-  await shot('05-journal.png', `(async()=>{go('me');await new Promise(r=>setTimeout(r,900));document.getElementById('m-journal').scrollIntoView({block:'center'});})()`);
+  await shot('03-me.png', `(async()=>{go('about');await new Promise(r=>setTimeout(r,900));window.scrollTo(0,0);})()`);
+  await shot('04-compat.png', `(async()=>{go('around');await new Promise(r=>setTimeout(r,800));$('m-cdate').value='1985-07-23';await compat();await new Promise(r=>setTimeout(r,900));document.getElementById('m-cres').scrollIntoView({block:'center'});})()`);
+  await shot('05-journal.png', `(async()=>{go('history');await new Promise(r=>setTimeout(r,900));document.getElementById('m-journal').scrollIntoView({block:'center'});})()`);
 } finally {
   try { ws && ws.close(); } catch {}
   chrome.kill();

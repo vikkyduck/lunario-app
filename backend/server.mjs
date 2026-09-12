@@ -251,21 +251,21 @@ function statsPage() {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Лунарио — сводка</title>
 <style>
-  body{margin:0;background:#0b0817;color:#f1eef8;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:28px 18px 60px}
+  body{margin:0;background:#0b0a14;color:#f5f2ea;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:28px 18px 60px}
   .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
-  h1{font-family:Georgia,serif;font-size:30px;margin:0}
-  h2{font-family:Georgia,serif;font-size:20px;margin:0 0 12px;font-weight:600}
-  .muted{color:#a79fbc;font-size:14px}
+  h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0}
+  h2{font-size:19px;margin:0 0 12px;font-weight:600;color:#f0d79a}
+  .muted{color:#b9b2cf;font-size:14px}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .card{background:#171130;border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px}
-  .card b{display:block;font-size:28px;font-family:Georgia,serif;color:#e8d8a8}
-  .card span{font-size:13px;color:#a79fbc}
-  table{width:100%;border-collapse:collapse;background:#171130;border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden}
+  .card{background:#1d1738;border:1px solid rgba(245,242,234,.10);border-radius:14px;padding:16px 18px}
+  .card b{display:block;font-size:28px;font-weight:600;color:#d9b868}
+  .card span{font-size:13px;color:#b9b2cf}
+  table{width:100%;border-collapse:collapse;background:#1d1738;border:1px solid rgba(245,242,234,.10);border-radius:14px;overflow:hidden}
   td,th{padding:10px 14px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);font-size:14.5px}
-  th{color:#a79fbc;font-weight:500;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
+  th{color:#b9b2cf;font-weight:500;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
   tr:last-child td{border-bottom:0}
   .n{text-align:right;font-variant-numeric:tabular-nums}
-  .empty{color:#7d7593;text-align:center}
+  .empty{color:#8f87ad;text-align:center}
 </style></head><body><div class="wrap">
   <div>
     <h1>Лунарио — что происходит</h1>
@@ -398,7 +398,9 @@ function dayPack(u, day) {
   return {
     date: day,
     moon: moonName(day),
-    moonPct: Math.round(moonPhase(day) * 100),
+    moonPhase: +moonPhase(day).toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
+    // освещённость диска, а не доля цикла: при фазе 0.65 диск освещён на 79 %, не на 65
+    moonPct: Math.round((1 - Math.cos(moonPhase(day) * 2 * Math.PI)) / 2 * 100),
     card: { name: arc[0], meaning: arc[1], advice: arc[2] },
     sign: sign ? sign.name : '',
     forecast: sign
@@ -484,12 +486,12 @@ function readBody(req) {
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
-function serveStatic(res, rel, cacheSec = 3600) {
+function serveStatic(res, rel, cacheSec = 3600, headOnly = false) {
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const file = join(SITE_DIR, safe);
   if (!file.startsWith(normalize(SITE_DIR)) || !existsSync(file)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Не найдено'); }
-  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream', 'Cache-Control': `public, max-age=${cacheSec}` });
-  res.end(readFileSync(file));
+  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache' });
+  res.end(headOnly ? undefined : readFileSync(file));
 }
 
 /* ── маршруты ── */
@@ -893,7 +895,8 @@ const server = createServer(async (req, res) => {
         const total = Math.round(rings.reduce((s, r) => s + r[1], 0) / rings.length);
         return json(res, 200, {
           total, rings, you: a.name, other: o.name,
-          text: `${a.name} и ${o.name}. Вы ${a.trait}; партнёр — ${o.trait}. Это союз, который растёт, когда каждый уважает темп другого.`,
+          // черта знака в контенте может уже начинаться с «вы …» — не дублируем обращение
+          text: `${a.name} и ${o.name}. ${/^вы\s/i.test(a.trait) ? a.trait[0].toUpperCase() + a.trait.slice(1) : 'Вы ' + a.trait}; партнёр — ${o.trait}. Это союз, который растёт, когда каждый уважает темп другого.`,
         });
       }
 
@@ -915,9 +918,9 @@ const server = createServer(async (req, res) => {
 
     /* ── статика ── */
     if (p === '/' || p === '/index.html') return serveStatic(res, 'index.html', 0);
-    if (p === '/manifest.webmanifest') return serveStatic(res, 'manifest.webmanifest', 3600);
+    if (p === '/manifest.webmanifest') return serveStatic(res, 'manifest.webmanifest', 0);
     if (p === '/sw.js') return serveStatic(res, 'sw.js', 0);
-    if (req.method === 'GET' && !p.includes('..')) return serveStatic(res, p, 86400);
+    if ((req.method === 'GET' || req.method === 'HEAD') && !p.includes('..')) return serveStatic(res, p, url.search.includes('v=') ? 31536000 : 86400, req.method === 'HEAD');
     res.writeHead(404); res.end();
   } catch (e) {
     if (e.message !== 'bad_json') console.error('[ошибка]', req.url, e.stack || e.message);
