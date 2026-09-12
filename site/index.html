@@ -367,12 +367,6 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <div class="chips" id="t-quick"></div>
     </div>
 
-    <div class="sec">
-      <span class="eyebrow" style="margin-bottom:11px">Что вас сейчас беспокоит?</span>
-      <div class="chips" id="t-worry"></div>
-      <div class="chips" id="t-worry2" style="margin-top:8px"></div>
-    </div>
-
     <!-- блок «Что будет дальше» из веб-версии убран 12.09.2026; путь к списку возможностей остаётся только в iOS-оболочке -->
     <button class="btn ghost sm ios-only" style="width:100%;margin-top:26px" onclick="openTour()">Что внутри Лунарио</button>
 
@@ -407,6 +401,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="chip" data-mode="rune" onclick="setMode('rune')">Руна</button>
       <button class="chip" data-mode="spread" onclick="setMode('spread')">Три карты</button>
     </div>
+
+    <div class="sec">
+      <span class="eyebrow" style="margin-bottom:11px">Что вас сейчас беспокоит?</span>
+      <div class="chips" id="t-worry"></div>
+      <div class="chips" id="t-worry2" style="margin-top:8px"></div>
+    </div>
+
     <div class="card sec">
       <div class="field"><label id="a-label">О чём спрашиваете</label>
         <textarea id="a-q" placeholder="Стоит ли мне соглашаться на новую роль?" maxlength="300"></textarea>
