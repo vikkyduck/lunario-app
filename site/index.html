@@ -627,14 +627,14 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     g.globalAlpha = 1;
     /* шар: свет справа-сверху, к лимбу темнее */
     const body = g.createRadialGradient(R * 0.35, -R * 0.3, R * 0.1, 0, 0, R * 1.05);
-    body.addColorStop(0, '#fff3cf'); body.addColorStop(0.35, '#f0d79a'); body.addColorStop(0.75, '#d9b868'); body.addColorStop(1, '#b98f3e');
+    body.addColorStop(0, '#fff9e2'); body.addColorStop(0.45, '#f8df98'); body.addColorStop(0.85, '#ebc66c'); body.addColorStop(1, '#d9b060');
     g.fillStyle = body; g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
     g.save(); g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.clip();
     /* моря — тёмные пятна с мягким краем */
     for (const [x, y, rx, ry, rot] of MARIA) {
       g.save(); g.translate(x * R, y * R); g.rotate(rot); g.scale(rx * R, ry * R);
       const m = g.createRadialGradient(0, 0, 0, 0, 0, 1);
-      m.addColorStop(0, `rgba(185,143,62,${0.55 * st})`); m.addColorStop(0.7, `rgba(185,143,62,${0.30 * st})`); m.addColorStop(1, 'rgba(185,143,62,0)');
+      m.addColorStop(0, `rgba(190,145,60,${0.30 * st})`); m.addColorStop(0.7, `rgba(190,145,60,${0.16 * st})`); m.addColorStop(1, 'rgba(190,145,60,0)');
       g.fillStyle = m; g.beginPath(); g.arc(0, 0, 1, 0, Math.PI * 2); g.fill(); g.restore();
     }
     /* зерно поверхности */
@@ -642,23 +642,23 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     const dots = Math.round(R * R * 0.9);
     for (let i = 0; i < dots; i++) {
       const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * R, sz = 0.6 + rnd() * 1.6;
-      g.fillStyle = rnd() < 0.5 ? `rgba(185,143,62,${0.14 * st})` : `rgba(255,245,210,${0.12 * st})`;
+      g.fillStyle = rnd() < 0.5 ? `rgba(185,143,62,${0.07 * st})` : `rgba(255,250,225,${0.10 * st})`;
       g.beginPath(); g.arc(Math.cos(a) * d, Math.sin(a) * d, sz, 0, Math.PI * 2); g.fill();
     }
     /* кратеры: дно темнее, тень от вала слева (свет справа), блик вала справа */
     for (const [x, y, rr, v] of CRATERS) {
       const cx = x * R, cy = y * R, r = rr * R;
       const floor = g.createRadialGradient(cx - r * 0.2, cy + r * 0.1, r * 0.1, cx, cy, r);
-      floor.addColorStop(0, `rgba(170,125,50,${(0.40 + v * 0.15) * st})`); floor.addColorStop(0.85, `rgba(170,125,50,${(0.30 + v * 0.1) * st})`); floor.addColorStop(1, 'rgba(170,125,50,0)');
+      floor.addColorStop(0, `rgba(180,130,55,${(0.26 + v * 0.12) * st})`); floor.addColorStop(0.85, `rgba(180,130,55,${(0.18 + v * 0.08) * st})`); floor.addColorStop(1, 'rgba(180,130,55,0)');
       g.fillStyle = floor; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
       g.lineWidth = Math.max(0.6, r * 0.22);
-      g.strokeStyle = `rgba(140,100,35,${0.55 * st})`; g.beginPath(); g.arc(cx, cy, r * 0.88, Math.PI * 0.55, Math.PI * 1.45); g.stroke();      /* тень внутри, слева */
-      g.strokeStyle = 'rgba(255,244,210,.7)'; g.beginPath(); g.arc(cx, cy, r * 0.98, -Math.PI * 0.45, Math.PI * 0.45); g.stroke();  /* освещённый вал справа */
+      g.strokeStyle = `rgba(150,105,40,${0.38 * st})`; g.beginPath(); g.arc(cx, cy, r * 0.88, Math.PI * 0.55, Math.PI * 1.45); g.stroke();      /* тень внутри, слева */
+      g.strokeStyle = 'rgba(255,250,228,.6)'; g.beginPath(); g.arc(cx, cy, r * 0.98, -Math.PI * 0.45, Math.PI * 0.45); g.stroke();  /* освещённый вал справа */
     }
-    /* мягкое потемнение к лимбу — объём */
-    const limb = g.createRadialGradient(0, 0, R * 0.55, 0, 0, R);
-    limb.addColorStop(0, 'rgba(160,110,40,0)'); limb.addColorStop(1, `rgba(160,110,40,${0.45 * st})`);
-    g.fillStyle = limb; g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
+    /* к освещённому краю луна светлее — там солнце в зените; вместо круглой виньетки лёгкое затемнение только с теневой стороны */
+    const side = g.createLinearGradient(R, 0, -R, 0);
+    side.addColorStop(0, 'rgba(150,105,40,0)'); side.addColorStop(0.55, 'rgba(150,105,40,0)'); side.addColorStop(1, `rgba(150,105,40,${0.28 * st})`);
+    g.fillStyle = side; g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
     g.restore();
     texCache.set(key, t); return t;
   }
@@ -701,7 +701,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       /* к терминатору свет гаснет — как на настоящей луне */
       const tx = Rp * Math.abs(c) * (c > 0 ? -1 : 1);
       const fade = lg.createLinearGradient(Rp, 0, tx, 0);
-      fade.addColorStop(0, 'rgba(120,80,25,0)'); fade.addColorStop(0.65, 'rgba(120,80,25,.14)'); fade.addColorStop(1, 'rgba(90,60,20,.5)');
+      fade.addColorStop(0, 'rgba(120,80,25,0)'); fade.addColorStop(0.8, 'rgba(120,80,25,.06)'); fade.addColorStop(1, 'rgba(100,66,22,.3)');
       lg.fillStyle = fade; lg.beginPath(); lg.arc(0, 0, Rp, 0, Math.PI * 2); lg.fill();
       lg.globalCompositeOperation = 'destination-in';
       if ('filter' in lg) lg.filter = `blur(${Math.max(0.6, Rp * 0.045)}px)`;
