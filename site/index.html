@@ -595,9 +595,71 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 (function () {
   const canvases = ['moonHello', 'moonToday'].map((id) => document.getElementById(id)).filter(Boolean);
   if (!canvases.length) return;
-  /* кратеры одни и те же на обеих лунах и от захода к заходу */
-  const craters = [[-0.28, -0.22, 0.10], [0.18, 0.30, 0.07], [-0.02, 0.42, 0.05], [0.36, -0.10, 0.06], [-0.44, 0.18, 0.045], [0.08, -0.46, 0.05], [0.30, 0.12, 0.035]];
   let phase = 0.42;                        /* пока данных нет — молодая растущая луна */
+
+  /* ── текстура луны: шар с освещением справа, моря и кратеры с тенями. Рисуется один раз на размер и кэшируется ── */
+  function seeded(n) { let x = n >>> 0; return () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; }; }
+  const MARIA = [[-0.34, -0.28, 0.30, 0.24, -0.4], [0.18, -0.34, 0.22, 0.17, 0.3], [0.42, -0.02, 0.19, 0.24, 0.2], [-0.48, 0.12, 0.20, 0.30, 0.1],
+                 [-0.12, 0.22, 0.17, 0.14, 0.6], [0.24, 0.38, 0.14, 0.11, -0.2], [0.05, -0.05, 0.12, 0.09, 0.9]];
+  function buildCraters() {
+    const rnd = seeded(20260913), out = [];
+    const tryPut = (r) => {
+      for (let k = 0; k < 40; k++) {
+        const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 0.9;
+        const x = Math.cos(a) * d, y = Math.sin(a) * d;
+        if (out.every((o) => Math.hypot(o[0] - x, o[1] - y) > (o[2] + r) * 1.1)) { out.push([x, y, r, rnd()]); return; }
+      }
+    };
+    for (let i = 0; i < 4; i++) tryPut(0.075 + rnd() * 0.035);
+    for (let i = 0; i < 9; i++) tryPut(0.04 + rnd() * 0.03);
+    for (let i = 0; i < 26; i++) tryPut(0.014 + rnd() * 0.02);
+    return out;
+  }
+  const CRATERS = buildCraters();
+  const texCache = new Map();
+  function moonTexture(px, R, letter) {                 /* px — сторона квадрата в устройственных пикселях, R — радиус в них */
+    const key = px + ':' + (letter ? 'l' : 'd');
+    if (texCache.has(key)) return texCache.get(key);
+    const t = document.createElement('canvas'); t.width = t.height = px;
+    const g = t.getContext('2d'); if (!g) return null;
+    g.translate(px / 2, px / 2);
+    /* шар: свет справа-сверху, к лимбу темнее */
+    const body = g.createRadialGradient(R * 0.35, -R * 0.3, R * 0.1, 0, 0, R * 1.05);
+    body.addColorStop(0, '#fffaea'); body.addColorStop(0.4, '#f8e4b0'); body.addColorStop(0.8, '#e2bb72'); body.addColorStop(1, '#b8904a');
+    g.fillStyle = body; g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
+    g.save(); g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.clip();
+    /* моря — тёмные пятна с мягким краем */
+    for (const [x, y, rx, ry, rot] of MARIA) {
+      g.save(); g.translate(x * R, y * R); g.rotate(rot); g.scale(rx * R, ry * R);
+      const m = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+      m.addColorStop(0, 'rgba(112,84,44,.36)'); m.addColorStop(0.7, 'rgba(112,84,44,.20)'); m.addColorStop(1, 'rgba(112,84,44,0)');
+      g.fillStyle = m; g.beginPath(); g.arc(0, 0, 1, 0, Math.PI * 2); g.fill(); g.restore();
+    }
+    /* зерно поверхности */
+    const rnd = seeded(7);
+    const dots = Math.round(R * R * 0.9);
+    for (let i = 0; i < dots; i++) {
+      const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * R, sz = 0.6 + rnd() * 1.6;
+      g.fillStyle = rnd() < 0.5 ? 'rgba(120,90,45,.07)' : 'rgba(255,248,225,.10)';
+      g.beginPath(); g.arc(Math.cos(a) * d, Math.sin(a) * d, sz, 0, Math.PI * 2); g.fill();
+    }
+    /* кратеры: дно темнее, тень от вала слева (свет справа), блик вала справа */
+    for (const [x, y, rr, v] of CRATERS) {
+      const cx = x * R, cy = y * R, r = rr * R;
+      const floor = g.createRadialGradient(cx - r * 0.2, cy + r * 0.1, r * 0.1, cx, cy, r);
+      floor.addColorStop(0, `rgba(130,98,52,${0.30 + v * 0.15})`); floor.addColorStop(0.85, `rgba(120,88,46,${0.22 + v * 0.1})`); floor.addColorStop(1, 'rgba(120,88,46,0)');
+      g.fillStyle = floor; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      g.lineWidth = Math.max(0.6, r * 0.22);
+      g.strokeStyle = 'rgba(96,68,32,.45)'; g.beginPath(); g.arc(cx, cy, r * 0.88, Math.PI * 0.55, Math.PI * 1.45); g.stroke();      /* тень внутри, слева */
+      g.strokeStyle = 'rgba(255,246,220,.55)'; g.beginPath(); g.arc(cx, cy, r * 0.98, -Math.PI * 0.45, Math.PI * 0.45); g.stroke();  /* освещённый вал справа */
+    }
+    /* мягкое потемнение к лимбу — объём */
+    const limb = g.createRadialGradient(0, 0, R * 0.55, 0, 0, R);
+    limb.addColorStop(0, 'rgba(60,40,10,0)'); limb.addColorStop(1, 'rgba(60,40,10,.30)');
+    g.fillStyle = limb; g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
+    g.restore();
+    texCache.set(key, t); return t;
+  }
 
   function draw(cv) {
     const letter = cv.id === 'moonHello';        /* луна-буква в заголовке: круг виден целиком, тёмная сторона светлее */
@@ -606,46 +668,54 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
        и если читать его каждый раз, холст удваивается с каждым кадром, пока GPU не откажет — тогда на месте луны
        Chrome рисует серый квадрат «сломанного холста» */
     if (!cv.dataset.s) cv.dataset.s = cv.getAttribute('width');
-    const S = +cv.dataset.s;
-    if (cv.width !== S * dpr || cv.height !== S * dpr) { cv.width = S * dpr; cv.height = S * dpr; }
+    const S = +cv.dataset.s, px = S * dpr;
+    if (cv.width !== px || cv.height !== px) { cv.width = px; cv.height = px; }
     const ctx = cv.getContext('2d');
     if (!ctx || (ctx.isContextLost && ctx.isContextLost())) return;   /* контекст потерян — дорисуем по contextrestored */
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const cx = S / 2, cy = S / 2, R = S * 0.34;
-    const p = phase * Math.PI * 2, c = Math.cos(p), waxing = phase < 0.5;
+    const R = S * 0.34, Rp = R * dpr;
+    const p = phase * Math.PI * 2, c = Math.cos(p), waxing = phase < 0.5, sign = waxing ? 1 : -1;
+    const tex = moonTexture(px, Rp, letter); if (!tex) return;
+    /* всё рисуем в устройственных пикселях; при убывающей луне зеркалим по x — свет на текстуре всегда справа */
+    const litPath = (g) => { g.beginPath(); g.arc(0, 0, Rp, -Math.PI / 2, Math.PI / 2, false); g.ellipse(0, 0, Math.max(0.001, Rp * Math.abs(c)), Rp, 0, Math.PI / 2, -Math.PI / 2, c > 0); g.closePath(); };
 
-    ctx.clearRect(0, 0, S, S);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, px, px);
     /* тёплый нимб — гаснет внутри холста, иначе виден его квадрат */
-    const haloR = Math.min(R * 2.1, S / 2);
-    const halo = ctx.createRadialGradient(cx, cy, R * 0.6, cx, cy, haloR);
-    halo.addColorStop(0, 'rgba(240,215,154,.20)');
-    halo.addColorStop(1, 'rgba(240,215,154,0)');
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, haloR, 0, Math.PI * 2); ctx.fill();
-    /* тёмный диск — луна видна и в новолуние */
-    const dark = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, R * 0.2, cx, cy, R);
-    if (letter) { dark.addColorStop(0, 'rgba(158,146,196,.95)'); dark.addColorStop(1, 'rgba(104,94,146,.97)'); }
-    else { dark.addColorStop(0, 'rgba(62,56,92,.85)'); dark.addColorStop(1, 'rgba(28,24,48,.9)'); }
-    ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-    /* освещённая часть: полукруг + терминатор-эллипс */
-    ctx.save(); ctx.translate(cx, cy); if (!waxing) ctx.scale(-1, 1);
-    const lit = ctx.createRadialGradient(-R * 0.25, -R * 0.25, R * 0.15, 0, 0, R * 1.15);
-    lit.addColorStop(0, '#fdf4dc'); lit.addColorStop(0.55, '#f0d79a'); lit.addColorStop(1, '#c9a25a');
-    ctx.fillStyle = lit; ctx.beginPath();
-    ctx.arc(0, 0, R, -Math.PI / 2, Math.PI / 2, false);
-    ctx.ellipse(0, 0, Math.max(0.001, R * Math.abs(c)), R, 0, Math.PI / 2, -Math.PI / 2, c > 0);
-    ctx.closePath(); ctx.fill();
-    ctx.clip();
-    ctx.fillStyle = letter ? 'rgba(120,96,58,.36)' : 'rgba(120,96,58,.16)';
-    const k = letter ? 1.35 : 1;
-    for (const [x, y, r] of craters) { ctx.beginPath(); ctx.arc(x * R, y * R, r * R * k, 0, Math.PI * 2); ctx.fill(); }
-    ctx.restore();
-    if (!letter) { ctx.strokeStyle = 'rgba(240,215,154,.42)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke(); }
+    const haloR = Math.min(Rp * 2.1, px / 2);
+    const halo = ctx.createRadialGradient(px / 2, px / 2, Rp * 0.6, px / 2, px / 2, haloR);
+    halo.addColorStop(0, 'rgba(240,215,154,.26)'); halo.addColorStop(1, 'rgba(240,215,154,0)');
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(px / 2, px / 2, haloR, 0, Math.PI * 2); ctx.fill();
+
+    ctx.setTransform(sign, 0, 0, 1, px / 2, px / 2);
+    /* ночная сторона: та же поверхность в сумерках — рельеф едва читается */
+    ctx.drawImage(tex, -px / 2, -px / 2);
+    ctx.fillStyle = letter ? 'rgba(122,110,170,.82)' : 'rgba(26,22,48,.86)';
+    ctx.beginPath(); ctx.arc(0, 0, Rp, 0, Math.PI * 2); ctx.fill();
+    /* освещённая часть с мягким терминатором: маска размывается, если холст умеет фильтры */
+    const lit = document.createElement('canvas'); lit.width = lit.height = px;
+    const lg = lit.getContext('2d');
+    if (lg) {
+      lg.setTransform(sign, 0, 0, 1, px / 2, px / 2);
+      lg.drawImage(tex, -px / 2, -px / 2);
+      /* к терминатору свет гаснет — как на настоящей луне */
+      const tx = Rp * Math.abs(c) * (c > 0 ? -1 : 1);
+      const fade = lg.createLinearGradient(Rp, 0, tx, 0);
+      fade.addColorStop(0, 'rgba(40,28,10,0)'); fade.addColorStop(0.65, 'rgba(40,28,10,.12)'); fade.addColorStop(1, 'rgba(40,28,10,.42)');
+      lg.fillStyle = fade; lg.beginPath(); lg.arc(0, 0, Rp, 0, Math.PI * 2); lg.fill();
+      lg.globalCompositeOperation = 'destination-in';
+      if ('filter' in lg) lg.filter = `blur(${Math.max(0.6, Rp * 0.045)}px)`;
+      lg.fillStyle = '#fff'; litPath(lg); lg.fill();
+      lg.filter = 'none'; lg.globalCompositeOperation = 'source-over';
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(lit, 0, 0);
+      ctx.setTransform(sign, 0, 0, 1, px / 2, px / 2);
+    } else { ctx.save(); litPath(ctx); ctx.clip(); ctx.drawImage(tex, -px / 2, -px / 2); ctx.restore(); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (!letter) { ctx.strokeStyle = 'rgba(240,215,154,.35)'; ctx.lineWidth = 1.2 * dpr; ctx.beginPath(); ctx.arc(px / 2, px / 2, Rp, 0, Math.PI * 2); ctx.stroke(); }
   }
-  /* Луна в заголовке — знак бренда, как на обложке сайта: проходит цикл за 45 секунд, начиная с почти полной.
+  /* Луна в заголовке — знак бренда, как на обложке сайта: проходит цикл за 22 секунды, начиная с почти полной.
      Настоящая фаза — у луны на главной. */
   const hello = canvases.find((cv) => cv.id === 'moonHello');
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const helloPhase = (t) => reduce ? 0.42 : ((t / 45 + 0.42) % 1);
+  const helloPhase = (t) => reduce ? 0.42 : ((t / 22 + 0.42) % 1);
   const t0 = performance.now();
   function drawAll() {
     canvases.forEach((cv) => {
