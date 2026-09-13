@@ -293,7 +293,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 
   <!-- ЗНАКОМСТВО: текст Виктории, две кнопки; вариант раскладки — ?hello=a|b|c -->
   <section class="view" id="v-hello">
-    <h1 class="wordmark hero"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">о</span><span class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
+    <h1 class="wordmark hero"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
     <p class="hl1">Здесь можно выдохнуть, свериться с собой и найти опору.</p>
     <p class="hl2">Лунарио подсвечивает ответы, которые вы и так в глубине души знаете.</p>
     <p class="hl3">Укажите имя, дату и место рождения, и в приложении появится личный гороскоп и персональное предсказание на этот год</p>
@@ -635,8 +635,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     ctx.ellipse(0, 0, Math.max(0.001, R * Math.abs(c)), R, 0, Math.PI / 2, -Math.PI / 2, c > 0);
     ctx.closePath(); ctx.fill();
     ctx.clip();
-    ctx.fillStyle = 'rgba(120,96,58,.16)';
-    for (const [x, y, r] of craters) { ctx.beginPath(); ctx.arc(x * R, y * R, r * R, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = letter ? 'rgba(120,96,58,.36)' : 'rgba(120,96,58,.16)';
+    const k = letter ? 1.35 : 1;
+    for (const [x, y, r] of craters) { ctx.beginPath(); ctx.arc(x * R, y * R, r * R * k, 0, Math.PI * 2); ctx.fill(); }
     ctx.restore();
     if (!letter) { ctx.strokeStyle = 'rgba(240,215,154,.42)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke(); }
   }
@@ -658,12 +659,12 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     if (!oWrap) return;
     const h1 = oWrap.closest('.hero'), F = parseFloat(getComputedStyle(h1).fontSize);
     const c = document.createElement('canvas').getContext('2d'); c.font = `300 ${F}px Comfortaa, sans-serif`;
-    const m = c.measureText('о');
+    const m = c.measureText('О');                                     /* заглавная: луна ростом с «Л» */
     const inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
     const asc = m.fontBoundingBoxAscent || F * 0.89, desc = m.fontBoundingBoxDescent || F * 0.23;
     const baseline = (F - (asc + desc)) / 2 + asc;                     /* line-height: 1 — строка ровно в кегль */
     const cx = -m.actualBoundingBoxLeft + inkW / 2, cy = baseline - m.actualBoundingBoxAscent + inkH / 2;
-    const disc = inkH * 0.86;                                            /* диск чуть меньше просвета — обводка буквы остаётся видна */
+    const disc = inkH * 0.88;                                            /* диск чуть меньше просвета — обводка буквы остаётся видна */
     oWrap.style.setProperty('--mx', cx + 'px'); oWrap.style.setProperty('--my', cy + 'px'); oWrap.style.setProperty('--ms', (disc / 0.68) + 'px');
   }
   if (oWrap) { fitMoonToO(); document.fonts && document.fonts.ready.then(fitMoonToO); window.addEventListener('resize', fitMoonToO); }
