@@ -1199,6 +1199,7 @@ async function obVerify(){
   try{
     const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:obEmail,code})});
     hap([0,14,45,22]);
+    if (r.user && r.user.roles && r.user.roles.length) { location.href = '/app/cabinet'; return; }   // сотрудник — сначала в кабинет
     if (r.user && r.user.onboarded) { location.reload(); return; }   // профиль нашёлся — открываем приложение
     S.user = r.user;
     if (obTarget === 'l-box') { $('l-after').style.display = 'block'; $('l-box').style.display = 'none'; return; }
@@ -1234,6 +1235,7 @@ async function authVerify(){
   if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
   try{
     const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:authEmail,code})});
+    if (r.user && r.user.roles && r.user.roles.length) { location.href = '/app/cabinet'; return; }   // сотрудник — в кабинет
     S.user = r.user; authStep='idle'; hap([0,14,45,22]);
     if (r.merged){ S.day = r.day; toast('С возвращением! Ваши записи на месте'); paintToday(); }
     else toast('Почта сохранена — доступ не потеряется');
@@ -1455,6 +1457,7 @@ async function obFinish(){
   try{
     const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:obEmail,code})});
     hap([0,14,45,22]); track('login_done');
+    if (r.user && r.user.roles && r.user.roles.length) { location.href = '/app/cabinet'; return; }   // сотрудник — сначала в кабинет
     if (r.merged) { location.reload(); return; }        // почта уже была — открываем тот аккаунт
     S.user = r.user; startApp();
   }catch(e){
@@ -1553,6 +1556,8 @@ function startApp(){
   try{
     const r = await api('/me');
     S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=!!r.mailReady;
+    try{ if(/[?&]app=1/.test(location.search)) sessionStorage.setItem('lun_app','1'); }catch(e){}
+    if(r.user.roles && r.user.roles.length && !(function(){ try{ return sessionStorage.getItem('lun_app')==='1'; }catch(e){ return false; } })()){ location.replace('/app/cabinet'); return; }
     track('app_open');
     const ref = new URLSearchParams(location.search).get('ref');
     try{

@@ -13,6 +13,7 @@ import * as C from './content.mjs';
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
 import { sendMail, mailReady, loginMail, verifySmtp } from './mailer.mjs';
 import { lunarDay, lunarPeriodText } from './lunar.mjs';
+import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, dashboard, report, blockAllowed, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -169,6 +170,8 @@ db.exec(`
   }
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email <> \'\'');
 }
+
+initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
 
 /* ── утилиты ── */
 const MSK = 'Europe/Moscow';
@@ -476,6 +479,7 @@ const publicUser = (u) => ({
   signedIn: !!u.email,
   sign: u.birth ? signOf(u.birth).name : '', onboarded: !!u.onboarded, streak: u.streak,
   streakToday: u.streak_date === today(), email: u.email,
+  roles: rolesFor(u.email),   /* сотрудники после входа попадают в кабинет */
 });
 
 function readRaw(req) {
@@ -585,6 +589,37 @@ const server = createServer(async (req, res) => {
       const u = getUser(req, res);
       const d = today();
 
+      /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
+      if (p.startsWith('/api/cabinet/')) {
+        const roles = rolesFor(u.email);
+        if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive() });
+        if (!roles.length) return json(res, 403, { ok: false, error: 'no_access' });
+        const admin = roles.includes('admin');
+        if (p === '/api/cabinet/dashboard') {
+          const dash = dashboard(Object.fromEntries(url.searchParams));
+          dash.blocks = dash.blocks.filter((b) => blockAllowed(b.key, roles));
+          return json(res, 200, dash);
+        }
+        if (p === '/api/cabinet/report') {
+          const kind = url.searchParams.get('kind') || '';
+          if (!blockAllowed(kind, roles)) return json(res, 403, { ok: false, error: 'no_access' });
+          const r = report(kind, Object.fromEntries(url.searchParams));
+          return r ? json(res, 200, r) : json(res, 404, { ok: false, error: 'not_found' });
+        }
+        if (p === '/api/cabinet/staff') {
+          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
+          if (req.method === 'GET') return json(res, 200, { items: staffList(), admins: ADMIN_EMAILS });
+          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, staffSet(b.email, b.name, b.roles, u.email)); }
+          if (req.method === 'DELETE') return json(res, 200, staffRemove(url.searchParams.get('email')));
+        }
+        if (p === '/api/cabinet/costs') {
+          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
+          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, costAdd(b.month, b.name, b.amount, b.kind)); }
+          if (req.method === 'DELETE') return json(res, 200, costRemove(url.searchParams.get('id')));
+        }
+        return json(res, 404, { ok: false, error: 'not_found' });
+      }
+
       /* ── вход по коду на почту ── */
       if (p === '/api/auth/request' && req.method === 'POST') {
         const b = await readBody(req);
@@ -603,6 +638,7 @@ const server = createServer(async (req, res) => {
           await sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });
         } catch (e) {
           console.error('почта не ушла:', e.message);
+          logError('mail', e.message);
           return json(res, 502, { ok: false, error: 'send_failed' });
         }
         return json(res, 200, { ok: true });
@@ -625,7 +661,7 @@ const server = createServer(async (req, res) => {
         const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
         if (!existing) {
           // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся
-          db.prepare('UPDATE users SET email = ? WHERE id = ?').run(email, u.id);
+          db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), u.id);
           return json(res, 200, { ok: true, merged: false, user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
         }
         if (existing.id === u.id) return json(res, 200, { ok: true, merged: false, user: publicUser(existing) });
@@ -929,12 +965,13 @@ const server = createServer(async (req, res) => {
 
     /* ── статика ── */
     if (p === '/' || p === '/index.html') return serveStatic(res, 'index.html', 0);
+    if (p === '/cabinet' || p === '/cabinet/') return serveStatic(res, 'cabinet.html', 0);
     if (p === '/manifest.webmanifest') return serveStatic(res, 'manifest.webmanifest', 0);
     if (p === '/sw.js') return serveStatic(res, 'sw.js', 0);
     if ((req.method === 'GET' || req.method === 'HEAD') && !p.includes('..')) return serveStatic(res, p, url.search.includes('v=') ? 31536000 : 86400, req.method === 'HEAD');
     res.writeHead(404); res.end();
   } catch (e) {
-    if (e.message !== 'bad_json') console.error('[ошибка]', req.url, e.stack || e.message);
+    if (e.message !== 'bad_json') { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
     json(res, e.message === 'bad_json' ? 400 : 500, { ok: false, error: e.message || 'server_error' });
   }
 });

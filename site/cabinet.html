@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лунарио — кабинет</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/app/assets/favicon.svg?v=3" type="image/svg+xml">
+<style>
+@font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--bg:#0b0a14;--text:#f5f2ea;--muted:#b9b2cf;--faint:#8f87ad;--line:rgba(245,242,234,.12);--gold:#d9b868;--gold-2:#f0d79a;--ok:#9fe6bd;--warn:#ffb3b3;
+  --glass:linear-gradient(135deg,rgba(245,242,234,.10) 0%,rgba(245,242,234,.04) 45%,rgba(245,242,234,.07) 100%),linear-gradient(rgba(20,17,38,.86),rgba(20,17,38,.86));
+  --shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 34px -14px rgba(0,0,0,.55);--sp:cubic-bezier(.2,.85,.3,1)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg)}
+body{font-family:Onest,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);background:linear-gradient(180deg,#141126 0%,#0b0a14 70%);background-attachment:fixed;min-height:100dvh;font-size:15px;line-height:1.5}
+a{color:var(--gold-2)}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
+h1{font-size:28px;line-height:1.15}h2{font-size:20px}h3{font-size:16px}
+p{margin:0;color:var(--muted)}
+.wordmark{font-family:Comfortaa,ui-rounded,Onest,sans-serif;font-weight:300;font-size:22px;color:var(--text);letter-spacing:.01em}
+.eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:var(--gold);display:block}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 15%;border-bottom:1px solid var(--line)}
+.top .who{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted);flex-wrap:wrap;justify-content:flex-end}
+.wrap{padding:0 15% 60px}
+@media(max-width:900px){.top{padding:14px 18px}.wrap{padding:0 18px 48px}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.06);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn.gold{border:0;background:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);color:#1c1430;box-shadow:0 12px 34px rgba(217,184,104,.25)}
+.btn.sm{min-height:36px;padding:0 13px;font-size:13px}
+.btn.warn{color:var(--warn)}
+.btn[disabled]{opacity:.45}
+input,select{width:100%;min-height:46px;border-radius:14px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);padding:10px 14px;color:#fff;font:inherit;font-size:15px;outline:none}
+input:focus{border-color:#d9b868}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}
+.view{display:none}.view.on{display:block}
+/* вход */
+.login{max-width:440px;margin:60px auto}
+.msg{font-size:14px;margin-top:10px;min-height:1px}.msg.err{color:var(--warn)}.msg.ok{color:var(--ok)}
+/* роли: статичный экран, квадраты с полями 15% на десктопе, по два в ряд на телефоне */
+.roles{min-height:calc(100dvh - 78px);display:flex;flex-direction:column;justify-content:center;padding:28px 0}
+.roles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.role{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:26px;background:var(--glass);border:1px solid rgba(217,184,104,.36);box-shadow:var(--shadow),0 14px 36px -18px rgba(217,184,104,.45);color:var(--text);font:inherit;font-size:clamp(15px,1.6vw,22px);font-weight:650;cursor:pointer;text-decoration:none;transition:transform .16s var(--sp),border-color .2s}
+.role:hover{border-color:rgba(217,184,104,.7)}.role:active{transform:scale(.97)}
+.role small{font-size:12px;font-weight:500;color:var(--faint)}
+.role .ico{width:34px;height:34px;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.role.off{opacity:.28;pointer-events:none;border-color:var(--line);box-shadow:none}
+@media(max-width:900px){.roles-grid{grid-template-columns:1fr 1fr;gap:12px}.roles{min-height:calc(100dvh - 70px);padding:20px 0}.role{border-radius:20px}}
+/* дашборд */
+.sec{margin-top:40px}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.periods{display:flex;gap:6px;flex-wrap:wrap}
+.periods button{min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+.periods button.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55);color:var(--text)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:1200px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+.block{display:flex;flex-direction:column;gap:6px;min-height:190px;padding:18px 18px 16px;border-radius:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);color:inherit;font:inherit;text-align:left;cursor:pointer;transition:border-color .2s}
+.block:hover{border-color:rgba(217,184,104,.5)}
+.block.main{border-color:rgba(217,184,104,.5)}
+.block.alarm .val{color:var(--warn)}
+.block b{font-size:14.5px;line-height:1.3;color:var(--text)}
+.block .q{font-size:12.5px;line-height:1.4;color:var(--faint)}
+.block .val{font-size:34px;font-weight:650;line-height:1;color:var(--gold-2);margin-top:auto}
+.block .unit{font-size:12.5px;color:var(--muted)}
+.block .cmp{font-size:12.5px;color:var(--faint)}
+.up{color:var(--ok)}.down{color:var(--warn)}
+.block .sub{font-size:12.5px;color:var(--muted);line-height:1.35}
+.spark{height:34px;width:100%}
+/* отчёт */
+.report .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.big{font-size:52px;font-weight:650;line-height:1;color:var(--gold-2)}
+.bars{display:flex;align-items:flex-end;gap:3px;height:120px;margin-top:18px}
+.bars i{flex:1;background:linear-gradient(180deg,#f0d79a,#b98f3e);border-radius:4px 4px 0 0;min-height:2px;opacity:.85;position:relative}
+.bars i:hover{opacity:1}
+.bars i::after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap;opacity:0}
+.bars i:hover::after{opacity:1}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:700}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td small{display:block;color:var(--faint);font-size:12.5px}
+.how{margin-top:18px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px dashed var(--line);font-size:13.5px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
+.chip.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55);color:var(--text)}
+.chip input{width:auto;min-height:0;margin:0;accent-color:#d9b868}
+.lock{font-size:12px;color:var(--faint)}
+.back{display:inline-flex;align-items:center;gap:7px;font-size:14.5px;color:#f0d79a;background:none;border:0;padding:8px 0;cursor:pointer;font:inherit}
+.toast{position:fixed;left:50%;top:14px;transform:translate(-50%,-16px);z-index:60;background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;transition:.3s var(--sp);pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.hint{font-size:13px;color:var(--faint);margin-top:8px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1;min-width:160px}
+.row .fixed{flex:0 0 auto;min-width:0}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="wordmark" href="/app/cabinet" style="text-decoration:none">Лунарио · кабинет</a>
+  <div class="who" id="who"></div>
+</header>
+
+<main class="wrap">
+  <!-- ВХОД -->
+  <section class="view login" id="v-login">
+    <span class="eyebrow">Вход в кабинет</span>
+    <h1 style="margin-top:8px">По рабочей почте</h1>
+    <p style="margin-top:10px">Пришлём шестизначный код. Кабинеты открываются по почте: у каждого — свои разделы.</p>
+    <div class="card" style="margin-top:20px" id="l-box"></div>
+  </section>
+
+  <!-- РОЛИ -->
+  <section class="view" id="v-home">
+    <div class="roles">
+      <div class="sec-head" style="margin-bottom:22px"><div><span class="eyebrow">Роли</span><h1 style="margin-top:6px" id="h-title">Кабинет</h1></div><p id="h-sub"></p></div>
+      <div class="roles-grid" id="roles"></div>
+    </div>
+
+    <section class="sec" id="s-staff" style="display:none">
+      <div class="sec-head"><div><span class="eyebrow">Доступы</span><h2 style="margin-top:6px">Кто и куда заходит</h2></div><span class="lock">Видят и меняют только админы</span></div>
+      <div class="card" style="overflow-x:auto">
+        <table id="staff-table"><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3>Добавить доступ</h3>
+        <div class="row" style="margin-top:12px">
+          <input id="st-name" placeholder="ФИО" maxlength="80">
+          <input id="st-email" type="email" placeholder="почта" maxlength="120">
+        </div>
+        <div class="chips" style="margin-top:12px" id="st-roles"></div>
+        <div class="row" style="margin-top:12px"><button class="btn gold fixed" onclick="staffSave()">Сохранить</button><span class="hint" id="st-msg"></span></div>
+      </div>
+    </section>
+
+    <section class="sec" id="s-dash">
+      <div class="sec-head">
+        <div><span class="eyebrow">Единый дашборд</span><h2 style="margin-top:6px" id="d-title">Восемь блоков</h2><p class="hint" id="d-period"></p></div>
+        <div class="periods" id="periods">
+          <button data-p="7d" class="on">7 дней</button><button data-p="30d">30 дней</button><button data-p="month">Этот месяц</button>
+        </div>
+      </div>
+      <div class="grid" id="blocks"></div>
+      <p class="hint" style="margin-top:12px">Главный ориентир на старте — постоянные: кто воспользовался работающими функциями хотя бы в 4 разных дня за неделю. Сравнение — с предыдущим сопоставимым периодом. Нажмите блок, чтобы увидеть, из чего он получился.</p>
+    </section>
+  </section>
+
+  <!-- ОТЧЁТ -->
+  <section class="view report" id="v-report">
+    <button class="back" onclick="showHome()">← К дашборду</button>
+    <div class="head" style="margin-top:8px">
+      <div><span class="eyebrow" id="r-eb"></span><h1 style="margin-top:6px" id="r-title"></h1><p id="r-q" style="margin-top:6px"></p></div>
+      <div class="periods" id="r-periods"><button data-p="7d">7 дней</button><button data-p="30d">30 дней</button><button data-p="month">Этот месяц</button></div>
+    </div>
+    <div class="card" style="margin-top:18px" id="r-body"></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const API = '/app/api';
+const ICON = '/app/assets/brand/icons/';
+const ROLE_META = {
+  admin:     ['Админ', 'person', 'все кабинеты и доступы'],
+  marketing: ['Маркетолог', 'users', 'новые, аудитория, возврат'],
+  product:   ['Продуктолог', 'spark', 'активация, функции, привычка'],
+  content:   ['Контент', 'pen', 'что читают и повторяют'],
+  support:   ['Поддержка', 'chat', 'ошибки и обращения'],
+  user:      ['Пользователь', 'moon', 'приложение'],
+};
+const S = { me: null, period: '7d', dash: null, report: null, role: null };
+const api = async (path, opts) => {
+  const r = await fetch(API + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || 'err'), { code: j.error, status: r.status });
+  return j;
+};
+const esc = (s) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2600); }
+function show(v) { document.querySelectorAll('.view').forEach((s) => s.classList.toggle('on', s.id === 'v-' + v)); window.scrollTo(0, 0); }
+const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+const fmtNum = (n) => (n === null || n === undefined ? '—' : typeof n === 'number' ? n.toLocaleString('ru-RU') : n);
+
+/* ── вход ── */
+let loginEmail = '';
+function renderLogin(step) {
+  const box = $('l-box');
+  if (step === 'code') {
+    box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Код отправлен на <b>${esc(loginEmail)}</b></p>
+      <input id="l-code" inputmode="numeric" maxlength="6" placeholder="000000" style="margin-top:12px;letter-spacing:8px;text-align:center;font-size:22px">
+      <button class="btn gold" style="width:100%;margin-top:12px" onclick="loginVerify()">Войти</button>
+      <button class="btn sm" style="margin-top:8px" onclick="renderLogin('email')">Изменить адрес</button><p class="msg" id="l-msg"></p>`;
+    setTimeout(() => $('l-code').focus(), 60); return;
+  }
+  box.innerHTML = `<label class="eyebrow" style="margin-bottom:8px">Почта</label><input id="l-email" type="email" placeholder="you@example.ru" value="${esc(loginEmail)}">
+    <button class="btn gold" style="width:100%;margin-top:12px" onclick="loginRequest()">Прислать код</button><p class="msg" id="l-msg"></p>`;
+  setTimeout(() => $('l-email').focus(), 60);
+}
+async function loginRequest() {
+  const email = $('l-email').value.trim().toLowerCase(), msg = $('l-msg'); msg.className = 'msg';
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) { msg.classList.add('err'); msg.textContent = 'Проверьте адрес почты.'; return; }
+  msg.textContent = 'Отправляем код…';
+  try { await api('/auth/request', { method: 'POST', body: JSON.stringify({ email }) }); loginEmail = email; renderLogin('code'); }
+  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'too_often' ? 'Слишком часто. Попробуйте через несколько минут.' : e.code === 'mail_off' ? 'Отправка почты не настроена.' : 'Не получилось отправить код.'; }
+}
+async function loginVerify() {
+  const code = $('l-code').value.trim(), msg = $('l-msg'); msg.className = 'msg';
+  if (code.length !== 6) { msg.classList.add('err'); msg.textContent = 'Код состоит из шести цифр.'; return; }
+  try { await api('/auth/verify', { method: 'POST', body: JSON.stringify({ email: loginEmail, code }) }); await boot(); }
+  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'wrong_code' ? 'Код не подошёл.' : e.code === 'expired' ? 'Код истёк — запросите новый.' : 'Не получилось войти.'; }
+}
+async function logout() { await api('/auth/logout', { method: 'POST' }).catch(() => {}); location.reload(); }
+
+/* ── роли ── */
+function renderRoles() {
+  const me = S.me, mine = new Set(me.roles);
+  $('h-title').textContent = me.isAdmin ? 'Кабинет админа' : 'Ваши кабинеты';
+  $('h-sub').textContent = me.isAdmin ? 'Все кабинеты, все метрики, управление доступами' : 'Открыты только те разделы, которые отметил админ';
+  $('roles').innerHTML = Object.entries(ROLE_META).map(([k, [name, ico, sub]]) => {
+    const has = mine.has(k);
+    if (k === 'user') return `<a class="role${has ? '' : ' off'}" href="/app/?app=1"><i class="ico" style="--m:url(${ICON}${ico}.svg?v=2)"></i>${name}<small>${sub}</small></a>`;
+    return `<button class="role${has ? '' : ' off'}" type="button" onclick="openRole('${k}')"><i class="ico" style="--m:url(${ICON}${ico}.svg?v=2)"></i>${name}<small>${sub}</small></button>`;
+  }).join('');
+  $('who').innerHTML = `<span>${esc(me.name || '')}${me.name ? ' · ' : ''}${esc(me.email)}</span><a class="btn sm" href="/app/?app=1">В приложение</a><button class="btn sm" onclick="logout()">Выйти</button>`;
+}
+function openRole(k) {
+  S.role = k;
+  $('d-title').textContent = k === 'admin' ? 'Восемь блоков' : 'Кабинет: ' + ROLE_META[k][0];
+  renderBlocks();
+  $('s-dash').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+const BLOCK_ROLES = { new_users: ['marketing', 'product'], activation: ['product', 'content'], active: ['marketing', 'product'], repeat: ['product', 'marketing', 'content'], retention: ['marketing', 'product'], features: ['product', 'content'], costs: ['admin'], problems: ['support', 'product'] };
+
+/* ── доступы ── */
+async function loadStaff() {
+  const r = await api('/cabinet/staff');
+  const rows = r.items.map((s) => `<tr>
+    <td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td>
+    <td><div class="chips">${s.roles.filter((x) => x !== 'user').map((x) => `<span class="chip on">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</div></td>
+    <td style="white-space:nowrap">${s.locked ? '<span class="lock">админ · права не меняются</span>' : `<button class="btn sm" onclick="staffEdit('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td>
+  </tr>`).join('');
+  $('staff-table').querySelector('tbody').innerHTML = rows;
+  S.staff = r.items;
+  $('st-roles').innerHTML = ['marketing', 'product', 'content', 'support'].map((k) => `<label class="chip"><input type="checkbox" value="${k}" onchange="this.parentNode.classList.toggle('on',this.checked)"> ${ROLE_META[k][0]}</label>`).join('');
+}
+function staffEdit(email) {
+  const s = S.staff.find((x) => x.email === email); if (!s) return;
+  $('st-name').value = s.name || ''; $('st-email').value = s.email;
+  $('st-roles').querySelectorAll('input').forEach((i) => { i.checked = s.roles.includes(i.value); i.parentNode.classList.toggle('on', i.checked); });
+  $('st-email').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+async function staffSave() {
+  const roles = [...$('st-roles').querySelectorAll('input:checked')].map((i) => i.value);
+  const msg = $('st-msg');
+  try {
+    const r = await api('/cabinet/staff', { method: 'POST', body: JSON.stringify({ name: $('st-name').value.trim(), email: $('st-email').value.trim(), roles }) });
+    if (!r.ok) { msg.textContent = r.error === 'admin_locked' ? 'Права админов не меняются.' : 'Проверьте почту.'; return; }
+    msg.textContent = 'Сохранено'; $('st-name').value = ''; $('st-email').value = '';
+    $('st-roles').querySelectorAll('input').forEach((i) => { i.checked = false; i.parentNode.classList.remove('on'); });
+    loadStaff();
+  } catch (e) { msg.textContent = 'Не получилось сохранить.'; }
+}
+async function staffDel(email) {
+  if (!confirm(`Убрать доступ у ${email}?`)) return;
+  const r = await api('/cabinet/staff?email=' + encodeURIComponent(email), { method: 'DELETE' });
+  if (!r.ok) toast('Права админов не меняются'); else { toast('Доступ убран'); loadStaff(); }
+}
+
+/* ── дашборд ── */
+async function loadDash() {
+  S.dash = await api('/cabinet/dashboard?period=' + S.period);
+  renderBlocks();
+}
+function periodLabel(P) { return `${fmtDay(P.from)} — ${fmtDay(P.to)} · сравнение с ${fmtDay(P.prevFrom)} — ${fmtDay(P.prevTo)}`; }
+function spark(series) {
+  if (!series || series.length < 2) return '';
+  const max = Math.max(1, ...series.map((s) => s.n)), w = 100, h = 34, step = w / (series.length - 1);
+  const pts = series.map((s, i) => `${(i * step).toFixed(1)},${(h - (s.n / max) * (h - 4) - 2).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#d9b868" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+function cmp(b) {
+  if (b.delta === null || b.delta === undefined) return `<span class="cmp">раньше — ${fmtNum(b.prev)}</span>`;
+  const cls = b.delta > 0 ? (b.key === 'problems' || b.key === 'costs' ? 'down' : 'up') : b.delta < 0 ? (b.key === 'problems' || b.key === 'costs' ? 'up' : 'down') : '';
+  const arrow = b.delta > 0 ? '▲' : b.delta < 0 ? '▼' : '=';
+  return `<span class="cmp"><span class="${cls}">${arrow} ${Math.abs(b.delta)}%</span> · раньше — ${fmtNum(b.prev)}</span>`;
+}
+function renderBlocks() {
+  const d = S.dash; if (!d) return;
+  $('d-period').textContent = periodLabel(d.period);
+  const role = S.role;
+  const blocks = d.blocks.filter((b) => !role || role === 'admin' || (BLOCK_ROLES[b.key] || []).includes(role));
+  $('blocks').innerHTML = blocks.map((b) => `<button class="block${b.main ? ' main' : ''}${b.alarm ? ' alarm' : ''}" type="button" onclick="openReport('${b.key}')">
+    <b>${esc(b.title)}</b><span class="q">${esc(b.question)}</span>
+    <span class="val">${fmtNum(b.value)}<span class="unit"> ${esc(b.unit)}</span></span>
+    ${cmp(b)}${b.sub ? `<span class="sub">${esc(b.sub)}</span>` : ''}${spark(b.series)}
+  </button>`).join('') || '<p class="hint">Для этой роли блоков нет.</p>';
+}
+document.querySelectorAll('#periods button, #r-periods button').forEach((btn) => btn.addEventListener('click', async () => {
+  S.period = btn.dataset.p;
+  document.querySelectorAll('#periods button, #r-periods button').forEach((b) => b.classList.toggle('on', b.dataset.p === S.period));
+  if ($('v-report').classList.contains('on')) await openReport(S.report); else await loadDash();
+}));
+
+/* ── отчёт ── */
+async function openReport(kind) {
+  S.report = kind;
+  const meta = (S.dash && S.dash.blocks.find((b) => b.key === kind)) || {};
+  $('r-eb').textContent = 'Отчёт'; $('r-title').textContent = meta.title || kind; $('r-q').textContent = meta.question || '';
+  document.querySelectorAll('#r-periods button').forEach((b) => b.classList.toggle('on', b.dataset.p === S.period));
+  show('report');
+  $('r-body').innerHTML = '<p class="hint">Считаем…</p>';
+  const r = await api(`/cabinet/report?kind=${kind}&period=${S.period}`);
+  const unit = meta.unit || '';
+  let html = `<div class="head"><div><div class="big">${fmtNum(r.value)}<span class="unit" style="font-size:16px;color:var(--muted)"> ${esc(unit)}</span></div>
+    <p class="hint">${periodLabel(r.period)} · раньше — ${fmtNum(r.prev)}</p></div></div>`;
+  if (r.series) {
+    const max = Math.max(1, ...r.series.map((s) => s.n));
+    html += `<div class="bars">${r.series.map((s) => `<i style="height:${Math.max(2, (s.n / max) * 100)}%" data-t="${fmtDay(s.day)}: ${s.n}"></i>`).join('')}</div>
+      <p class="hint" style="display:flex;justify-content:space-between"><span>${fmtDay(r.series[0].day)}</span><span>${fmtDay(r.series[r.series.length - 1].day)}</span></p>`;
+  }
+  if (kind === 'costs') html += costsForm(r);
+  if (r.rows && r.rows.length) {
+    const isUsers = kind === 'new_users';
+    html += `<table><thead><tr>${isUsers ? '<th>Когда</th><th>Кто</th><th>Город</th><th>Анкета</th>' : `<th>Показатель</th><th style="text-align:right">Сейчас</th>${r.rows[0].p !== undefined ? '<th style="text-align:right">Раньше</th>' : ''}${kind === 'costs' ? '<th></th>' : ''}`}</tr></thead><tbody>` +
+      r.rows.map((x) => isUsers
+        ? `<tr><td>${fmtDay(x.day)}</td><td>${esc(x.name) || '—'}<small>${esc(x.email)}</small></td><td>${esc(x.city) || '—'}</td><td>${x.onboarded ? 'заполнена' : 'нет'}</td></tr>`
+        : `<tr><td>${esc(x.name)}${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</td><td class="num">${fmtNum(x.n)}${kind === 'retention' && x.n !== null ? '%' : ''}</td>${x.p !== undefined ? `<td class="num" style="color:var(--faint)">${fmtNum(x.p)}${kind === 'retention' && x.p !== null ? '%' : ''}</td>` : ''}${kind === 'costs' ? `<td class="num"><button class="btn sm warn" onclick="costDel(${x.id})">Убрать</button></td>` : ''}</tr>`).join('') + '</tbody></table>';
+  } else if (!r.series) html += '<p class="hint" style="margin-top:14px">Пока пусто.</p>';
+  if (kind === 'problems' && r.errors && r.errors.length) {
+    html += `<h3 style="margin-top:22px">Последние сбои</h3><table><thead><tr><th>Когда</th><th>Где</th><th>Что</th></tr></thead><tbody>${r.errors.map((e) => `<tr><td>${new Date(e.ts).toLocaleString('ru-RU')}</td><td>${esc(e.path)}</td><td>${esc(e.message)}</td></tr>`).join('')}</tbody></table>`;
+  }
+  html += `<div class="how"><b>Как считается.</b> ${esc(r.how)}</div>`;
+  $('r-body').innerHTML = html;
+}
+function costsForm(r) {
+  if (!S.me.isAdmin) return '';
+  const m = r.detail.month;
+  return `<div class="card" style="margin-top:18px;background:rgba(255,255,255,.03)"><h3>Добавить строку расходов · ${m}</h3>
+    <div class="row" style="margin-top:12px"><input id="c-name" placeholder="например: сервер Timeweb"><input id="c-amount" type="number" inputmode="decimal" placeholder="сумма, ₽" style="max-width:160px">
+    <select id="c-kind" style="max-width:200px"><option value="fixed">постоянная</option><option value="variable">переменная</option><option value="budget">бюджет месяца</option></select>
+    <button class="btn gold fixed" onclick="costAdd('${m}')">Добавить</button></div></div>`;
+}
+async function costAdd(month) {
+  const r = await api('/cabinet/costs', { method: 'POST', body: JSON.stringify({ month, name: $('c-name').value.trim(), amount: +$('c-amount').value, kind: $('c-kind').value }) });
+  if (!r.ok) { toast('Проверьте название и сумму'); return; }
+  toast('Добавлено'); await loadDash(); openReport('costs');
+}
+async function costDel(id) { await api('/cabinet/costs?id=' + id, { method: 'DELETE' }); toast('Убрано'); await loadDash(); openReport('costs'); }
+function showHome() { show('home'); }
+
+/* ── старт ── */
+async function boot() {
+  const me = await api('/cabinet/me').catch(() => null);
+  if (!me) { show('login'); renderLogin('email'); return; }
+  S.me = me;
+  if (!me.roles.length) {
+    show('login');
+    $('who').innerHTML = me.email ? `<span>${esc(me.email)}</span><button class="btn sm" onclick="logout()">Выйти</button>` : '';
+    $('l-box').innerHTML = me.email
+      ? `<p style="font-size:15px;color:#ded8ee">У почты <b>${esc(me.email)}</b> нет доступа к кабинетам.</p><p class="hint">Доступ выдаёт админ. Приложение открыто как обычно.</p><a class="btn gold" style="width:100%;margin-top:14px" href="/app/?app=1">В приложение</a>`
+      : '';
+    if (!me.email) renderLogin('email');
+    return;
+  }
+  renderRoles(); show('home');
+  if (me.isAdmin) { $('s-staff').style.display = ''; loadStaff(); }
+  await loadDash();
+}
+boot();
+</script>
+</body>
+</html>
