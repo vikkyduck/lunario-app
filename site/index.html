@@ -105,6 +105,8 @@ input:focus,textarea:focus{border-color:#d9b868;box-shadow:0 0 0 4px rgba(217,18
 input::placeholder,textarea::placeholder{color:#8f87ad}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
+.chips.flow{flex-wrap:wrap;overflow:visible}
+.chips.flow .chip{font-size:13.5px;padding:10px 13px}
 .chip{flex:0 0 auto;padding:11px 15px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.05);
   color:#f5f2ea;font:inherit;font-size:14px;cursor:pointer}
 .chip.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55)}
@@ -213,6 +215,39 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
    правило 2.1 — разделы «скоро» и пустые экраны. Поэтому в сборке для App Store
    не показываем платёжное: остаётся только работающее.
    Установка PWA внутри приложения тоже ни к чему. */
+/* ── широкий экран (≥900px): навигация слева, две колонки, телефонный столбик не растягиваем ── */
+@media(min-width:900px){
+  body.inner{padding-left:220px}
+  body.inner .wrap{max-width:960px;padding:36px 40px 56px}
+  .tabs{left:0;top:0;bottom:0;transform:none;width:220px;max-width:none;flex-direction:column;justify-content:flex-start;gap:4px;
+    padding:30px 14px;border-top:0;border-right:1px solid var(--line)}
+  .tabs::before{content:"Лунарио";font-family:"Comfortaa",ui-rounded,Onest,system-ui,sans-serif;font-weight:300;font-size:26px;
+    letter-spacing:.01em;color:var(--text);padding:4px 14px 24px}
+  .tabs button{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;min-height:46px;padding:0 14px;font-size:14.5px}
+  .tabs button:hover{color:var(--text)}
+  .tabs button.on{background:rgba(255,255,255,.07)}
+  .chip:hover{border-color:rgba(217,184,104,.45)}
+  .btn.ghost:hover{background:rgba(255,255,255,.1)}
+  #t-install{display:none!important}
+  .view.on{display:grid;grid-template-columns:1fr 1fr;column-gap:36px;align-items:start}
+  .view.on>*{min-width:0}
+  #v-hello.on,#v-inside.on,#v-login.on,#v-onb.on{display:block;max-width:520px;margin:0 auto}
+  /* Мой день: слева карта и кнопка, справа настроение, настрой и прогноз */
+  #v-today.on{grid-template-areas:"head head" "moon moon" "save save" "ritual mood" "ritual tone" "ritual day" "ios ios"}
+  .t-head{grid-area:head}.t-moonrow{grid-area:moon}#t-save{grid-area:save}.t-ritual{grid-area:ritual}.t-mood{grid-area:mood}.t-tone{grid-area:tone}.t-day{grid-area:day}
+  #v-today>.ios-only{grid-area:ios}
+  .t-ritual .btn:not(.sm){max-width:320px;margin-left:auto;margin-right:auto}
+  .daycard{width:210px;height:334px}
+  /* Свериться: слева режим и «что беспокоит», справа вопрос и ответ */
+  #v-ask.on{grid-template-areas:"eb form" "h1 form" "modes form" "worry form";grid-template-rows:auto auto auto 1fr}
+  .a-eb{grid-area:eb}.a-h1{grid-area:h1}.a-modes{grid-area:modes}.a-worry{grid-area:worry}.a-right{grid-area:form}.a-form{margin-top:0}
+  /* Обо мне: слева человек и вход, справа нумерология */
+  #v-about.on{grid-template-areas:"head num" "auth num" ". num";grid-template-rows:auto auto 1fr}
+  .m-head{grid-area:head}.m-numsec{grid-area:num;margin-top:0}.m-authsec{grid-area:auth}
+  /* Что вокруг и История: карточки в две колонки, шапка и «Аккаунт» во всю ширину */
+  #v-around.on>.eyebrow,#v-around.on>h1,#v-around.on>p,#v-history.on>.eyebrow,#v-history.on>h1,.h-account{grid-column:1/-1}
+  .h-account{display:flex;flex-wrap:wrap;gap:12px}.h-account .eyebrow{flex:0 0 100%}.h-account .btn{width:auto!important;flex:1;margin-top:0!important}
+}
 .ios-shell .pay-only,.ios-shell #t-next,.ios-shell #me-artifacts,
 .ios-shell #wid-install,.ios-shell #t-install{display:none!important}
 .ios-only{display:none}
@@ -321,20 +356,20 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 
   <!-- СЕГОДНЯ -->
   <section class="view" id="v-today">
-    <div class="row">
+    <div class="row t-head">
       <div class="grow">
         <span class="eyebrow" id="t-date"></span>
         <h1 id="t-hello" style="margin-top:5px">Доброе утро</h1>
       </div>
       <span class="pill" id="t-streak">✦ 1 день</span>
     </div>
-    <div class="row" style="margin-top:12px;gap:12px"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><p class="grow" id="t-moon"></p></div>
+    <div class="row t-moonrow" style="margin-top:12px;gap:12px"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><p class="grow" id="t-moon"></p></div>
     <div class="card sec" id="t-save" style="display:none;margin-top:14px;padding:16px 18px">
       <p style="font-size:14px;line-height:1.55;margin:0;color:#ded8ee">Пока ваши записи есть только на этом устройстве. Оставьте почту — и дневник, ответы и серия дней откроются на любом другом.</p>
       <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="go('about');setTimeout(()=>{const e=document.getElementById('m-auth');if(e)e.scrollIntoView({block:'center'});},250)">Оставить почту</button>
     </div>
 
-    <div class="sec">
+    <div class="sec t-ritual">
       <span class="eyebrow" style="text-align:center">Ваш ритуал · карта дня</span>
       <div class="daycard glow" id="t-card" onclick="flipCard()">
         <div class="dc-in">
@@ -356,21 +391,16 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
     </div>
 
-    <div class="sec">
+    <div class="sec t-mood">
       <span class="eyebrow" style="margin-bottom:11px">Как вы сегодня?</span>
       <div class="moods" id="t-moods"></div>
       <p style="font-size:13px;margin-top:9px" id="t-moodstat"></p>
     </div>
 
-    <div class="sec">
-      <span class="eyebrow" style="margin-bottom:11px">Быстрые разделы</span>
-      <div class="chips" id="t-quick"></div>
-    </div>
-
     <!-- блок «Что будет дальше» из веб-версии убран 12.09.2026; путь к списку возможностей остаётся только в iOS-оболочке -->
     <button class="btn ghost sm ios-only" style="width:100%;margin-top:26px" onclick="openTour()">Что внутри Лунарио</button>
 
-    <div class="sec">
+    <div class="sec t-tone">
       <span class="eyebrow" style="margin-bottom:11px">Настрой дня</span>
       <div class="card">
         <p class="serif" style="font-size:19px;line-height:1.45;color:#fff" id="t-aff"></p>
@@ -381,7 +411,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       </div>
     </div>
 
-    <div class="sec">
+    <div class="sec t-day">
       <span class="eyebrow" style="margin-bottom:11px">Ваш день</span>
       <div class="card">
         <h2 id="f-title"></h2>
@@ -394,34 +424,35 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 
   <!-- СПРОСИТЬ -->
   <section class="view" id="v-ask">
-    <span class="eyebrow">Ответ приходит на конкретный вопрос</span>
-    <h1 style="margin-top:5px">Свериться</h1>
-    <div class="chips sec" style="margin-top:16px">
+    <span class="eyebrow a-eb">Ответ приходит на конкретный вопрос</span>
+    <h1 class="a-h1" style="margin-top:5px">Свериться</h1>
+    <div class="chips sec a-modes" style="margin-top:16px">
       <button class="chip on" data-mode="yesno" onclick="setMode('yesno')">Да / Нет</button>
       <button class="chip" data-mode="rune" onclick="setMode('rune')">Руна</button>
       <button class="chip" data-mode="spread" onclick="setMode('spread')">Три карты</button>
     </div>
 
-    <div class="sec">
-      <span class="eyebrow" style="margin-bottom:11px">Что вас сейчас беспокоит?</span>
-      <div class="chips" id="t-worry"></div>
-      <div class="chips" id="t-worry2" style="margin-top:8px"></div>
-    </div>
-
-    <div class="card sec">
+    <div class="a-right">
+    <div class="card sec a-form">
       <div class="field"><label id="a-label">О чём спрашиваете</label>
         <textarea id="a-q" placeholder="Стоит ли мне соглашаться на новую роль?" maxlength="300"></textarea>
       </div>
-      <div class="chips" id="a-examples"></div>
       <button class="btn" style="margin-top:14px" id="a-go" disabled>Напишите вопрос</button>
       <p class="msg" id="a-msg"></p>
       <p style="font-size:12.5px;color:#8f87ad;margin-top:10px" id="a-hint"></p>
     </div>
     <div id="a-result" class="sec" style="display:none"></div>
+    </div>
+
+    <div class="sec a-worry">
+      <span class="eyebrow" style="margin-bottom:11px">Что вас сейчас беспокоит?</span>
+      <div class="chips flow" id="t-worry"></div>
+    </div>
   </section>
 
   <!-- Я -->
   <section class="view" id="v-about">
+    <div class="m-head">
     <span class="eyebrow" id="m-sign"></span>
     <h1 style="margin-top:5px" id="m-name">Профиль</h1>
     <p class="geo" id="m-geo" style="margin-top:8px"></p>
@@ -438,15 +469,16 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="btn" onclick="saveProfile()">Сохранить</button>
       <p class="msg" id="e-msg"></p>
     </div>
-
-    <div class="sec">
-      <span class="eyebrow" style="margin-bottom:11px">Вход и перенос на другое устройство</span>
-      <div class="card" id="m-auth"></div>
     </div>
 
-    <div class="sec">
+    <div class="sec m-numsec">
       <span class="eyebrow" style="margin-bottom:11px">Нумерология по вашей дате</span>
       <div id="m-num" class="list"></div>
+    </div>
+
+    <div class="sec m-authsec">
+      <span class="eyebrow" style="margin-bottom:11px">Вход и перенос на другое устройство</span>
+      <div class="card" id="m-auth"></div>
     </div>
   </section>
 
@@ -488,7 +520,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       </div>
     </div>
 
-    <div class="sec" style="margin-top:6px">
+    <div class="sec h-account" style="margin-top:6px">
       <span class="eyebrow" style="margin-bottom:11px">Аккаунт</span>
       <button class="btn ghost sm" style="width:100%" onclick="wipe('data')">Очистить историю</button>
       <button class="btn ghost sm" style="width:100%;margin-top:9px;color:var(--warn)" onclick="wipe('account')">Удалить аккаунт</button>
@@ -973,16 +1005,6 @@ function openLogin(){
 /* ── хаб на главной: все разделы в один тап ── */
 function meJump(tab, id){ go(tab); const aim=()=>{ const e=$(id); if(e) e.scrollIntoView({block:'center'}); }; setTimeout(aim, 300); setTimeout(aim, 1000); setTimeout(aim, 2400); }
 function askQuick(m, text){ go('ask'); setMode(m); if(text){ $('a-q').value=text; checkQ(); track('worry_pick', text); } $('a-q').focus(); }
-const QUICK = [
-  ['Да / Нет', "askQuick('yesno')"],
-  ['Руна', "askQuick('rune')"],
-  ['Три карты', "askQuick('spread')"],
-  ['Дневник', "meJump('history','j-text')"],
-  ['Желания', "meJump('history','w-text')"],
-  ['Нумерология', "meJump('about','m-num')"],
-  ['Совместимость', "meJump('around','m-cdate')"],
-  ['Итоги недели', "meJump('history','w-summary')"],
-];
 const WORRIES = [
   ['Стоит ли менять работу?', 'yesno'],
   ['Как сложится с ним?', 'spread'],
@@ -994,13 +1016,8 @@ const WORRIES = [
   ['Что важно понять про отношения?', 'rune'],
 ];
 function renderHub(){
-  const q = $('t-quick');
-  if (q) q.innerHTML = QUICK.map(([t, fn]) => `<button class="chip" onclick="${fn}">${t}</button>`).join('');
-  const rows = [$('t-worry'), $('t-worry2')];
-  if (rows[0]) rows.forEach((row, i) => {
-    row.innerHTML = WORRIES.filter((_, k) => k % 2 === i)
-      .map(([t, m]) => `<button class="chip" onclick="askQuick('${m}', this.textContent)">${t}</button>`).join('');
-  });
+  const w = $('t-worry');
+  if (w) w.innerHTML = WORRIES.map(([t, m]) => `<button class="chip" onclick="askQuick('${m}', this.textContent)">${t}</button>`).join('');
 }
 
 /* ── подсказки городов: координаты подставляются по названию ── */
@@ -1126,22 +1143,15 @@ function share(){
 }
 
 /* ── спросить ── */
-const EXAMPLES={
-  yesno:['Стоит ли менять работу?','Говорить ли ему честно?','Брать ли эту квартиру?'],
-  rune:['Что мне поможет на этой неделе?','Как пройдут переговоры?','Что важно понять про отношения?'],
-  spread:['Что с работой в этом месяце?','Как сложится с ним?','Что мне сейчас мешает?'],
-};
 const LABELS={yesno:'О чём спрашиваете',rune:'О чём спрашиваете руну',spread:'Ваш вопрос к картам'};
 function setMode(m){
   S.mode=m; hap(9);
   document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
   $('a-label').textContent=LABELS[m];
-  $('a-examples').innerHTML=EXAMPLES[m].map(t=>`<button class="chip" onclick="useExample(this)">${t}</button>`).join('');
   $('a-result').style.display='none'; $('a-msg').textContent='';
   $('a-hint').textContent = m==='spread' && S.limits ? `Разбор расклада: осталось ${S.limits.spreadsLeft} из ${S.limits.spreadsTotal} на сегодня.` : 'Бесплатно и без ограничений.';
   checkQ();
 }
-function useExample(b){ $('a-q').value=b.textContent; checkQ(); $('a-q').focus(); }
 $('a-q').addEventListener('input',checkQ);
 function checkQ(){
   const v=$('a-q').value.trim(), ok=v.length>=10&&/\s/.test(v);
@@ -1189,7 +1199,6 @@ function renderAuth(){
   const box = $('m-auth'), u = S.user;
   if (u.email && authStep !== 'code') {
     box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Вы вошли как <b>${esc(u.email)}</b></p>
-      <p style="font-size:13.5px;margin-top:7px">Записи, дневник и серия дней доступны на любом устройстве — введите этот адрес и код при входе.</p>
       <button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="logout()">Выйти на этом устройстве</button>`;
     return;
   }
@@ -1208,9 +1217,7 @@ function renderAuth(){
     setTimeout(()=>$('a-code') && $('a-code').focus(), 60);
     return;
   }
-  box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Чтобы записи не потерялись</p>
-    <p style="font-size:13.5px;margin-top:7px">Оставьте почту — и дневник, вопросы и серия дней вернутся к вам на новом телефоне. Пароль придумывать не нужно: пришлём короткий код.</p>
-    <div class="field" style="margin:13px 0 0"><label>Почта</label>
+  box.innerHTML = `<div class="field" style="margin:0"><label>Почта</label>
       <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru" value="${esc(S.user.email||'')}"></div>
     <button class="btn" onclick="authRequest()">Прислать код</button>
     <p class="msg" id="a-authmsg"></p>`;

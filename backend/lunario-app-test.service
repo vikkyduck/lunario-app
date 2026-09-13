@@ -1,0 +1,24 @@
+[Unit]
+Description=Lunario web app — тестовая копия lunario.online/app-test (ветка на просмотр, своя база)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/lunario-app-test/backend
+Environment=PORT=5032
+Environment=HOST=127.0.0.1
+Environment=SITE_DIR=/opt/lunario-app-test/site
+Environment=DATA_DIR=/opt/lunario-app-test/data
+Environment=BASE_PATH=/app-test
+# Секреты те же, что у прода (почта для входа по коду), база — отдельная
+EnvironmentFile=-/opt/lunario-app/.env
+ExecStart=/usr/bin/node /opt/lunario-app-test/backend/server.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/lunario-app-test/data
+
+[Install]
+WantedBy=multi-user.target
