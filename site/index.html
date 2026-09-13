@@ -77,7 +77,7 @@ body.inner .sky.on{opacity:.5}   /* на рабочих экранах небо 
 @keyframes sparkle{0%,100%{opacity:0;transform:scale(.4)}8%{opacity:1;transform:scale(1.25)}22%{opacity:0;transform:scale(.5)}}
 @media(max-width:620px){.moon-img{width:82px;height:82px}}
 @media(prefers-reduced-motion:reduce){.mark,.moon-img,.spark,.orb,.cloud{animation:none!important}}
-.wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom))}
+.wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom))}
 h1,h2,.serif{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0}
 h1{font-size:29px;line-height:1.12}
 h2{font-size:22px;line-height:1.2}
@@ -178,39 +178,40 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
    не показываем платёжное: остаётся только работающее.
    Установка PWA внутри приложения тоже ни к чему. */
 
-/* ── приветствие: три раскладки одного текста (?hello=a|b|c) ── */
-#v-hello.on{display:flex;flex-direction:column;min-height:calc(100dvh - 40px)}
-#v-hello .hero{display:flex;align-items:center;gap:14px;padding:10px 0 4px}
-#v-hello .hero .mark{margin:0}
-#v-hello .hero .moon-img{width:64px;height:64px}
-#v-hello .wordmark{font-size:30px}
-#v-hello .hl1{margin-top:26px;font-size:20px;line-height:1.4;color:#fff;font-weight:600}
+/* ── приветствие ── */
+#v-hello.on{display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+#v-hello .hero{display:flex;align-items:center;font-size:clamp(46px,15vw,64px);line-height:1;padding:12px 0 0;white-space:nowrap}
+#v-hello .hero .mark{margin:0 0 0 .04em;animation:none;line-height:0;vertical-align:baseline}
+#v-hello .hero .moon-img{width:.74em;height:.74em}
+#v-hello .hero .spark{width:4px;height:4px}
+#v-hello .hl1{margin-top:30px;font-size:20px;line-height:1.4;color:#fff;font-weight:600}
 #v-hello .hl2{margin-top:12px;font-size:16px}
 #v-hello .hl3{margin-top:12px;font-size:15px}
 #v-hello .cta{margin-top:auto;padding-top:28px;display:grid;gap:10px}
 #v-hello .trust{text-align:center;margin-top:18px;font-size:13px}
-body.hello-b #v-hello .hero,body.hello-c #v-hello .hero{flex-direction:column;gap:6px;text-align:center;padding-top:20px}
-body.hello-b #v-hello .hero .moon-img,body.hello-c #v-hello .hero .moon-img{width:82px;height:82px}
-body.hello-b #v-hello .wordmark,body.hello-c #v-hello .wordmark{font-size:37px}
-body.hello-b #v-hello .hl1{font-size:24px;line-height:1.3;margin-top:22px}
-body.hello-b #v-hello .hl3,body.hello-c #v-hello .hl3{order:6;font-size:13px;text-align:center;margin-top:14px;color:#8f87ad}
-body.hello-b #v-hello .cta{order:5}body.hello-b #v-hello .trust,body.hello-c #v-hello .trust{order:7}body.hello-b #v-hello .linkline,body.hello-c #v-hello .linkline{order:8}
-body.hello-c #v-hello .hl1{text-align:center;font-size:18px;font-weight:500;margin-top:18px}
-body.hello-c #v-hello .hl2{text-align:center;font-size:15.5px}
-body.hello-c #v-hello .cta{order:5;margin-top:30px}
-/* ── главная ── */
+/* ── главная: один экран, без прокрутки — квадраты по центру, мелкое внизу ── */
+#v-home.on{display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+.sqs{flex:1;display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-content:center;margin-top:18px}
+.sq{grid-column:span 2;aspect-ratio:1/1.18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;
+  border-radius:24px;background:var(--glass-bg);border:1px solid rgba(217,184,104,.36);
+  box-shadow:var(--glass-shadow),0 14px 36px -18px rgba(217,184,104,.45);color:var(--text);font:inherit;font-size:15px;font-weight:650;line-height:1.15;text-align:center;
+  padding:8px 4px;cursor:pointer;transition:transform .16s var(--sp)}
+.sq:nth-child(4){grid-column:2/span 2}.sq:nth-child(5){grid-column:4/span 2}
+.sq:active{transform:scale(.95)}
+.sq .ico{width:42px;height:42px}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px}
+.mini button{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 3px 10px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  color:var(--muted);font:inherit;font-size:10.5px;line-height:1.2;text-align:center;cursor:pointer}
+.mini button .ico{width:22px;height:22px}
+.mini button.stub .ico{background:#8f87ad}
+.mini button b{font-weight:500;color:#d3cde6}
+/* ── главная (старые правила) ── */
 .acct{position:absolute;right:0;top:0;width:42px;height:42px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--gold);font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:grid;place-items:center}
 .moonline{display:flex;align-items:center;gap:12px;margin-top:14px;background:none;border:0;padding:0;color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
 .moonline p{font-size:15.5px;color:var(--text)}
 .moonline small{display:block;color:#8f87ad;font-size:12.5px;margin-top:3px}
-.sqs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.sq{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;padding:0;color:var(--muted);font:inherit;font-size:11px;line-height:1.2;text-align:center;cursor:pointer}
-.sq i{width:56px;height:56px;border-radius:18px;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);display:grid;place-items:center;transition:transform .16s var(--sp)}
-.sq:active i{transform:scale(.93)}
-.sq i .ico{width:26px;height:26px}
-.sq b{font-weight:500}
 .ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
-.ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.spark{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
+.ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.spark{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
 .ico.star{--m:url(/app/assets/brand/icons/spark.svg)}
 /* плитки разделов */
 .wids{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
@@ -257,32 +258,19 @@ body.hello-c #v-hello .cta{order:5;margin-top:30px}
 .w-big{font-size:24px;line-height:1.4;color:#fff;text-align:center;margin-top:28px}
 body.wg-open{overflow:hidden}
 /* на телефоне навигации внизу нет: разделы открываются с главной */
-.tabs{display:none}
-/* ── широкий экран (≥900px): навигация слева, столбик 960px, панели по центру ── */
+/* ── широкий экран (≥900px): тот же телефонный сценарий в столбике пошире, виджеты — панелью по центру ── */
 @media(min-width:900px){
-  body.inner{padding-left:220px}
-  body.inner .wrap{max-width:960px;padding:36px 40px 56px}
-  body.inner .tabs{display:flex;position:fixed;left:0;top:0;bottom:0;width:220px;flex-direction:column;justify-content:flex-start;gap:4px;z-index:20;
-    padding:30px 14px;background:rgba(11,10,20,.82);backdrop-filter:blur(20px);border-right:1px solid var(--line)}
-  .tabs::before{content:"Лунарио";font-family:"Comfortaa",ui-rounded,Onest,system-ui,sans-serif;font-weight:300;font-size:26px;letter-spacing:.01em;color:var(--text);padding:4px 14px 24px}
-  .tabs button{display:flex;align-items:center;gap:12px;min-height:46px;padding:0 14px;border:0;background:none;border-radius:14px;color:#8f87ad;font:inherit;font-size:14.5px;cursor:pointer;text-align:left;white-space:nowrap}
-  .tabs button .ico{width:20px;height:20px;background:currentColor}
-  .tabs button:hover{color:var(--text)}
-  .tabs button.on{color:var(--violet-2);background:rgba(255,255,255,.07)}
-  .tabs .tabs-acct{margin-top:auto}
-  .back{display:none}
+  body.inner .wrap{max-width:760px;padding:36px 40px 56px}
+  #v-home.on,#v-hello.on{max-width:560px;margin:0 auto}
+  #v-onb.on,#v-login.on,#v-nodemo.on{max-width:520px;margin:0 auto}
   .chip:hover{border-color:rgba(217,184,104,.45)}
   .btn.ghost:hover{background:rgba(255,255,255,.1)}
-  .wid:hover,.sq:hover i{border-color:rgba(217,184,104,.4)}
+  .wid:hover,.sq:hover{border-color:rgba(217,184,104,.6)}
   #t-install{display:none!important}
   .wids{grid-template-columns:repeat(3,1fr);gap:12px}
-  .sqs{grid-template-columns:repeat(5,120px);gap:14px;justify-content:start}
-  .sq i{width:64px;height:64px}.sq{font-size:13px}
   .daycard{width:210px;height:334px}
   .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:88vh;border-radius:28px;
     background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
-  #v-hello.on{max-width:520px;margin:0 auto;min-height:0}
-  #v-onb.on,#v-login.on,#v-nodemo.on{max-width:520px;margin:0 auto}
 }
 .ios-shell #t-install{display:none!important}
 </style>
@@ -303,7 +291,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 
   <!-- ЗНАКОМСТВО: текст Виктории, две кнопки; вариант раскладки — ?hello=a|b|c -->
   <section class="view" id="v-hello">
-    <div class="hero"><div class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></div><h1 class="wordmark">Лунарио</h1></div>
+    <h1 class="wordmark hero"><span class="wm-text">Лунари</span><span class="mark" aria-label="о"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></h1>
     <p class="hl1">Здесь можно выдохнуть, свериться с собой и найти опору.</p>
     <p class="hl2">Лунарио подсвечивает ответы, которые вы и так в глубине души знаете.</p>
     <p class="hl3">Укажите имя, дату и место рождения, и в приложении появится личный гороскоп и персональное предсказание на этот год</p>
@@ -390,22 +378,22 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <div class="grow"><p id="h-moon"></p><small id="h-lunar"></small></div>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#8f87ad;flex:0 0 auto"><path d="m9 6 6 6-6 6"/></svg>
     </button>
-    <div class="sqs sec">
-      <button class="sq" type="button" onclick="go('today')"><i><span class="ico moon"></span></i><b>Мой день</b></button>
-      <button class="sq" type="button" onclick="go('ask')"><i><span class="ico yes-no"></span></i><b>Свериться</b></button>
-      <button class="sq" type="button" onclick="go('about')"><i><span class="ico person"></span></i><b>Обо мне</b></button>
-      <button class="sq" type="button" onclick="go('around')"><i><span class="ico orbit"></span></i><b>Что вокруг</b></button>
-      <button class="sq" type="button" onclick="go('history')"><i><span class="ico journal"></span></i><b>История</b></button>
+    <div class="sqs">
+      <button class="sq" type="button" onclick="go('today')"><i class="ico moon"></i>Мой день</button>
+      <button class="sq" type="button" onclick="go('ask')"><i class="ico yes-no"></i>Свериться</button>
+      <button class="sq" type="button" onclick="go('about')"><i class="ico person"></i>Обо мне</button>
+      <button class="sq" type="button" onclick="go('around')"><i class="ico orbit"></i>Что вокруг</button>
+      <button class="sq" type="button" onclick="go('history')"><i class="ico journal"></i>История</button>
     </div>
-    <div class="wids">
-      <button class="wid" type="button" onclick="openWidget('invite')"><i class="ico users"></i><b>Позвать подругу</b><span>Бесплатная совместимость по приглашению подруги</span></button>
-      <button class="wid" type="button" onclick="go('history')"><i class="ico star"></i><b>Серия дней</b><span id="h-streak"></span></button>
-      <button class="wid" type="button" onclick="openWidget('week')"><i class="ico calendar"></i><b>Итоги недели</b><span>Недельный отчёт об эмоциях и повторяющихся темах</span></button>
-      <button class="wid" type="button" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b><span>Список того, что хочется, с напоминанием</span></button>
-      <button class="wid stub" type="button" onclick="openStub('С чего начать')"><i class="ico flag"></i><b>С чего начать</b><span>Пока в разработке</span></button>
-      <button class="wid stub" type="button" onclick="openStub('Вопросы и ответы')"><i class="ico question"></i><b>Вопросы и ответы</b><span>Пока в разработке</span></button>
-      <button class="wid stub" type="button" onclick="openStub('Чат')"><i class="ico chat"></i><b>Чат</b><span>Пока в разработке</span></button>
-      <button class="wid stub" type="button" onclick="openStub('Карточки для соцсетей')"><i class="ico share"></i><b>Карточки для соцсетей</b><span>Пока в разработке</span></button>
+    <div class="mini">
+      <button type="button" onclick="openWidget('invite')"><i class="ico users"></i><b>Позвать подругу</b></button>
+      <button type="button" onclick="go('history')"><i class="ico star"></i><b id="h-streak">Серия дней</b></button>
+      <button type="button" onclick="openWidget('week')"><i class="ico calendar"></i><b>Итоги недели</b></button>
+      <button type="button" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b></button>
+      <button type="button" class="stub" onclick="openStub('С чего начать')"><i class="ico flag"></i><b>С чего начать</b></button>
+      <button type="button" class="stub" onclick="openStub('Вопросы и ответы')"><i class="ico question"></i><b>Вопросы и ответы</b></button>
+      <button type="button" class="stub" onclick="openStub('Чат')"><i class="ico chat"></i><b>Чат</b></button>
+      <button type="button" class="stub" onclick="openStub('Карточки для соцсетей')"><i class="ico share"></i><b>Карточки для соцсетей</b></button>
     </div>
     <button class="btn ghost install" id="t-install" onclick="installApp()">✦ Установить на телефон</button>
   </section>
@@ -500,16 +488,6 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   </section>
 </div>
 
-<!-- навигация широкого экрана; на телефоне разделы открываются с главной -->
-<nav class="tabs" id="tabs">
-  <button data-v="home" onclick="go('home')"><span class="ico star"></span>Главная</button>
-  <button data-v="today" onclick="go('today')"><span class="ico moon"></span>Мой день</button>
-  <button data-v="ask" onclick="go('ask')"><span class="ico yes-no"></span>Свериться</button>
-  <button data-v="about" onclick="go('about')"><span class="ico person"></span>Обо мне</button>
-  <button data-v="around" onclick="go('around')"><span class="ico orbit"></span>Что вокруг</button>
-  <button data-v="history" onclick="go('history')"><span class="ico journal"></span>История</button>
-  <button data-v="account" onclick="go('account')" class="tabs-acct"><span class="ico person"></span>Аккаунт</button>
-</nav>
 
 <!-- панели виджетов: openWidget() переносит нужную в обёртку и возвращает обратно -->
 <div id="wg-store" style="display:none">
@@ -656,7 +634,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   }
   function drawAll() { canvases.forEach((cv) => { const keep = phase; if (cv.id === 'moonHello') phase = HELLO_PHASE; draw(cv); phase = keep; }); }
   /* приветствие — это обложка: луна там всегда «фирменная», молодая и золотая; настоящая фаза — на «Сегодня» рядом с подписью */
-  const HELLO_PHASE = 0.42;
+  const HELLO_PHASE = 0.5;                    /* в заголовке луна полная — это буква «о» */
   window.moonSetPhase = function (p) { if (typeof p === 'number' && p >= 0 && p <= 1) phase = p; drawAll(); };
   drawAll();
 })();
@@ -869,7 +847,6 @@ function go(v){
   closeWidget();
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
-  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
   window.scrollTo(0,0);
   if(v==='about') loadAbout();
   if(v==='history') loadHistory();
@@ -941,7 +918,7 @@ function paintHome(){
   $('h-date').textContent='Лунарио · '+dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   const h=new Date().getHours();
   const greet=(h<5?'Доброй ночи':h<12?'Доброе утро':h<18?'Добрый день':'Добрый вечер');
-  $('h-wish').textContent = d.wish ? d.wish+' тебе'+(u.name?', '+u.name:'') : greet+(u.name?', '+u.name:'');
+  $('h-wish').textContent = d.wish ? d.wish+' вам'+(u.name?', '+u.name:'') : greet+(u.name?', '+u.name:'');
   $('h-acct').textContent = (u.name||'').trim().charAt(0).toUpperCase() || '✦';
   $('h-moon').textContent = d.moon + (d.lunar ? ' · ' + ordinal(d.lunar.n) + ' лунный день' : '');
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
@@ -950,7 +927,7 @@ function paintHome(){
 }
 function paintStreak(){
   const n=S.user.streak||0;
-  $('h-streak').textContent = n>0 ? 'Вы с нами уже '+n+' '+plural(n,'день','дня','дней')+' без пропусков' : 'Начать серию';
+  $('h-streak').textContent = n>0 ? 'Серия · '+n+' '+plural(n,'день','дня','дней') : 'Серия дней';
 }
 function bumpStreak(n){ if(n==null) return; S.user.streak=n; paintStreak(); }
 function paintLunar(){
@@ -1537,8 +1514,6 @@ function startApp(){
   try{ if(localStorage.getItem('lun_card_'+S.day.date)){ S.flipped=true; $('t-card').classList.add('flip'); $('t-card').classList.remove('glow'); $('t-open').style.display='none'; $('t-after').style.display='block'; paintCardTile(); } }catch(e){}
 }
 (async function(){
-  const hv=(new URLSearchParams(location.search).get('hello')||'a').replace(/[^abc]/g,'')||'a';
-  document.body.classList.add('hello-'+hv);
   try{
     const r = await api('/me');
     S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=!!r.mailReady;
