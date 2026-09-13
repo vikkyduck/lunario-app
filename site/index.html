@@ -662,7 +662,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   }
 
   function draw(cv) {
-    const letter = cv.id === 'moonHello';        /* луна-буква в заголовке: круг виден целиком, тёмная сторона светлее */
+    const letter = cv.id === 'moonHello';        /* луна-буква в заголовке: без своего ободка — ободком служит буква */
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     /* логический размер (208 или 92) запоминаем при первом рисовании: запись в cv.width меняет и атрибут width,
        и если читать его каждый раз, холст удваивается с каждым кадром, пока GPU не откажет — тогда на месте луны
@@ -688,7 +688,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     ctx.setTransform(sign, 0, 0, 1, px / 2, px / 2);
     /* ночная сторона: та же поверхность в сумерках — рельеф едва читается */
     ctx.drawImage(tex, -px / 2, -px / 2);
-    ctx.fillStyle = letter ? 'rgba(122,110,170,.82)' : 'rgba(26,22,48,.86)';
+    ctx.fillStyle = 'rgba(22,19,42,.86)';               /* ночная сторона — цвет самого неба, сквозь него едва проступает рельеф */
     ctx.beginPath(); ctx.arc(0, 0, Rp, 0, Math.PI * 2); ctx.fill();
     /* освещённая часть с мягким терминатором: маска размывается, если холст умеет фильтры */
     const lit = document.createElement('canvas'); lit.width = lit.height = px;
