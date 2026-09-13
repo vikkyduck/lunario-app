@@ -10,8 +10,8 @@ Environment=HOST=127.0.0.1
 Environment=SITE_DIR=/opt/lunario-app-test/site
 Environment=DATA_DIR=/opt/lunario-app-test/data
 Environment=BASE_PATH=/app-test
-# Секреты те же, что у прода (почта для входа по коду), база — отдельная
-EnvironmentFile=-/opt/lunario-app/.env
+# Свой .env: только почта для входа по коду, без ключей оплаты — со стенда нельзя случайно создать реальный заказ
+EnvironmentFile=-/opt/lunario-app-test/.env
 ExecStart=/usr/bin/node /opt/lunario-app-test/backend/server.mjs
 Restart=on-failure
 RestartSec=3
@@ -19,6 +19,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ReadWritePaths=/opt/lunario-app-test/data
+# Прод-база стенду не видна
+InaccessiblePaths=/opt/lunario-app/data
 
 [Install]
 WantedBy=multi-user.target

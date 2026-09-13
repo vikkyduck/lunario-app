@@ -215,6 +215,60 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
    правило 2.1 — разделы «скоро» и пустые экраны. Поэтому в сборке для App Store
    не показываем платёжное: остаётся только работающее.
    Установка PWA внутри приложения тоже ни к чему. */
+/* ── приветствие ── */
+.hello-lead{font-size:16.5px;line-height:1.6;color:#ded8ee}
+/* ── лента дня: карточки, каждая раскрывается в виджет ── */
+.feed{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:2px 18px 6px;scrollbar-width:none}
+.feed::-webkit-scrollbar{display:none}
+.fcard{flex:0 0 76%;max-width:300px;min-height:134px;scroll-snap-align:start;display:flex;flex-direction:column;gap:7px;padding:16px 17px;
+  border-radius:22px;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);cursor:pointer;text-align:left;transition:transform .16s var(--sp)}
+.fcard:active{transform:scale(.98)}
+.fcard .eyebrow{font-size:10px}
+.fcard b{font-size:16.5px;font-weight:650;color:var(--text);line-height:1.3}
+.fcard p{font-size:14px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.fcard .fc-big{font-size:16px;color:#fff;-webkit-line-clamp:4}
+.fcard .fc-num{font-size:42px;line-height:1;color:var(--gold);flex:0 0 auto}
+/* ── плитки-виджеты ── */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;gap:14px;min-height:112px;padding:14px 13px;border-radius:22px;
+  background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:transform .16s var(--sp)}
+.tile:active{transform:scale(.97)}
+.tile b{font-size:15px;font-weight:650;line-height:1.25}
+.ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}
+.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.star{--m:url(/app/assets/brand/icons/spark.svg)}
+.tile.wide{flex-direction:row;align-items:center;min-height:0;padding:16px 18px;border:0;color:#1c1430;
+  background:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);box-shadow:0 12px 34px rgba(217,184,104,.3)}
+.tile.wide .ico{background:#1c1430;width:34px;height:34px}
+.tile.wide span{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tile.wide b{font-size:17px;font-weight:700}
+.tile.wide small{font-size:13px;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.wide .ico.end{width:22px;height:22px;opacity:.7}
+/* ── «Что вас беспокоит?»: вопрос раскрывается в решения ── */
+.acc{display:grid;gap:8px}
+.acc-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-radius:18px;
+  background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
+.acc-head svg{flex:0 0 auto;color:#8f87ad;transition:transform .25s var(--sp)}
+.acc-item.on .acc-head{border-color:rgba(217,184,104,.45)}
+.acc-item.on .acc-head svg{transform:rotate(180deg);color:var(--gold)}
+.acc-body{display:none;padding:2px 4px 6px}
+.acc-item.on .acc-body{display:block;animation:in .3s var(--sp)}
+.acc-opt{display:flex;align-items:center;gap:12px;width:100%;margin-top:8px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:14.5px;cursor:pointer;text-align:left}
+.acc-opt .ico{width:22px;height:22px}
+.acc-opt.on{background:rgba(217,184,104,.14);border-color:rgba(217,184,104,.5)}
+.acc-res{display:none;margin-top:10px}
+/* ── виджет: на телефоне во весь экран, на широком — панель по центру ── */
+.wg-bg{position:fixed;inset:0;z-index:150;display:none;background:rgba(11,10,20,.8);backdrop-filter:blur(14px)}
+.wg-bg.on{display:block}
+@keyframes wgin{from{opacity:0}to{opacity:1}}
+.wg{position:absolute;inset:0;overflow:auto;padding:calc(16px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom));animation:wgin .3s var(--sp)}
+.wg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.wg-x{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--text);font-size:24px;line-height:1;cursor:pointer;flex:0 0 auto}
+.wg-body{margin-top:22px}
+.w-big{font-size:24px;line-height:1.4;color:#fff;text-align:center;margin-top:28px}
+body.wg-open{overflow:hidden}
+
 /* ── широкий экран (≥900px): навигация слева, две колонки, телефонный столбик не растягиваем ── */
 @media(min-width:900px){
   body.inner{padding-left:220px}
@@ -232,15 +286,19 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
   .view.on{display:grid;grid-template-columns:1fr 1fr;column-gap:36px;align-items:start}
   .view.on>*{min-width:0}
   #v-hello.on,#v-inside.on,#v-login.on,#v-onb.on{display:block;max-width:520px;margin:0 auto}
-  /* Мой день: слева карта и кнопка, справа настроение, настрой и прогноз */
-  #v-today.on{grid-template-areas:"head head" "moon moon" "save save" "ritual mood" "ritual tone" "ritual day" "ios ios"}
-  .t-head{grid-area:head}.t-moonrow{grid-area:moon}#t-save{grid-area:save}.t-ritual{grid-area:ritual}.t-mood{grid-area:mood}.t-tone{grid-area:tone}.t-day{grid-area:day}
+  /* Мой день: лента дня во всю ширину, ниже слева карта и плитки, справа настроение */
+  #v-today.on{grid-template-areas:"head head" "moon moon" "feed feed" "wide mood" "tiles mood" "save save" "ios ios";grid-template-rows:auto auto auto auto 1fr auto auto}
+  .t-head{grid-area:head}.t-moonrow{grid-area:moon}.t-feed{grid-area:feed}.t-wide{grid-area:wide}.t-tiles{grid-area:tiles}.t-mood{grid-area:mood}#t-save{grid-area:save}
   #v-today>.ios-only{grid-area:ios}
-  .t-ritual .btn:not(.sm){max-width:320px;margin-left:auto;margin-right:auto}
+  .t-feed .feed{display:grid;grid-template-columns:1fr 1fr;gap:12px;overflow:visible;margin:0;padding:0}
+  .t-feed .fcard{flex:0 0 auto;max-width:none}
+  .t-tiles{margin-top:16px}
   .daycard{width:210px;height:334px}
-  /* Свериться: слева режим и «что беспокоит», справа вопрос и ответ */
-  #v-ask.on{grid-template-areas:"eb form" "h1 form" "modes form" "worry form";grid-template-rows:auto auto auto 1fr}
-  .a-eb{grid-area:eb}.a-h1{grid-area:h1}.a-modes{grid-area:modes}.a-worry{grid-area:worry}.a-right{grid-area:form}.a-form{margin-top:0}
+  .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:88vh;border-radius:28px;
+    background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
+  /* Свериться: слева вопросы, которые раскрываются в решения, справа свой вопрос и ответ */
+  #v-ask.on{grid-template-areas:"eb form" "h1 form" "worry form";grid-template-rows:auto auto 1fr}
+  .a-eb{grid-area:eb}.a-h1{grid-area:h1}.a-worry{grid-area:worry}.a-right{grid-area:form}.a-form{margin-top:0}
   /* Обо мне: слева человек и вход, справа нумерология */
   #v-about.on{grid-template-areas:"head num" "auth num" ". num";grid-template-rows:auto auto 1fr}
   .m-head{grid-area:head}.m-numsec{grid-area:num;margin-top:0}.m-authsec{grid-area:auth}
@@ -274,19 +332,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div class="hero-mark"><div class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></div></div>
     <div style="text-align:center">
       <h1 class="wordmark" style="margin-top:10px">Лунарио</h1>
-      <p style="margin-top:12px">Ежедневный ритуал спокойствия: подсказка, опора и второе мнение — когда вы сами знаете ответ, но хотите его услышать.</p>
+      <p class="hello-lead" style="margin-top:16px">Здесь можно выдохнуть, свериться с собой и найти опору. Лунарио подсвечивает ответы, которые вы и так в глубине души знаете.</p>
+      <p class="hello-lead" style="margin-top:12px">Укажите имя, дату и место рождения, и в приложении появится личный гороскоп и персональное предсказание на этот год</p>
     </div>
 
-    <div class="bans">
-      <div class="ban"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="m12 8 1.2 2.5 2.8.4-2 2 .5 2.7L12 14.3 9.5 15.6l.5-2.7-2-2 2.8-.4L12 8Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><div><b>Карта дня</b><p>Утро начинается с одной карты: что она значит и что с этим делать сегодня.</p></div></div>
-      <div class="ban"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H9l-5 4V6.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="14.6" r=".9" fill="currentColor"/></svg><div><b>Ответ на ваш вопрос</b><p>«Да / Нет», руна или расклад — на конкретный вопрос, а не общий прогноз для всех.</p></div></div>
-      <div class="ban"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 20V6a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h11" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M9 9h5M9 12.5h3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><div><b>Приложение вас помнит</b><p>Дневник, настроение и серия дней: видно, как менялись состояния и о чём вы спрашивали.</p></div></div>
-    </div>
-
-    <p style="text-align:center;margin-top:20px;font-size:13.5px">Бесплатно. Записи хранятся в России и видны только вам.</p>
-
-    <button class="btn" style="margin-top:18px" onclick="openTour()">Посмотреть, что внутри</button>
-    <button class="btn ghost" style="margin-top:10px" onclick="openForm()">Сразу открыть мой день</button>
+    <button class="btn" style="margin-top:28px" onclick="openForm()">Открыть мой день</button>
+    <p class="linkline" style="margin-top:14px"><button type="button" onclick="openTour()">Посмотреть без анкеты</button></p>
+    <p style="text-align:center;margin-top:22px;font-size:13px">Бесплатно. Записи хранятся в России и видны только вам.</p>
     <p class="linkline" id="hello-login" style="display:none">Уже пользовались Лунарио? <button type="button" onclick="openLogin()">Войти по почте</button></p>
   </section>
 
@@ -321,7 +373,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 
   <!-- ОНБОРДИНГ -->
   <section class="view" id="v-onb">
-    <button class="back" onclick="go('inside')">← Что внутри</button>
+    <button class="back" onclick="backFromTour()">← Назад</button>
     <div style="text-align:center;padding:26px 0 10px">
       <img src="/app/assets/brand/logo-mark.svg" width="84" height="84" alt="" style="filter:drop-shadow(0 6px 26px rgba(217,184,104,.35))">
       <h1 class="wordmark" style="margin-top:12px">Лунарио</h1>
@@ -364,31 +416,29 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <span class="pill" id="t-streak">✦ 1 день</span>
     </div>
     <div class="row t-moonrow" style="margin-top:12px;gap:12px"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><p class="grow" id="t-moon"></p></div>
-    <div class="card sec" id="t-save" style="display:none;margin-top:14px;padding:16px 18px">
-      <p style="font-size:14px;line-height:1.55;margin:0;color:#ded8ee">Пока ваши записи есть только на этом устройстве. Оставьте почту — и дневник, ответы и серия дней откроются на любом другом.</p>
-      <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="go('about');setTimeout(()=>{const e=document.getElementById('m-auth');if(e)e.scrollIntoView({block:'center'});},250)">Оставить почту</button>
+
+    <!-- лента дня: каждая карточка раскрывается в виджет -->
+    <div class="sec t-feed">
+      <span class="eyebrow" style="margin-bottom:11px">Ваш день</span>
+      <div class="feed">
+        <div class="fcard" role="button" tabindex="0" onclick="openWidget('day')"><span class="eyebrow">Прогноз дня</span><b id="fc-title"></b><p id="fc-text"></p></div>
+        <div class="fcard" role="button" tabindex="0" onclick="openWidget('tone')"><span class="eyebrow">Настрой дня</span><p class="serif fc-big" id="fc-aff"></p></div>
+        <div class="fcard" role="button" tabindex="0" onclick="openWidget('q')"><span class="eyebrow">Вопрос дня</span><p class="fc-big" id="fc-q"></p></div>
+        <div class="fcard" role="button" tabindex="0" onclick="openWidget('num')" id="fc-numcard"><span class="eyebrow">Число дня</span><div class="row" style="gap:12px;align-items:flex-start"><b class="serif fc-num" id="fc-num"></b><p id="fc-numtext"></p></div></div>
+      </div>
     </div>
 
-    <div class="sec t-ritual">
-      <span class="eyebrow" style="text-align:center">Ваш ритуал · карта дня</span>
-      <div class="daycard glow" id="t-card" onclick="flipCard()">
-        <div class="dc-in">
-          <div class="dc-f dc-back">
-            <img src="/app/assets/brand/logo-mark.svg" width="88" height="88" alt="" style="filter:drop-shadow(0 6px 22px rgba(217,184,104,.35))">
-          </div>
-          <div class="dc-f dc-front">
-            <div>
-              <div class="serif" id="c-name" style="font-size:21px;color:var(--gold)"></div>
-              <p style="font-size:13.5px;margin-top:10px" id="c-mean"></p>
-            </div>
-          </div>
-        </div>
+    <div class="sec t-tiles">
+      <span class="eyebrow" style="margin-bottom:11px">Свериться</span>
+      <div class="tiles">
+        <button class="tile" type="button" onclick="askQuick('yesno')"><i class="ico yes-no"></i><b>Да / Нет</b></button>
+        <button class="tile" type="button" onclick="askQuick('rune')"><i class="ico rune"></i><b>Руна</b></button>
+        <button class="tile" type="button" onclick="askQuick('spread')"><i class="ico tarot"></i><b>Три карты</b></button>
       </div>
-      <div id="t-after" style="display:none;margin-top:14px;text-align:center">
-        <p id="c-advice" style="color:#ded8ee"></p>
-        <button class="btn ghost sm" style="margin:12px auto 0" onclick="track('share_card');share()">Поделиться карточкой</button>
-      </div>
-      <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
+    </div>
+
+    <div class="sec t-wide">
+      <button class="tile wide" type="button" onclick="openWidget('card')"><i class="ico card-day"></i><span><b>Карта дня</b><small id="t-cardsub">Открыть карту дня</small></span><i class="ico star end"></i></button>
     </div>
 
     <div class="sec t-mood">
@@ -397,28 +447,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <p style="font-size:13px;margin-top:9px" id="t-moodstat"></p>
     </div>
 
+    <div class="card sec" id="t-save" style="display:none;padding:16px 18px">
+      <p style="font-size:14px;line-height:1.55;margin:0;color:#ded8ee">Пока ваши записи есть только на этом устройстве. Оставьте почту — и дневник, ответы и серия дней откроются на любом другом.</p>
+      <button class="btn ghost sm" style="width:100%;margin-top:12px" onclick="go('about');setTimeout(()=>{const e=document.getElementById('m-auth');if(e)e.scrollIntoView({block:'center'});},250)">Оставить почту</button>
+    </div>
+
     <!-- блок «Что будет дальше» из веб-версии убран 12.09.2026; путь к списку возможностей остаётся только в iOS-оболочке -->
     <button class="btn ghost sm ios-only" style="width:100%;margin-top:26px" onclick="openTour()">Что внутри Лунарио</button>
-
-    <div class="sec t-tone">
-      <span class="eyebrow" style="margin-bottom:11px">Настрой дня</span>
-      <div class="card">
-        <p class="serif" style="font-size:19px;line-height:1.45;color:#fff" id="t-aff"></p>
-        <div style="height:1px;background:var(--line);margin:15px 0"></div>
-        <span class="eyebrow" style="margin-bottom:6px">Вопрос дня</span>
-        <p id="t-q" style="color:#ded8ee"></p>
-        <button class="btn ghost sm" style="margin-top:13px" onclick="go('history');setTimeout(()=>$('j-text').focus(),300)">Ответить в дневнике</button>
-      </div>
-    </div>
-
-    <div class="sec t-day">
-      <span class="eyebrow" style="margin-bottom:11px">Ваш день</span>
-      <div class="card">
-        <h2 id="f-title"></h2>
-        <p style="margin-top:9px" id="f-text"></p>
-        <div id="f-bars" style="margin-top:14px"></div>
-      </div>
-    </div>
     <button class="btn ghost install" id="t-install" onclick="installApp()">✦ Установить на телефон</button>
   </section>
 
@@ -426,14 +461,19 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <section class="view" id="v-ask">
     <span class="eyebrow a-eb">Ответ приходит на конкретный вопрос</span>
     <h1 class="a-h1" style="margin-top:5px">Свериться</h1>
-    <div class="chips sec a-modes" style="margin-top:16px">
-      <button class="chip on" data-mode="yesno" onclick="setMode('yesno')">Да / Нет</button>
-      <button class="chip" data-mode="rune" onclick="setMode('rune')">Руна</button>
-      <button class="chip" data-mode="spread" onclick="setMode('spread')">Три карты</button>
+
+    <div class="sec a-worry">
+      <span class="eyebrow" style="margin-bottom:11px">Что вас сейчас беспокоит?</span>
+      <div class="acc" id="t-worry"></div>
     </div>
 
     <div class="a-right">
     <div class="card sec a-form">
+      <div class="chips" style="margin-bottom:14px">
+        <button class="chip on" data-mode="yesno" onclick="setMode('yesno')">Да / Нет</button>
+        <button class="chip" data-mode="rune" onclick="setMode('rune')">Руна</button>
+        <button class="chip" data-mode="spread" onclick="setMode('spread')">Три карты</button>
+      </div>
       <div class="field"><label id="a-label">О чём спрашиваете</label>
         <textarea id="a-q" placeholder="Стоит ли мне соглашаться на новую роль?" maxlength="300"></textarea>
       </div>
@@ -443,14 +483,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </div>
     <div id="a-result" class="sec" style="display:none"></div>
     </div>
-
-    <div class="sec a-worry">
-      <span class="eyebrow" style="margin-bottom:11px">Что вас сейчас беспокоит?</span>
-      <div class="chips flow" id="t-worry"></div>
-    </div>
   </section>
 
-  <!-- Я -->
   <section class="view" id="v-about">
     <div class="m-head">
     <span class="eyebrow" id="m-sign"></span>
@@ -568,6 +602,49 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <button data-v="around" onclick="go('around')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="12" r="4.5"/><circle cx="15.5" cy="12" r="4.5"/><path d="M12 8.6a4.5 4.5 0 0 1 0 6.8 4.5 4.5 0 0 1 0-6.8Z" stroke-width="1.3"/></svg>Что вокруг</button>
   <button data-v="history" onclick="go('history')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15.5H6.5A1.5 1.5 0 0 0 5 20Z"/><path d="M5 18.5V4.5M19 18.5V21H6.5"/><path d="M9 8h6M9 11.5h4" opacity=".8"/></svg>История</button>
 </nav>
+<!-- панели виджетов живут здесь, openWidget() переносит нужную в обёртку и возвращает обратно -->
+<div id="wg-store" style="display:none">
+  <div class="wpane" id="w-card">
+    <div class="daycard glow" id="t-card" onclick="flipCard()">
+      <div class="dc-in">
+        <div class="dc-f dc-back">
+          <img src="/app/assets/brand/logo-mark.svg" width="88" height="88" alt="" style="filter:drop-shadow(0 6px 22px rgba(217,184,104,.35))">
+        </div>
+        <div class="dc-f dc-front">
+          <div>
+            <div class="serif" id="c-name" style="font-size:21px;color:var(--gold)"></div>
+            <p style="font-size:13.5px;margin-top:10px" id="c-mean"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="t-after" style="display:none;margin-top:14px;text-align:center">
+      <p id="c-advice" style="color:#ded8ee"></p>
+      <button class="btn ghost sm" style="margin:12px auto 0" onclick="track('share_card');share()">Поделиться карточкой</button>
+    </div>
+    <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
+  </div>
+  <div class="wpane" id="w-day">
+    <h2 id="f-title"></h2>
+    <p style="margin-top:9px" id="f-text"></p>
+    <div id="f-bars" style="margin-top:14px"></div>
+  </div>
+  <div class="wpane" id="w-tone"><p class="serif w-big" id="t-aff"></p></div>
+  <div class="wpane" id="w-q">
+    <p class="w-big" id="t-q"></p>
+    <button class="btn ghost sm" style="margin:26px auto 0" onclick="closeWidget();go('history');setTimeout(()=>$('j-text').focus(),300)">Ответить в дневнике</button>
+  </div>
+  <div class="wpane" id="w-num"><div class="big" style="font-size:72px;margin-top:18px" id="w-num-n"></div><p class="w-big" style="margin-top:14px;font-size:19px" id="w-num-text"></p></div>
+</div>
+<div class="wg-bg" id="wg" onclick="closeWidget(event)">
+  <div class="wg" role="dialog" aria-modal="true" aria-labelledby="wg-title">
+    <div class="wg-head">
+      <div><span class="eyebrow" id="wg-eb"></span><h2 id="wg-title" style="margin-top:5px"></h2></div>
+      <button class="wg-x" type="button" onclick="closeWidget()" aria-label="Закрыть">×</button>
+    </div>
+    <div class="wg-body" id="wg-body"></div>
+  </div>
+</div>
 <div class="sheet-bg" id="pw-bg" onclick="closePaywall(event)">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pw-title">
     <div class="sheet-grip"></div>
@@ -966,6 +1043,7 @@ function hap(p){
 const esc = (s) => String(s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
 const INNER_VIEWS=['today','ask','about','history','around'];
 function go(v){
+  closeWidget();
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
@@ -1015,10 +1093,53 @@ const WORRIES = [
   ['Как пройдут переговоры?', 'rune'],
   ['Что важно понять про отношения?', 'rune'],
 ];
-function renderHub(){
+
   const w = $('t-worry');
-  if (w) w.innerHTML = WORRIES.map(([t, m]) => `<button class="chip" onclick="askQuick('${m}', this.textContent)">${t}</button>`).join('');
+/* ── «Что вас беспокоит?»: вопрос раскрывается в три способа получить ответ, ответ приходит туда же ── */
+const ASK_OPTS = [['yesno','yes-no','Да / Нет'],['rune','rune','Руна'],['spread','tarot','Три карты']];
+function renderHub(){
+  const w = $('t-worry'); if (!w) return;
+  w.innerHTML = WORRIES.map(([t], i) => `<div class="acc-item" id="wa-${i}">
+    <button class="acc-head" type="button" onclick="toggleWorry(${i})"><span>${t}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="acc-body">${ASK_OPTS.map(([m, ic, l]) => `<button class="acc-opt" type="button" onclick="worryAsk(${i},'${m}',this)"><i class="ico ${ic}"></i><span>${l}</span></button>`).join('')}<div class="acc-res" id="wr-${i}"></div></div>
+  </div>`).join('');
 }
+function toggleWorry(i){
+  const it = $('wa-'+i), open = !it.classList.contains('on');
+  document.querySelectorAll('.acc-item.on').forEach(x => x.classList.remove('on'));
+  if (open) { it.classList.add('on'); hap(9); setTimeout(() => it.scrollIntoView({block:'nearest'}), 60); }
+}
+async function worryAsk(i, mode, btn){
+  const q = WORRIES[i][0], out = $('wr-'+i);
+  document.querySelectorAll('#wa-'+i+' .acc-opt').forEach(b => b.classList.toggle('on', b === btn));
+  out.style.display = 'block'; out.innerHTML = '<p class="msg">Смотрим…</p>';
+  track('worry_pick', q);
+  try { await runAsk(mode, q, out, null); }
+  catch (e) { out.innerHTML = `<p class="msg err">${askErrorText(e)}</p>`; }
+}
+
+/* ── виджеты: панель переезжает из хранилища в обёртку и обратно ── */
+const WIDGETS = { card:['Ваш ритуал','Карта дня'], day:['','Прогноз дня'], tone:['','Настрой дня'], q:['','Вопрос дня'], num:['','Число дня'] };
+let wgOpen = null;
+function openWidget(k){
+  const w = WIDGETS[k], pane = $('w-'+k); if (!w || !pane) return;
+  closeWidget();
+  $('wg-eb').textContent = w[0] || $('t-date').textContent; $('wg-title').textContent = w[1];
+  $('wg-body').appendChild(pane); wgOpen = k;
+  $('wg').classList.add('on'); document.body.classList.add('wg-open');
+  document.querySelector('#wg .wg').scrollTop = 0; hap(9);
+}
+function closeWidget(e){
+  if (e && e.target !== $('wg')) return;
+  if (!wgOpen) return;
+  $('wg-store').appendChild($('w-'+wgOpen)); wgOpen = null;
+  $('wg').classList.remove('on'); document.body.classList.remove('wg-open');
+}
+function paintCardTile(){ const e = $('t-cardsub'); if (e && S.day) e.textContent = S.flipped ? S.day.card.name : 'Открыть карту дня'; }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeWidget();
+  if (e.key === 'Enter' && e.target && e.target.matches && e.target.matches('[role=button]')) e.target.click();
+});
 
 /* ── подсказки городов: координаты подставляются по названию ── */
 function attachCity(inputId, listId, geoId){
@@ -1096,6 +1217,11 @@ function paintToday(){
   $('c-name').textContent=d.card.name; $('c-mean').textContent=d.card.meaning; $('c-advice').textContent=d.card.advice;
   $('f-title').textContent=d.forecast.title; $('f-text').textContent=d.forecast.text;
   $('t-aff').textContent='«'+d.affirmation+'»'; $('t-q').textContent=d.question;
+  $('fc-title').textContent=d.forecast.title; $('fc-text').textContent=d.forecast.text;
+  $('fc-aff').textContent='«'+d.affirmation+'»'; $('fc-q').textContent=d.question;
+  paintCardTile();
+  api('/numerology').then(n=>{ S.num=n; $('fc-num').textContent=n.day.n; $('fc-numtext').textContent=n.day.text; $('w-num-n').textContent=n.day.n; $('w-num-text').textContent=n.day.text; })
+    .catch(()=>{ $('fc-numcard').style.display='none'; });
   $('f-bars').innerHTML=Object.entries({Работа:'work',Отношения:'love',Здоровье:'health',Финансы:'money'})
     .map(([l,k])=>`<div class="barrow"><span class="l">${l}</span><div class="bar"><i data-w="${d.forecast.bars[k]}"></i></div><span class="v">${d.forecast.bars[k]}%</span></div>`).join('');
   setTimeout(()=>document.querySelectorAll('#f-bars .bar i').forEach(b=>b.style.width=b.dataset.w+'%'),120);
@@ -1130,7 +1256,7 @@ function openCard(){
   if(S.flipped) return;
   S.flipped=true; hap([0,12]);
   $('t-card').classList.add('flip'); $('t-card').classList.remove('glow');
-  $('t-open').style.display='none';
+  $('t-open').style.display='none'; paintCardTile();
   setTimeout(()=>{ $('t-after').style.display='block'; $('t-after').classList.add('rise'); },500);
   api('/ritual',{method:'POST'}).then(r=>bumpStreak(r.streak)).catch(()=>{});
   try{ localStorage.setItem('lun_card_'+S.day.date,'1'); }catch(e){}
@@ -1158,38 +1284,41 @@ function checkQ(){
   $('a-go').disabled=!ok;
   $('a-go').textContent=ok?(S.mode==='spread'?'Разложить карты':S.mode==='rune'?'Вытянуть руну':'Спросить карту'):(v.length?'Допишите вопрос':'Напишите вопрос');
 }
+async function runAsk(mode, q, out, hint){
+  if(mode==='spread'){
+    track('ask_spread');
+    const r=await api('/spread',{method:'POST',body:JSON.stringify({question:q})});
+    S.limits.spreadsLeft=r.left; bumpStreak(r.streak);
+    out.innerHTML=`<p style="font-style:italic;text-align:center;font-size:14px">«${esc(q)}»</p>`+
+      r.cards.map((c,i)=>`<div class="card rise" style="--i:${i}"><span class="eyebrow" style="margin-bottom:5px">${c.pos} · ${c.name}</span><p>${c.text}</p></div>`).join('');
+    if(hint) hint.textContent=`Разбор расклада: осталось ${r.left} из 2 на сегодня.`;
+  } else {
+    track(mode==='rune'?'ask_rune':'ask_yesno');
+    const r=await api('/ask',{method:'POST',body:JSON.stringify({question:q,kind:mode})});
+    bumpStreak(r.streak);
+    const rune=r.kind==='rune';
+    out.innerHTML=`<div class="card rise" style="text-align:center">
+      <p style="font-style:italic;font-size:14px">«${esc(q)}»</p>
+      ${rune?`<svg width="66" height="84" viewBox="0 0 32 32" fill="none" style="margin:14px auto 6px;display:block"><path d="${r.path}" stroke="#e9c77e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+      <div class="${rune?'serif':'big'}" style="${rune?'font-size:23px;color:var(--gold);margin-top:8px':''}">${r.title}</div>
+      <p style="margin-top:10px">${r.body}</p></div>`+
+      (r.memory?`<div class="card rise" style="--i:1;border-color:rgba(217,184,104,.35)"><span class="eyebrow" style="color:var(--gold);margin-bottom:6px">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b style="color:#fff">«${r.memory.title}»</b>, сегодня — <b style="color:#fff">«${r.title}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>`:'');
+  }
+  out.style.display='block'; hap([0,14,45,22]);
+}
+function askErrorText(e){
+  if(e.code==='limit') { track('spread_limit'); showPaywall('unlimited'); }
+  return e.code==='limit' ? 'Разборы на сегодня закончились. Карта дня, «Да/Нет» и руны остаются без ограничений.'
+    : e.code==='short_question' ? 'Допишите вопрос — ответ приходит на конкретный, а не на общий.'
+    : 'Не получилось. Попробуйте ещё раз.';
+}
 $('a-go').onclick=async()=>{
   const q=$('a-q').value.trim(), msg=$('a-msg'); msg.className='msg'; msg.textContent='';
   $('a-go').disabled=true; $('a-go').textContent='Смотрим…';
   try{
-    if(S.mode==='spread'){
-      track('ask_spread');
-      const r=await api('/spread',{method:'POST',body:JSON.stringify({question:q})});
-      S.limits.spreadsLeft=r.left; bumpStreak(r.streak);
-      $('a-result').innerHTML=`<p style="font-style:italic;text-align:center;font-size:14px">«${esc(q)}»</p>`+
-        r.cards.map((c,i)=>`<div class="card rise" style="--i:${i}"><span class="eyebrow" style="margin-bottom:5px">${c.pos} · ${c.name}</span><p>${c.text}</p></div>`).join('');
-      $('a-hint').textContent=`Разбор расклада: осталось ${r.left} из 2 на сегодня.`;
-    } else {
-      track(S.mode==='rune'?'ask_rune':'ask_yesno');
-      const r=await api('/ask',{method:'POST',body:JSON.stringify({question:q,kind:S.mode})});
-      bumpStreak(r.streak);
-      const rune=r.kind==='rune';
-      $('a-result').innerHTML=`<div class="card rise" style="text-align:center">
-        <p style="font-style:italic;font-size:14px">«${esc(q)}»</p>
-        ${rune?`<svg width="66" height="84" viewBox="0 0 32 32" fill="none" style="margin:14px auto 6px;display:block"><path d="${r.path}" stroke="#e9c77e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
-        <div class="${rune?'serif':'big'}" style="${rune?'font-size:23px;color:var(--gold);margin-top:8px':''}">${r.title}</div>
-        <p style="margin-top:10px">${r.body}</p></div>`+
-        (r.memory?`<div class="card rise" style="--i:1;border-color:rgba(217,184,104,.35)"><span class="eyebrow" style="color:var(--gold);margin-bottom:6px">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b style="color:#fff">«${r.memory.title}»</b>, сегодня — <b style="color:#fff">«${r.title}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>`:'');
-    }
-    $('a-result').style.display='block'; hap([0,14,45,22]);
+    await runAsk(S.mode,q,$('a-result'),$('a-hint'));
     $('a-result').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(e){
-    msg.classList.add('err');
-    if(e.code==='limit') { track('spread_limit'); showPaywall('unlimited'); }
-    msg.textContent = e.code==='limit' ? 'Разборы на сегодня закончились. Карта дня, «Да/Нет» и руны остаются без ограничений.'
-      : e.code==='short_question' ? 'Допишите вопрос — ответ приходит на конкретный, а не на общий.'
-      : 'Не получилось. Попробуйте ещё раз.';
-  }
+  }catch(e){ msg.classList.add('err'); msg.textContent=askErrorText(e); }
   checkQ();
 };
 
@@ -1566,7 +1695,7 @@ async function installApp(){ if(!deferred) return; track('installed'); deferred.
       const pp=$('plus-price'); if(pp) pp.style.display='none';
       const btn=document.querySelector('#v-today [onclick*="showPaywall(\'subscription\')"]'); if(btn) btn.style.display='none';
     }
-    try{ if(localStorage.getItem('lun_card_'+r.day.date)){ S.flipped=true; $('t-card').classList.add('flip'); $('t-card').classList.remove('glow'); $('t-open').style.display='none'; $('t-after').style.display='block'; } }catch(e){}
+    try{ if(localStorage.getItem('lun_card_'+r.day.date)){ S.flipped=true; $('t-card').classList.add('flip'); $('t-card').classList.remove('glow'); $('t-open').style.display='none'; $('t-after').style.display='block'; paintCardTile(); } }catch(e){}
     paintMoodStat(r.moodStats);
   }catch(e){ go('hello'); }
   if('serviceWorker' in navigator) navigator.serviceWorker.register('/app/sw.js').catch(()=>{});
