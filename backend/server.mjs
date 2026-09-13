@@ -12,6 +12,7 @@ import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } 
 import * as C from './content.mjs';
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
 import { sendMail, mailReady, loginMail, verifySmtp } from './mailer.mjs';
+import { lunarDay, lunarPeriodText } from './lunar.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -408,7 +409,17 @@ function dayPack(u, day) {
       : { title: tone[0], text: tone[1], bars: tone[2] },
     affirmation: C.AFFIRMATIONS[hash32(seed + ':aff') % C.AFFIRMATIONS.length],
     question: C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
+    wish: C.WISHES[hash32(seed + ':wish') % C.WISHES.length],
+    lunar: lunarPack(u),
   };
+}
+/* Лунный день считается по месту рождения из анкеты (там же часовой пояс);
+   без координат — Москва, как и всё остальное время в приложении. */
+function lunarPack(u) {
+  try {
+    const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);
+    return ld ? { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || 'Europe/Moscow') } : null;
+  } catch (e) { return null; }
 }
 const topicOf = (q) => (C.TOPICS.find(([, re]) => re.test(q)) || ['self'])[0];
 

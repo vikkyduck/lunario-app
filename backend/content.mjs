@@ -155,6 +155,11 @@ const NUM_DAY_FALLBACK = {
 };
 
 /* ── Настрой дня ── */
+/* Пожелание дня в приветствии: «Вдохновения тебе, Викки». Родительный падеж, без точки. */
+const WISHES_FALLBACK = ['Вдохновения', 'Лёгкого дня', 'Ясности', 'Спокойствия', 'Тепла', 'Сил', 'Радости', 'Лёгкости', 'Смелости',
+  'Нежности к себе', 'Тихой уверенности', 'Внимания к себе', 'Доверия себе', 'Мягкости', 'Любви', 'Терпения', 'Удачи', 'Ясного ума',
+  'Доброго дня', 'Хороших новостей', 'Отдыха', 'Опоры', 'Точных решений', 'Свободы', 'Благодарности', 'Простоты', 'Света', 'Покоя',
+  'Веры в себя', 'Тёплых встреч'];
 const AFFIRMATIONS_FALLBACK = [
   'Я разрешаю себе идти в своём темпе — этого достаточно.',
   'Мне не нужно быть удобной, чтобы меня любили.',
@@ -252,6 +257,7 @@ function build() {
   r.NUM_DAY = nday ? Object.fromEntries(nday.map((c) => [c[0], c[1]])) : NUM_DAY_FALLBACK;
 
   r.AFFIRMATIONS = lines('аффирмации.txt') || AFFIRMATIONS_FALLBACK;
+  r.WISHES = lines('пожелания.txt') || WISHES_FALLBACK;
   r.DAY_QUESTIONS = lines('вопросы-дня.txt') || DAY_QUESTIONS_FALLBACK;
 
   const yn = rows('ответы-да-нет.txt', 4);
@@ -268,6 +274,7 @@ export const SIGNS = new Proxy([], { get: (_, k) => Reflect.get(data.SIGNS, k) }
 export const DAY_TONES = new Proxy([], { get: (_, k) => Reflect.get(data.DAY_TONES, k) });
 export const RUNES = new Proxy([], { get: (_, k) => Reflect.get(data.RUNES, k) });
 export const AFFIRMATIONS = new Proxy([], { get: (_, k) => Reflect.get(data.AFFIRMATIONS, k) });
+export const WISHES = new Proxy([], { get: (_, k) => Reflect.get(data.WISHES, k) });
 export const DAY_QUESTIONS = new Proxy([], { get: (_, k) => Reflect.get(data.DAY_QUESTIONS, k) });
 export const YN_VERDICTS = new Proxy([], { get: (_, k) => Reflect.get(data.YN_VERDICTS, k) });
 export const TOPICS = new Proxy([], { get: (_, k) => Reflect.get(data.TOPICS, k) });
