@@ -191,16 +191,16 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
 #v-hello .trust{text-align:center;margin-top:18px;font-size:13px}
 /* ── главная: один экран, без прокрутки — квадраты по центру, мелкое внизу ── */
 #v-home.on{display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
-.sqs{flex:1;display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-content:center;margin-top:18px}
-.sq{grid-column:span 2;aspect-ratio:1/1.18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;
+.sqs{flex:1;min-height:0;display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-content:center;margin-top:16px}
+.sq{grid-column:span 2;aspect-ratio:1/1.18;max-height:calc((100dvh - 420px)/2);width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;
   border-radius:24px;background:var(--glass-bg);border:1px solid rgba(217,184,104,.36);
   box-shadow:var(--glass-shadow),0 14px 36px -18px rgba(217,184,104,.45);color:var(--text);font:inherit;font-size:15px;font-weight:650;line-height:1.15;text-align:center;
   padding:8px 4px;cursor:pointer;transition:transform .16s var(--sp)}
 .sq:nth-child(4){grid-column:2/span 2}.sq:nth-child(5){grid-column:4/span 2}
 .sq:active{transform:scale(.95)}
 .sq .ico{width:42px;height:42px}
-.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:20px}
-.mini button{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 3px 10px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.mini button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 3px 8px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);
   color:var(--muted);font:inherit;font-size:10.5px;line-height:1.2;text-align:center;cursor:pointer}
 .mini button .ico{width:22px;height:22px}
 .mini button.stub .ico{background:#8f87ad}
@@ -261,7 +261,8 @@ body.wg-open{overflow:hidden}
 /* ── широкий экран (≥900px): тот же телефонный сценарий в столбике пошире, виджеты — панелью по центру ── */
 @media(min-width:900px){
   body.inner .wrap{max-width:760px;padding:36px 40px 56px}
-  #v-home.on,#v-hello.on{max-width:560px;margin:0 auto}
+  #v-home.on,#v-hello.on{max-width:520px;margin:0 auto;min-height:calc(100dvh - 92px)}
+  .sqs{max-width:430px;width:100%;margin-left:auto;margin-right:auto}
   #v-onb.on,#v-login.on,#v-nodemo.on{max-width:520px;margin:0 auto}
   .chip:hover{border-color:rgba(217,184,104,.45)}
   .btn.ghost:hover{background:rgba(255,255,255,.1)}
@@ -395,7 +396,6 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button type="button" class="stub" onclick="openStub('Чат')"><i class="ico chat"></i><b>Чат</b></button>
       <button type="button" class="stub" onclick="openStub('Карточки для соцсетей')"><i class="ico share"></i><b>Карточки для соцсетей</b></button>
     </div>
-    <button class="btn ghost install" id="t-install" onclick="installApp()">✦ Установить на телефон</button>
   </section>
 
   <!-- МОЙ ДЕНЬ: ежедневные ритуалы -->
@@ -480,6 +480,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="wid" type="button" onclick="openWidget('remind')"><i class="ico bell"></i><b>Напоминание</b><span>Одно короткое сообщение утром: карта дня готова</span></button>
     </div>
     <div class="rows">
+      <button class="rowbtn" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i>Установить на телефон</button>
       <button class="rowbtn" type="button" onclick="logout()"><i class="ico exit"></i>Выйти на этом устройстве</button>
       <button class="rowbtn" type="button" onclick="wipe('data')"><i class="ico list"></i>Очистить историю</button>
       <button class="rowbtn warn" type="button" onclick="wipe('account')"><i class="ico exit"></i>Удалить аккаунт</button>
