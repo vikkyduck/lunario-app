@@ -599,12 +599,17 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   let phase = 0.42;                        /* пока данных нет — молодая растущая луна */
 
   function draw(cv) {
-    const letter = cv.id === 'moonHello';        /* луна-буква в заголовке: фаза настоящая, но круг виден целиком */
+    const letter = cv.id === 'moonHello';        /* луна-буква в заголовке: круг виден целиком, тёмная сторона светлее */
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const S = cv.getAttribute('width') | 0;           /* внутренняя система координат: 208 или 92 */
-    cv.width = S * dpr; cv.height = S * dpr;
+    /* логический размер (208 или 92) запоминаем при первом рисовании: запись в cv.width меняет и атрибут width,
+       и если читать его каждый раз, холст удваивается с каждым кадром, пока GPU не откажет — тогда на месте луны
+       Chrome рисует серый квадрат «сломанного холста» */
+    if (!cv.dataset.s) cv.dataset.s = cv.getAttribute('width');
+    const S = +cv.dataset.s;
+    if (cv.width !== S * dpr || cv.height !== S * dpr) { cv.width = S * dpr; cv.height = S * dpr; }
     const ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
+    if (!ctx || (ctx.isContextLost && ctx.isContextLost())) return;   /* контекст потерян — дорисуем по contextrestored */
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const cx = S / 2, cy = S / 2, R = S * 0.34;
     const p = phase * Math.PI * 2, c = Math.cos(p), waxing = phase < 0.5;
 
@@ -656,6 +661,14 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     })(0);
   }
   window.moonSetPhase = function (p) { if (typeof p === 'number' && p >= 0 && p <= 1) phase = p; drawAll(); };
+  /* Chrome в фоне «усыпляет» холсты и может потерять их 2D-контекст; без обработчика на месте луны
+     остаётся серый квадрат с «сломанной картинкой». Просим контекст обратно и рисуем заново. */
+  canvases.forEach((cv) => {
+    cv.addEventListener('contextlost', (e) => e.preventDefault());
+    cv.addEventListener('contextrestored', () => draw(cv));
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) drawAll(); });
+  window.addEventListener('pageshow', drawAll);
   drawAll();
 })();
 </script>
@@ -667,6 +680,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   if (!cv || !cv.getContext) return;
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  cv.addEventListener('contextlost', (e) => e.preventDefault());
+  cv.addEventListener('contextrestored', () => build());
   let W = 0, H = 0, dpr = 1, figs = [], t0 = performance.now(), frameNo = 0;
   let meteors = [], nextMeteor = 6 + (performance.now() % 6);
 
