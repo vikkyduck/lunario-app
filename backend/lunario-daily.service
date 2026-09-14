@@ -4,5 +4,6 @@ Description=Лунарио — напоминания по функциям (к�
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/lunario-app
+Environment=CONTENT_DIR=/opt/lunario-content
 EnvironmentFile=-/opt/lunario-app/.env
 ExecStart=/usr/bin/node /opt/lunario-app/backend/send-daily.mjs

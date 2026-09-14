@@ -10,6 +10,8 @@ Environment=HOST=127.0.0.1
 Environment=SITE_DIR=/opt/lunario-app-test/site
 Environment=DATA_DIR=/opt/lunario-app-test/data
 Environment=BASE_PATH=/app-test
+# тексты и картинки общие с продом, но стенду они только на чтение
+Environment=CONTENT_DIR=/opt/lunario-content
 # Свой .env: только почта для входа по коду, без ключей оплаты — со стенда нельзя случайно создать реальный заказ
 EnvironmentFile=-/opt/lunario-app-test/.env
 ExecStart=/usr/bin/node /opt/lunario-app-test/backend/server.mjs

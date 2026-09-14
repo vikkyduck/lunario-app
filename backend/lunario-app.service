@@ -10,6 +10,8 @@ Environment=HOST=127.0.0.1
 Environment=SITE_DIR=/opt/lunario-app/site
 Environment=DATA_DIR=/opt/lunario-app/data
 Environment=BASE_PATH=/app
+# тексты и картинки — отдельно от кода, в git не попадают
+Environment=CONTENT_DIR=/opt/lunario-content
 # Секреты (SMTP) — только на сервере, деплой этот файл не трогает
 EnvironmentFile=-/opt/lunario-app/.env
 ExecStart=/usr/bin/node /opt/lunario-app/backend/server.mjs
@@ -18,7 +20,7 @@ RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/opt/lunario-app/data
+ReadWritePaths=/opt/lunario-app/data /opt/lunario-content
 
 [Install]
 WantedBy=multi-user.target

@@ -2,6 +2,10 @@
 .env
 data/
 *.db
+# тексты и картинки приложения — не код: на сервере это /opt/lunario-content, локально — рабочая копия.
+# В git остаётся только описание формата
+content/*
+!content/ПРОЧТИ-МЕНЯ.txt
 # cities.db собирается сам: node tools/build-cities.mjs (данные GeoNames, CC BY)
 backend/cities.db
 

@@ -11,6 +11,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'content');
+/* Картинки лежат рядом с текстами, в папке картинки/: по-русски для владельца, по-английски в адресе.
+   Приложение отдаёт их по /app/content/<вид>/<файл> — см. маршрут в server.mjs. */
+export const IMAGE_DIRS = { tarot: 'таро', runes: 'руны', year: 'личный-год' };
+const img = (kind, file) => (file ? `/app/content/${kind}/${file}` : '');
 
 /* Читает файл как таблицу: строка = запись, поля разделены «|».
    Пустые строки и строки с # пропускаются — там заметки для человека. */
@@ -126,12 +130,12 @@ const cardFromBook = (e, i) => {
   const f = e.fields, s = e.sections;
   return {
     slug: f['код'] || TAROT_SLUGS[i] || `card${i}`, name: e.name, en: f['англ'] || '', keys: f['ключи'] || '', question: f['вопрос'] || '',
-    today: f['сегодня'] || '', image: f['картинка'] ? `/app/assets/tarot/${f['картинка']}` : '',
+    today: f['сегодня'] || '', image: img('tarot', f['картинка']),
     sections: { image: s['Образ'] || [], spread: s['В раскладе'] || [], state: s['Состояние человека'] || [], shadow: s['Теневая сторона'] || [], advice: s['Совет'] || [] },
   };
 };
 const cardFromFallback = ([name, meaning, advice], i) => ({
-  slug: TAROT_SLUGS[i], name, en: '', keys: '', question: '', today: advice, image: `/app/assets/tarot/${TAROT_SLUGS[i]}.jpg`,
+  slug: TAROT_SLUGS[i], name, en: '', keys: '', question: '', today: advice, image: img('tarot', `${TAROT_SLUGS[i]}.jpg`),
   sections: { image: [meaning], spread: [meaning], state: [], shadow: [], advice: [advice] },
 });
 
@@ -200,12 +204,12 @@ const runeFromBook = (e, i) => {
   const f = e.fields, s = e.sections;
   return {
     slug: f['код'] || `rune${i}`, name: e.name, latin: f['лат'] || '', keyword: f['ключ'] || '', motto: f['образ'] || '', answer: f['ответ'] || '',
-    image: f['картинка'] ? `/app/assets/runes/${f['картинка']}` : '', path: f['знак'] || 'M16 5v22',
+    image: img('runes', f['картинка']), path: f['знак'] || 'M16 5v22',
     sections: { meaning: s['Значение'] || [], advice: s['Совет'] || [], state: s['Состояние человека'] || [], interact: s['Во взаимодействии'] || [] },
   };
 };
 const runeFromFallback = ([name, keyword, path, answer], i) => ({
-  slug: RUNE_FALLBACK_SLUGS[i], name, latin: '', keyword, motto: '', answer, image: `/app/assets/runes/${RUNE_FALLBACK_SLUGS[i]}.jpg`, path,
+  slug: RUNE_FALLBACK_SLUGS[i], name, latin: '', keyword, motto: '', answer, image: img('runes', `${RUNE_FALLBACK_SLUGS[i]}.jpg`), path,
   sections: { meaning: [answer], advice: [], state: [], interact: [] },
 });
 
@@ -316,7 +320,7 @@ const yearFromArticle = (e) => {
   const f = e.fields;
   return {
     n: num(f['число'], 0), planet: f['планета'] || '', energy: f['энергия'] || '', caption: f['подпись'] || '',
-    image: f['картинка'] ? `/app/assets/year/${f['картинка']}` : '', blocks: e.sections['Описание'] || [],
+    image: img('year', f['картинка']), blocks: e.sections['Описание'] || [],
   };
 };
 const NUM_DAY_FALLBACK = {

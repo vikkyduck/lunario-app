@@ -3,16 +3,17 @@
 # Своя папка /opt/lunario-app и свой порт 5031: с лендингом не пересекается.
 set -euo pipefail
 SERVER="${SERVER_USER:-root}@${SERVER_HOST:-5.129.198.180}"
-echo "==> site/, backend/ и content/ → /opt/lunario-app"
-ssh "$SERVER" 'mkdir -p /opt/lunario-app/{site,backend,data,content}'
+echo "==> site/ и backend/ → /opt/lunario-app"
+ssh "$SERVER" 'mkdir -p /opt/lunario-app/{site,backend,data} /opt/lunario-content/картинки'
 rsync -az --delete site/ "$SERVER:/opt/lunario-app/site/"
 rsync -az --delete backend/ "$SERVER:/opt/lunario-app/backend/"
-# тексты правит владелец продукта — они едут вместе с кодом
-rsync -az --delete content/ "$SERVER:/opt/lunario-app/content/"
+# тексты и картинки — не код: они живут в /opt/lunario-content и выкладываются отдельно, ./обновить-тексты.sh
 echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app/backend/lunario-app.service /etc/systemd/system/lunario-app.service \
   && install -m644 /opt/lunario-app/backend/lunario-daily.service /etc/systemd/system/lunario-daily.service \
   && install -m644 /opt/lunario-app/backend/lunario-daily.timer /etc/systemd/system/lunario-daily.timer \
+  && install -m644 /dev/stdin /etc/cron.d/lunario-app-backup <<< "40 3 * * * root /opt/lunario-app/backend/lunario-app-backup.sh" \
+  && chmod 755 /opt/lunario-app/backend/lunario-app-backup.sh \
   && systemctl daemon-reload && systemctl enable lunario-app >/dev/null \
   && systemctl enable --now lunario-daily.timer >/dev/null && systemctl restart lunario-daily.timer \
   && systemctl restart lunario-app && sleep 1 \

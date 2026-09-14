@@ -10,7 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { vapidKeys } from './push.mjs';
 import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
 import * as C from './content.mjs';
-import { CONTENT_DIR } from './content.mjs';
+import { CONTENT_DIR, IMAGE_DIRS } from './content.mjs';
 const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
   const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
   const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;
@@ -1356,6 +1356,17 @@ const server = createServer(async (req, res) => {
     }
 
     /* ── статика ── */
+    /* картинки контента: /app/content/tarot/fool.jpg → <папка контента>/картинки/таро/fool.jpg.
+       Папка контента живёт отдельно от кода (на сервере — /opt/lunario-content) и в git не попадает. */
+    if (p.startsWith('/content/') && (req.method === 'GET' || req.method === 'HEAD')) {
+      const [kind, file] = p.slice('/content/'.length).split('/');
+      const dir = IMAGE_DIRS[kind];
+      if (!dir || !file || !/^[\w.-]+$/.test(file) || file.startsWith('.')) { res.writeHead(404); return res.end(); }
+      const f = join(CONTENT_DIR, 'картинки', dir, file);
+      if (!existsSync(f)) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': url.search.includes('v=') ? 'public, max-age=31536000, immutable' : 'public, max-age=86400' });
+      return res.end(req.method === 'HEAD' ? undefined : readFileSync(f));
+    }
     if (p.startsWith('/uploads/') && (req.method === 'GET' || req.method === 'HEAD')) {
       const f = W.mediaPath(p.slice('/uploads/'.length));
       if (!f) { res.writeHead(404); return res.end(); }

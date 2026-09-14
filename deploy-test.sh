@@ -4,11 +4,10 @@
 # Пути /app/ в отдаче переписывает nginx (sub_filter) — код приложения о тесте не знает.
 set -euo pipefail
 SERVER="${SERVER_USER:-root}@${SERVER_HOST:-5.129.198.180}"
-echo "==> site/, backend/ и content/ → /opt/lunario-app-test"
-ssh "$SERVER" 'mkdir -p /opt/lunario-app-test/{site,backend,data,content}'
+echo "==> site/ и backend/ → /opt/lunario-app-test (тексты и картинки стенд читает из общей /opt/lunario-content)"
+ssh "$SERVER" 'mkdir -p /opt/lunario-app-test/{site,backend,data}'
 rsync -az --delete site/ "$SERVER:/opt/lunario-app-test/site/"
 rsync -az --delete backend/ "$SERVER:/opt/lunario-app-test/backend/"
-rsync -az --delete content/ "$SERVER:/opt/lunario-app-test/content/"
 echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app-test/backend/lunario-app-test.service /etc/systemd/system/lunario-app-test.service \
   && systemctl daemon-reload && systemctl enable lunario-app-test >/dev/null \
