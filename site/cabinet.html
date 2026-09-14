@@ -73,6 +73,14 @@ textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Menlo,monospac
 .menu a:hover{color:var(--text);background:rgba(255,255,255,.05)}
 .menu a.on{color:var(--text);background:rgba(224,192,112,.14);border-color:rgba(224,192,112,.5)}
 .menu .back{margin-bottom:8px}
+.menu .cfg{margin-top:10px;color:var(--gold-2);border:1px dashed rgba(224,192,112,.45)}
+.cfg-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.cfg-item{display:grid;grid-template-columns:1fr auto auto auto;gap:6px 8px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.cfg-item b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cfg-item .btn.sm{min-height:30px;padding:0 9px;font-size:13px}
+.cfg-item details{grid-column:1/-1}.cfg-item summary{cursor:pointer;color:var(--faint);font-size:13px;list-style:none}
+.cfg-item details input{margin-top:6px;min-height:38px;font-size:14.5px}
+.cfg-sec{margin-top:18px}.cfg-sec h3{margin-bottom:4px}
 @media(max-width:1000px){.cab{grid-template-columns:1fr;gap:14px}.menu{position:static;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:6px;-webkit-overflow-scrolling:touch}.menu a{white-space:nowrap;padding:8px 12px;border:1px solid var(--line)}.menu .back{margin:0}}
 .back{display:inline-flex;align-items:center;gap:7px;font-size:15px;color:#f3dca0;background:none;border:0;padding:8px 0;cursor:pointer;font:inherit;font-weight:600}
 .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
@@ -225,6 +233,8 @@ const api = async (path, opts) => {
 const esc = (s) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const fmt = (n) => (n === null || n === undefined ? '—' : typeof n === 'number' ? n.toLocaleString('ru-RU') : String(n));
 const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+const daysWord = (n) => { const a = n % 10, b = n % 100; return n + ' ' + (b >= 11 && b <= 14 ? 'дней' : a === 1 ? 'день' : a >= 2 && a <= 4 ? 'дня' : 'дней'); };
+const periodKeys = () => (S.me && S.me.periods && S.me.periods.length ? S.me.periods : [7, 30, 90]).map((d) => d + 'd');
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2800); }
 function show(v) { document.querySelectorAll('.view').forEach((s) => s.classList.toggle('on', s.id === 'v-' + v)); window.scrollTo(0, 0); }
 function openModal(html) { $('modal-body').innerHTML = html; $('modal').classList.add('on'); }
@@ -298,7 +308,8 @@ function staffForm(email) {
 function openRole(k) { S.role = k; const menu = S.me.menus[k] || []; S.page = null; show('cab'); renderMenu(); openPage(menu[0]); history.replaceState(null, '', '#' + k); }
 function renderMenu() {
   const menu = S.me.menus[S.role] || [];
-  $('menu').innerHTML = `<a class="back" href="#" onclick="showHome();return false">← Роли</a>` + menu.map((p) => `<a href="#${S.role}/${p}" class="${p === S.page ? 'on' : ''}" onclick="openPage('${p}');return false">${esc((S.me.reports[p] || [p])[0])}</a>`).join('');
+  $('menu').innerHTML = `<a class="back" href="#" onclick="showHome();return false">← Роли</a>` + menu.map((p) => `<a href="#${S.role}/${p}" class="${p === S.page ? 'on' : ''}" onclick="openPage('${p}');return false">${esc((S.me.reports[p] || [p])[0])}</a>`).join('')
+    + (S.me.isAdmin ? `<a href="#" class="cfg" onclick="cfgOpen();return false">⚙ Настроить кабинет</a>` : '');
 }
 function showHome() { show('home'); history.replaceState(null, '', '#'); }
 
@@ -321,7 +332,7 @@ async function openPage(p) {
 }
 const periodLabel = (P) => `${fmtDay(P.from)} — ${fmtDay(P.to)} · сравнение с ${fmtDay(P.prevFrom)} — ${fmtDay(P.prevTo)}`;
 function toolbar(r, withSave = true) {
-  const per = ['7d', '30d', '90d'].map((k) => `<button data-p="${k}" class="${S.period === k ? 'on' : ''}" onclick="setPeriod('${k}')">${k.replace('d', ' дней')}</button>`).join('');
+  const per = periodKeys().map((k) => `<button data-p="${k}" class="${S.period === k ? 'on' : ''}" onclick="setPeriod('${k}')">${daysWord(parseInt(k))}</button>`).join('');
   const filters = (r.filters || []).map((f) => `<label>${esc(f.label)}<select onchange="setFilter('${f.key}',this.value)"><option value="">Все</option>${f.options.map(([v, t]) => `<option value="${esc(v)}" ${f.value === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`).join('');
   const search = r.key === 'users' ? `<label>Поиск<input id="u-q" placeholder="имя, почта или id" value="${esc(S.filters.q || '')}" onkeydown="if(event.key==='Enter')setFilter('q',this.value)"></label>` : '';
   return `<div class="tools"><div class="periods">${per}</div><div class="filters">${filters}${search}</div>${withSave ? `<span style="flex:1"></span><button class="btn sm" onclick="saveReport()">☆ Сохранить</button><button class="btn sm" onclick="exportCsv()">↓ CSV</button>` : ''}</div>
@@ -461,7 +472,7 @@ function saveReport() {
 function renderSaved() {
   const list = savedList();
   $('report').innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">Сохранённые отчёты</h1><p style="margin-top:6px">Отчёты с фильтрами, сохранённые в этом браузере</p></div></div>` +
-    (list.length ? `<div class="tbl"><div class="scroll"><table><thead><tr><th>Отчёт</th><th>Кабинет</th><th>Период</th><th>Фильтры</th><th>Когда</th><th></th></tr></thead><tbody>${list.map((s, i) => `<tr><td>${esc(s.title)}</td><td>${esc((ROLE_META[s.role] || [s.role])[0])}</td><td>${esc(s.period.replace('d', ' дней'))}</td><td>${esc(Object.values(s.filters).filter(Boolean).join(', ') || '—')}</td><td>${new Date(s.ts).toLocaleString('ru-RU')}</td><td class="num"><button class="btn sm" onclick="openSaved(${i})">Открыть</button> <button class="btn sm warn" onclick="delSaved(${i})">Убрать</button></td></tr>`).join('')}</tbody></table></div></div>` : '<p class="empty" style="margin-top:14px">Сохранённых отчётов пока нет. Откройте отчёт, выберите фильтры и нажмите «☆ Сохранить».</p>');
+    (list.length ? `<div class="tbl"><div class="scroll"><table><thead><tr><th>Отчёт</th><th>Кабинет</th><th>Период</th><th>Фильтры</th><th>Когда</th><th></th></tr></thead><tbody>${list.map((s, i) => `<tr><td>${esc(s.title)}</td><td>${esc((ROLE_META[s.role] || [s.role])[0])}</td><td>${esc(/^\d+d$/.test(s.period) ? daysWord(parseInt(s.period)) : s.period)}</td><td>${esc(Object.values(s.filters).filter(Boolean).join(', ') || '—')}</td><td>${new Date(s.ts).toLocaleString('ru-RU')}</td><td class="num"><button class="btn sm" onclick="openSaved(${i})">Открыть</button> <button class="btn sm warn" onclick="delSaved(${i})">Убрать</button></td></tr>`).join('')}</tbody></table></div></div>` : '<p class="empty" style="margin-top:14px">Сохранённых отчётов пока нет. Откройте отчёт, выберите фильтры и нажмите «☆ Сохранить».</p>');
 }
 function openSaved(i) { const s = savedList()[i]; if (!s) return; S.period = s.period; S.filters = { ...s.filters }; if (S.me.menus[s.role] && (S.me.roles.includes(s.role))) { S.role = s.role; } openPage(s.page); }
 function delSaved(i) { const l = savedList(); l.splice(i, 1); localStorage.setItem(savedKey, JSON.stringify(l)); renderSaved(); }
@@ -521,6 +532,56 @@ async function saveFile(name) {
   catch (e) { msg.className = 'msg err'; msg.textContent = 'Не сохранилось: ' + (e.code || e.message); }
 }
 
+/* ── конструктор кабинетов (админ): состав дашбордов, названия, периоды, блоки сводки ── */
+const BLOCK_NAMES = { new_users: 'Новые с подтверждённой почтой', activation: 'Активация за 24 часа', active: 'Активные за день, неделю и месяц', repeat: 'Повторное использование', retention: 'Возвраты D1, D7 и 4-я неделя', features: 'Использование функций', costs: 'Расходы за месяц', problems: 'Требуют внимания' };
+let CFG = null;
+async function cfgOpen(role) {
+  const c = await api('/cabinet/config');
+  CFG = { menus: JSON.parse(JSON.stringify(c.menus)), periods: [...c.periods], blocks: [...c.blocks], titles: JSON.parse(JSON.stringify(c.titles || {})), defaults: c.defaults, custom: c.custom, updated: c.updated, role: role || S.role || 'admin' };
+  cfgRender();
+}
+function cfgRender() {
+  const c = CFG, r = c.role, menu = c.menus[r], all = c.defaults.reports;
+  const name = (k) => (c.titles[k] && c.titles[k].title) || all[k][0];
+  const list = menu.map((k, i) => `<div class="cfg-item"><b>${esc(name(k))}</b>
+      <button class="btn sm" onclick="cfgMove('${k}',-1)" ${i === 0 ? 'disabled' : ''}>↑</button><button class="btn sm" onclick="cfgMove('${k}',1)" ${i === menu.length - 1 ? 'disabled' : ''}>↓</button><button class="btn sm warn" onclick="cfgRemove('${k}')">✕</button>
+      <details><summary>✎ название и вопрос</summary><input value="${esc(name(k))}" maxlength="80" oninput="cfgTitle('${k}','title',this.value)"><input value="${esc((c.titles[k] && c.titles[k].question) || all[k][1])}" maxlength="160" oninput="cfgTitle('${k}','question',this.value)"></details></div>`).join('');
+  const rest = Object.keys(all).filter((k) => !menu.includes(k));
+  const add = rest.length ? `<div class="row" style="margin-top:10px"><select id="cfg-add">${rest.map((k) => `<option value="${k}">${esc(name(k))} — ${esc(all[k][1])}</option>`).join('')}</select><button class="btn sm fixed" onclick="cfgAdd()">+ Добавить дашборд</button></div>` : '<p class="hint">Все дашборды уже в этом кабинете.</p>';
+  const periods = `<div class="chips" style="margin-top:8px">${c.periods.map((d) => `<span class="chip on">${daysWord(d)} <button class="btn sm warn" style="min-height:22px;padding:0 6px;font-size:12px;border:0;background:none" onclick="cfgPeriod(${d},false)">✕</button></span>`).join('')}</div>
+    <div class="row" style="margin-top:8px"><input id="cfg-days" type="number" min="1" max="365" placeholder="дней, например 60" style="max-width:220px"><button class="btn sm fixed" onclick="cfgPeriod(+$('cfg-days').value,true)">+ Добавить период</button></div>
+    <p class="hint">Набор кнопок периода одинаков во всех кабинетах. Сравнение всегда с предыдущим таким же отрезком.</p>`;
+  const blocks = r === 'admin' ? `<div class="cfg-sec"><h3>Блоки единого дашборда</h3><p class="hint">Порядок — как в списке. Снятый блок исчезает со сводки, отчёт за ним остаётся в меню.</p><div class="chips" style="margin-top:8px">${c.defaults.blocks.map((k) => `<label class="chip${c.blocks.includes(k) ? ' on' : ''}"><input type="checkbox" ${c.blocks.includes(k) ? 'checked' : ''} onchange="cfgBlock('${k}',this.checked)"> ${esc(BLOCK_NAMES[k] || k)}</label>`).join('')}</div></div>` : '';
+  openModal(`<div class="head"><div><span class="eyebrow">Конструктор кабинетов</span><h2 style="margin-top:6px">Что видит роль</h2></div><button class="btn sm" onclick="closeModal()">Закрыть</button></div>
+    <div class="row" style="margin-top:12px"><select onchange="CFG.role=this.value;cfgRender()">${Object.entries(ROLE_META).filter(([k]) => k !== 'user').map(([k, [nm]]) => `<option value="${k}" ${k === r ? 'selected' : ''}>${nm}</option>`).join('')}</select><span class="hint fixed">${c.custom ? `изменено ${esc((c.updated.updated_by || '').split('@')[0])} · ${(c.updated.updated_at || '').slice(0, 10)}` : 'настройки по умолчанию'}</span></div>
+    <div class="cfg-sec"><h3>Дашборды в кабинете «${esc(ROLE_META[r][0])}»</h3><p class="hint">Порядок в списке — порядок в меню. Убранный дашборд для этой роли закрывается и на сервере.</p><div class="cfg-list">${list}</div>${add}</div>
+    <div class="cfg-sec"><h3>Периоды</h3>${periods}</div>${blocks}
+    <div class="row" style="margin-top:20px"><button class="btn gold fixed" onclick="cfgSave()">Сохранить для всех</button><button class="btn sm fixed" onclick="cfgReset()">Сбросить к умолчаниям</button><span class="hint" id="cfg-msg"></span></div>`);
+}
+function cfgMove(k, d) { const m = CFG.menus[CFG.role], i = m.indexOf(k), j = i + d; if (j < 0 || j >= m.length) return; [m[i], m[j]] = [m[j], m[i]]; cfgRender(); }
+function cfgRemove(k) { const m = CFG.menus[CFG.role]; if (m.length <= 1) { toast('В кабинете должен остаться хотя бы один дашборд'); return; } CFG.menus[CFG.role] = m.filter((x) => x !== k); cfgRender(); }
+function cfgAdd() { const k = $('cfg-add').value; if (k && !CFG.menus[CFG.role].includes(k)) CFG.menus[CFG.role].push(k); cfgRender(); }
+function cfgTitle(k, f, v) { CFG.titles[k] = CFG.titles[k] || { title: CFG.defaults.reports[k][0], question: CFG.defaults.reports[k][1] }; CFG.titles[k][f] = v; }
+function cfgPeriod(d, add) { if (add) { if (!(d >= 1 && d <= 365)) { toast('От 1 до 365 дней'); return; } if (!CFG.periods.includes(d)) CFG.periods.push(d); CFG.periods.sort((a, b) => a - b); } else { if (CFG.periods.length <= 1) { toast('Нужен хотя бы один период'); return; } CFG.periods = CFG.periods.filter((x) => x !== d); } cfgRender(); }
+function cfgBlock(k, on) { CFG.blocks = CFG.defaults.blocks.filter((b) => (b === k ? on : CFG.blocks.includes(b))); }
+async function cfgSave() {
+  const msg = $('cfg-msg');
+  try {
+    const r = await api('/cabinet/config', { method: 'POST', body: JSON.stringify({ menus: CFG.menus, periods: CFG.periods, blocks: CFG.blocks, titles: CFG.titles }) });
+    if (!r.ok) { msg.textContent = r.error === 'empty_menu' ? 'В каждом кабинете нужен хотя бы один дашборд.' : 'Не сохранилось: ' + r.error; return; }
+    toast('Сохранено для всех кабинетов'); closeModal(); await cfgApply();
+  } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); }
+}
+async function cfgReset() {
+  if (!confirm('Вернуть состав дашбордов, периоды и названия к умолчаниям для всех кабинетов?')) return;
+  await api('/cabinet/config', { method: 'DELETE' }); toast('Настройки по умолчанию'); closeModal(); await cfgApply();
+}
+async function cfgApply() {
+  S.me = await api('/cabinet/me');
+  if (!periodKeys().includes(S.period)) S.period = periodKeys().includes('30d') ? '30d' : periodKeys()[0];
+  if ($('v-cab').classList.contains('on')) { const menu = S.me.menus[S.role] || []; renderMenu(); openPage(menu.includes(S.page) ? S.page : menu[0]); }
+}
+
 /* ── доступы ── */
 async function renderAccess() {
   const box = $('report');
@@ -560,6 +621,7 @@ async function boot() {
     return;
   }
   renderRoles();
+  if (!periodKeys().includes(S.period)) S.period = periodKeys().includes('30d') ? '30d' : periodKeys()[0];
   const [role, page] = location.hash.replace('#', '').split('/');
   if (role && me.roles.includes(role) && me.menus[role]) { S.role = role; show('cab'); renderMenu(); openPage(page && me.menus[role].includes(page) ? page : me.menus[role][0]); }
   else show('home');

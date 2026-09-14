@@ -7,7 +7,10 @@ import { statSync } from 'node:fs';
 import { join } from 'node:path';
 
 let db, DATA_DIR = '';
-export function initReports(database, dataDir) { db = database; DATA_DIR = dataDir || ''; }
+export function initReports(database, dataDir) {
+  db = database; DATA_DIR = dataDir || '';
+  db.exec('CREATE TABLE IF NOT EXISTS cabinet_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_by TEXT DEFAULT \'\', updated_at TEXT DEFAULT \'\')');
+}
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -26,15 +29,19 @@ const wdMSK = (ts) => (new Date(ts).toLocaleDateString('en-GB', { timeZone: MSK,
 
 export function periodOf(q) {
   const to = /^\d{4}-\d{2}-\d{2}$/.test(q.to || '') ? q.to : dayMSK();
-  const preset = ['7d', '30d', '90d', 'month'].includes(q.period) ? q.period : '7d';
-  let from = preset === 'month' ? to.slice(0, 8) + '01' : addDays(to, -(preset === '90d' ? 89 : preset === '30d' ? 29 : 6));
+  const m = /^(\d{1,3})d$/.exec(q.period || '');
+  const days = m ? Math.min(365, Math.max(1, Number(m[1]))) : 7;
+  const preset = q.period === 'month' ? 'month' : `${days}d`;
+  let from = preset === 'month' ? to.slice(0, 8) + '01' : addDays(to, -(days - 1));
   if (from > to) from = to;
   const len = daysBetween(from, to) + 1;
   const prevTo = addDays(from, -1), prevFrom = addDays(prevTo, -(len - 1));
   return { preset, from, to, prevFrom, prevTo, len };
 }
 
-/* ── справочники ── */
+/* ── справочники (значения по умолчанию; админ может менять их в конфигураторе) ── */
+export const DEFAULT_PERIODS = [7, 30, 90];
+export const OVERVIEW_BLOCKS = ['new_users', 'activation', 'active', 'repeat', 'retention', 'features', 'costs', 'problems'];
 export const ROLE_MENUS = {
   admin:     ['overview', 'users', 'lifecycle', 'economy', 'ai', 'system', 'data', 'events', 'access', 'saved'],
   marketing: ['acquisition', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
@@ -75,6 +82,41 @@ export const REPORT_META = {
   saved:         ['Сохранённые отчёты', 'Отчёты с фильтрами, сохранённые в этом браузере'],
   access:        ['Управление доступами', 'Кто и куда заходит'],
 };
+
+/* ── конфигурация кабинетов: какие дашборды в какой роли, периоды, блоки сводки, названия ── */
+const ROLE_KEYS = Object.keys(ROLE_MENUS);
+const readSetting = (key) => { try { const r = db.prepare('SELECT value FROM cabinet_settings WHERE key = ?').get(key); return r ? JSON.parse(r.value) : null; } catch { return null; } };
+export function getConfig() {
+  const c = readSetting('config') || {};
+  const menus = {}; for (const r of ROLE_KEYS) menus[r] = Array.isArray(c.menus && c.menus[r]) ? c.menus[r].filter((k) => k in REPORT_META) : [...ROLE_MENUS[r]];
+  const periods = Array.isArray(c.periods) && c.periods.length ? c.periods : [...DEFAULT_PERIODS];
+  const blocks = Array.isArray(c.blocks) ? c.blocks.filter((k) => OVERVIEW_BLOCKS.includes(k)) : [...OVERVIEW_BLOCKS];
+  const titles = c.titles && typeof c.titles === 'object' ? c.titles : {};
+  const reports = {}; for (const [k, v] of Object.entries(REPORT_META)) { const t = titles[k] || {}; reports[k] = [t.title || v[0], t.question || v[1]]; }
+  return { menus, periods, blocks, titles, reports, custom: !!readSetting('config'), updated: (db.prepare('SELECT updated_by, updated_at FROM cabinet_settings WHERE key = ?').get('config') || {}) };
+}
+export function setConfig(input, by) {
+  const c = input && typeof input === 'object' ? input : {};
+  const menus = {};
+  for (const r of ROLE_KEYS) {
+    const arr = Array.isArray(c.menus && c.menus[r]) ? c.menus[r] : ROLE_MENUS[r];
+    menus[r] = [...new Set(arr.map(String).filter((k) => k in REPORT_META))];
+    if (!menus[r].length) return { ok: false, error: 'empty_menu', role: r };
+  }
+  const periods = [...new Set((Array.isArray(c.periods) ? c.periods : DEFAULT_PERIODS).map((x) => Math.round(Number(x))).filter((x) => x >= 1 && x <= 365))].sort((a, b) => a - b).slice(0, 8);
+  if (!periods.length) return { ok: false, error: 'empty_periods' };
+  const blocks = [...new Set((Array.isArray(c.blocks) ? c.blocks : OVERVIEW_BLOCKS).map(String).filter((k) => OVERVIEW_BLOCKS.includes(k)))];
+  const titles = {};
+  if (c.titles && typeof c.titles === 'object') for (const [k, v] of Object.entries(c.titles)) {
+    if (!(k in REPORT_META) || !v || typeof v !== 'object') continue;
+    const title = String(v.title || '').trim().slice(0, 80), question = String(v.question || '').trim().slice(0, 160);
+    if ((title && title !== REPORT_META[k][0]) || (question && question !== REPORT_META[k][1])) titles[k] = { title: title || REPORT_META[k][0], question: question || REPORT_META[k][1] };
+  }
+  db.prepare('INSERT INTO cabinet_settings (key, value, updated_by, updated_at) VALUES (?,?,?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at')
+    .run('config', JSON.stringify({ menus, periods, blocks, titles }), String(by || ''), new Date().toISOString());
+  return { ok: true };
+}
+export function resetConfig() { db.prepare('DELETE FROM cabinet_settings WHERE key = ?').run('config'); return { ok: true }; }
 
 /* Функции продукта: ключ события → раздел, название, статус. Заглушки и «скоро» — не использование. */
 export const FEATURES = [
@@ -264,6 +306,7 @@ function firstWeekBehaviour(today) {
 
 /* ── единый дашборд ── */
 export function overview(q) {
+  const cfg = getConfig();
   const P = periodOf(q), today = dayMSK(), days = seriesDays(P.from, P.to);
   const nu = registered(P.from, P.to).length, nuP = registered(P.prevFrom, P.prevTo).length;
   const ac = activation24(P.from, P.to), acP = activation24(P.prevFrom, P.prevTo);
@@ -287,11 +330,8 @@ export function overview(q) {
     chart('scatter', 'Частота первой недели и возвращение', 'каждая точка — 1 человек: дней с действиями в первую неделю → дней за 30', scatterFreq(today), 'Линия показывает связь показателей. Она не доказывает, что высокая частота сама вызвала удержание.'),
     chart('bars', 'Использование разделов', 'уникальные пользователи за период', sectionReach(P.from, P.to), 'Сравнивайте охват вместе с повторным использованием в отчёте функций.'),
   ];
-  return {
-    charts,
-    key: 'overview', title: REPORT_META.overview[0], question: REPORT_META.overview[1], period: P, today,
-    week: { title: 'Главный ориентир недели', value: wk.n, prev: wk.prev, delta: delta(wk.n, wk.prev), sub: `людей с содержательным действием в 4+ разных дня · последняя полная неделя ${wk.mon} — ${wk.sun}, пн–вс · не зависит от фильтра периода` },
-    blocks: [
+  const week = { title: 'Главный ориентир недели', value: wk.n, prev: wk.prev, delta: delta(wk.n, wk.prev), sub: `людей с содержательным действием в 4+ разных дня · последняя полная неделя ${wk.mon} — ${wk.sun}, пн–вс · не зависит от фильтра периода` };
+  const allBlocks = [
       { key: 'new_users', to: 'acquisition', title: 'Новые с подтверждённой почтой', value: nu, prev: nuP, delta: delta(nu, nuP), unit: 'чел.', series: nuSeries, sub: 'завершили регистрацию за период' },
       { key: 'activation', to: 'activation', title: 'Активация за 24 часа', value: ac.share, prev: acP.share, delta: delta(ac.share, acP.share), unit: '%', sub: `${ac.a24} из ${ac.cohort} новичков получили первый результат в первые сутки` },
       { key: 'active', to: 'activity', title: 'Активные за день, неделю и месяц', value: wau, prev: wauP, delta: delta(wau, wauP), unit: 'WAU', sub: `DAU — ${dau} · MAU — ${mau} · липкость ${mau ? Math.round(dau / mau * 100) : 0}%`, series: dauSeries(days, P.from, P.to, FUNC) },
@@ -300,7 +340,12 @@ export function overview(q) {
       { key: 'features', to: 'features', title: 'Использование функций', value: acts, prev: actsP, delta: delta(acts, actsP), unit: 'действий', sub: `${fe.tried} из ${fe.working} работающих функций кто-то попробовал` + (fe.unnoticed.length ? ` · без внимания: ${fe.unnoticed.slice(0, 2).join(', ')}` : '') },
       { key: 'costs', to: 'economy', title: 'Расходы за месяц', value: cs.spent, prev: cs.prevSpent, delta: delta(cs.spent, cs.prevSpent), unit: '₽', sub: `прогноз до конца месяца — ${cs.forecast} ₽` + (cs.budget ? ` · бюджет ${cs.budget} ₽ — ${cs.forecast <= cs.budget ? 'укладываемся' : 'превышение'}` : ' · бюджет не задан'), good: 'down' },
       { key: 'problems', to: 'system', title: 'Требуют внимания', value: pr.total, prev: prP.total, delta: delta(pr.total, prP.total), unit: 'сигналов', sub: pr.items.filter((i) => i.value > 0).map((i) => i.name).join(', ') || 'всё спокойно', alarm: pr.total > 0, good: 'down' },
-    ],
+  ];
+  return {
+    charts,
+    key: 'overview', title: cfg.reports.overview[0], question: cfg.reports.overview[1], period: P, today,
+    week,
+    blocks: cfg.blocks.map((k) => allBlocks.find((b) => b.key === k)).filter(Boolean),
   };
 }
 function problems(from, to) {
@@ -331,7 +376,8 @@ function featuresTable(from, to) {
 export function report(kind, q) {
   const P = periodOf(q), today = dayMSK(), days = seriesDays(P.from, P.to);
   const meta = REPORT_META[kind]; if (!meta) return null;
-  const R = { key: kind, title: meta[0], question: meta[1], period: P, today, filters: [], kpis: [], charts: [], tables: [], notes: [], how: '' };
+  const named = getConfig().reports[kind] || meta;
+  const R = { key: kind, title: named[0], question: named[1], period: P, today, filters: [], kpis: [], charts: [], tables: [], notes: [], how: '' };
   const B = builders[kind]; if (!B) return R;
   B(R, { P, today, days, q });
   return R;

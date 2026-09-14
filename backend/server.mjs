@@ -20,7 +20,7 @@ import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
 import { sendMail, mailReady, loginMail, staffMail, verifySmtp } from './mailer.mjs';
 import { lunarDay, lunarPeriodText } from './lunar.mjs';
 import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
-import { initReports, overview, report, userCard, ROLE_MENUS, REPORT_META } from './reports.mjs';
+import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -623,11 +623,18 @@ const server = createServer(async (req, res) => {
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
       if (p.startsWith('/api/cabinet/')) {
         const roles = rolesFor(u.email);
-        if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive(), menus: ROLE_MENUS, reports: REPORT_META });
+        const cfg = getConfig();   // состав кабинетов задаёт админ; по умолчанию — из кода
+        if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom });
         if (!roles.length) return json(res, 403, { ok: false, error: 'no_access' });
         const admin = roles.includes('admin');
         // роль проверяется на каждом запросе: скрытая кнопка — не защита
-        const allowed = (kind) => admin || roles.some((r) => (ROLE_MENUS[r] || []).includes(kind));
+        const allowed = (kind) => admin || roles.some((r) => (cfg.menus[r] || []).includes(kind));
+        if (p === '/api/cabinet/config') {
+          if (req.method === 'GET') return json(res, 200, { ...cfg, defaults: { reports: REPORT_META, blocks: OVERVIEW_BLOCKS } });
+          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
+          if (req.method === 'POST') { const b = await readBody(req); const r = setConfig(b, u.email); if (r.ok) console.log(`[кабинет] ${u.email} изменил конфигурацию кабинетов`); return json(res, r.ok ? 200 : 400, r); }
+          if (req.method === 'DELETE') { console.log(`[кабинет] ${u.email} сбросил конфигурацию кабинетов`); return json(res, 200, resetConfig()); }
+        }
         if (p === '/api/cabinet/dashboard') {
           if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
           return json(res, 200, overview(Object.fromEntries(url.searchParams)));
