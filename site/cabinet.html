@@ -52,7 +52,10 @@ textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Menlo,monospac
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .lock{font-size:13.5px;color:var(--faint)}
 /* ── роли: статичный экран, 6 квадратов на десктопе, 3 на планшете, 2 на телефоне ── */
-.roles{min-height:calc(100dvh - 136px);display:flex;flex-direction:column;justify-content:center;padding:24px 0}
+.roles{padding:22px 0 0}
+.team{margin-top:22px}
+.team .scroll{max-height:calc(100dvh - 530px);min-height:180px;overflow:auto}
+@media(max-width:1100px){.team .scroll{max-height:none}}
 .roles-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
 .role{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:24px;background:var(--card);border:1px solid rgba(224,192,112,.38);box-shadow:var(--shadow),0 14px 36px -18px rgba(224,192,112,.45);color:var(--text);font:inherit;font-size:clamp(15px,1.25vw,19px);font-weight:700;cursor:pointer;text-decoration:none;text-align:center;padding:10px;transition:transform .16s var(--sp),border-color .2s}
 .role:hover{border-color:rgba(224,192,112,.75)}.role:active{transform:scale(.97)}
@@ -60,7 +63,7 @@ textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Menlo,monospac
 .role .ico{width:34px;height:34px;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .role.off{opacity:.3;pointer-events:none;border-color:var(--line);box-shadow:none}
 @media(max-width:1100px){.roles-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:700px){.roles-grid{grid-template-columns:1fr 1fr;gap:12px}.roles{min-height:0;padding:20px 0}.role{border-radius:20px;font-size:16px}}
+@media(max-width:700px){.roles-grid{grid-template-columns:1fr 1fr;gap:12px}.roles{padding:18px 0 0}.role{border-radius:20px;font-size:16px}}
 /* ── кабинет: меню слева, отчёт справа ── */
 .cab{display:grid;grid-template-columns:240px minmax(0,1fr);gap:26px;padding-top:20px}
 .cab>*{min-width:0}
@@ -176,8 +179,8 @@ td small{display:block;color:var(--faint);font-size:13px}
     <div class="roles">
       <div class="head" style="margin-bottom:20px"><div><span class="eyebrow">Роли</span><h1 style="margin-top:6px" id="h-title">Кабинет</h1></div><p id="h-sub" style="max-width:520px"></p></div>
       <div class="roles-grid" id="roles"></div>
-      <p class="hint" style="margin-top:18px">Один аккаунт и один источник данных: приложение и кабинеты читают одни и те же таблицы. Человек с несколькими ролями переключается между кабинетами; администратор видит всё.</p>
     </div>
+    <section class="team" id="team"></section>
   </section>
 
   <section class="view" id="v-cab">
@@ -258,6 +261,31 @@ function renderRoles() {
     return `<button class="role${has ? '' : ' off'}" type="button" onclick="openRole('${k}')"><i class="ico" style="--m:url(${ICON}${ico}.svg?v=2)"></i>${name}<small>${has ? sub : 'нет доступа'}</small></button>`;
   }).join('');
   $('who').innerHTML = `<span>${esc(me.name || '')}${me.name ? ' · ' : ''}${esc(me.email)}</span><a class="btn sm" href="/app/?app=1">В приложение</a><button class="btn sm" onclick="logout()">Выйти</button>`;
+  renderTeam();
+}
+const staffRows = (items) => items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="white-space:nowrap;text-align:right">${s.locked ? '<span class="lock">защищённый админ</span>' : `<button class="btn sm" onclick="staffForm('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td></tr>`).join('');
+async function renderTeam() {
+  const box = $('team');
+  if (!S.me.isAdmin) {
+    box.innerHTML = `<div class="notice">Откройте доступный кабинет. В роли «Пользователь» — приложение. Таблица доступов видна администраторам.</div>
+      <div class="viz" style="margin-top:14px"><h3>Начните с рабочего кабинета</h3><div class="chips" style="margin-top:10px">${S.me.roles.filter((r) => r !== 'user').map((r) => `<span class="chip on">${ROLE_META[r][0]}</span>`).join('')}</div></div>`;
+    return;
+  }
+  box.innerHTML = '<p class="empty">Загружаем доступы…</p>';
+  const r = await api('/cabinet/staff'); S.staff = r.items;
+  box.innerHTML = `<div class="head"><div><span class="eyebrow">Доступы команды</span><h2 style="margin-top:6px">Кто и куда заходит</h2></div><button class="btn gold sm" onclick="staffForm('')">+ Добавить участника</button></div>
+    <div class="tbl" style="margin-top:10px"><div class="scroll"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div>
+    <p class="note">Два администратора имеют одинаковые права: их нельзя удалить или понизить. Любому другому участнику можно назначить несколько ролей — роль «Пользователь» есть у каждого. Один аккаунт и один источник данных: приложение и кабинеты читают одни и те же таблицы.</p></div>`;
+}
+function staffForm(email) {
+  const s = (S.staff || []).find((x) => x.email === email);
+  if (s && s.locked) { toast('Права защищённого администратора изменить нельзя'); return; }
+  openModal(`<div class="head"><div><span class="eyebrow">Доступы</span><h2 style="margin-top:6px">${s ? 'Изменить доступы' : 'Добавить участника'}</h2></div><button class="btn sm" onclick="closeModal()">Закрыть</button></div>
+    <div class="row" style="margin-top:14px"><input id="st-name" placeholder="ФИО" maxlength="80" value="${esc(s ? s.name : '')}"><input id="st-email" type="email" placeholder="почта" maxlength="120" value="${esc(s ? s.email : '')}" ${s ? 'readonly' : ''}></div>
+    <div class="chips" style="margin-top:12px" id="st-roles">${['marketing', 'product', 'content', 'support'].map((k) => { const on = s && s.roles.includes(k); return `<label class="chip${on ? ' on' : ''}"><input type="checkbox" value="${k}" ${on ? 'checked' : ''} onchange="this.parentNode.classList.toggle('on',this.checked)"> ${ROLE_META[k][0]}</label>`; }).join('')}</div>
+    <p class="hint">Роль «Пользователь» доступна каждому. Назначить дополнительного администратора нельзя — их двое и они заданы почтой.</p>
+    <div class="row" style="margin-top:14px"><button class="btn gold fixed" onclick="staffSave()">Сохранить доступы</button>${s ? `<button class="btn sm warn fixed" onclick="staffDel('${esc(s.email)}')">Удалить из команды</button>` : ''}<span class="hint" id="st-msg"></span></div>`);
+  setTimeout(() => $(s ? 'st-name' : 'st-email').focus(), 60);
 }
 function openRole(k) { S.role = k; const menu = S.me.menus[k] || []; S.page = null; show('cab'); renderMenu(); openPage(menu[0]); history.replaceState(null, '', '#' + k); }
 function renderMenu() {
@@ -490,32 +518,23 @@ async function renderAccess() {
   const box = $('report');
   if (!S.me.isAdmin) { box.innerHTML += '<p class="msg err">Таблица доступов видна только админам.</p>'; return; }
   const r = await api('/cabinet/staff'); S.staff = r.items;
-  box.innerHTML = `<div class="head"><div><span class="eyebrow">Админ · рабочий кабинет</span><h1 style="margin-top:6px">Управление доступами</h1><p style="margin-top:6px">Кто и куда заходит</p></div></div>
+  box.innerHTML = `<div class="head"><div><span class="eyebrow">Админ · рабочий кабинет</span><h1 style="margin-top:6px">Управление доступами</h1><p style="margin-top:6px">Кто и куда заходит</p></div><button class="btn gold sm" onclick="staffForm('')">+ Добавить участника</button></div>
     <div class="notice">Два администратора имеют одинаковые права. Их нельзя удалить или понизить. Любому другому участнику можно назначить несколько ролей — роль «Пользователь» есть у каждого.</div>
-    <div class="tbl"><div class="scroll" style="max-height:60dvh;overflow:auto"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${r.items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="white-space:nowrap">${s.locked ? '<span class="lock">защищённый админ</span>' : `<button class="btn sm" onclick="staffEdit('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td></tr>`).join('')}</tbody></table></div></div>
-    <div class="viz" style="margin-top:16px"><h3>Добавить или изменить доступ</h3>
-      <div class="row" style="margin-top:12px"><input id="st-name" placeholder="ФИО" maxlength="80"><input id="st-email" type="email" placeholder="почта" maxlength="120"></div>
-      <div class="chips" style="margin-top:12px" id="st-roles">${['marketing', 'product', 'content', 'support'].map((k) => `<label class="chip"><input type="checkbox" value="${k}" onchange="this.parentNode.classList.toggle('on',this.checked)"> ${ROLE_META[k][0]}</label>`).join('')}</div>
-      <div class="row" style="margin-top:12px"><button class="btn gold fixed" onclick="staffSave()">Сохранить доступы</button><span class="hint" id="st-msg"></span></div></div>`;
+    <div class="tbl"><div class="scroll"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div></div>`;
 }
-function staffEdit(email) {
-  const s = S.staff.find((x) => x.email === email); if (!s) return;
-  $('st-name').value = s.name || ''; $('st-email').value = s.email;
-  $('st-roles').querySelectorAll('input').forEach((i) => { i.checked = s.roles.includes(i.value); i.parentNode.classList.toggle('on', i.checked); });
-  $('st-email').scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
+async function refreshStaff() { if ($('v-home').classList.contains('on')) renderTeam(); else if (S.page === 'access') renderAccess(); }
 async function staffSave() {
   const roles = [...$('st-roles').querySelectorAll('input:checked')].map((i) => i.value), msg = $('st-msg');
   try {
     const r = await api('/cabinet/staff', { method: 'POST', body: JSON.stringify({ name: $('st-name').value.trim(), email: $('st-email').value.trim(), roles }) });
     if (!r.ok) { msg.textContent = r.error === 'admin_locked' ? 'Права защищённого администратора изменить нельзя.' : 'Проверьте почту.'; return; }
-    toast('Сохранено'); renderAccess();
+    toast('Сохранено'); closeModal(); refreshStaff();
   } catch (e) { msg.textContent = 'Не получилось сохранить.'; }
 }
 async function staffDel(email) {
   if (!confirm(`Убрать доступ у ${email}?`)) return;
   const r = await api('/cabinet/staff?email=' + encodeURIComponent(email), { method: 'DELETE' });
-  if (!r.ok) toast('Права защищённого администратора изменить нельзя'); else { toast('Доступ убран'); renderAccess(); }
+  if (!r.ok) toast('Права защищённого администратора изменить нельзя'); else { toast('Доступ убран'); closeModal(); refreshStaff(); }
 }
 
 /* ── старт ── */
