@@ -38,6 +38,34 @@ function lines(file) {
 }
 const num = (v, d) => { const n = Number(String(v).trim()); return Number.isFinite(n) ? n : d; };
 
+/* Файл-«статья»: как книга, но текст раздела хранится построчно, со структурой — «## подзаголовок»,
+   списки «- » и «1. » («  - » — вложенный), строки таблицы «| … |», выделения **жирный** и *курсив*.
+   Так лежит личный год: длинное описание с таблицами, которое экран рисует как есть. */
+function article(file) {
+  const path = join(CONTENT_DIR, file);
+  if (!existsSync(path)) return null;
+  const out = [];
+  let cur = null, sec = null;
+  for (const raw of readFileSync(path, 'utf8').split('\n')) {
+    const line = raw.replace(/\s+$/, ''), t = line.trim();
+    if (!t) continue;
+    if (t.startsWith('=== ')) { cur = { name: t.slice(4).trim(), fields: {}, sections: {} }; out.push(cur); sec = null; continue; }
+    if (!cur) continue;
+    const m = t.match(/^\[(.+)\]$/);
+    if (m) { sec = m[1].trim(); continue; }
+    if (t.startsWith('## ') && sec) { (cur.sections[sec] ||= []).push({ t: 'h', text: t.slice(3).trim() }); continue; }
+    if (t.startsWith('#')) continue;
+    if (!sec) { const f = t.match(/^([^:]+):\s*(.*)$/); if (f) cur.fields[f[1].trim().toLowerCase()] = f[2].trim(); continue; }
+    const blocks = (cur.sections[sec] ||= []);
+    if (t.startsWith('|')) { blocks.push({ t: 'tr', cells: t.replace(/^\||\|$/g, '').split('|').map((c) => c.trim()) }); continue; }
+    const li = line.match(/^(\s*)(?:-|(\d+)\.)\s+(.*)$/);
+    if (li) { blocks.push({ t: 'li', n: li[2] ? Number(li[2]) : 0, lvl: li[1].length >= 2 ? 1 : 0, text: li[3].trim() }); continue; }
+    blocks.push({ t: 'p', text: t });
+  }
+  const ok = out.filter((e) => e.name);
+  return ok.length ? ok : null;
+}
+
 /* ── 22 старших аркана: имя · о чём карта · что сделать сегодня ── */
 const ARCANA_FALLBACK = [
   ['0 · Шут', 'Начало без гарантий: вы знаете меньше, чем хотелось бы, и это нормально.', 'Разрешите себе сделать шаг, не просчитав всё до конца.'],
@@ -148,6 +176,15 @@ const NUM_YEAR_FALLBACK = {
   8: 'Год результата и денег. Хорошее время просить больше и брать ответственность.',
   9: 'Год завершения большого цикла: завершать, отдавать, расчищать место. Большое новое придёт в следующем.',
 };
+/* Личный год: планета, энергия, подпись и картинка идут на экран и на открытку, описание — блоками как в файле.
+   Запасного текста нет: без файла экран показывает прежнюю короткую строку из нумерология-год.txt. */
+const yearFromArticle = (e) => {
+  const f = e.fields;
+  return {
+    n: num(f['число'], 0), planet: f['планета'] || '', energy: f['энергия'] || '', caption: f['подпись'] || '',
+    image: f['картинка'] ? `/app/assets/year/${f['картинка']}` : '', blocks: e.sections['Описание'] || [],
+  };
+};
 const NUM_DAY_FALLBACK = {
   1:'День самостоятельных шагов.',2:'День союзов и договорённостей.',3:'День слов и общения.',
   4:'День порядка и рутины.',5:'День движения и неожиданностей.',6:'День заботы о близких.',
@@ -253,6 +290,8 @@ function build() {
   const year = rows('нумерология-год.txt', 2);
   r.NUM_YEAR = year ? Object.fromEntries(year.map((c) => [c[0], c[1]])) : NUM_YEAR_FALLBACK;
 
+  r.YEARS = Object.fromEntries((article('личный-год.txt') || []).map(yearFromArticle).filter((y) => y.n).map((y) => [y.n, y]));
+
   const nday = rows('нумерология-день.txt', 2);
   r.NUM_DAY = nday ? Object.fromEntries(nday.map((c) => [c[0], c[1]])) : NUM_DAY_FALLBACK;
 
@@ -281,6 +320,7 @@ export const TOPICS = new Proxy([], { get: (_, k) => Reflect.get(data.TOPICS, k)
 export const YN_RIDERS = new Proxy({}, { get: (_, k) => Reflect.get(data.YN_RIDERS, k) });
 export const NUM_DESTINY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DESTINY, k) });
 export const NUM_YEAR = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_YEAR, k) });
+export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) });
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 
 /* Правки в текстах подхватываются без перезапуска — через пару секунд после сохранения. */

@@ -435,7 +435,7 @@ function personalYearAt(birth, day) {
   const bday = (yy) => md === '02-29' && !(yy % 4 === 0 && (yy % 100 !== 0 || yy % 400 === 0)) ? `${yy}-03-01` : `${yy}-${md}`;
   return {
     n: single(personalYear(birth, year)), year, from: bday(year), to: bday(year + 1),   // «to» — следующий день рождения, не включая
-    next: { n: single(personalYear(birth, year + 1)), from: bday(year + 1) },
+    next: { n: single(personalYear(birth, year + 1)), from: bday(year + 1), to: bday(year + 2) },
   };
 }
 const dayNum = (day) => { let n = reduceNum(digits(day).reduce((a, b) => a + b, 0)); return n > 9 ? reduceNum(digits(n).reduce((a, b) => a + b, 0)) : n; };
