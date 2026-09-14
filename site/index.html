@@ -31,13 +31,11 @@
 @font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 :root{
   --bg:#0b0a14;--violet:#6d5bd0;--violet-2:#e9c77e;--text:#f5f2ea;--muted:#b9b2cf;
-  --line:rgba(245,242,234,.12);--card:rgba(245,242,234,.06);--card-2:rgba(245,242,234,.09);
+  --line:rgba(245,242,234,.09);--card:rgba(245,242,234,.05);--card-2:rgba(245,242,234,.08);
   --gold:#d9b868;--gold-2:#f0d79a;--ok:#9fe6bd;--warn:#ffb3b3;
   --sp:cubic-bezier(.2,.85,.3,1);
-  /* жидкое стекло из brand/tokens.css: без backdrop-filter — на телефонах ЦА он дорог при десятке карточек на экране */
-  /* под стеклянным градиентом — плотная ночная подложка: без backdrop-filter только она не даёт созвездиям просвечивать сквозь текст */
-  --glass-bg:linear-gradient(135deg,rgba(245,242,234,.10) 0%,rgba(245,242,234,.04) 45%,rgba(245,242,234,.07) 100%),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
-  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 12px 34px -14px rgba(0,0,0,.55);
+  --glass-bg:linear-gradient(145deg,rgba(255,255,255,.115),rgba(255,255,255,.035) 42%,rgba(174,157,229,.055) 70%,rgba(255,255,255,.075));
+  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.24),inset 1px 0 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(4,3,12,.28),0 14px 38px -18px rgba(0,0,0,.62);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg)}
@@ -58,7 +56,7 @@ body{
 .cloud-2{width:60vw;height:22vw;bottom:2%;right:-20vw;animation-delay:-31s;background:radial-gradient(ellipse,rgba(120,132,190,.42) 0%,transparent 68%)}
 .sky{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity 2.4s ease}
 .sky.on{opacity:1}
-body.inner .sky.on{opacity:.5}   /* на рабочих экранах небо тише, чтобы не спорить с текстом */
+body.inner .sky{display:none}    /* живое небо остаётся на входе; в приложении фон не спорит с текстом */
 @keyframes drift{0%,100%{transform:translate(-50%,0) scale(1)}50%{transform:translate(-46%,4%) scale(1.06)}}
 @keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-4%,-5%) scale(1.08)}}
 @keyframes cloudtone{0%,100%{opacity:.18;transform:translateX(0) scale(1)}50%{opacity:.34;transform:translateX(3%) scale(1.07)}}
@@ -84,7 +82,7 @@ h2{font-size:22px;line-height:1.2}
 .wordmark{font-family:"Comfortaa",ui-rounded,Onest,system-ui,sans-serif;font-weight:300;letter-spacing:.01em;font-size:37px;line-height:1.16}
 p{margin:0;color:var(--muted);line-height:1.62;font-size:15.5px}
 .eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:var(--gold);display:block}
-.card{background:var(--glass-bg);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:var(--glass-shadow)}
+.card{background:var(--glass-bg);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:var(--glass-shadow);backdrop-filter:blur(18px) saturate(1.14);-webkit-backdrop-filter:blur(18px) saturate(1.14)}
 .card+.card{margin-top:12px}
 .sec{margin-top:26px}
 .row{display:flex;align-items:center;gap:12px}
@@ -140,10 +138,10 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
   border:1px solid var(--line);font-size:12.5px;color:#d3cde6}
 .big{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:52px;line-height:1;text-align:center;color:var(--gold);margin:6px 0}
 .list{display:grid;gap:9px}
-.item{padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.item{padding:14px 16px;border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid var(--line);box-shadow:inset 0 1px rgba(255,255,255,.09),inset 0 -1px rgba(3,2,10,.2);backdrop-filter:blur(12px) saturate(1.1);-webkit-backdrop-filter:blur(12px) saturate(1.1)}
 .item b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
 .item small{color:#8f87ad;font-size:12.5px}
-.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:60;
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:300;
   background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);backdrop-filter:blur(18px);
   padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;transition:.3s var(--sp);pointer-events:none;max-width:90vw}
 .toast.on{opacity:1;transform:translate(-50%,0)}
@@ -219,50 +217,47 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
 .thread .m small{display:block;color:#8f87ad;font-size:12px;margin-bottom:3px}
 .sup-status{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:#cdc6e2}
 
-/* ── приветствие ── */
-/* статичные экраны (приветствие, главная): страница ровно в высоту экрана, прокрутки нет — блоки ужимаются под высоту */
+/* ── вход в приложение ── */
+/* Главная умещается в экран; вход прокручивается, если высоты окна недостаточно. */
 body.fixed{height:100dvh;overflow:hidden}
 body.fixed .wrap{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 body.fixed .view.on{flex:1 1 0;min-height:0!important}
-#v-hello.on{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
-#v-hello .hero{display:block;font-size:clamp(46px,15vw,64px);line-height:1;padding:12px 0 0;white-space:nowrap}
+body.hello .wrap{max-width:1180px;min-height:100dvh;padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))}
+#v-hello.on{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+#v-hello .hello-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+#v-hello .hero{display:block;font-size:clamp(30px,8.2vw,38px);line-height:1.15;white-space:nowrap}
 #v-hello .o-wrap{position:relative;display:inline-block}
 #v-hello .hero .mark{position:absolute;left:var(--mx,50%);top:var(--my,50%);width:var(--ms,.9em);height:var(--ms,.9em);margin:0;transform:translate(-50%,-50%);animation:none;line-height:0}
 #v-hello .hero .moon-img{width:100%;height:100%}
-#v-hello .hero .spark{width:4px;height:4px}
-#v-hello .hl1{position:relative;margin-top:26px;font-size:clamp(27px,7.6vw,34px);line-height:1.14;color:#fff;font-weight:600;letter-spacing:-.01em;text-shadow:0 2px 24px rgba(11,10,20,.7)}
-#v-hello .hl1 em{font-style:normal;color:var(--gold-2)}
-#v-hello .hl3{position:relative;margin-top:22px;font-size:14.5px;color:#cdc6e2}
-/* что даст анкета: две строки с иконками, как на карточке */
-#v-hello .gifts{position:relative;margin-top:10px;display:grid;gap:8px}
-#v-hello .gift{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:18px;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow)}
-#v-hello .gift .ico{width:30px;height:30px}
-#v-hello .gift b{display:block;font-size:15.5px;font-weight:600;line-height:1.25}
-#v-hello .gift small{display:block;font-size:13.5px;color:#b9b2cf;margin-top:2px}
-#v-hello .cta{position:relative;margin-top:auto;padding-top:22px;display:grid;gap:10px}
-#v-hello .trust{position:relative;text-align:center;margin-top:16px;font-size:12.5px;text-wrap:balance}
-/* луна приветствия живёт в фоне: на телефоне заходит справа за край, на широком экране — справа от колонки */
-.heromoon{position:absolute;display:none;pointer-events:none;width:620px;height:620px;right:-222px;top:calc(env(safe-area-inset-top) + 56px)}
+#v-hello .hello-login{flex-shrink:0;min-width:72px;min-height:44px;padding:10px 16px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(11,10,20,.8);color:var(--text);font:inherit;font-size:15px;cursor:pointer}
+#v-hello .hello-login:hover{background:rgba(34,29,51,.95);text-decoration:underline;text-underline-offset:4px}
+#v-hello button:focus-visible{outline:2px solid var(--gold-2);outline-offset:5px}
+#v-hello .hello-content{width:100%;max-width:440px;margin:auto 0;padding:48px 0}
+#v-hello .hello-content h2{font-size:clamp(25px,6.8vw,32px);line-height:1.2;font-weight:500;text-wrap:balance}
+#v-hello .gifts{margin:28px 0 0;padding:0;list-style:none;display:grid;gap:22px}
+#v-hello .gift{display:flex;align-items:center;gap:16px}
+#v-hello .gift .ico{width:24px;height:24px;flex:0 0 24px;color:#c9c1dc}
+#v-hello .gift b{display:block;font-size:17px;font-weight:500;line-height:1.4;color:var(--text)}
+#v-hello .gift small{display:block;font-size:14.5px;line-height:1.5;color:#c6bfd4;margin-top:3px}
+#v-hello .cta{margin-top:34px}
+#v-hello .cta .btn{min-height:58px;padding:15px 20px;background:linear-gradient(115deg,#eddaa7,#d9bd7c);box-shadow:0 6px 24px rgba(217,184,104,.12);font-weight:600}
+#v-hello .trust{max-width:440px;font-size:13px;line-height:1.6;color:#b9b2cf;text-wrap:balance}
+/* Светлая сторона Луны остаётся справа, вне основной текстовой колонки. */
+.heromoon{position:absolute;display:none;pointer-events:none;width:760px;height:760px;right:-460px;top:calc(50% - 380px)}
 body.hello .heromoon{display:block}
-.heromoon canvas{width:100%;height:100%;display:block;filter:drop-shadow(0 0 60px rgba(217,184,104,.18))}
-@media(min-width:900px){.heromoon{width:680px;height:680px;right:auto;left:calc(50% - 60px);top:calc(50% - 340px)}}
-@media(min-width:1400px){.heromoon{width:760px;height:760px;left:calc(50% - 100px);top:calc(50% - 380px)}}
-@media(max-height:720px){
-  #v-hello .hero{font-size:clamp(40px,12vw,54px);padding-top:4px}
-  #v-hello .hl1{margin-top:16px;font-size:clamp(24px,6.6vw,28px)}
-  #v-hello .hl3{margin-top:14px;font-size:14px}
-  #v-hello .gift{padding:10px 14px}
-  #v-hello .cta{padding-top:14px;gap:8px}
-  #v-hello .cta .btn{min-height:52px}
-  #v-hello .trust{margin-top:10px;font-size:12px}
-  #v-hello .linkline{margin-top:8px}
-  .heromoon{width:520px;height:520px;right:-190px;top:calc(env(safe-area-inset-top) + 40px)}
+.heromoon img{width:100%;height:100%;display:block;object-fit:contain}
+body.hello .sky.on{opacity:.3}
+body.hello .orb{opacity:.25}
+body.hello .cloud{display:none}
+body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,10,20,.7),rgba(11,10,20,.5) 60%,rgba(11,10,20,.08))}
+@media(min-width:600px) and (max-width:899px){
+  body.hello .wrap{padding-left:40px;padding-right:40px}
+  .heromoon{right:-400px}
 }
-@media(max-height:600px){
-  #v-hello .hl3{display:none}
-  #v-hello .gifts{gap:6px;margin-top:10px}
-  #v-hello .gift small{display:none}
-  #v-hello .hl1{margin-top:10px;font-size:22px}
+@media(max-height:700px){
+  #v-hello .hello-content{padding-top:32px;padding-bottom:32px}
+  #v-hello .gifts{margin-top:22px;gap:18px}
+  #v-hello .cta{margin-top:28px}
 }
 /* ── главная: один экран, без прокрутки — квадраты по центру, мелкое внизу ── */
 #v-home.on{display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
@@ -288,10 +283,15 @@ body.hello .heromoon{display:block}
 .mini button b{font-weight:500;color:#d3cde6}
 /* ── главная (старые правила) ── */
 .acct{position:absolute;right:0;top:0;width:42px;height:42px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--gold);font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:grid;place-items:center}
+.news-dot{position:absolute;right:1px;top:1px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px #17132a,0 0 12px rgba(240,215,154,.55)}
+.account-group{margin-top:24px}.account-group>.eyebrow{margin-bottom:10px}.account-group .wids{margin-top:0}
+.journal-card.saved{animation:journal-save .62s var(--sp)}
+@keyframes journal-save{0%{transform:none}45%{transform:translateY(8px) scale(.985);border-color:rgba(217,184,104,.5)}100%{transform:none}}
 /* сотрудникам и админам — обратный путь в кабинеты прямо с главной; кнопка не сдвигает статичный экран */
 .cabs{position:absolute;right:52px;top:0;height:42px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:999px;background:var(--glass-bg);border:1px solid rgba(217,184,104,.45);box-shadow:var(--glass-shadow);color:var(--gold-2);font-size:13.5px;font-weight:650;text-decoration:none;white-space:nowrap}
 .cabs[hidden]{display:none}
 #v-home .row.hdr .cabs,#v-home .row.hdr .acct{position:static;flex:0 0 auto}
+#v-home .row.hdr .acct{position:relative;top:auto;right:auto}
 #v-home .row.hdr{gap:8px}
 #v-home .row.hdr .grow{min-width:0}
 #v-home .row.hdr h1{overflow-wrap:anywhere}
@@ -326,6 +326,11 @@ body.hello .heromoon{display:block}
 .moodgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .moodgrid .mood{min-height:104px;font-size:13px;gap:9px;justify-content:center}
 .moodgrid .mood svg{width:38px;height:38px}
+.mood-simple{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.mood-choice{min-height:64px;display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:18px;border:1px solid var(--line);background:var(--glass-bg);color:var(--text);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+.mood-choice svg,.mood-choice .ico{width:28px;height:28px;flex:0 0 28px}
+.mood-choice.on{border-color:rgba(217,184,104,.62);background:rgba(217,184,104,.12)}
+.mood-details{animation:in .3s var(--sp)}
 /* «Что вас беспокоит?»: вопрос раскрывается в решения */
 .acc{display:grid;gap:8px}
 .acc-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-radius:18px;
@@ -350,6 +355,24 @@ body.hello .heromoon{display:block}
 .wg-body{margin-top:22px}
 .w-big{font-size:24px;line-height:1.4;color:#fff;text-align:center;margin-top:28px}
 body.wg-open{overflow:hidden}
+body.inner{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.app-nav{position:fixed;z-index:120;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:62px;padding:5px;display:none;grid-template-columns:repeat(4,1fr);gap:3px;border:1px solid rgba(255,255,255,.13);border-radius:23px;background:rgba(19,16,34,.78);box-shadow:inset 0 1px rgba(255,255,255,.15),0 16px 48px rgba(0,0,0,.45);backdrop-filter:blur(24px) saturate(1.25);-webkit-backdrop-filter:blur(24px) saturate(1.25)}
+body.inner .app-nav{display:grid}
+.app-nav button{border:0;border-radius:18px;background:transparent;color:#938ba9;font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+.app-nav button .ico{width:21px;height:21px;background:#938ba9}
+.app-nav button.on{background:rgba(255,255,255,.08);color:var(--text);box-shadow:inset 0 1px rgba(255,255,255,.1)}
+.app-nav button.on .ico{background:var(--gold-2)}
+#v-ask>.back,#v-history>.back,#v-account>.back{display:none}
+.day-focus{margin-top:22px;padding:22px;text-align:left;width:100%;color:inherit;font:inherit;cursor:pointer}
+.day-focus .next{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px;color:var(--gold-2);font-weight:650}
+.quick-title{margin-top:24px;font-size:12px;color:#aaa2be;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
+.quick-actions button{min-height:104px;padding:13px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px solid var(--line);border-radius:20px;background:var(--glass-bg);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.quick-actions .ico{width:27px;height:27px}
+.home-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:16px}
+.home-links button{min-height:40px;padding:0 13px;border:0;background:transparent;color:#aaa2be;font:inherit;font-size:12.5px;cursor:pointer}
+.danger-zone{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
+.danger-zone>.eyebrow{color:#b9b2cf;margin-bottom:10px}
 /* на телефоне навигации внизу нет: разделы открываются с главной */
 /* ── широкий экран (≥900px): два формата, а не растянутый телефон. Контейнер во всю ширину до 1180px,
    плитки раскладываются по ширине; формы (анкета, вход) остаются колонкой — им ширина ни к чему ── */
@@ -357,18 +380,17 @@ body.wg-open{overflow:hidden}
   .wrap{max-width:1180px;padding:36px 48px 56px}
   body.inner .wrap{max-width:1180px;padding:36px 48px 56px}
   h1{font-size:36px}
-  #v-onb.on,#v-login.on,#v-nodemo.on{max-width:520px;margin:0 auto}
+  #v-onb.on,#v-login.on{max-width:520px;margin:0 auto}
   .chip:hover{border-color:rgba(217,184,104,.45)}
   .btn.ghost:hover{background:rgba(255,255,255,.1)}
   .wid:hover,.sq:hover,.mini button:hover{border-color:rgba(217,184,104,.6)}
   #t-install{display:none!important}
-  /* приветствие: текст слева колонкой, луна — в правой половине */
-  #v-hello.on{max-width:560px;margin:0;min-height:calc(100dvh - 92px);justify-content:center}
-  #v-hello .hero{padding-top:0}
-  #v-hello .hl1{margin-top:32px;font-size:40px}
-  #v-hello .hl3{margin-top:26px;font-size:15.5px}
-  #v-hello .cta{margin-top:30px;padding-top:0}
-  #v-hello .linkline{margin-top:18px}
+  /* вход: шапка на всю ширину, содержание слева, Луна справа */
+  body.hello .wrap{padding:36px 48px}
+  #v-hello.on{min-height:calc(100dvh - 72px)}
+  #v-hello .hero{font-size:40px}
+  .heromoon{width:1000px;height:1000px;right:auto;left:calc(50% - 100px);top:calc(50% - 500px)}
+  body.hello .bg::after{background:linear-gradient(90deg,rgba(11,10,20,.6),rgba(11,10,20,.4) 40%,transparent 75%)}
   /* главная: шапка слева, шесть квадратов и шесть плиток — по ширине экрана, блок по центру высоты */
   #v-home.on{max-width:none;margin:0;min-height:calc(100dvh - 92px)}
   #v-home h1{font-size:34px;max-width:760px}
@@ -396,6 +418,7 @@ body.wg-open{overflow:hidden}
   #v-home .sq{aspect-ratio:1/1.02;min-height:0}
   #v-home .mini{grid-template-columns:repeat(6,1fr)}
 }
+@media(min-width:1400px){.heromoon{width:1200px;height:1200px;left:calc(50% - 120px);top:calc(50% - 600px)}}
 /* ── карта дня: иллюстрация аркана на лицевой стороне ── */
 .daycard{width:196px;height:368px}
 .dc-front{padding:0;overflow:hidden;border:1px solid rgba(217,184,104,.55)}
@@ -525,7 +548,8 @@ body.wg-open{overflow:hidden}
 .sqs{grid-template-columns:repeat(3,1fr)}
 .sq{grid-column:auto;max-height:calc((100dvh - 400px)/2)}
 .mini{grid-template-columns:repeat(3,1fr)}
-.acct{overflow:hidden;padding:0}
+.acct{overflow:visible;padding:0}
+.acct-content{display:grid;place-items:center;width:100%;height:100%;overflow:hidden;border-radius:inherit}
 .acct img{width:100%;height:100%;object-fit:cover;display:block}
 /* ── круг эмоций Плутчика ── */
 .mfam{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
@@ -559,6 +583,49 @@ body.wg-open{overflow:hidden}
 /* ── новое в приложении ── */
 .news-month{font-size:12.5px;color:#8f87ad;margin-top:8px}
 .ios-shell #t-install{display:none!important}
+/* Микровзаимодействия команд: один короткий золотой отклик вместо постоянной анимации. */
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline){
+  position:relative;isolation:isolate;overflow:hidden;
+  transition:transform .24s var(--sp),border-color .3s ease,background-color .3s ease,box-shadow .3s ease;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation
+}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood){
+  backdrop-filter:blur(16px) saturate(1.16);-webkit-backdrop-filter:blur(16px) saturate(1.16);
+  box-shadow:var(--glass-shadow),inset 0 0 0 .5px rgba(255,255,255,.07)
+}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood)::before{
+  content:'';position:absolute;z-index:0;inset:-1px;border-radius:inherit;pointer-events:none;opacity:.26;
+  background:radial-gradient(190px circle at var(--light-x,28%) var(--light-y,0%),rgba(255,255,255,.38),rgba(240,215,154,.1) 24%,transparent 62%);
+  box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.16),inset -1.5px -1.5px 1px rgba(91,70,145,.12);
+  transition:opacity .35s ease
+}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline)::after{
+  content:'';position:absolute;z-index:0;left:var(--tap-x,50%);top:var(--tap-y,50%);width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,244,207,.42) 0,rgba(217,184,104,.18) 38%,transparent 72%);
+  opacity:0;transform:translate(-50%,-50%) scale(.2);pointer-events:none
+}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline)>*{position:relative;z-index:1}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline).reward::after{animation:reward-ring .58s var(--sp)}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline).reward>.ico{animation:reward-icon .5s var(--sp)}
+@keyframes reward-ring{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(18)}}
+@keyframes reward-icon{0%,100%{transform:none}42%{transform:translateY(-2px) scale(1.1);filter:drop-shadow(0 0 9px rgba(240,215,154,.55))}}
+.command-enter{animation:command-enter .42s var(--sp) both;animation-delay:calc(var(--command-i,0)*38ms)}
+@keyframes command-enter{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:none}}
+.wg-bg.on .wg{animation:panel-open .38s var(--sp)}
+@keyframes panel-open{from{opacity:0;transform:translateY(14px) scale(.99)}to{opacity:1;transform:none}}
+@media(hover:hover) and (pointer:fine){
+  :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline):hover{
+    transform:translateY(-3px);border-color:rgba(217,184,104,.58);
+    box-shadow:var(--glass-shadow),0 16px 34px -22px rgba(240,215,154,.75)
+  }
+  :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood):hover::before{opacity:.72}
+}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline):active{transform:scale(.965)}
+:is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline):focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){
+  :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline)::after{display:none}
+  :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline):hover{transform:none}
+}
 </style>
 <script>
 /* Оболочка для App Store объявляет о себе суффиксом в User-Agent и флагом,
@@ -572,34 +639,28 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="orb orb-1"></div><div class="orb orb-2"></div>
   <div class="cloud cloud-1"></div><div class="cloud cloud-2"></div>
   <canvas class="sky" id="sky"></canvas>
-  <!-- луна приветствия: тёмной стороной к тексту, светлой — к краю экрана -->
-  <div class="heromoon"><canvas id="moonHero" width="480" height="480"></canvas></div>
+  <!-- Луна входа — самостоятельное изображение; текущая фаза рисуется внутри приложения. -->
+  <div class="heromoon"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" fetchpriority="high" decoding="async"></div>
 </div>
 <div class="wrap">
 
-  <!-- ЗНАКОМСТВО: текст Виктории, две кнопки -->
+  <!-- ВХОД: личный профиль или вход по почте -->
   <section class="view" id="v-hello">
+    <header class="hello-header">
     <h1 class="wordmark hero" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
-    <p class="hl1">Здесь можно выдохнуть,<br>свериться с собой<br>и <em>найти опору</em></p>
-    <p class="hl3">Укажите имя, дату, время и место рождения</p>
-    <div class="gifts">
-      <div class="gift"><i class="ico star"></i><span><b>Личный гороскоп</b><small>по дате и месту рождения</small></span></div>
-      <div class="gift"><i class="ico moon"></i><span><b>Персональное предсказание</b><small>на этот год</small></span></div>
+      <button class="hello-login" id="hello-login" type="button" aria-label="Войти по почте" style="display:none" onclick="openLogin()">Войти</button>
+    </header>
+    <div class="hello-content">
+      <ul class="gifts">
+        <li class="gift"><i class="ico smile" aria-hidden="true"></i><span><b>Замечать своё настроение</b></span></li>
+        <li class="gift"><i class="ico pen" aria-hidden="true"></i><span><b>Записывать мысли</b></span></li>
+        <li class="gift"><i class="ico question" aria-hidden="true"></i><span><b>Посмотреть на вопрос иначе</b></span></li>
+      </ul>
+      <div class="cta">
+        <button class="btn" onclick="openForm()">Создать профиль <span aria-hidden="true">→</span></button>
+      </div>
     </div>
-    <div class="cta">
-      <button class="btn" aria-label="Заполнить анкету" onclick="openForm()">Заполнить анкету&nbsp;&nbsp;→</button>
-      <button class="btn ghost" onclick="go('nodemo')">Посмотреть без анкеты</button>
-    </div>
-    <p class="trust">Бесплатно · Записи хранятся в России и видны только вам</p>
-    <p class="linkline" id="hello-login" style="display:none">Уже пользовались Лунарио? <button type="button" onclick="openLogin()">Войти по почте</button></p>
-  </section>
-
-  <!-- БЕЗ АНКЕТЫ -->
-  <section class="view" id="v-nodemo">
-    <button class="back" onclick="go('hello')">← Назад</button>
-    <h1 style="margin-top:14px">Посмотреть без анкеты</h1>
-    <p class="stubtext">Пока в разработке</p>
-    <button class="btn" style="margin-top:34px" onclick="openForm()">Заполнить анкету</button>
+    <p class="trust">Записи хранятся в России<br>и видны только вам.</p>
   </section>
 
   <!-- ВХОД ПО ПОЧТЕ -->
@@ -658,36 +719,31 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </div>
   </section>
 
-  <!-- ГЛАВНАЯ: пожелание, луна и лунный день, пять квадратов, всё остальное плитками -->
+  <!-- СЕГОДНЯ: один следующий шаг и три быстрых действия -->
   <section class="view" id="v-home">
     <div class="row hdr" style="align-items:flex-start">
       <div class="grow"><span class="eyebrow" id="h-date"></span><h1 id="h-wish" style="margin-top:6px">Лунарио</h1></div>
       <a class="cabs" id="h-cabs" href="/app/cabinet" onclick="openCabinet();return false" hidden aria-label="Вернуться в кабинеты">← Кабинеты</a>
-      <button class="acct" id="h-acct" type="button" onclick="go('account')" aria-label="Аккаунт">✦</button>
+      <button class="acct" id="h-acct" type="button" onclick="go('account')" aria-label="Аккаунт">✦<i class="news-dot" aria-label="Есть новое в приложении"></i></button>
     </div>
-    <button class="moonline" type="button" onclick="openLunar()">
+    <button class="card day-focus" type="button" onclick="go('today')">
+      <span class="eyebrow">Ваш день</span><h2 style="margin-top:7px">Продолжить в своём темпе</h2>
+      <p id="h-progress" style="margin-top:9px">Карта дня готова · настроение можно отметить</p>
+      <span class="next">Продолжить мой день <b aria-hidden="true">→</b></span>
+    </button>
+    <p class="quick-title">Что хочется сделать сейчас</p>
+    <div class="quick-actions">
+      <button type="button" onclick="openWidget('mood')"><i class="ico smile"></i>Настроение</button>
+      <button type="button" onclick="openWidget('journal')"><i class="ico journal"></i>Записать мысль</button>
+      <button type="button" onclick="openWidget('worry')"><i class="ico question"></i>Разобрать вопрос</button>
+    </div>
+    <button class="moonline" type="button" onclick="go('around')">
       <canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas>
       <div class="grow"><p id="h-moon"></p><small id="h-lunar"></small></div>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:#8f87ad;flex:0 0 auto"><path d="m9 6 6 6-6 6"/></svg>
+      <span style="color:var(--gold-2);font-size:13px">Луна и небо →</span>
     </button>
-    <div class="sqs">
-      <button class="sq" type="button" onclick="go('today')"><i class="ico moon"></i>Мой день</button>
-      <button class="sq" type="button" onclick="go('ask')"><i class="ico yes-no"></i>Свериться</button>
-      <button class="sq" type="button" onclick="go('about')"><i class="ico person"></i>Обо мне</button>
-      <button class="sq" type="button" onclick="go('around')"><i class="ico orbit"></i>Внешний фон</button>
-      <button class="sq" type="button" onclick="go('history')"><i class="ico journal"></i>История</button>
-      <button class="sq" type="button" onclick="go('news')"><i class="ico star"></i>Новое в приложении</button>
-    </div>
-    <div class="mini">
-      <button type="button" onclick="openWidget('invite')"><i class="ico users"></i><b>Позвать подругу</b></button>
-      <button type="button" onclick="openWidget('week')"><i class="ico calendar"></i><b>Итоги недели</b></button>
-      <button type="button" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b></button>
-      <button type="button" class="stub" onclick="openStub('С чего начать')"><i class="ico flag"></i><b>С чего начать</b></button>
-      <button type="button" class="stub" onclick="openStub('Вопросы и ответы')"><i class="ico question"></i><b>Вопросы и ответы</b></button>
-      <button type="button" onclick="openWidget('support')" style="position:relative"><i class="ico chat"></i><b>Чат поддержки</b><span class="dot" id="h-supdot" hidden></span></button>
-    </div>
+    <div class="home-links"><button onclick="openWidget('week')">Итоги недели</button><button onclick="openWidget('wishes')">Мои желания</button><button onclick="openWidget('invite')">Позвать подругу</button></div>
   </section>
-
   <!-- МОЙ ДЕНЬ: ежедневные ритуалы -->
   <section class="view" id="v-today">
     <button class="back" onclick="go('home')">← Назад</button>
@@ -696,7 +752,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('card')"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button>
       <button class="wid" type="button" onclick="openWidget('mood')"><i class="ico smile"></i><b>Настроение дня</b><span>Отмечаете смайликом, в конце месяца — итог</span></button>
-      <button class="wid" type="button" onclick="openWidget('worry')"><i class="ico question"></i><b>Что вас сегодня беспокоит?</b></button>
+      <button class="wid" type="button" onclick="openWidget('worry')"><i class="ico question"></i><b>Разобрать вопрос</b><span>Назвать, что беспокоит, и посмотреть иначе</span></button>
       <button class="wid" type="button" onclick="openWidget('day')"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">По вашему знаку — работа, отношения, здоровье, деньги</span></button>
       <button class="wid" type="button" onclick="openWidget('tone')"><i class="ico star"></i><b>Вопрос дня</b><span>К установке дня — ответ можно отправить в дневник</span></button>
       <button class="wid" type="button" onclick="openWidget('askesis')"><i class="ico flag"></i><b>Взять аскезу</b><span>Обещание себе на срок: отметки по дням и напоминание</span></button>
@@ -725,18 +781,17 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <h1 style="margin-top:6px" id="m-name">Обо мне</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('natal')"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button>
-      <button class="wid stub" type="button" onclick="openStub('Тесты')"><i class="ico list"></i><b>Тесты</b><span>Пока в разработке</span></button>
       <button class="wid" type="button" onclick="openWidget('year')"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button>
-      <button class="wid stub" type="button" onclick="openStub('Нумерология')"><i class="ico numerology"></i><b>Нумерология</b><span>В разработке</span></button>
       <button class="wid" type="button" onclick="openWidget('compat')"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></button>
     </div>
+    <p class="hint" style="margin-top:24px">Материалы Лунарио помогают посмотреть на ситуацию иначе и не заменяют медицинскую, психологическую или юридическую помощь.</p>
   </section>
 
   <!-- ЧТО ВОКРУГ: лунный день и небо -->
   <section class="view" id="v-around">
     <button class="back" onclick="go('home')">← Назад</button>
     <span class="eyebrow" style="margin-top:6px">Лунный день и что происходит на небе</span>
-    <h1 style="margin-top:6px">Внешний фон</h1>
+    <h1 style="margin-top:6px">Луна и небо</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('lunar')"><i class="ico moon"></i><b id="ar-lunar">Лунный день</b><span id="ar-period"></span></button>
       <button class="wid" type="button" onclick="openWidget('sky')"><i class="ico star"></i><b>На небе</b><span>Фазы Луны, затмения, ретроградные планеты</span></button>
@@ -747,7 +802,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <section class="view" id="v-history">
     <button class="back" onclick="go('home')">← Назад</button>
     <span class="eyebrow" style="margin-top:6px">Дневник, желания, вопросы и итоги недели</span>
-    <h1 style="margin-top:6px">История</h1>
+    <h1 style="margin-top:6px">Дневник</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('hmood')"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button>
       <button class="wid" type="button" onclick="openWidget('hwishes')"><i class="ico heart"></i><b>Мои желания</b><span>Все желания с отметкой об исполнении</span></button>
@@ -772,22 +827,34 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <h1 style="margin-top:6px" id="ac-name">Аккаунт</h1>
     <p class="geo" id="m-geo" style="margin-top:8px"></p>
     <div class="card sec" id="ac-photo" style="margin-top:14px"></div>
-    <div class="wids">
+    <div class="account-group"><span class="eyebrow">Мой профиль</span><div class="wids">
+      <button class="wid" type="button" onclick="go('about')"><i class="ico person"></i><b>Мой профиль</b><span>Натальная карта, личный год и совместимость</span></button>
       <button class="wid" type="button" onclick="openWidget('edit')"><i class="ico pen"></i><b>Изменить мои данные</b></button>
+    </div></div>
+    <div class="account-group"><span class="eyebrow">Приложение</span><div class="wids">
       <button class="wid" type="button" onclick="openWidget('mail')"><i class="ico mail"></i><b>Вход по почте</b><span>Дневник и серия переедут на другое устройство</span></button>
       <button class="wid" type="button" onclick="openWidget('remind')"><i class="ico bell"></i><b>Напоминание</b><span>Какие присылать, во сколько и как часто</span></button>
+      <button class="wid" type="button" onclick="go('news')"><i class="ico star"></i><b>Новое в приложении</b><span>Что появилось за последний месяц</span></button>
+    </div></div>
+    <div class="account-group"><span class="eyebrow">Приватность</span><div class="wids">
       <button class="wid" type="button" onclick="openWidget('shelves')"><i class="ico list"></i><b>Мои данные</b><span>Что Лунарио знает о вас — три полки</span></button>
-    </div>
-    <div class="rows">
+      <button class="wid" type="button" onclick="openWidget('support')"><i class="ico chat"></i><b>Поддержка</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button>
+    </div></div>
+    <div class="rows danger-zone"><span class="eyebrow">Управление аккаунтом</span>
       <button class="rowbtn" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i>Установить на телефон</button>
       <button class="rowbtn" type="button" onclick="logout()"><i class="ico exit"></i>Выйти на этом устройстве</button>
       <button class="rowbtn" type="button" onclick="wipe('data')"><i class="ico list"></i>Очистить историю</button>
       <button class="rowbtn warn" type="button" onclick="wipe('account')"><i class="ico exit"></i>Удалить аккаунт</button>
     </div>
-    <p style="font-size:12.5px;color:#8f87ad;margin-top:22px;text-align:center">Контент носит рекомендательный характер и не заменяет консультации специалистов.</p>
   </section>
 </div>
 
+<nav class="app-nav" aria-label="Основные разделы">
+  <button type="button" data-nav="home" onclick="go('home')"><i class="ico moon"></i>Сегодня</button>
+  <button type="button" data-nav="ask" onclick="go('ask')"><i class="ico yes-no"></i>Свериться</button>
+  <button type="button" data-nav="history" onclick="go('history')"><i class="ico journal"></i>Дневник</button>
+  <button type="button" data-nav="account" onclick="go('account')"><i class="ico person"></i>Я</button>
+</nav>
 
 <!-- панели виджетов: openWidget() переносит нужную в обёртку и возвращает обратно -->
 <div id="wg-store" style="display:none">
@@ -813,9 +880,11 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-gratitude"><div id="gr-box"></div></div>
   <div class="wpane" id="w-journal">
     <span class="eyebrow" style="margin-bottom:11px">Дневник · видите только вы</span>
-    <div class="card">
-      <textarea id="j-text" placeholder="Пара строк — для себя…" maxlength="2000"></textarea>
-      <button class="btn ghost sm" style="width:100%;margin-top:10px" onclick="saveJournal()">Сохранить запись</button>
+    <div class="card journal-card" id="journal-card">
+      <textarea id="j-text" placeholder="Что сегодня хочется оставить здесь?" maxlength="2000"></textarea>
+      <div class="chips flow" style="margin-top:10px"><button class="chip" type="button" onclick="journalPrompt('Что произошло?')">Что произошло?</button><button class="chip" type="button" onclick="journalPrompt('Что я почувствовала?')">Что я почувствовала?</button><button class="chip" type="button" onclick="journalPrompt('Что хочу помнить?')">Что хочу помнить?</button></div>
+      <button class="btn ghost sm" id="j-dictate" type="button" style="width:100%;margin-top:10px" onclick="journalDictate()">🎙 Продиктовать</button>
+      <button class="btn sm" style="width:100%;margin-top:12px" onclick="saveJournal()">Сохранить запись</button>
     </div>
     <div class="list" id="m-journal" style="margin-top:11px"></div>
   </div>
@@ -840,7 +909,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-compat">
     <div class="card">
       <div class="field" style="margin-bottom:10px"><label>Дата рождения партнёра</label><input id="m-cdate" type="date"></div>
-      <button class="btn ghost sm" style="width:100%" onclick="compat()">Рассчитать</button>
+      <button class="btn sm" style="width:100%" onclick="compat()">Рассчитать</button>
       <div id="m-cres" style="display:none;margin-top:16px"></div>
     </div>
   </div>
@@ -890,7 +959,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 <script>
 /* ── Луна с обложки: рисуется один раз с настоящей фазой на сегодня; дыхание и искры — в CSS ── */
 (function () {
-  const canvases = ['moonHello', 'moonToday', 'moonHero'].map((id) => document.getElementById(id)).filter(Boolean);
+  const canvases = ['moonHello', 'moonToday'].map((id) => document.getElementById(id)).filter(Boolean);
   if (!canvases.length) return;
   let phase = 0.42;                        /* пока данных нет — молодая растущая луна */
 
@@ -914,13 +983,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   }
   const CRATERS = buildCraters();
   const texCache = new Map();
-  function moonTexture(px, R, letter) {                 /* px — сторона квадрата в устройственных пикселях, R — радиус в них */
+  function moonTexture(px, R, letter) {                /* px — сторона квадрата в устройственных пикселях, R — радиус в них */
     const key = px + ':' + (letter ? 'l' : 'd');
     if (texCache.has(key)) return texCache.get(key);
     const t = document.createElement('canvas'); t.width = t.height = px;
     const g = t.getContext('2d'); if (!g) return null;
     g.translate(px / 2, px / 2);
-    const st = Math.min(1, Math.max(0.45, (R - 20) / 70));   /* на маленькой луне рельеф приглушаем: иначе золото мутнеет */
+    const st = Math.min(1, Math.max(0.45, (R - 20) / 70));
     g.globalAlpha = 1;
     /* шар: свет справа-сверху, к лимбу темнее */
     const body = g.createRadialGradient(R * 0.35, -R * 0.3, R * 0.1, 0, 0, R * 1.05);
@@ -950,7 +1019,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       g.fillStyle = floor; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
       g.lineWidth = Math.max(0.6, r * 0.22);
       g.strokeStyle = `rgba(160,115,50,${0.22 * st})`; g.beginPath(); g.arc(cx, cy, r * 0.88, Math.PI * 0.55, Math.PI * 1.45); g.stroke();      /* тень внутри, слева */
-      g.strokeStyle = 'rgba(255,252,235,.45)'; g.beginPath(); g.arc(cx, cy, r * 0.98, -Math.PI * 0.45, Math.PI * 0.45); g.stroke();  /* освещённый вал справа */
+      g.strokeStyle = 'rgba(255,252,235,.45)'; g.beginPath(); g.arc(cx, cy, r * 0.98, -Math.PI * 0.45, Math.PI * 0.45); g.stroke();
     }
     g.restore();
     texCache.set(key, t); return t;
@@ -968,8 +1037,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     const ctx = cv.getContext('2d');
     if (!ctx || (ctx.isContextLost && ctx.isContextLost())) return;   /* контекст потерян — дорисуем по contextrestored */
     const R = S * 0.34, Rp = R * dpr;
-    const ph = cv.id === 'moonHero' ? 0.22 : phase;   /* большая луна приветствия — декорация с закреплённой фазой: растущий серп, тёмной стороной к тексту */
-    const p = ph * Math.PI * 2, c = Math.cos(p), waxing = ph < 0.5, sign = waxing ? 1 : -1;
+    const p = phase * Math.PI * 2, c = Math.cos(p), waxing = phase < 0.5, sign = waxing ? 1 : -1;
     const tex = moonTexture(px, Rp, letter); if (!tex) return;
     /* всё рисуем в устройственных пикселях; при убывающей луне зеркалим по x — свет на текстуре всегда справа */
     const litPath = (g) => { g.beginPath(); g.arc(0, 0, Rp, -Math.PI / 2, Math.PI / 2, false); g.ellipse(0, 0, Math.max(0.001, Rp * Math.abs(c)), Rp, 0, Math.PI / 2, -Math.PI / 2, c > 0); g.closePath(); };
@@ -984,7 +1052,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     ctx.setTransform(sign, 0, 0, 1, px / 2, px / 2);
     /* ночная сторона: та же поверхность в сумерках — рельеф едва читается */
     ctx.drawImage(tex, -px / 2, -px / 2);
-    ctx.fillStyle = cv.id === 'moonHero' ? 'rgba(16,14,30,.93)' : 'rgba(22,19,42,.86)';   /* ночная сторона — цвет самого неба, сквозь него едва проступает рельеф; у большой луны — темнее, чтобы не спорить с текстом */
+    ctx.fillStyle = 'rgba(22,19,42,.86)';
     ctx.beginPath(); ctx.arc(0, 0, Rp, 0, Math.PI * 2); ctx.fill();
     /* освещённая часть с мягким терминатором: маска размывается, если холст умеет фильтры */
     const lit = document.createElement('canvas'); lit.width = lit.height = px;
@@ -1187,7 +1255,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       const la = 0.05 + breathe * 0.05;
       ctx.font = '500 10px Onest, system-ui, sans-serif'; ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(233,214,170,' + la.toFixed(3) + ')';
-      ctx.fillText(cat.n.toUpperCase(), cxm, cym + 34);
+      if (!document.body.classList.contains('hello')) ctx.fillText(cat.n.toUpperCase(), cxm, cym + 34);
     }
     if (!reduce) {
       if (t > nextMeteor) {
@@ -1243,11 +1311,31 @@ function track(t, d){
   }catch(e){ /* аналитика никогда не ломает приложение */ }
 }
 function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2600); }
-function hap(p){
-  // в оболочке вибрация идёт через Taptic Engine — navigator.vibrate на iOS не работает
-  if (IOS_SHELL && nativePost({ type:'haptic', kind: Array.isArray(p) ? 'success' : 'tap' })) return;
-  try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){}
+const COMMAND_SELECTOR = '.sq,.wid,.mini button,.quick-actions button,.day-focus,.app-nav button,.acc-head,.acc-opt,.mood,.moonline';
+function revealCommands(root=document){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  root.querySelectorAll(COMMAND_SELECTOR).forEach((el, i) => {
+    el.style.setProperty('--command-i', Math.min(i, 9));
+    el.classList.remove('command-enter'); void el.offsetWidth; el.classList.add('command-enter');
+  });
 }
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest(COMMAND_SELECTOR); if (!el) return;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty('--tap-x', `${e.clientX-r.left}px`); el.style.setProperty('--tap-y', `${e.clientY-r.top}px`);
+  el.classList.remove('reward'); void el.offsetWidth; el.classList.add('reward');
+  clearTimeout(el._rewardTimer); el._rewardTimer=setTimeout(()=>el.classList.remove('reward'),620);
+}, { passive:true, capture:true });
+let lightFrame=0, lightTarget=null, lightEvent=null;
+document.addEventListener('pointermove',(e)=>{
+  if(e.pointerType==='touch') return;
+  lightTarget=e.target.closest(COMMAND_SELECTOR); lightEvent=e;
+  if(lightFrame) return;
+  lightFrame=requestAnimationFrame(()=>{
+    if(lightTarget&&lightEvent){const r=lightTarget.getBoundingClientRect();lightTarget.style.setProperty('--light-x',`${lightEvent.clientX-r.left}px`);lightTarget.style.setProperty('--light-y',`${lightEvent.clientY-r.top}px`)}
+    lightFrame=0;
+  });
+},{passive:true});
 function hap(p){
   // в оболочке вибрация идёт через Taptic Engine — navigator.vibrate на iOS не работает
   if (IOS_SHELL && nativePost({ type:'haptic', kind: Array.isArray(p) ? 'success' : 'tap' })) return;
@@ -1259,10 +1347,14 @@ const esc = (s) => String(s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&
 const INNER_VIEWS=['home','today','ask','about','history','around','account','news'];
 function go(v){
   closeWidget();
+  if(v==='news'){ try{localStorage.setItem('lun_news_seen',new Date().toISOString().slice(0,7));}catch(e){} const dot=document.querySelector('.news-dot'); if(dot) dot.hidden=true; }
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
-  document.body.classList.toggle('fixed', v==='hello' || v==='home');   // эти экраны не листаются
+  document.body.classList.remove('fixed');                           // внутренние экраны прокручиваются на низких устройствах
   document.body.classList.toggle('hello', v==='hello');                // большая луна в фоне — только на приветствии
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
+  const navFor = {home:'home',today:'home',around:'home',ask:'ask',history:'history',account:'account',about:'account',news:'account'}[v];
+  document.querySelectorAll('.app-nav button').forEach(b=>b.classList.toggle('on', b.dataset.nav===navFor));
+  const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   window.scrollTo(0,0);
   if(v==='about') loadAbout();
   if(v==='history') loadHistory();
@@ -1289,12 +1381,12 @@ function openLogin(){
 
 /* ── виджеты: панель переезжает из хранилища в обёртку и обратно ── */
 const WIDGETS = {
-  card:['Ваш ритуал','Карта дня'], mood:['Мой день','Настроение дня'], worry:['Мой день','Что вас сегодня беспокоит?'],
+  card:['Ваш ритуал','Карта дня'], mood:['Мой день','Настроение дня'], worry:['Мой день','Разобрать вопрос'],
   day:['Мой день','Прогноз дня'], tone:['Мой день','Вопрос дня'],
-  journal:['История','Дневник'], wishes:['Мой день','Мои желания'], habits:['Мой день','Дневник привычек'], askesis:['Мой день','Взять аскезу'], sky:['Внешний фон','На небе'], gratitude:['Мой день','Дневник благодарности'],
+  journal:['Дневник','Новая запись'], wishes:['Мой день','Мои желания'], habits:['Мой день','Дневник привычек'], askesis:['Мой день','Взять аскезу'], sky:['Луна и небо','На небе'], gratitude:['Мой день','Дневник благодарности'],
   ask:['Свериться',''], year:['Обо мне','Личный год'], birthnum:['Обо мне','Число рождения'], compat:['Обо мне','Совместимость'],
-  lunar:['Внешний фон','Лунный день'], hmood:['История','История настроений'], hwishes:['История','Мои желания'],
-  hentries:['История','Мои вопросы и ответы'], week:['История','Итоги недели'],
+  lunar:['Луна и небо','Лунный день'], hmood:['Дневник','История настроений'], hwishes:['Дневник','Мои желания'],
+  hentries:['Дневник','Мои вопросы и ответы'], week:['Дневник','Итоги недели'],
   invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминание'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'], shelves:['Аккаунт','Мои данные'],
   support:['Поддержка','Чат с поддержкой'], natal:['Обо мне','Натальная карта'],
   stub:['','']
@@ -1306,6 +1398,7 @@ function openWidget(k, title){
   $('wg-eb').textContent = w[0]; $('wg-title').textContent = title || w[1];
   $('wg-body').appendChild(pane); wgOpen = k;
   $('wg').classList.add('on'); document.body.classList.add('wg-open');
+  requestAnimationFrame(()=>revealCommands(pane));
   document.querySelector('#wg .wg').scrollTop = 0; hap(9);
   if (k==='journal') loadJournal();
   if (k==='wishes' || k==='hwishes') api('/wishes').then(renderWishes).catch(()=>{});
@@ -1443,6 +1536,7 @@ function paintHome(){
   const u=S.user, d=S.day;
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent='Лунарио · '+dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  try{ const dot=document.querySelector('.news-dot'); if(dot) dot.hidden=localStorage.getItem('lun_news_seen')===d.date.slice(0,7); }catch(e){}
   const h=new Date().getHours();
   const greet=(h<5?'Доброй ночи':h<12?'Доброе утро':h<18?'Добрый день':'Добрый вечер');
   $('h-wish').textContent = d.set ? d.set.text : greet+(u.name?', '+u.name:'');
@@ -1451,6 +1545,7 @@ function paintHome(){
   $('h-cabs').hidden = !staff; $('h-cabs').closest('.row').classList.toggle('staff', staff); document.body.classList.toggle('staff', staff);
   $('h-moon').textContent = d.moon + (d.lunar ? ' · ' + ordinal(d.lunar.n) + ' лунный день' : '');
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
+  const hp=$('h-progress'); if(hp) hp.textContent=(d.card?'Карта дня открыта':'Карта дня готова')+' · '+(S.mood?'настроение отмечено':'настроение можно отметить');
   moonSetPhase(d.moonPhase);
   paintStreak();
 }
@@ -1735,16 +1830,31 @@ async function copyInvite(){
   track('invite_copy');
 }
 async function addWish(){
-  track('wish_add');
   const t=$('w-text').value.trim(); if(t.length<3){ toast('Сформулируйте чуть подробнее'); return; }
-  $('w-text').value=''; renderWishes(await api('/wishes',{method:'POST',body:JSON.stringify({text:t})})); hap([0,14,45,22]); toast('Добавлено');
+  if(addWish.saving) return; addWish.saving=true;
+  try {
+    const r=await api('/wishes',{method:'POST',body:JSON.stringify({text:t})});
+    if($('w-text').value.trim()===t) $('w-text').value='';
+    renderWishes(r); track('wish_add'); hap([0,14,45,22]); toast('Желание сохранено');
+  } catch(e){ toast('Не удалось сохранить желание. Текст остался в поле.'); }
+  finally { addWish.saving=false; }
 }
-async function toggleWish(id){ hap(9); renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
-async function saveJournal(){
-  track('journal_add');
-  const t=$('j-text').value.trim(); if(t.length<3){ toast('Напишите хотя бы пару слов'); return; }
-  const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t})});
-  $('j-text').value=''; bumpStreak(r.streak); hap([0,14,45,22]); toast('Записано. Видите только вы'); loadMe();
+async function toggleWish(id){
+  hap(9);
+  try { renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
+  catch(e){ toast('Не удалось изменить отметку желания. Попробуйте ещё раз.'); }
+}
+function journalPrompt(text){
+  const el=$('j-text'); if(!el) return;
+  if(!el.value.trim()) el.value=text+'\n';
+  el.focus(); el.setSelectionRange(el.value.length,el.value.length); hap(9);
+}
+function journalDictate(){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){ toast('Диктовка недоступна в этом браузере'); return; }
+  const btn=$('j-dictate'), rec=new SpeechRecognition(); rec.lang='ru-RU'; rec.interimResults=false;
+  btn.textContent='Слушаю…'; rec.onresult=(e)=>{const el=$('j-text'), text=e.results[0][0].transcript; el.value+=(el.value.trim()?' ':'')+text; el.focus();};
+  rec.onerror=()=>toast('Не удалось распознать речь'); rec.onend=()=>{btn.textContent='🎙 Продиктовать'}; rec.start();
 }
 async function compat(){
   track('compat_calc');
@@ -1882,10 +1992,16 @@ function loadJournal(){
   }).catch(()=>{});
 }
 async function saveJournal(){
-  track('journal_add');
   const t=$('j-text').value.trim(); if(t.length<3){ toast('Напишите хотя бы пару слов'); return; }
-  const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t})});
-  $('j-text').value=''; bumpStreak(r.streak); hap([0,14,45,22]); toast('Записано. Видите только вы'); loadJournal();
+  if(saveJournal.saving) return; saveJournal.saving=true;
+  try {
+    const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t})});
+    if($('j-text').value.trim()===t) $('j-text').value='';
+    track('journal_add'); bumpStreak(r.streak); hap([0,14,45,22]);
+    const card=$('journal-card'); card.classList.remove('saved'); void card.offsetWidth; card.classList.add('saved');
+    toast('Запись сохранена · '+new Date().toLocaleDateString('ru-RU')); loadJournal();
+  } catch(e){ toast('Не удалось сохранить запись. Текст остался в поле.'); }
+  finally { saveJournal.saving=false; }
 }
 let editReady = false;
 function fillEdit(){
@@ -1975,10 +2091,9 @@ function cardDayHtml(c, day, compact){
   const id = regRes({ type: 'card', card: c, day });
   const s = c.sections || {};
   return `<div style="text-align:center"><div class="serif" style="font-size:22px;color:var(--gold)">${esc(c.name)}</div>${c.keys ? `<div class="kw">${esc(keysLine(c.keys))}</div>` : ''}</div>
-    ${s.image && s.image.length ? `<div class="card" style="margin-top:14px">${paras(s.image)}</div>` : ''}
-    ${(c.today || (s.advice && s.advice.length)) ? `<div class="card"><h3>Совет</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : ''}${paras(s.advice)}</div>` : ''}
-    ${c.question ? `<div class="card ask-q"><h3>Вопрос себе</h3><p>${esc(c.question)}</p></div>` : ''}
-    ${moreBlock(sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC))}
+    ${(c.today || (s.advice && s.advice.length)) ? `<div class="card" style="margin-top:14px"><h3>Сегодня</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : ''}${paras(s.advice)}</div>` : ''}
+    ${moreBlock((s.image && s.image.length ? `<h3>Образ карты</h3>${paras(s.image)}` : '') + sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC) + (c.question ? `<h3>Вопрос себе</h3><p>${esc(c.question)}</p>` : ''), 'Прочитать подробнее')}
+    <p class="hint" style="margin-top:14px">Это способ посмотреть на ситуацию иначе, а не профессиональная рекомендация.</p>
     ${actionsHtml(id, !compact)}`;
 }
 function paintCard(){
@@ -2107,7 +2222,7 @@ $('a-q').addEventListener('input', checkQ);
 function checkQ(){
   const v = $('a-q').value.trim(), ok = v.length >= 10 && /\s/.test(v);
   $('a-go').disabled = !ok;
-  $('a-go').textContent = ok ? (S.mode === 'spread' ? 'Разложить карты' : S.mode === 'rune' ? (S.layout === 'one' ? 'Вытянуть руну' : 'Разложить руны') : 'Спросить карту') : (v.length ? 'Допишите вопрос' : 'Напишите вопрос');
+  $('a-go').textContent = ok ? 'Получить ответ' : (v.length ? 'Допишите вопрос' : 'Напишите вопрос');
 }
 async function runAsk(mode, q, out, hint, layout){
   await loadCatalog().catch(() => {});
@@ -2501,9 +2616,9 @@ function paintLunarWidget(){
   const l = S.day && S.day.lunar, box = $('ln-box'); if (!box) return;
   if (!l) { box.innerHTML = '<p class="stubtext">Лунный день пока не рассчитан.</p>'; return; }
   const id = regRes({ type: 'lunar', l, day: S.day.date });
-  box.innerHTML = `<div class="big" style="font-size:64px;margin-top:10px">${l.n}</div>
-    <p class="w-big" style="margin-top:6px;font-size:19px">${ordinal(l.n)} лунный день${l.title ? ' · ' + esc(l.title) : ''}</p>
-    <p style="text-align:center;margin-top:10px;font-size:14px">${esc(l.period)}</p>
+  box.innerHTML = `<p class="w-big" style="margin-top:10px;font-size:22px">${ordinal(l.n)} лунный день</p>
+    ${l.title ? `<p style="text-align:center;margin-top:8px;color:#fff;font-size:18px">${esc(l.title)}</p>` : ''}
+    ${l.period && l.period !== ordinal(l.n)+' лунный день' ? `<p style="text-align:center;margin-top:10px;font-size:14px">${esc(l.period)}</p>` : ''}
     ${l.advice ? `<div class="card" style="margin-top:16px"><h3>Рекомендация</h3><p style="color:#fff;font-size:15.5px">${esc(l.advice)}</p></div>` : ''}
     <div class="card" style="margin-top:12px">${remBox('lunar')}</div>
     ${actionsHtml(id, true)}
@@ -2737,15 +2852,21 @@ const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); retur
 const moodFace = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return 'anticipation'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
 const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || FAM_FALLBACK.dyad)[1]; };
 const moodSvg = (mood, size) => `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" style="color:${moodColor(mood)}"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/><path d="${MOUTH[moodFace(mood)]}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+let moodDetails=false;
+function toggleMoodDetails(){ moodDetails=!moodDetails; renderMoods(); hap(9); }
 function renderMoods(){
   const fams = moodFams(), list = moodList();
   const chip = (m) => `<button type="button" class="chip mchip${S.mood === m.key ? ' on' : ''}" style="--c:${moodColor(m.key)}" onclick="pickMood('${m.key}')">${esc(m.label)}</button>`;
   const cur = moodInfo(S.mood);
   $('t-moods').className = 'mfams';
   const own = ownMood(S.mood);
-  $('t-moods').innerHTML = (cur ? `<div class="mpick">${moodSvg(S.mood, 40)}<div class="grow"><b style="display:block;font-size:15px;color:#fff">Сегодня — ${esc(cur.label)}</b><small style="color:#8f87ad;font-size:12.5px">Можно выбрать другой оттенок — отметка обновится</small></div></div>` : '')
-    + `<div class="mfam"><i class="fdot" style="background:#e9c77e"></i><span class="fname">Своё слово</span><div class="grow"><div class="row" style="gap:8px"><input id="mood-own" maxlength="24" placeholder="Например: собранно" value="${esc(own)}" onkeydown="if(event.key==='Enter')pickOwnMood()" style="min-height:44px;padding:10px 14px;border-radius:14px"><button class="btn sm" type="button" style="min-height:44px;padding:0 16px" onclick="pickOwnMood()">✓</button></div><small class="hint" style="display:block;margin-top:6px">Одно слово — как есть у вас сейчас</small></div></div>`
-    + ['joy', 'trust', 'fear', 'surprise', 'sadness', 'disgust', 'anger', 'anticipation', 'dyad'].map((f) => `<div class="mfam"><i class="fdot" style="background:${fams[f][1]}"></i><span class="fname">${esc(fams[f][0])}</span><div class="chips flow">${list.filter(m => m.family === f).map(chip).join('')}</div></div>`).join('');
+  const detailFamilies=cur&&cur.family!=='own'?[cur.family]:[];
+  const simple=[['joy','Хорошо'],['serenity','Спокойно'],['pensiveness','Устала'],['apprehension','Тревожно'],['grief','Тяжело']];
+  $('t-moods').innerHTML = `<p style="font-size:17px;color:#fff;margin-bottom:14px">Как вы сейчас?</p>`
+    + (cur ? `<div class="mpick">${moodSvg(S.mood, 40)}<div class="grow"><b style="display:block;font-size:15px;color:#fff">Сегодня — ${esc(cur.label)}</b><small style="color:#8f87ad;font-size:12.5px">Можно изменить отметку</small></div></div>` : '')
+    + `<div class="mood-simple">${simple.map(([key,label])=>`<button type="button" class="mood-choice${S.mood===key?' on':''}" onclick="pickMood('${key}')">${moodSvg(key,32)}<span>${label}</span></button>`).join('')}<button type="button" class="mood-choice" onclick="toggleMoodDetails()"><i class="ico pen"></i><span>Своё слово</span></button></div>`
+    + (cur ? `<button class="morebtn" type="button" onclick="toggleMoodDetails()"><span>${moodDetails?'Скрыть оттенки':'Хотите назвать точнее?'}</span>${CHEV}</button>` : '')
+    + (moodDetails ? `<div class="mood-details"><div class="mfam"><i class="fdot" style="background:#e9c77e"></i><span class="fname">Своё слово</span><div class="grow"><div class="row" style="gap:8px"><input id="mood-own" maxlength="24" placeholder="Например: собранно" value="${esc(own)}" onkeydown="if(event.key==='Enter')pickOwnMood()"><button class="btn sm" type="button" onclick="pickOwnMood()">✓</button></div></div></div>${detailFamilies.map((f)=>`<div class="mfam"><i class="fdot" style="background:${fams[f][1]}"></i><span class="fname">${esc(fams[f][0])}</span><div class="chips flow">${list.filter(m=>m.family===f).map(chip).join('')}</div></div>`).join('')}</div>` : '');
 }
 /* смайлик настроения на открытке — лепесток даёт рот и цвет */
 function pcSmiley(ctx, mood, cx, cy, size){
@@ -2758,21 +2879,18 @@ function pcSmiley(ctx, mood, cx, cy, size){
 }
 
 /* ══════════ «Что вас сегодня беспокоит?»: свой запрос или плашка, потом — как получить ответ ══════════ */
-const WORRIES_FALLBACK = ['Я не чувствую себя желанной', 'Как снизить тревогу во время беременности?', 'Силы на открытие своего бизнеса',
-  'Практики для принятия себя и своей внешности', 'Как поднять свою самоценность', 'Как выйти из грусти от потери', 'Беспокоит бессонница',
-  'Как перестать бояться идти своим путём'];
-const worries = () => (CAT && CAT.worries && CAT.worries.length ? CAT.worries : WORRIES_FALLBACK);
+const WORRY_TOPICS = [['Отношения','Что происходит в отношениях?'],['Работа и деньги','Что беспокоит в работе или деньгах?'],['Решение','Какое решение не даёт покоя?'],['Тревога','О чём сейчас больше всего тревожно?'],['Отношение к себе','Что хочется понять о себе?'],['Другое','Что сейчас не даёт покоя?']];
 const HUB_OPTS = [['rune', 'rune', 'Руна', 'one'], ['runes3', 'rune', 'Три руны', 'three'], ['spread', 'tarot', 'Три карты', 'three'], ['fork', 'tarot', 'Выбор', 'fork']];
 function renderHub(){
   const w = $('t-worry'); if (!w) return;
   if (!CAT) loadCatalog().then(() => { if (wgOpen === 'worry' && !($('hub-q') && $('hub-q').value)) renderHub(); }).catch(() => {});
-  w.innerHTML = `<div class="card hubq"><div class="field" style="margin-bottom:10px"><label>Мой запрос</label><textarea id="hub-q" maxlength="300" placeholder="Что беспокоит или о чём хочется спросить…" oninput="hubCheck()"></textarea></div>
-      <div class="chips flow" id="hub-chips">${worries().map((t) => `<button type="button" class="chip" onclick="hubPick(this)">${esc(t)}</button>`).join('')}</div>
+  w.innerHTML = `<div class="card hubq"><div class="chips flow" id="hub-chips">${WORRY_TOPICS.map(([t,p]) => `<button type="button" class="chip" data-prompt="${esc(p)}" onclick="hubTopic(this)">${esc(t)}</button>`).join('')}</div>
+      <div class="field" style="margin:14px 0 10px"><label>Что именно сейчас не даёт покоя?</label><textarea id="hub-q" maxlength="300" placeholder="Выберите направление или напишите своими словами…" oninput="hubCheck()"></textarea></div>
       <div id="hub-opts" style="display:none;margin-top:14px"><span class="eyebrow" style="margin-bottom:8px">Как получить ответ</span>
         <div class="chips flow">${HUB_OPTS.map(([k, ic, l]) => `<button type="button" class="chip" onclick="hubAsk('${k}',this)"><i class="ico ${ic}" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>${l}</button>`).join('')}</div></div>
     </div><div id="hub-res" style="display:none;margin-top:12px"></div>`;
 }
-function hubPick(btn){ const q = $('hub-q'); q.value = btn.textContent; document.querySelectorAll('#hub-chips .chip').forEach(c => c.classList.toggle('on', c === btn)); hubCheck(); hap(9); q.focus(); }
+function hubTopic(btn){ const q=$('hub-q'); q.placeholder=btn.dataset.prompt; document.querySelectorAll('#hub-chips .chip').forEach(c=>c.classList.toggle('on',c===btn)); hap(9); q.focus(); }
 function hubCheck(){ const v = $('hub-q').value.trim(); $('hub-opts').style.display = v.length >= 10 && /\s/.test(v) ? '' : 'none'; }
 async function hubAsk(kind, btn){
   const q = $('hub-q').value.trim(), out = $('hub-res');
@@ -3018,7 +3136,8 @@ async function removeWishPhoto(id){ try { const r = await api('/wishes/photo?id=
 const photoUrl = (u) => u && u.photo ? `/app/api/photo?t=${encodeURIComponent(u.photoTs || '')}` : '';
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
-  $('h-acct').innerHTML = u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter;
+  let seen=false; try { seen=localStorage.getItem('lun_news_seen')===(S.day?.date||new Date().toISOString()).slice(0,7); } catch(e){}
+  $('h-acct').innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot"${seen?' hidden':''} aria-hidden="true"></i>`;
   const box = $('ac-photo'); if (box) box.innerHTML = `<div class="row" style="gap:14px"><div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>
     <div class="grow"><button class="btn ghost sm" type="button" onclick="setPhoto()">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? `<button type="button" class="linkbtn" style="margin:8px 0 0;text-align:left" onclick="removePhoto()">Убрать</button>` : '<p class="hint" style="margin-top:6px">Покажем в кружке на главной.</p>'}</div></div>`;
 }
@@ -3038,8 +3157,9 @@ async function paintNews(){
   if (!items.length && all.length) { const last = all.map(n => n.month).sort().pop(); items = all.filter(n => n.month === last); }
   const m = items.length ? items[0].month : month;
   $('news-sub').textContent = monthName(m).replace(/^./, c => c.toUpperCase());
-  box.innerHTML = items.length ? items.map(n => `<button class="wid" type="button" onclick="openNews('${esc(n.view)}','${esc(n.widget)}')"><i class="ico spark"></i><b>${esc(n.title)}</b><span>${esc(n.text)}</span></button>`).join('')
+  const released = items.length ? items.map(n => `<button class="wid" type="button" onclick="openNews('${esc(n.view)}','${esc(n.widget)}')"><i class="ico spark"></i><b>${esc(n.title)}</b><span>${esc(n.text)}</span></button>`).join('')
     : '<p class="hint">В этом месяце новинок ещё не было.</p>';
+  box.innerHTML = released + `<div class="item" style="grid-column:1/-1;margin-top:8px"><small>Скоро</small><b style="margin-top:4px">Тесты и нумерология</b><p style="font-size:13.5px">Появятся здесь, когда будут готовы.</p></div>`;
   track('news_view');
 }
 function openNews(view, widget){ go(view); if (widget) setTimeout(() => openWidget(widget), 50); }
