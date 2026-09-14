@@ -12,7 +12,7 @@ echo "==> проверяю файлы"
 node --input-type=module -e "
 const C = await import('./backend/content.mjs');
 console.log('   карт:', C.ARCANA.length, '· знаков:', C.SIGNS.length, '· тонов дня:', C.DAY_TONES.length, '· рун:', C.RUNES.length, '· личных лет:', [1,2,3,4,5,6,7,8,9].filter((n) => C.YEARS[n]).length);
-console.log('   аффирмаций:', C.AFFIRMATIONS.length, '· вопросов дня:', C.DAY_QUESTIONS.length);
+console.log('   аффирмаций:', C.AFFIRMATIONS.length, '· вопросов дня:', C.DAY_QUESTIONS.length, '· лунных дней с описанием:', C.LUNAR_INFO.length, '· глав справочника:', C.lunarRef() ? C.lunarRef().sections.length : 0);
 process.exit(0);" 2>/dev/null | grep -v '^Тексты:'
 
 echo "==> отправляю на сервер (новее на сервере — не трогаю)"

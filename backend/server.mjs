@@ -577,7 +577,9 @@ function lunarPack(u) {
     const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);
     if (!ld) return null;
     const [title, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', ''];
-    return { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || 'Europe/Moscow'), title, advice };
+    const info = C.LUNAR_INFO.find((d) => d.n === ld.n);   /* тема и картинка — на открытку; само описание экран берёт из /api/lunar-days */
+    return { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || 'Europe/Moscow'), title, advice,
+      theme: info ? info.theme : '', symbol: info ? info.symbol : '', image: info ? info.image : '' };
   } catch (e) { return null; }
 }
 const topicOf = (q) => (C.TOPICS.find(([, re]) => re.test(q)) || ['self'])[0];
@@ -821,6 +823,13 @@ const server = createServer(async (req, res) => {
       return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS, lunarDays: [...C.LUNAR_DAYS], askesisIdeas: [...C.ASKESIS_IDEAS], habitIdeas: [...C.HABIT_IDEAS],
         news: [...C.NEWS], moods: [...C.MOODS], moodFamilies: { ...C.MOOD_FAMILIES }, legacyMoods: C.LEGACY_MOODS,
         worries: [...C.WORRIES], awards: [...C.AWARDS], reminderTexts: Object.fromEntries(['card', 'mood', 'moodreport', 'habits', 'askesis', 'gratitude', 'lunar', 'sky'].map((k) => [k, C.REMINDER_TEXTS[k]])) }));
+    }
+
+    /* Лунные дни целиком: 30 статей с картинками и общие главы справочника. Личного нет, кэш как у каталога;
+       экран «Лунный день» забирает это один раз, когда его открыли. */
+    if (p === '/api/lunar-days' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
+      return res.end(JSON.stringify({ days: [...C.LUNAR_INFO], reference: C.lunarRef() }));
     }
 
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.

@@ -416,6 +416,12 @@ body.wg-open{overflow:hidden}
 .yr-art li{margin-top:6px}.yr-art li::marker{color:var(--gold)}
 .yr-art ul ul{margin-top:4px;padding-left:18px}
 .yr-art{min-width:0}   /* карточка в сетке не растягивается под широкую таблицу — таблица прокручивается внутри */
+.yr-art a{color:#f0d79a;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}   /* ссылки на источники — как в файле */
+/* лунный день: полоска всех 30 дней, над главой — номер дня и её тема */
+.ln-days{margin-top:6px}.ln-days .chip{min-width:44px;padding:9px 0;text-align:center;font-size:14px}
+.ln-eb{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--gold);margin:14px 0 0}
+.yr-art .ln-eb{margin-top:14px}
+.yr-art .ln-title{font-size:18px;font-weight:600;line-height:1.3;color:#f5f2ea;margin:4px 0 0}
 .yr-tw{overflow-x:auto;margin-top:12px;-webkit-overflow-scrolling:touch}
 .yr-t{width:100%;border-collapse:collapse;font-size:13.5px;line-height:1.45;min-width:420px}
 .yr-t th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8f87ad;text-align:left;padding:6px 8px 8px;border-bottom:1px solid rgba(217,184,104,.35);vertical-align:bottom}
@@ -1434,7 +1440,8 @@ async function loadNumerology(){
   catch(e){ /* нумерология не загрузилась — разделы «Обо мне» покажут пустые поля */ }
 }
 /* ── личный год: иллюстрация, планета и энергия, короткая строка и открытка; описание — блоками ровно как в файле ── */
-const inl = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>');
+const inl = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>')
+  .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');   /* [текст](адрес) — ссылка на источник */
 function blocksHtml(blocks){
   const out = []; let list = null;   /* открытый список: tag, li — пункт не закрыт, sub — открыт вложенный список */
   const endLi = () => { if (list.sub) { out.push('</ul>'); list.sub = false; } if (list.li) { out.push('</li>'); list.li = false; } };
@@ -2143,6 +2150,18 @@ async function pcImage(ctx, src, x, y, w, h, r){
     ctx.save(); rrect(ctx, x + 1, y + 1, w - 2, h - 2, r); ctx.strokeStyle = 'rgba(217,184,104,.5)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
   } catch (e) { rrect(ctx, x, y, w, h, r); ctx.fillStyle = '#1d1738'; ctx.fill(); }
 }
+/* иллюстрация во всю ширину, верх и низ растворяются в фоне — как родная заставка, а не картинка в рамке */
+async function pcCover(ctx, src, top){
+  try {
+    const im = await loadImg(src);
+    const tmp = document.createElement('canvas'); tmp.width = PC_W; tmp.height = PC_W; const tc = tmp.getContext('2d');
+    tc.drawImage(im, 0, 0, PC_W, PC_W);
+    const g = tc.createLinearGradient(0, 0, 0, PC_W); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.16, 'rgba(0,0,0,1)'); g.addColorStop(0.86, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    tc.globalCompositeOperation = 'destination-in'; tc.fillStyle = g; tc.fillRect(0, 0, PC_W, PC_W);
+    ctx.drawImage(tmp, 0, top);
+    return true;
+  } catch (e) { return false; }
+}
 function pcMoon(ctx, verdict, cx, cy, R){   /* один штрих: полная луна — «да», серп — «нет», половина — «позже» */
   ctx.save(); ctx.strokeStyle = '#e9c77e'; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowColor = 'rgba(233,199,126,.5)'; ctx.shadowBlur = 30;
   ctx.beginPath();
@@ -2172,16 +2191,8 @@ async function drawPostcard(p){
     y = drawText(ctx, p.body || '', 540, y + 50, { size: 38, color: '#f5f2ea', maxW: 860, lh: 1.42 });
     if (p.q) drawText(ctx, '«' + p.q + '»', 540, Math.max(y + 54, 1440), { size: 28, italic: true, color: '#8f87ad', maxW: 860, lh: 1.35 });
   } else if (p.type === 'year') {
-    /* иллюстрация во всю ширину, верх и низ растворяются в фоне — как родная заставка, а не картинка в рамке */
-    const y = p.year, i = y.info, top = 70;
-    try {
-      const im = await loadImg(i.image + '?v=1');
-      const tmp = document.createElement('canvas'); tmp.width = PC_W; tmp.height = PC_W; const tc = tmp.getContext('2d');
-      tc.drawImage(im, 0, 0, PC_W, PC_W);
-      const g = tc.createLinearGradient(0, 0, 0, PC_W); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.16, 'rgba(0,0,0,1)'); g.addColorStop(0.86, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      tc.globalCompositeOperation = 'destination-in'; tc.fillStyle = g; tc.fillRect(0, 0, PC_W, PC_W);
-      ctx.drawImage(tmp, 0, top);
-    } catch (e) {}
+    const y = p.year, i = y.info;
+    await pcCover(ctx, i.image + '?v=1', 70);
     let yy = drawText(ctx, `ЛИЧНЫЙ ГОД ${y.n} · ${y.from ? 'С ' + ruDate(y.from, true).toUpperCase() : y.year}`, 540, 1240, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
     yy = drawText(ctx, i.energy || '', 540, yy + 24, { size: 62, weight: 600, color: '#f5f2ea', maxW: 940, lh: 1.15 });
     if (i.planet) yy = drawText(ctx, i.planet.toUpperCase(), 540, yy + 4, { size: 28, color: '#b9b2cf', spacing: 5 });
@@ -2331,6 +2342,12 @@ async function remTest(f){
   try { const r = await api('/reminders/test', { method: 'POST', body: JSON.stringify({ feature: f }) }); toast(r.ok ? 'Отправили — появится через пару секунд' : 'Не получилось отправить'); }
   catch (e) { toast(e.code === 'too_many' ? 'Не чаще трёх раз за десять минут' : e.code === 'no_push' ? 'Сначала включите напоминание' : 'Не получилось отправить'); }
 }
+/* публичный ключ сервера приходит строкой base64url — браузеру он нужен байтами */
+function toBytes(base64){
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const raw = atob((base64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
 async function pushSubscribe(){
   try {
     const perm = await Notification.requestPermission();
@@ -2339,7 +2356,7 @@ async function pushSubscribe(){
     const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(S.pushKey) }));
     await api('/push', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) });
     S.pushOn = true; track('push_on'); return true;
-  } catch (e) { toast('Не получилось включить напоминания. Попробуйте позже.'); return false; }
+  } catch (e) { console.error('push:', e); toast('Не получилось включить напоминания. Попробуйте позже.'); return false; }
 }
 /* оболочка App Store: локальные уведомления телефона в то же время и с той же регулярностью */
 async function nativeSchedule(f){
@@ -2409,7 +2426,17 @@ function paintMoodReport(){
   paintRem('moodreport'); preparePending();
 }
 
-/* ══════════ Лунный день с рекомендацией ══════════ */
+/* ══════════ Лунный день: рекомендация, иллюстрация и глава справочника — текст ровно как в файле ══════════ */
+/* Все 30 глав с картинками и общие главы справочника приходят одним запросом, когда экран открыли, и дальше живут в памяти. */
+let LUN = null, lunPromise = null;
+function loadLunarDays(){
+  if (LUN) return Promise.resolve(LUN);
+  if (lunPromise) return lunPromise;
+  lunPromise = api('/lunar-days?v=' + encodeURIComponent(S.catalogV || 1))
+    .then(r => (LUN = { days: r.days || [], reference: r.reference || null }))
+    .catch(e => { lunPromise = null; throw e; });
+  return lunPromise;
+}
 function paintLunarWidget(){
   const l = S.day && S.day.lunar, box = $('ln-box'); if (!box) return;
   if (!l) { box.innerHTML = '<p class="stubtext">Лунный день пока не рассчитан.</p>'; return; }
@@ -2419,8 +2446,39 @@ function paintLunarWidget(){
     <p style="text-align:center;margin-top:10px;font-size:14px">${esc(l.period)}</p>
     ${l.advice ? `<div class="card" style="margin-top:16px"><h3>Рекомендация</h3><p style="color:#fff;font-size:15.5px">${esc(l.advice)}</p></div>` : ''}
     <div class="card" style="margin-top:12px">${remBox('lunar')}</div>
-    ${actionsHtml(id, true)}`;
+    ${actionsHtml(id, true)}
+    <div id="ln-days"></div><div id="ln-art"></div><div id="ln-ref"></div>`;
   loadReminders().then(() => paintRem('lunar')).catch(() => {}); preparePending(); track('lunar_view');
+  loadLunarDays().then(() => { showLunarDay(l.n); const r = $('ln-ref'); if (r) r.innerHTML = lunarRefHtml(LUN.reference); }).catch(() => {});
+}
+/* Глава дня: иллюстрация, номер и тема, вступление сразу, разделы с подзаголовками — под «Читать полностью». */
+function lunarDayHtml(d, today){
+  const cut = d.blocks.findIndex(b => b.t === 'h');
+  const intro = cut < 0 ? d.blocks : d.blocks.slice(0, cut), rest = cut < 0 ? [] : d.blocks.slice(cut);
+  return `<div class="item rise yr-art">
+    <img class="yr-img" src="${d.image}?v=1" width="1080" height="1080" alt="${d.n} лунный день · ${esc(d.symbol || d.theme)}">
+    <p class="ln-eb">${d.n} лунный день${d.n === today ? ' · сегодня' : ''}</p>
+    <p class="ln-title">${esc(d.theme)}</p>
+    ${blocksHtml(intro)}${moreBlock(blocksHtml(rest))}
+  </div>`;
+}
+/* Полоска всех 30 дней — как оглавление справочника: любой день можно прочитать заранее. */
+function showLunarDay(n){
+  const days = (LUN && LUN.days) || [], d = days.find(x => x.n === n), art = $('ln-art'), strip = $('ln-days');
+  if (!art || !strip) return;
+  const today = S.day && S.day.lunar ? S.day.lunar.n : 0;
+  strip.innerHTML = days.length ? `<p class="ln-eb">Все 30 лунных дней</p><div class="chips ln-days">${days.map(x => `<button class="chip${x.n === n ? ' on' : ''}" type="button" onclick="showLunarDay(${x.n})">${x.n}</button>`).join('')}</div>` : '';
+  art.innerHTML = d ? lunarDayHtml(d, today) : '';
+  art.style.marginTop = d ? '12px' : '0';
+  const on = strip.querySelector('.chip.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+}
+/* Общие главы справочника — каждая под своим названием; «Оглавление» заменяет полоска дней выше. */
+function lunarRefHtml(ref){
+  if (!ref || !ref.sections) return '';
+  const secs = ref.sections.filter(s => s.title !== 'Оглавление' && s.blocks && s.blocks.length);
+  if (!secs.length) return '';
+  return `<div class="card yr-art" style="margin-top:12px"><h3>${esc(ref.title)}</h3>${ref.caption ? `<p style="font-size:13.5px;color:#8f87ad;margin-top:0">${esc(ref.caption)}</p>` : ''}
+    ${secs.map(sec => moreBlock(blocksHtml(sec.blocks), sec.title)).join('')}</div>`;
 }
 
 /* ══════════ На небе: сегодня и ближайшие недели ══════════ */
@@ -2464,7 +2522,7 @@ function shareResText(p){
     case 'moodreport': return `${p.r.summary}\nЛунарио · ${link}`;
     case 'habits': return `Мои привычки в Лунарио: ${p.items.map(h => h.title).join(', ')}.\n${link}`;
     case 'askesis': return `Аскеза «${p.a.title}»: день ${p.a.done} из ${p.a.total}, осталось ${p.a.left}.\nЛунарио · ${link}`;
-    case 'lunar': return `${ordinal(p.l.n)} лунный день${p.l.title ? ' · ' + p.l.title : ''}\n${p.l.advice || ''}\nЛунарио · ${link}`;
+    case 'lunar': return `${ordinal(p.l.n)} лунный день${p.l.title ? ' · ' + p.l.title : ''}${p.l.theme ? '\n' + p.l.theme : ''}\n${p.l.advice || ''}\nЛунарио · ${link}`;
     case 'gratitude': return `Сегодня я благодарна: ${p.text}\nЛунарио · ${link}`;
     case 'award': return `${p.days} ${plural(p.days, 'день', 'дня', 'дней')} подряд: «${p.title}» — ${p.name} ✦\nЛунарио · ${link}`;
     case 'sky': return `На небе сегодня: ${p.sky.moon.phase} ${p.sky.moon.signIn}${p.sky.today.length ? ' · ' + p.sky.today.map(e => e.title).join(' · ') : ''}.\nЛунарио · ${link}`;
@@ -2566,6 +2624,14 @@ async function drawPostcardExtra(ctx, p){
   }
   if (p.type === 'lunar') {
     const l = p.l;
+    if (l.image && await pcCover(ctx, l.image + '?v=1', 70)) {   /* иллюстрация дня — как у личного года; под ней номер, название, тема и рекомендация */
+      let y = drawText(ctx, `${l.n}-Й ЛУННЫЙ ДЕНЬ`, 540, 1225, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
+      if (l.title) y = drawText(ctx, l.title, 540, y + 22, { size: 50, weight: 600, color: '#e9c77e', maxW: 940, lh: 1.2 });
+      if (l.theme) y = drawText(ctx, l.theme, 540, y + 6, { size: 28, italic: true, color: '#ded8ee', maxW: 900, lh: 1.3 });
+      if (l.advice) y = drawText(ctx, l.advice, 540, y + 40, { size: 32, color: '#f5f2ea', maxW: 880, lh: 1.4 });
+      drawText(ctx, l.period, 540, y + 30, { size: 25, color: '#8f87ad', maxW: 900 });
+      return true;
+    }
     ctx.save(); ctx.shadowColor = 'rgba(233,199,126,.45)'; ctx.shadowBlur = 60; drawText(ctx, String(l.n), 540, 560, { size: 300, weight: 600, color: '#e9c77e' }); ctx.restore();
     let y = drawText(ctx, `${ordinal(l.n)} лунный день`, 540, 660, { size: 40, color: '#f5f2ea' });
     if (l.title) y = drawText(ctx, l.title, 540, y + 30, { size: 50, weight: 600, color: '#e9c77e', maxW: 900 });

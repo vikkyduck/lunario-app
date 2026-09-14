@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'content');
 /* Картинки лежат рядом с текстами, в папке картинки/: по-русски для владельца, по-английски в адресе.
    Приложение отдаёт их по /app/content/<вид>/<файл> — см. маршрут в server.mjs. */
-export const IMAGE_DIRS = { tarot: 'таро', runes: 'руны', year: 'личный-год' };
+export const IMAGE_DIRS = { tarot: 'таро', runes: 'руны', year: 'личный-год', lunar: 'лунные-дни' };
 const img = (kind, file) => (file ? `/app/content/${kind}/${file}` : '');
 
 /* Читает файл как таблицу: строка = запись, поля разделены «|».
@@ -252,7 +252,10 @@ export const LAYOUTS = {
   },
 };
 
-/* ── Лунные дни: название и рекомендация. Запасные значения — те же, что в content/лунные-дни.txt ── */
+/* ── Лунные дни: название и рекомендация. Запасные значения — те же короткие строки, что в content/лунные-дни.txt.
+   Сам файл — «статья» на каждый день (число, название, рекомендация, тема, символ, картинка и [Описание] —
+   глава справочника как есть, с подзаголовками «## » и ссылками [текст](адрес)); старый строчный формат
+   «номер | название | рекомендация» тоже читается. Общие главы справочника — лунные-дни-справочник.txt. ── */
 const LUNAR_DAYS_FALLBACK = [
   ['День замысла', 'Загадайте, а не начинайте: сегодня хорошо обдумывать планы и представлять результат. Действия лучше отложить на завтра.'],
   ['День начала', 'Подходит для первого шага в новом деле и для щедрости. Не бросайтесь в крайности — ни в еде, ни в спорах.'],
@@ -285,6 +288,14 @@ const LUNAR_DAYS_FALLBACK = [
   ['День гидры', 'Самый тёмный день месяца: не начинайте, не спорьте, не поддавайтесь унынию. Проведите его тихо.'],
   ['День лебедя', 'Итог месяца: простите, поблагодарите, отпустите. Завтра — новое начало.'],
 ];
+/* День из статьи: короткие поля — на экран, в напоминание и на открытку; описание — блоками как в файле. */
+const lunarFromArticle = (e) => {
+  const f = e.fields;
+  return {
+    n: num(f['число'], 0), name: f['название'] || '', advice: f['рекомендация'] || '', theme: f['тема'] || '', symbol: f['символ'] || '',
+    image: img('lunar', f['картинка']), blocks: e.sections['Описание'] || [],
+  };
+};
 const ASKESIS_FALLBACK = ['Без сахара', 'Без кофе после обеда', 'Без соцсетей после 21:00', 'Без жалоб', 'Без сплетен и обсуждения других', 'Без алкоголя',
   'Без покупок не по списку', 'Подъём до 7:00', '10 минут тишины каждый день', 'Прогулка каждый день', 'Без сериалов в будни', 'Без телефона за едой'];
 const HABITS_FALLBACK = ['Стакан воды утром', '10 минут прогулки', 'Три благодарности вечером', 'Лечь спать до 23:00', 'Час без телефона утром', 'Пять минут тишины', 'Витамины', 'Зарядка'];
@@ -484,9 +495,19 @@ function build() {
   const nday = rows('нумерология-день.txt', 2);
   r.NUM_DAY = nday ? Object.fromEntries(nday.map((c) => [c[0], c[1]])) : NUM_DAY_FALLBACK;
 
-  /* Лунные дни: номер | название | рекомендация; в приложении день берётся по номеру 1…30 */
-  const ld = rows('лунные-дни.txt', 3);
-  r.LUNAR_DAYS = LUNAR_DAYS_FALLBACK.map((d, i) => { const row = ld && ld.find((c) => Number(c[0]) === i + 1); return row ? [row[1], row[2]] : d; });
+  /* Лунные дни: статья на каждый день (число 1…30) или старый строчный файл «номер | название | рекомендация».
+     LUNAR_DAYS — пары [название, рекомендация] по номеру, как раньше; LUNAR_INFO — полные записи с картинкой и описанием. */
+  const ldArt = article('лунные-дни.txt');
+  const ldInfo = (ldArt || []).map(lunarFromArticle).filter((d) => d.n >= 1 && d.n <= 30);
+  const ld = ldArt ? null : rows('лунные-дни.txt', 3);
+  r.LUNAR_DAYS = LUNAR_DAYS_FALLBACK.map((d, i) => {
+    const a = ldInfo.find((x) => x.n === i + 1); if (a) return [a.name || d[0], a.advice || d[1]];
+    const row = ld && ld.find((c) => Number(c[0]) === i + 1); return row ? [row[1], row[2]] : d;
+  });
+  r.LUNAR_INFO = ldInfo.sort((a, b) => a.n - b.n);
+  /* Общие главы справочника: одна запись, каждый раздел [Название] — глава; на экране идут в том же порядке */
+  const ref = (article('лунные-дни-справочник.txt') || [])[0];
+  r.LUNAR_REF = ref ? { title: ref.name, caption: ref.fields['подпись'] || '', sections: Object.entries(ref.sections).map(([title, blocks]) => ({ title, blocks })) } : null;
   r.ASKESIS_IDEAS = lines('аскезы.txt') || ASKESIS_FALLBACK;
   r.HABIT_IDEAS = lines('привычки.txt') || HABITS_FALLBACK;
 
@@ -548,6 +569,8 @@ export const NUM_YEAR = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_YEAR
 export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) });
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
+export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
+export const lunarRef = () => data.LUNAR_REF;
 export const SETS = new Proxy([], { get: (_, k) => Reflect.get(data.SETS, k) });
 export const MOODS = new Proxy([], { get: (_, k) => Reflect.get(data.MOODS, k) });
 export const MOOD_FAMILIES = new Proxy({}, { get: (_, k) => Reflect.get(data.MOOD_FAMILIES, k), ownKeys: () => Reflect.ownKeys(data.MOOD_FAMILIES), getOwnPropertyDescriptor: (_, k) => ({ value: data.MOOD_FAMILIES[k], enumerable: true, configurable: true }) });
