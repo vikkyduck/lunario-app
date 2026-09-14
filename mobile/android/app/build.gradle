@@ -10,12 +10,12 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0.0"
-        resValue "string", "app_name", "Lunario"
+        resValue "string", "app_name", "Лунарио"
         // Адрес, который открывает обёртка. Меняется только здесь.
         manifestPlaceholders = [
             hostName: "lunario.online",
             defaultUrl: "https://lunario.online/app/",
-            launcherName: "Lunario"
+            launcherName: "Лунарио"
         ]
     }
 

@@ -14,7 +14,7 @@ ssh "$SERVER" 'install -m644 /opt/lunario-app/backend/lunario-app.service /etc/s
   && install -m644 /opt/lunario-app/backend/lunario-daily.service /etc/systemd/system/lunario-daily.service \
   && install -m644 /opt/lunario-app/backend/lunario-daily.timer /etc/systemd/system/lunario-daily.timer \
   && systemctl daemon-reload && systemctl enable lunario-app >/dev/null \
-  && systemctl enable --now lunario-daily.timer >/dev/null \
+  && systemctl enable --now lunario-daily.timer >/dev/null && systemctl restart lunario-daily.timer \
   && systemctl restart lunario-app && sleep 1 \
   && printf "health: " && curl -sS http://127.0.0.1:5031/app/api/health && echo'
 echo "==> проверка"

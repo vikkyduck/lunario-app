@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>Lunario — пространство, где можно услышать себя</title>
+<title>Лунарио — пространство, где можно услышать себя</title>
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://lunario.online/app/">
-<meta property="og:title" content="Lunario — пространство, где можно услышать себя">
+<meta property="og:title" content="Лунарио — пространство, где можно услышать себя">
 <meta property="og:description" content="Пространство, где можно услышать себя.">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:image" content="https://lunario.online/app/assets/og.png?v=1">
@@ -17,7 +17,7 @@
 <meta name="theme-color" content="#0b0a14">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Lunario">
+<meta name="apple-mobile-web-app-title" content="Лунарио">
 <link rel="manifest" href="/app/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/app/assets/apple-touch-icon.png?v=3">
 <link rel="icon" href="/app/assets/favicon.svg?v=3" type="image/svg+xml">
@@ -367,10 +367,13 @@ body.wg-open{overflow:hidden}
 .morebtn svg{transition:transform .25s var(--sp)}
 .more.on .morebtn svg{transform:rotate(180deg)}
 .morebody{display:none;padding-top:8px}
+.morebody p+p{margin-top:10px}
+.morebody h3{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
 .more.on .morebody{display:block;animation:in .3s var(--sp)}
 /* действия под результатом: второстепенные, не спорят с основным */
 .resrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
-.resrow .btn.sm{min-height:40px;font-size:13.5px;padding:0 16px;color:#d3cde6;font-weight:600}
+.resrow .btn.sm{min-height:40px;font-size:13.5px;padding:0 16px;font-weight:600}
+.resrow .btn.ghost.sm{color:#d3cde6}
 /* руна: камень из книги */
 .stone{width:150px;height:150px;border-radius:26px;margin:4px auto 10px;display:block;box-shadow:0 18px 40px -16px rgba(0,0,0,.75)}
 /* схема расклада: где лежит какая карта или руна */
@@ -420,6 +423,45 @@ body.wg-open{overflow:hidden}
 .yr-t td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;color:#d9d3e8}
 .yr-t tr>*:first-child{color:#f5f2ea;font-weight:600;padding-left:0}
 .yr-t tr>*:last-child{padding-right:0}
+/* ── напоминания: переключатель, время, регулярность ── */
+.sw{width:46px;height:28px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.1);position:relative;cursor:pointer;flex:0 0 46px;padding:0;transition:background .2s}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#b9b2cf;transition:transform .2s var(--sp),background .2s}
+.sw.on{background:rgba(217,184,104,.35);border-color:rgba(217,184,104,.6)}.sw.on i{transform:translateX(18px);background:var(--gold-2)}
+.rem-head{display:flex;align-items:center;gap:12px}
+.rem-lbl{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.rem-lbl b{display:block;font-size:14.5px;font-weight:650}.rem-lbl small{display:block;color:#8f87ad;font-size:12.5px;margin-top:2px;line-height:1.35}
+.rem-gear{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#b9b2cf;cursor:pointer;display:grid;place-items:center;flex:0 0 36px;padding:0}
+.rem-gear.on{color:var(--gold);border-color:rgba(217,184,104,.5)}
+.rem-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);animation:in .3s var(--sp)}
+.rem-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rem-row label{font-size:12.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.rem-row input[type=time]{width:auto;min-height:44px;padding:8px 14px;font-size:18px;color-scheme:dark}
+.rem-status{font-size:12.5px;color:#8f87ad;margin-top:10px;line-height:1.45}
+.hint{font-size:13px;color:#8f87ad;line-height:1.45}
+/* ── привычки ── */
+.hb{display:flex;align-items:flex-start;gap:12px}
+.hb-check{width:34px;height:34px;min-height:34px;border-radius:50%;flex:0 0 34px;border:1.5px solid #d9b868;background:transparent;color:#1c1430;cursor:pointer;display:grid;place-items:center;font-weight:800;margin-top:2px;padding:0}
+.hb.on .hb-check{background:var(--gold)}
+.hb-x{background:none;border:0;color:#8f87ad;font-size:22px;cursor:pointer;padding:0 2px;line-height:1}
+.hd-row{display:flex;gap:6px;margin-top:8px}
+.hd{width:30px;height:40px;border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:#8f87ad;font:inherit;font-size:10.5px}
+.hd::before{content:'';width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(217,184,104,.5);box-sizing:border-box}
+.hd.on::before{background:var(--gold);border-color:var(--gold)}
+.hd.today{color:#f0d79a}.hd.today::before{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
+/* ── аскеза ── */
+.ask-days{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.ask-days i{width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(217,184,104,.45);box-sizing:border-box;display:block}
+.ask-days i.k{background:var(--gold);border-color:var(--gold)}.ask-days i.m{background:rgba(255,179,179,.6);border-color:rgba(255,179,179,.8)}.ask-days i.t{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
+.linkbtn{display:block;margin:12px auto 0;background:none;border:0;color:#8f87ad;font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ask-two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+/* ── отчёт по настроениям ── */
+.mr-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.mr-day{display:flex;flex-direction:column;align-items:center;gap:5px;color:#8f87ad;font-size:11px;padding:6px 0;border-radius:12px}
+.mr-day.today{background:rgba(217,184,104,.1)}.mr-day svg{color:var(--gold-2)}
+.mr-empty{width:30px;height:30px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.18);display:block}
+/* ── небо ── */
+.skyev.now{border-color:rgba(217,184,104,.5)}
+.skyev b{margin-bottom:2px}
 .ios-shell #t-install{display:none!important}
 </style>
 <script>
@@ -558,9 +600,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="wid" type="button" onclick="openWidget('day')"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">По вашему знаку — работа, отношения, здоровье, деньги</span></button>
       <button class="wid" type="button" onclick="openWidget('num')"><i class="ico numerology"></i><b>Число дня</b><span id="t-numsub"></span></button>
       <button class="wid" type="button" onclick="openWidget('tone')"><i class="ico star"></i><b>Настрой и вопрос дня</b><span>Короткая опора утром и вопрос, чтобы подумать</span></button>
-      <button class="wid" type="button" onclick="openWidget('journal')"><i class="ico pen"></i><b>Дневник</b><span>Записи шифруются — видите только вы</span></button>
+      <button class="wid" type="button" onclick="openWidget('askesis')"><i class="ico flag"></i><b>Взять аскезу</b><span>Обещание себе на срок: отметки по дням и напоминание</span></button>
       <button class="wid" type="button" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b><span>Список того, что хочется, с напоминанием</span></button>
-      <button class="wid stub" type="button" onclick="openStub('Дневник привычек')"><i class="ico check"></i><b>Дневник привычек</b><span>Пока в разработке</span></button>
+      <button class="wid" type="button" onclick="openWidget('habits')"><i class="ico check"></i><b>Дневник привычек</b><span>Отмечайте каждый день — серия растёт</span></button>
       <button class="wid stub" type="button" onclick="openStub('Дневник благодарности')"><i class="ico list"></i><b>Дневник благодарности</b><span>Пока в разработке</span></button>
     </div>
   </section>
@@ -598,7 +640,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <h1 style="margin-top:6px">Что вокруг</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('lunar')"><i class="ico moon"></i><b id="ar-lunar">Лунный день</b><span id="ar-period"></span></button>
-      <button class="wid" type="button" onclick="openStub('На небе')"><i class="ico star"></i><b>На небе</b><span>Затмения, ретроградный Меркурий, аспекты</span></button>
+      <button class="wid" type="button" onclick="openWidget('sky')"><i class="ico star"></i><b>На небе</b><span>Фазы Луны, затмения, ретроградные планеты</span></button>
     </div>
   </section>
 
@@ -611,7 +653,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="wid" type="button" onclick="openWidget('hmood')"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button>
       <button class="wid" type="button" onclick="openWidget('hwishes')"><i class="ico heart"></i><b>Мои желания</b><span>Все желания с отметкой об исполнении</span></button>
       <button class="wid" type="button" onclick="openWidget('hentries')"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b></button>
-      <button class="wid" type="button" onclick="openWidget('hjournal')"><i class="ico journal"></i><b>Записи дневника</b></button>
+      <button class="wid" type="button" onclick="openWidget('journal')"><i class="ico journal"></i><b>Дневник</b><span>Записи шифруются — видите только вы</span></button>
       <button class="wid" type="button" onclick="openWidget('week')"><i class="ico calendar"></i><b>Итоги недели</b><span>Что повторялось в настроении и вопросах</span></button>
     </div>
   </section>
@@ -625,7 +667,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('edit')"><i class="ico pen"></i><b>Изменить мои данные</b></button>
       <button class="wid" type="button" onclick="openWidget('mail')"><i class="ico mail"></i><b>Вход по почте</b><span>Дневник и серия переедут на другое устройство</span></button>
-      <button class="wid" type="button" onclick="openWidget('remind')"><i class="ico bell"></i><b>Напоминание</b><span>Одно короткое сообщение утром: карта дня готова</span></button>
+      <button class="wid" type="button" onclick="openWidget('remind')"><i class="ico bell"></i><b>Напоминания</b><span>Какие присылать, во сколько и как часто</span></button>
     </div>
     <div class="rows">
       <button class="rowbtn" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i>Установить на телефон</button>
@@ -648,9 +690,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       </div>
     </div>
     <div id="t-after" style="display:none;margin-top:16px"></div>
+    <div id="card-nudge"></div>
     <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
   </div>
-  <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p style="font-size:14px;margin-top:14px;text-align:center" id="t-moodstat"></p></div>
+  <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p style="font-size:14px;margin-top:14px;text-align:center" id="t-moodstat"></p><div id="mood-extra"></div></div>
+  <div class="wpane" id="w-habits"><div id="hb-box"></div></div>
+  <div class="wpane" id="w-askesis"><div id="as-box"></div></div>
+  <div class="wpane" id="w-sky"><div id="sky-box"></div></div>
   <div class="wpane" id="w-worry"><div class="acc" id="t-worry"></div></div>
   <div class="wpane" id="w-day"><h2 id="f-title"></h2><p style="margin-top:9px" id="f-text"></p><div id="f-bars" style="margin-top:14px"></div></div>
   <div class="wpane" id="w-num"><div class="big" style="font-size:72px;margin-top:18px" id="w-num-n"></div><p class="w-big" style="margin-top:14px;font-size:19px" id="w-num-text"></p></div>
@@ -694,19 +740,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <div id="m-cres" style="display:none;margin-top:16px"></div>
     </div>
   </div>
-  <div class="wpane" id="w-lunar">
-    <div class="big" style="font-size:64px;margin-top:10px" id="l-num"></div>
-    <p class="w-big" style="margin-top:6px;font-size:19px" id="l-title"></p>
-    <p style="text-align:center;margin-top:10px" id="l-period"></p>
-    <p class="stubtext">Пока в разработке</p>
-  </div>
-  <div class="wpane" id="w-hmood"><p id="hm-stat" style="font-size:16px;color:#ded8ee"></p><div id="hm-week" style="margin-top:14px"></div></div>
+  <div class="wpane" id="w-lunar"><div id="ln-box"></div></div>
+  <div class="wpane" id="w-hmood"><div id="mr-box"></div></div>
   <div class="wpane" id="w-hwishes"><div class="list" id="h-wishes"></div></div>
   <div class="wpane" id="w-hentries"><div class="list" id="m-entries"></div></div>
-  <div class="wpane" id="w-hjournal"><div class="list" id="h-journal"></div></div>
   <div class="wpane" id="w-week"><div class="card"><p style="font-size:16px;color:#ded8ee" id="w-summary"></p><div id="w-detail"></div></div></div>
   <div class="wpane" id="w-invite"><div class="card"><p style="font-size:14px">Отправьте ссылку — и на неделю у вас обеих будет вдвое больше подробных разборов.</p><div id="inv-box" style="margin-top:12px"></div></div></div>
-  <div class="wpane" id="w-remind"><div class="card"><p style="font-size:14px">Одно короткое сообщение утром: карта дня готова. Больше ничего слать не будем.</p><div id="push-box" style="margin-top:12px"></div></div></div>
+  <div class="wpane" id="w-remind"><div id="rem-all"></div></div>
   <div class="wpane" id="w-edit">
     <div class="card">
       <div class="field"><label>Имя</label><input id="e-name" maxlength="60"></div>
@@ -1143,11 +1183,11 @@ function openLogin(){
 const WIDGETS = {
   card:['Ваш ритуал','Карта дня'], mood:['Мой день','Настроение дня'], worry:['Мой день','Что вас сегодня беспокоит?'],
   day:['Мой день','Прогноз дня'], num:['Мой день','Число дня'], tone:['Мой день','Настрой и вопрос дня'],
-  journal:['Мой день','Дневник'], wishes:['Мой день','Мои желания'],
+  journal:['История','Дневник'], wishes:['Мой день','Мои желания'], habits:['Мой день','Дневник привычек'], askesis:['Мой день','Взять аскезу'], sky:['Что вокруг','На небе'],
   ask:['Свериться',''], year:['Обо мне','Личный год'], birthnum:['Обо мне','Число рождения'], compat:['Обо мне','Совместимость'],
-  lunar:['Что вокруг','Лунный день'], hmood:['История','История настроений'], hwishes:['История','Мои желания'],
-  hentries:['История','Мои вопросы и ответы'], hjournal:['История','Записи дневника'], week:['История','Итоги недели'],
-  invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминание'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'],
+  lunar:['Что вокруг','Лунный день'], hmood:['История','Отчёт по настроениям'], hwishes:['История','Мои желания'],
+  hentries:['История','Мои вопросы и ответы'], week:['История','Итоги недели'],
+  invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминания'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'],
   support:['Поддержка','Чат с поддержкой'], natal:['Обо мне','Натальная карта'],
   stub:['','']
 };
@@ -1162,10 +1202,15 @@ function openWidget(k, title){
   if (k==='journal') loadJournal();
   if (k==='wishes' || k==='hwishes') api('/wishes').then(renderWishes).catch(()=>{});
   if (k==='hentries') loadEntries();
-  if (k==='hjournal') loadJournal();
-  if (k==='week' || k==='hmood') loadWeek();
+  if (k==='week') loadWeek();
+  if (k==='hmood') loadMoodReport();
+  if (k==='mood') paintMoodExtra();
+  if (k==='habits') loadHabits();
+  if (k==='askesis') loadAskesis();
+  if (k==='sky') loadSky();
+  if (k==='lunar') paintLunarWidget();
   if (k==='invite') loadInvite();
-  if (k==='remind') loadPush();
+  if (k==='remind') paintAllReminders();
   if (k==='edit') fillEdit();
   if (k==='support') supOpen();
   if (k==='natal') loadNatal();
@@ -1272,8 +1317,8 @@ function paintStreak(){
 function bumpStreak(n){ if(n==null) return; S.user.streak=n; paintStreak(); }
 function paintLunar(){
   const l=S.day && S.day.lunar; if(!l){ $('ar-period').textContent=''; return; }
-  $('ar-lunar').textContent = ordinal(l.n)+' лунный день'; $('ar-period').textContent = l.period;
-  $('l-num').textContent = l.n; $('l-title').textContent = ordinal(l.n)+' лунный день'; $('l-period').textContent = l.period;
+  $('ar-lunar').textContent = ordinal(l.n)+' лунный день'+(l.title?' · '+l.title:''); $('ar-period').textContent = l.advice || l.period;
+  if (wgOpen === 'lunar') paintLunarWidget();
 }
 
 /* ── мой день: панели заполняются данными дня ── */
@@ -1304,13 +1349,13 @@ async function pickMood(id){
   try{
     const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id})});
     S.mood=r.mood; renderMoods(); bumpStreak(r.streak);
-    paintMoodStat(r.stats);
+    paintMoodStat(r.stats); paintMoodExtra();
   }catch(e){ toast('Не удалось сохранить'); }
 }
 function paintMoodStat(stats){
   const parts=(stats||[]).filter(s=>s.c>0).map(s=>MOOD_LABEL[s.mood]+' — '+s.c);
   const t = parts.length?'В этом месяце: '+parts.join(' · ')+'.':'';
-  $('t-moodstat').textContent=t; $('hm-stat').textContent=t||'Отмечайте настроение каждый день — в конце месяца здесь будет итог.'; $('hm-sub').textContent=t;
+  $('t-moodstat').textContent=t; $('hm-sub').textContent=t;
 }
 async function loadNumerology(){
   if (S.num) { paintNum(S.num); return; }
@@ -1549,70 +1594,6 @@ async function logout(){
   await api('/auth/logout',{method:'POST'});
   location.reload();
 }
-async function loadPush(){
-  const box = $('push-box');
-  if (IOS_SHELL) {
-    // в приложении напоминание живёт на самом телефоне (локальное уведомление в 9 утра),
-    // веб-пуш в WKWebView недоступен; состояние присылает нативный слой
-    window.__lunReminderState = (on, reason) => {
-      box.innerHTML = on
-        ? `<button class="btn ghost sm" style="width:100%" onclick="nativeReminder(false)">Не напоминать</button>
-           <p style="font-size:13px;color:var(--gold);margin-top:9px">Напоминание включено — одно сообщение в 9 утра.</p>`
-        : `<button class="btn ghost sm" style="width:100%" onclick="nativeReminder(true)">Напоминать утром</button>`
-          + (reason === 'denied'
-            ? '<p style="font-size:13px;color:#8f87ad;margin-top:9px">Уведомления для Лунарио выключены. Их можно разрешить в Настройках телефона.</p>'
-            : '');
-    };
-    nativePost({ type:'reminderStatus' });
-    return;
-  }
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    box.innerHTML = '<p style="font-size:13.5px;color:#8f87ad">Этот браузер не умеет присылать напоминания. На айфоне они работают, если добавить Лунарио на экран «Домой».</p>';
-    return;
-  }
-  try{
-    const s = await api('/push');
-    box.innerHTML = s.on
-      ? `<button class="btn ghost sm" style="width:100%" onclick="pushOff()">Не напоминать</button>
-         <p style="font-size:13px;color:var(--gold);margin-top:9px">Напоминание включено.</p>`
-      : `<button class="btn ghost sm" style="width:100%" onclick="pushOn()">Напоминать утром</button>`;
-  }catch(e){ box.innerHTML = ''; }
-}
-function toBytes(base64){
-  const pad = '='.repeat((4 - base64.length % 4) % 4);
-  const raw = atob((base64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
-  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
-}
-async function pushOn(){
-  const box = $('push-box');
-  try{
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') {
-      box.innerHTML = '<p style="font-size:13.5px;color:#8f87ad">Браузер не разрешил напоминания. Их можно включить в его настройках для этого сайта.</p>';
-      return;
-    }
-    const { key } = await api('/push');
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(key) });
-    await api('/push',{method:'POST',body:JSON.stringify({ endpoint: sub.endpoint })});
-    track('push_on'); toast('Напомним утром'); loadPush();
-  }catch(e){
-    box.innerHTML = '<p style="font-size:13.5px;color:#8f87ad">Не получилось включить напоминание. Попробуйте позже.</p>';
-  }
-}
-async function pushOff(){
-  try{
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) await sub.unsubscribe();
-    await api('/push',{method:'DELETE'});
-    track('push_off'); toast('Больше не напоминаем'); loadPush();
-  }catch(e){ /* уже отписаны */ }
-}
-function nativeReminder(on){
-  track(on ? 'push_on' : 'push_off');
-  nativePost({ type:'reminder', on });   // ответ придёт в __lunReminderState и перерисует кнопку
-}
 async function loadWeek(){
   try{
     const w = await api('/week');
@@ -1788,7 +1769,7 @@ function loadAccount(){
 function loadJournal(){
   api('/journal').then(r=>{
     const html=r.items.map(i=>`<div class="item"><small>${i.day.split('-').reverse().join('.')}</small><p style="font-size:14px;margin-top:5px">${esc(i.text)}</p></div>`).join('')||'<div class="item"><p>Пока пусто. Пара строк вечером — и здесь появится ваша лента.</p></div>';
-    $('m-journal').innerHTML=html; $('h-journal').innerHTML=html;
+    $('m-journal').innerHTML=html;
   }).catch(()=>{});
 }
 function renderWishes(r){
@@ -1848,7 +1829,7 @@ function loadCatalog(){
   if (CAT) return Promise.resolve(CAT);
   if (catPromise) return catPromise;
   catPromise = api('/catalog').then(c => {
-    CAT = { cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts };
+    CAT = { cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [] };
     return CAT;
   }).catch(e => { catPromise = null; throw e; });
   return catPromise;
@@ -1880,7 +1861,7 @@ const RES = {}; let resSeq = 0, pendingRes = [];
 function regRes(p){ const id = 'res' + (++resSeq); RES[id] = p; pendingRes.push(id); return id; }
 function preparePending(){ const ids = pendingRes; pendingRes = []; ids.forEach(preparePostcard); }
 function actionsHtml(id, withShare){
-  return `<div class="resrow"><button class="btn ghost sm" type="button" onclick="savePostcard('${id}')">↓&nbsp; Скачать на телефон</button>${withShare ? `<button class="btn ghost sm" type="button" onclick="track('share_card');share()">Поделиться</button>` : ''}</div>`;
+  return `<div class="resrow"><button class="btn ghost sm" type="button" onclick="savePostcard('${id}')">↓&nbsp; Скачать на телефон</button>${withShare ? `<button class="btn ghost sm" type="button" onclick="shareRes('${id}')">Поделиться</button>` : ''}</div>`;
 }
 const qLine = (q) => q ? `<p style="font-style:italic;text-align:center;font-size:14px;margin-bottom:12px">«${esc(q)}»</p>` : '';
 
@@ -1921,16 +1902,9 @@ async function openCard(){
     if (r.card && r.card.image) await preload(r.card.image + '?v=1');
     paintCard(); hap([0, 12]);
     showFlipped();
-    setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); }, 500);
+    setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
   }catch(e){ toast('Не получилось открыть карту — попробуйте ещё раз'); $('t-open').disabled = false; }
   S.opening = false;
-}
-function share(){
-  const c = S.day && S.day.card; if (!c) return;
-  const t = `${c.name} — карта дня в Лунарио.\n${keysLine(c.keys)}\n${location.origin}/app/`;
-  if (IOS_SHELL && nativePost({ type: 'share', text: t })) return;
-  if (navigator.share) navigator.share({ title: 'Лунарио', text: t }).catch(() => {});
-  else { navigator.clipboard.writeText(t).catch(() => {}); toast('Скопировано — можно отправить подруге'); }
 }
 
 /* ── схема расклада: [колонка, строка] каждой позиции ── */
@@ -2059,7 +2033,7 @@ function kindLabel(i){
 function loadEntries(){
   api('/entries').then(async (r) => {
     S.entries = r.items; await loadCatalog().catch(() => {});
-    $('m-entries').innerHTML = r.items.map((i, n) => `<div class="item hist" id="he-${n}"><button class="histhead" type="button" onclick="toggleEntry(${n})"><span><b>${esc(i.question || i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question ? ' · ' + esc(i.title) : ''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
+    $('m-entries').innerHTML = r.items.map((i, n) => `<div class="item hist" id="he-${n}"><button class="histhead" type="button" onclick="toggleEntry(${n})"><span><b>${esc(i.question || i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question && i.title.length <= 48 ? ' · ' + esc(i.title) : ''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
       || '<div class="item"><p>Здесь появятся ваши карты дня, вопросы и расклады. Видите их только вы.</p></div>';
   }).catch(() => {});
 }
@@ -2209,6 +2183,7 @@ async function drawPostcard(p){
       drawText(ctx, it.name, x + cw / 2, yy + 2, { size: small ? 18 : 23, weight: 600, color: '#e9c77e', maxW: cw + gap - 4, lh: 1.1 });
     }
   }
+  if (!['card', 'rune', 'yesno', 'runes', 'spread'].includes(p.type)) await drawPostcardExtra(ctx, p);
   pcFooter(ctx, p.day);
   return cv;
 }
@@ -2240,11 +2215,447 @@ async function savePostcard(id){
 function showPostcard(src){ $('pc-img').src = src; $('pc').classList.add('on'); }
 function hidePostcard(){ $('pc').classList.remove('on'); $('pc-img').removeAttribute('src'); }
 
+/* ══════════ Напоминания по функциям: включить, выбрать время и регулярность, прислать пробное ══════════
+   Настройки живут на сервере (/api/reminders). В браузере напоминание приходит веб-пушем:
+   сервер будит service worker пустым сигналом, тексты тот забирает сам. В оболочке App Store
+   веб-пуша нет — те же настройки уходят телефону, и напоминает он (NativeBridge.swift). */
+const REM_ORDER = ['card', 'mood', 'moodreport', 'habits', 'askesis', 'lunar', 'sky'];
+const FREQ_LABEL = { daily: 'Каждый день', weekdays: 'По будням', weekly: 'Раз в неделю', events: 'Когда что-то происходит' };
+const WD_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WD_ON = ['по понедельникам', 'по вторникам', 'по средам', 'по четвергам', 'по пятницам', 'по субботам', 'по воскресеньям'];
+const wdIdx = (day) => (new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7;
+const IOS_BRIDGE = typeof window.__LUN_IOS__ === 'number' ? window.__LUN_IOS__ : (IOS_SHELL ? 1 : 0);
+const PUSH_OK = !IOS_SHELL && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })();
+const GEAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+const NATIVE_TEXT = { card: ['Лунарио', 'Ваша карта дня готова ✦'], mood: ['Как прошёл день?', 'Отметьте настроение — одно нажатие'], moodreport: ['Отчёт по настроениям', 'Ваш отчёт за неделю готов'],
+  habits: ['Привычки', 'Отметьте привычки за сегодня'], askesis: ['Аскеза', 'Отметьте, как прошёл день'], lunar: ['Лунный день', 'Посмотрите рекомендацию на сегодня'], sky: ['На небе', 'Сегодня на небе что-то происходит — посмотрите'] };
+let remPromise = null, remEditing = {};
+function loadReminders(force){
+  if (S.rem && !force) return Promise.resolve(S.rem);
+  if (remPromise && !force) return remPromise;
+  remPromise = api('/reminders').then(r => { S.rem = Object.fromEntries(r.items.map(i => [i.feature, i])); S.pushOn = r.push.on; S.pushKey = r.push.key; return S.rem; }).catch(e => { remPromise = null; throw e; });
+  return remPromise;
+}
+const remBox = (f) => `<div class="rem" data-rem="${f}"></div>`;
+const remText = (r) => r.freq === 'events' ? 'когда что-то происходит, в ' + r.time : r.time + ' · ' + (r.freq === 'weekly' ? WD_ON[r.weekday - 1] : FREQ_LABEL[r.freq].toLowerCase());
+function remStatus(f, r){
+  if (IOS_SHELL) return IOS_BRIDGE >= 2 || f === 'card' ? (r.enabled ? 'Напоминает сам телефон — ' + remText(r) + '.' : 'Напоминание придёт от приложения на телефоне.') : 'Обновите приложение из App Store, чтобы включить это напоминание.';
+  if (!PUSH_OK) return IS_IOS ? 'На айфоне напоминания работают, если добавить Лунарио на экран «Домой»: Поделиться → На экран «Домой». Потом включите здесь.' : 'Этот браузер не умеет присылать напоминания.';
+  if (!r.enabled) return 'Включите — браузер один раз спросит разрешение на уведомления.';
+  return r.nextAt ? 'Следующее: ' + new Date(r.nextAt).toLocaleString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) + '.' : '';
+}
+function paintRem(f){
+  const r = S.rem && S.rem[f]; if (!r) return;
+  const edit = !!remEditing[f];
+  document.querySelectorAll(`[data-rem="${f}"]`).forEach(box => {
+    box.innerHTML = `<div class="rem-head">
+        <button type="button" class="sw${r.enabled ? ' on' : ''}" role="switch" aria-checked="${r.enabled}" aria-label="Напоминание" onclick="remToggle('${f}')"><i></i></button>
+        <button type="button" class="rem-lbl" onclick="remEdit('${f}')"><b>Напоминание</b><small>${r.enabled ? esc(remText(r)) : esc(r.hint)}</small></button>
+        <button type="button" class="rem-gear${edit ? ' on' : ''}" onclick="remEdit('${f}')" aria-label="Настроить">${GEAR}</button>
+      </div>
+      ${edit ? `<div class="rem-body">
+        <div class="rem-row"><label>Время</label><input type="time" value="${r.time}" onchange="remSave('${f}',{time:this.value})"></div>
+        <div class="chips flow" style="margin-top:10px">${(f === 'sky' ? ['events', 'daily', 'weekdays', 'weekly'] : ['daily', 'weekdays', 'weekly']).map(k => `<button type="button" class="chip${r.freq === k ? ' on' : ''}" onclick="remSave('${f}',{freq:'${k}'})">${FREQ_LABEL[k]}</button>`).join('')}</div>
+        ${r.freq === 'weekly' ? `<div class="chips flow" style="margin-top:8px">${WD_SHORT.map((w, i) => `<button type="button" class="chip${r.weekday === i + 1 ? ' on' : ''}" onclick="remSave('${f}',{weekday:${i + 1}})">${w}</button>`).join('')}</div>` : ''}
+        <p class="rem-status">${remStatus(f, r)}</p>
+        ${r.enabled && PUSH_OK ? `<button type="button" class="btn ghost sm" style="margin-top:8px" onclick="remTest('${f}')">Прислать пробное сейчас</button>` : ''}
+      </div>` : ''}`;
+  });
+}
+function remEdit(f){ remEditing[f] = !remEditing[f]; hap(9); paintRem(f); }
+async function remToggle(f){
+  const r = S.rem && S.rem[f]; if (!r) return; hap(9);
+  if (!r.enabled) {
+    if (IOS_SHELL) { if (IOS_BRIDGE < 2 && f !== 'card') { toast('Обновите приложение из App Store'); return; } }
+    else if (!PUSH_OK) { toast(IS_IOS ? 'Добавьте Лунарио на экран «Домой» — тогда напоминания заработают' : 'Этот браузер не умеет присылать напоминания'); return; }
+    else if (!S.pushOn && !(await pushSubscribe())) return;
+  }
+  const ok = await remSave(f, { enabled: !r.enabled });
+  if (!ok) return;
+  track(S.rem[f].enabled ? 'reminder_on' : 'reminder_off', f);
+  toast(S.rem[f].enabled ? 'Напомним ' + remText(S.rem[f]) : 'Больше не напоминаем');
+}
+async function remSave(f, patch){
+  try {
+    const r = await api('/reminders', { method: 'POST', body: JSON.stringify({ feature: f, tz: TZ, ...patch }) });
+    S.rem[f] = r.item; paintRem(f);
+    if (IOS_SHELL) nativeSchedule(f);
+    return true;
+  } catch (e) { toast('Не удалось сохранить'); return false; }
+}
+async function remTest(f){
+  track('reminder_test', f);
+  try { const r = await api('/reminders/test', { method: 'POST', body: JSON.stringify({ feature: f }) }); toast(r.ok ? 'Отправили — появится через пару секунд' : 'Не получилось отправить'); }
+  catch (e) { toast(e.code === 'too_many' ? 'Не чаще трёх раз за десять минут' : e.code === 'no_push' ? 'Сначала включите напоминание' : 'Не получилось отправить'); }
+}
+async function pushSubscribe(){
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Браузер не разрешил уведомления — их можно включить в настройках сайта'); return false; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(S.pushKey) }));
+    await api('/push', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) });
+    S.pushOn = true; track('push_on'); return true;
+  } catch (e) { toast('Не получилось включить напоминания. Попробуйте позже.'); return false; }
+}
+/* оболочка App Store: локальные уведомления телефона в то же время и с той же регулярностью */
+async function nativeSchedule(f){
+  const r = S.rem && S.rem[f]; if (!r) return;
+  if (IOS_BRIDGE < 2) { if (f === 'card') nativePost({ type: 'reminder', on: r.enabled }); return; }
+  const [hh, mm] = r.time.split(':').map(Number);
+  const msg = { type: 'schedule', id: f, on: r.enabled, hour: hh, minute: mm, freq: r.freq, weekday: r.weekday, title: NATIVE_TEXT[f][0], body: NATIVE_TEXT[f][1] };
+  if (f === 'sky' && r.freq === 'events') {
+    try { const sky = S.sky || (S.sky = await api('/sky')); msg.dates = [...new Set([...sky.today, ...sky.upcoming].map(e => new Date(e.at).toLocaleDateString('sv-SE')))].slice(0, 20); } catch (e) { /* без дат — телефон напомнит ежедневно */ }
+  }
+  nativePost(msg);
+}
+window.__lunScheduleState = (states, reason) => {
+  S.nativeStates = states || {};
+  if (reason === 'denied') toast('Уведомления для Лунарио выключены — их можно разрешить в Настройках телефона');
+};
+/* мягкий вопрос после первой карты: присылать ли её утром */
+function cardNudge(){
+  if (!PUSH_OK && !IOS_SHELL) return;
+  try { if (localStorage.getItem('lun_nudge')) return; } catch (e) { return; }
+  loadReminders().then(() => {
+    if (S.rem.card.enabled) return;
+    $('card-nudge').innerHTML = `<div class="card" style="margin-top:14px"><p style="font-size:15.5px;color:#fff">Присылать карту дня утром?</p><p style="font-size:13.5px;margin-top:4px">Одно сообщение в 9:00 — время потом можно поменять. Больше ничего слать не будем.</p>
+      <div class="resrow" style="justify-content:flex-start;margin-top:10px"><button class="btn sm" type="button" onclick="nudgeYes()">Да, напоминать</button><button class="btn ghost sm" type="button" onclick="nudgeNo()">Не сейчас</button></div></div>`;
+  }).catch(() => {});
+}
+function nudgeNo(){ try { localStorage.setItem('lun_nudge', '1'); } catch (e) {} $('card-nudge').innerHTML = ''; }
+async function nudgeYes(){ nudgeNo(); await remToggle('card'); }
+/* «Напоминания» в аккаунте: все функции одним списком */
+async function paintAllReminders(){
+  const box = $('rem-all'); box.innerHTML = '<p class="hint">Загружаем…</p>';
+  try { await loadReminders(true); } catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; return; }
+  box.innerHTML = `<p style="font-size:14px">${PUSH_OK ? 'У каждого напоминания своё время и регулярность. Больше ничего слать не будем.' : IOS_SHELL ? 'Напоминает сам телефон — в то время, которое вы выберете.' : IS_IOS ? 'На айфоне напоминания работают, если добавить Лунарио на экран «Домой»: Поделиться → На экран «Домой».' : 'Этот браузер не умеет присылать напоминания.'}</p>
+    <div class="list" style="margin-top:12px">${REM_ORDER.map(f => `<div class="item"><b style="margin-bottom:8px">${esc(S.rem[f].title)}</b>${remBox(f)}</div>`).join('')}</div>`;
+  REM_ORDER.forEach(paintRem);
+  if (IOS_SHELL && IOS_BRIDGE >= 2) nativePost({ type: 'scheduleStatus' });
+}
+
+/* ══════════ Настроение дня: напоминание вечером и открытка ══════════ */
+const moodSvg = (mood, size) => { const m = MOODS.find(x => x[0] === mood); return m ? `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/><path d="${m[2]}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>` : ''; };
+function paintMoodExtra(){
+  const box = $('mood-extra'); if (!box) return;
+  const m = MOODS.find(x => x[0] === S.mood);
+  const id = m ? regRes({ type: 'mood', mood: S.mood, label: m[1], day: S.day.date }) : '';
+  box.innerHTML = `<div class="card" style="margin-top:14px">${remBox('mood')}</div>${m ? actionsHtml(id, true) : '<p class="hint" style="text-align:center;margin-top:12px">Отметьте настроение — и его можно будет сохранить открыткой.</p>'}`;
+  loadReminders().then(() => paintRem('mood')).catch(() => {}); preparePending();
+}
+
+/* ══════════ Отчёт по настроениям: неделя по дням, месяц по долям ══════════ */
+const MONTHS_RU = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+const monthName = (key) => { const [y, m] = key.split('-'); return MONTHS_RU[Number(m) - 1] + ' ' + y; };
+async function loadMoodReport(){
+  const box = $('mr-box'); box.innerHTML = '<p class="hint">Считаем…</p>';
+  try { S.moodReport = await api('/mood/report'); paintMoodReport(); track('moodreport_view'); }
+  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
+  loadReminders().then(() => paintRem('moodreport')).catch(() => {});
+}
+function paintMoodReport(){
+  const r = S.moodReport, box = $('mr-box'), total = r.month.days;
+  const id = regRes({ type: 'moodreport', r, day: S.day.date });
+  box.innerHTML = `<p style="font-size:16px;color:#ded8ee">${esc(r.summary)}</p>
+    <div class="card" style="margin-top:14px"><h3>Неделя</h3><div class="mr-strip">${r.week.map(w => `<div class="mr-day${w.mood ? ' on' : ''}${w.day === S.day.date ? ' today' : ''}" title="${w.mood ? MOOD_LABEL[w.mood] : ''}">${w.mood ? moodSvg(w.mood, 30) : '<span class="mr-empty"></span>'}<small>${WD_SHORT[wdIdx(w.day)]}</small></div>`).join('')}</div></div>
+    <div class="card" style="margin-top:12px"><h3>${monthName(r.month.key)}</h3>${total ? r.month.stats.map(s => `<div class="barrow"><span class="l">${MOOD_LABEL[s.mood] || s.mood}</span><div class="bar"><i style="width:${Math.round(s.c / total * 100)}%"></i></div><span class="v">${s.c}</span></div>`).join('') : '<p>В этом месяце отметок пока нет.</p>'}</div>
+    <div class="card" style="margin-top:12px">${remBox('moodreport')}</div>
+    ${total ? actionsHtml(id, true) : ''}`;
+  paintRem('moodreport'); preparePending();
+}
+
+/* ══════════ Дневник привычек ══════════ */
+let HB = null;
+async function loadHabits(){
+  const box = $('hb-box'); if (!HB) box.innerHTML = '<p class="hint">Загружаем…</p>';
+  await loadCatalog().catch(() => {});
+  try { const r = await api('/habits'); HB = r.items; paintHabits(); }
+  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
+  loadReminders().then(() => paintRem('habits')).catch(() => {});
+}
+function paintHabits(){
+  const box = $('hb-box'), today = S.day.date, ideas = (CAT && CAT.habitIdeas) || [];
+  const done = HB.filter(h => h.today).length;
+  const id = HB.length ? regRes({ type: 'habits', items: HB, day: today }) : '';
+  box.innerHTML = `${HB.length ? `<p style="font-size:14.5px;text-align:center;color:${done === HB.length ? 'var(--gold)' : 'inherit'}">${done === HB.length ? 'Все привычки на сегодня отмечены ✦' : `Сегодня отмечено ${done} из ${HB.length}`}</p>` : '<p style="font-size:14.5px;text-align:center">Одна маленькая привычка — и появится ритм. Отмечайте каждый день, серия растёт.</p>'}
+    <div class="list" style="margin-top:12px">${HB.map(h => `<div class="item hb${h.today ? ' on' : ''}">
+        <button type="button" class="hb-check" onclick="habitMark(${h.id})" aria-label="Отметить сегодня">${h.today ? '✓' : ''}</button>
+        <div class="grow"><b>${esc(h.title)}</b><small>${h.streak ? `серия · ${h.streak} ${plural(h.streak, 'день', 'дня', 'дней')}` : 'начните сегодня'}${h.total ? ` · всего ${h.total}` : ''}</small>
+          <div class="hd-row">${h.week.map(w => `<button type="button" class="hd${w.done ? ' on' : ''}${w.day === today ? ' today' : ''}" onclick="habitMark(${h.id},'${w.day}')" aria-label="${fmtDay(w.day)}"><span>${WD_SHORT[wdIdx(w.day)]}</span></button>`).join('')}</div></div>
+        <button type="button" class="hb-x" onclick="habitRemove(${h.id})" aria-label="Убрать">×</button></div>`).join('')}</div>
+    <div class="card" style="margin-top:12px"><div class="row" style="gap:10px"><input id="hb-new" placeholder="Новая привычка" maxlength="80" onkeydown="if(event.key==='Enter')habitAdd()"><button class="btn sm" style="min-height:54px;padding:0 20px" onclick="habitAdd()">+</button></div>
+      ${HB.length < 4 && ideas.length ? `<div class="chips flow" style="margin-top:10px">${ideas.filter(t => !HB.some(h => h.title === t)).slice(0, 6).map(t => `<button type="button" class="chip" onclick="habitAdd(this.textContent)">${esc(t)}</button>`).join('')}</div>` : ''}</div>
+    <div class="card" style="margin-top:12px">${remBox('habits')}</div>
+    ${HB.length ? actionsHtml(id, true) : ''}`;
+  paintRem('habits'); preparePending();
+}
+async function habitAdd(t){
+  const title = (t || $('hb-new').value).trim(); if (title.length < 2) { toast('Назовите привычку'); return; }
+  try { const r = await api('/habits', { method: 'POST', body: JSON.stringify({ title }) }); HB = r.items; bumpStreak(r.streak); track('habit_add'); hap(9); paintHabits(); }
+  catch (e) { toast(e.code === 'too_many' ? 'Двенадцать привычек — уже много. Уберите одну.' : 'Не получилось добавить'); }
+}
+async function habitMark(id, day){
+  try { const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day }) }); HB = r.items; bumpStreak(r.streak); track('habit_mark'); hap([0, 12]); paintHabits(); }
+  catch (e) { toast('Не получилось отметить'); }
+}
+async function habitRemove(id){
+  if (!confirm('Убрать привычку из списка? Отметки сохранятся в истории.')) return;
+  try { const r = await api('/habits?id=' + id, { method: 'DELETE' }); HB = r.items; paintHabits(); } catch (e) { toast('Не получилось'); }
+}
+
+/* ══════════ Взять аскезу: обещание себе на срок, отметки по дням ══════════ */
+let AS = null, askForm = {};
+const endDay = (a) => new Date(Date.parse(a.started) + (a.days - 1) * 864e5).toISOString().slice(0, 10);
+async function loadAskesis(){
+  const box = $('as-box'); if (!AS) box.innerHTML = '<p class="hint">Загружаем…</p>';
+  await loadCatalog().catch(() => {});
+  try { AS = await api('/askesis'); paintAskesis(); }
+  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
+  loadReminders().then(() => paintRem('askesis')).catch(() => {});
+}
+function askDayRow(a){
+  const days = []; for (let i = 0; i < a.days; i++) { const d = new Date(Date.parse(a.started) + i * 864e5).toISOString().slice(0, 10); const m = a.marks.find(x => x.day === d); days.push(`<i class="${m ? (m.kept ? 'k' : 'm') : ''}${d === S.day.date ? ' t' : ''}" title="${fmtDay(d)}"></i>`); }
+  return `<div class="ask-days">${days.join('')}</div>`;
+}
+function paintAskesis(){
+  const box = $('as-box'), ideas = (CAT && CAT.askesisIdeas) || [];
+  const active = AS.active.map(a => {
+    const id = regRes({ type: 'askesis', a, day: S.day.date });
+    const t = a.today, editing = askForm[a.id] === 'edit';
+    return `<div class="card">
+      <span class="eyebrow">Аскеза · день ${a.day} из ${a.days}</span>
+      <div class="serif" style="font-size:22px;color:var(--gold);margin-top:6px">${esc(a.title)}</div>
+      <div class="bar" style="margin-top:12px"><i style="width:${Math.round(a.day / a.days * 100)}%"></i></div>
+      <small style="display:block;color:#8f87ad;margin-top:6px">${fmtDay(a.started)} — ${fmtDay(endDay(a))} · держу ${a.kept} ${plural(a.kept, 'день', 'дня', 'дней')}${a.missed ? ` · не вышло ${a.missed}` : ''}</small>
+      ${askDayRow(a)}
+      <div style="margin-top:14px">${t && !editing
+        ? `<p style="color:#fff;font-size:15px">Сегодня: ${t.kept ? 'держу ✦' : 'не вышло — завтра снова'}</p>${t.note ? `<p style="font-size:14px;margin-top:4px">${esc(t.note)}</p>` : ''}<button class="btn ghost sm" style="margin-top:8px" onclick="askForm[${a.id}]='edit';paintAskesis()">Изменить</button>`
+        : `<div class="field" style="margin-bottom:0"><label>Как прошёл день ${a.day}</label><textarea id="as-note-${a.id}" maxlength="300" placeholder="Пара слов о дне — необязательно" style="min-height:70px">${t ? esc(t.note) : ''}</textarea></div>
+           <div class="ask-two"><button class="btn sm" style="width:100%" onclick="askMark(${a.id},true)">Держу ✦</button><button class="btn ghost sm" style="width:100%" onclick="askMark(${a.id},false)">Не вышло</button></div>`}</div>
+      ${a.marks.some(m => m.note) ? moreBlock(a.marks.filter(m => m.note).slice().reverse().map(m => `<p><small style="color:#8f87ad">${fmtDay(m.day)} · ${m.kept ? 'держу' : 'не вышло'}</small><br>${esc(m.note)}</p>`).join(''), 'Мои записи') : ''}
+      ${actionsHtml(id, true)}
+      <button type="button" class="linkbtn" onclick="askStop(${a.id})">Завершить аскезу досрочно</button>
+    </div>`;
+  }).join('');
+  const canNew = AS.active.length < 3;
+  const f = askForm.new || { title: '', days: 21 };
+  box.innerHTML = `${active}
+    ${canNew ? `<div class="card"${AS.active.length ? ' style="margin-top:12px"' : ''}>
+      <span class="eyebrow">${AS.active.length ? 'Ещё одна аскеза' : 'Взять аскезу'}</span>
+      <p style="font-size:14px;margin-top:6px">Обещание себе на срок: от чего отказываетесь или что делаете каждый день. Отмечайте вечером, а утром напомним.</p>
+      <div class="chips flow" style="margin-top:10px">${ideas.map(t => `<button type="button" class="chip${f.title === t ? ' on' : ''}" onclick="askPick(this.textContent)">${esc(t)}</button>`).join('')}</div>
+      <div class="field" style="margin:12px 0 10px"><label>Своя аскеза</label><input id="as-title" maxlength="80" placeholder="Например: без сладкого после шести" value="${esc(f.title)}" oninput="askForm.new=Object.assign(askForm.new||{days:21},{title:this.value})"></div>
+      <div class="chips flow">${[7, 14, 21, 40].map(n => `<button type="button" class="chip${f.days === n ? ' on' : ''}" onclick="askDays(${n})">${n} дней</button>`).join('')}</div>
+      <button class="btn" style="margin-top:14px" onclick="askStart()">Взять аскезу на ${f.days} дней</button>
+    </div>` : ''}
+    <div class="card" style="margin-top:12px">${remBox('askesis')}</div>
+    ${AS.past.length ? `<span class="eyebrow" style="margin-top:18px">Прошлые</span><div class="list" style="margin-top:8px">${AS.past.map(a => `<div class="item"><b>${esc(a.title)}</b><small>${fmtDay(a.started)} — ${fmtDay(a.finished || endDay(a))} · ${a.status === 'done' ? 'пройдена' : 'завершена досрочно'} · держали ${a.kept} из ${a.days}</small></div>`).join('')}</div>` : ''}`;
+  paintRem('askesis'); preparePending();
+}
+function askPick(t){ askForm.new = Object.assign(askForm.new || { days: 21 }, { title: t }); hap(9); paintAskesis(); }
+function askDays(n){ askForm.new = Object.assign(askForm.new || { title: '' }, { days: n }); hap(9); paintAskesis(); }
+async function askStart(){
+  const f = askForm.new || { title: '', days: 21 }, title = ($('as-title').value || f.title).trim();
+  if (title.length < 2) { toast('Назовите аскезу'); return; }
+  try { AS = await api('/askesis', { method: 'POST', body: JSON.stringify({ title, days: f.days }) }); askForm.new = null; track('askesis_start'); hap([0, 14, 45, 22]); toast('Аскеза взята — держитесь ✦'); paintAskesis(); }
+  catch (e) { toast(e.code === 'too_many' ? 'Три аскезы сразу — уже много' : 'Не получилось'); }
+}
+async function askMark(id, kept){
+  const note = ($('as-note-' + id) || {}).value || '';
+  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, kept, note: note.trim() }) }); askForm[id] = null; track('askesis_mark', kept ? 'kept' : 'missed'); hap([0, 12]); paintAskesis(); }
+  catch (e) { toast('Не получилось отметить'); }
+}
+async function askStop(id){
+  if (!confirm('Завершить аскезу досрочно? Она останется в прошлых.')) return;
+  try { AS = await api('/askesis?id=' + id, { method: 'DELETE' }); paintAskesis(); } catch (e) { toast('Не получилось'); }
+}
+
+/* ══════════ Лунный день с рекомендацией ══════════ */
+function paintLunarWidget(){
+  const l = S.day && S.day.lunar, box = $('ln-box'); if (!box) return;
+  if (!l) { box.innerHTML = '<p class="stubtext">Лунный день пока не рассчитан.</p>'; return; }
+  const id = regRes({ type: 'lunar', l, day: S.day.date });
+  box.innerHTML = `<div class="big" style="font-size:64px;margin-top:10px">${l.n}</div>
+    <p class="w-big" style="margin-top:6px;font-size:19px">${ordinal(l.n)} лунный день${l.title ? ' · ' + esc(l.title) : ''}</p>
+    <p style="text-align:center;margin-top:10px;font-size:14px">${esc(l.period)}</p>
+    ${l.advice ? `<div class="card" style="margin-top:16px"><h3>Рекомендация</h3><p style="color:#fff;font-size:15.5px">${esc(l.advice)}</p></div>` : ''}
+    <div class="card" style="margin-top:12px">${remBox('lunar')}</div>
+    ${actionsHtml(id, true)}`;
+  loadReminders().then(() => paintRem('lunar')).catch(() => {}); preparePending(); track('lunar_view');
+}
+
+/* ══════════ На небе: сегодня и ближайшие недели ══════════ */
+const fmtWhen = (at) => new Date(at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+async function loadSky(){
+  const box = $('sky-box'); if (!S.sky) box.innerHTML = '<p class="hint">Смотрим на небо…</p>';
+  try { S.sky = await api('/sky'); paintSky(); track('sky_view'); }
+  catch (e) { box.innerHTML = '<p class="msg err">Не получилось рассчитать небо.</p>'; }
+  loadReminders().then(() => { paintRem('sky'); if (IOS_SHELL && S.rem.sky.enabled) nativeSchedule('sky'); }).catch(() => {});
+}
+function paintSky(){
+  const s = S.sky, box = $('sky-box');
+  const id = regRes({ type: 'sky', sky: s, day: s.date });
+  const ev = (e, cls) => `<div class="item skyev${cls ? ' ' + cls : ''}"><b>${esc(e.title)}</b><small>${fmtWhen(e.at)}</small>${e.note ? `<p style="font-size:14px;margin-top:6px">${esc(e.note)}</p>` : ''}</div>`;
+  box.innerHTML = `<div class="card" style="text-align:center"><span class="eyebrow">Сегодня</span>
+      <div class="serif" style="font-size:22px;color:var(--gold);margin-top:6px">${esc(s.moon.phase)} ${esc(s.moon.signIn)}</div>
+      <p style="font-size:14px;margin-top:4px">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растёт' : 'убывает'} · Солнце в знаке ${esc(s.sun.sign)}</p>
+      <p style="margin-top:10px;color:#ded8ee;font-size:14.5px">${s.retro.length ? s.retro.map(r => `${r.symbol} ${esc(r.name)} — ${r.adj}`).join(' · ') : 'Ретроградных планет сейчас нет'}</p>
+    </div>
+    ${s.today.length ? `<div class="list" style="margin-top:12px">${s.today.map(e => ev(e, 'now')).join('')}</div>` : ''}
+    ${s.retro.length ? `<div class="card" style="margin-top:12px">${s.retro.map(r => `<h3>${r.symbol} ${esc(r.name)} ${r.adj}</h3><p>${esc(r.note)}</p>`).join('')}</div>` : ''}
+    ${s.aspects.length ? `<div class="card" style="margin-top:12px"><h3>Точные аспекты сегодня</h3>${s.aspects.map(a => `<p>${a.aSym} ${esc(a.a)} ${a.symbol} ${a.bSym} ${esc(a.b)} <small style="color:#8f87ad">· ${esc(a.name.toLowerCase())}, орб ${a.orb}°</small></p>`).join('')}</div>` : ''}
+    <span class="eyebrow" style="margin-top:18px">Ближайшие недели</span>
+    <div class="list" style="margin-top:8px">${s.upcoming.map(e => ev(e)).join('')}</div>
+    <div class="card" style="margin-top:12px">${remBox('sky')}</div>
+    ${actionsHtml(id, true)}
+    <p class="hint" style="margin-top:12px;text-align:center">Фазы и планеты рассчитаны астрономически. Затмения — по положению Луны у узлов, без учёта видимости из вашего города.</p>`;
+  paintRem('sky'); preparePending();
+}
+
+/* ══════════ Поделиться текстом: любой результат ══════════ */
+function shareResText(p){
+  const link = location.origin + '/app/';
+  switch (p.type) {
+    case 'card': return `${p.card.name} — карта дня в Лунарио.\n${keysLine(p.card.keys)}\n${link}`;
+    case 'rune': return `Руна ${p.runes[0].name} — ${p.runes[0].answer || p.runes[0].motto || ''}\nЛунарио · ${link}`;
+    case 'runes': return `Руны: ${p.runes.map(r => r.name).join(' · ')}\nЛунарио · ${link}`;
+    case 'spread': return `Таро: ${p.cards.map(c => c.name).join(' · ')}\nЛунарио · ${link}`;
+    case 'yesno': return `${p.title}. ${p.body}\nЛунарио · ${link}`;
+    case 'mood': return `Сегодня в Лунарио — ${p.label.toLowerCase()}.\n${link}`;
+    case 'moodreport': return `${p.r.summary}\nЛунарио · ${link}`;
+    case 'habits': return `Мои привычки в Лунарио: ${p.items.map(h => h.title).join(', ')}.\n${link}`;
+    case 'askesis': return `Аскеза «${p.a.title}»: день ${p.a.day} из ${p.a.days}.\nЛунарио · ${link}`;
+    case 'lunar': return `${ordinal(p.l.n)} лунный день${p.l.title ? ' · ' + p.l.title : ''}\n${p.l.advice || ''}\nЛунарио · ${link}`;
+    case 'sky': return `На небе сегодня: ${p.sky.moon.phase} ${p.sky.moon.signIn}${p.sky.today.length ? ' · ' + p.sky.today.map(e => e.title).join(' · ') : ''}.\nЛунарио · ${link}`;
+  }
+  return `Лунарио · ${link}`;
+}
+async function shareRes(id){
+  const p = RES[id]; if (!p) return;
+  const t = shareResText(p); track('share_card', p.type);
+  if (IOS_SHELL && nativePost({ type: 'share', text: t })) return;
+  if (navigator.share) { try { await navigator.share({ title: 'Лунарио', text: t }); } catch (e) { /* закрыли меню */ } }
+  else { navigator.clipboard.writeText(t).catch(() => {}); toast('Скопировано — можно отправить подруге'); }
+}
+
+/* смайлик настроения — тот же рисунок, что на экране (32×32), увеличенный */
+function pcSmiley(ctx, mood, cx, cy, size){
+  const m = MOODS.find(x => x[0] === mood); if (!m) return;
+  const k = size / 32;
+  ctx.save(); ctx.translate(cx - size / 2, cy - size / 2); ctx.scale(k, k);
+  ctx.strokeStyle = '#e9c77e'; ctx.fillStyle = '#e9c77e'; ctx.lineWidth = 1.7; ctx.lineCap = 'round'; ctx.shadowColor = 'rgba(233,199,126,.5)'; ctx.shadowBlur = 20 / k;
+  ctx.beginPath(); ctx.arc(16, 16, 12.5, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(12, 13, 1.4, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(20, 13, 1.4, 0, Math.PI * 2); ctx.fill();
+  ctx.stroke(new Path2D(m[2])); ctx.restore();
+}
+/* диск Луны с настоящей освещённостью */
+function pcMoonDisc(ctx, cx, cy, R, illum, waxing){
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = '#2a2150'; ctx.fill();
+  const k = Math.max(0, Math.min(1, illum / 100)), rx = Math.abs(R * (1 - 2 * k));
+  ctx.beginPath();
+  if (waxing) { ctx.arc(cx, cy, R, -Math.PI / 2, Math.PI / 2); ctx.ellipse(cx, cy, rx, R, 0, Math.PI / 2, -Math.PI / 2, k < 0.5); }
+  else { ctx.arc(cx, cy, R, Math.PI / 2, Math.PI * 1.5); ctx.ellipse(cx, cy, rx, R, 0, -Math.PI / 2, Math.PI / 2, k < 0.5); }
+  ctx.closePath(); ctx.fillStyle = '#f0d79a'; ctx.shadowColor = 'rgba(240,215,154,.55)'; ctx.shadowBlur = 50; ctx.fill();
+  ctx.restore();
+}
+async function drawPostcardExtra(ctx, p){
+  if (p.type === 'mood') {
+    pcSmiley(ctx, p.mood, 540, 600, 520);
+    let y = drawText(ctx, 'Сегодня — ' + p.label.toLowerCase(), 540, 1010, { size: 58, weight: 600, color: '#e9c77e', maxW: 900 });
+    if (S.day && S.day.affirmation) drawText(ctx, '«' + S.day.affirmation + '»', 540, y + 70, { size: 34, italic: true, color: '#ded8ee', maxW: 860, lh: 1.45 });
+    return true;
+  }
+  if (p.type === 'moodreport') {
+    const r = p.r;
+    drawText(ctx, 'НАСТРОЕНИЯ ЗА НЕДЕЛЮ', 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
+    r.week.forEach((w, i) => {
+      const cx = 540 + (i - 3) * 132;
+      if (w.mood) pcSmiley(ctx, w.mood, cx, 400, 92);
+      else { ctx.save(); ctx.setLineDash([6, 8]); ctx.strokeStyle = 'rgba(245,242,234,.25)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, 400, 34, 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      drawText(ctx, WD_SHORT[wdIdx(w.day)], cx, 500, { size: 24, color: w.day === p.day ? '#f0d79a' : '#8f87ad' });
+    });
+    let y = drawText(ctx, monthName(r.month.key), 540, 660, { size: 36, weight: 600, color: '#f5f2ea' });
+    const total = r.month.days;
+    for (const s of r.month.stats) {
+      y += 30;
+      drawText(ctx, MOOD_LABEL[s.mood] || s.mood, 180, y + 12, { size: 30, color: '#b9b2cf', align: 'left', maxW: 260 });
+      ctx.fillStyle = 'rgba(245,242,234,.09)'; rrect(ctx, 460, y - 12, 380, 22, 11); ctx.fill();
+      const g = ctx.createLinearGradient(460, 0, 840, 0); g.addColorStop(0, '#b98f3e'); g.addColorStop(1, '#f0d79a');
+      ctx.fillStyle = g; rrect(ctx, 460, y - 12, Math.max(22, 380 * s.c / total), 22, 11); ctx.fill();
+      drawText(ctx, String(s.c), 900, y + 10, { size: 28, color: '#f5f2ea', align: 'right' });
+      y += 34;
+    }
+    drawText(ctx, r.summary, 540, Math.max(y + 120, 1300), { size: 32, color: '#ded8ee', maxW: 860, lh: 1.45 });
+    return true;
+  }
+  if (p.type === 'habits') {
+    drawText(ctx, 'МОИ ПРИВЫЧКИ', 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
+    const wk = p.items[0].week;
+    drawText(ctx, `${fmtDay(wk[0].day).slice(0, 5)} — ${fmtDay(wk[6].day).slice(0, 5)}`, 540, 225, { size: 28, color: '#8f87ad' });
+    const rows = p.items.slice(0, 8);
+    let y = Math.max(360, Math.round((1560 - rows.length * 140) / 2) + 120), marks = 0;
+    for (const h of rows) {
+      drawText(ctx, h.title, 150, y, { size: 36, weight: 600, color: '#f5f2ea', align: 'left', maxW: 780, lh: 1.1 });
+      h.week.forEach((w, i) => { const cx = 170 + i * 68; ctx.beginPath(); ctx.arc(cx, y + 50, 16, 0, Math.PI * 2); if (w.done) { ctx.fillStyle = '#e9c77e'; ctx.fill(); marks++; } else { ctx.strokeStyle = 'rgba(233,199,126,.5)'; ctx.lineWidth = 2.5; ctx.stroke(); } });
+      y += 140;
+    }
+    drawText(ctx, `${marks} из ${p.items.length * 7} отметок за неделю`, 540, Math.max(y + 40, 1580), { size: 32, color: '#ded8ee' });
+    return true;
+  }
+  if (p.type === 'askesis') {
+    const a = p.a;
+    drawText(ctx, 'АСКЕЗА', 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
+    drawText(ctx, a.title, 540, 420, { size: 60, weight: 600, color: '#e9c77e', maxW: 900, lh: 1.15 });
+    const cx = 540, cy = 900, R = 210;
+    ctx.save(); ctx.lineWidth = 22; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(245,242,234,.1)'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#e9c77e'; ctx.shadowColor = 'rgba(233,199,126,.5)'; ctx.shadowBlur = 30; ctx.beginPath(); ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * a.day / a.days); ctx.stroke(); ctx.restore();
+    drawText(ctx, String(a.day), cx, cy + 45, { size: 150, weight: 600, color: '#f5f2ea' });
+    drawText(ctx, `из ${a.days}`, cx, cy + 115, { size: 34, color: '#b9b2cf' });
+    let y = drawText(ctx, `Держу ${a.kept} ${plural(a.kept, 'день', 'дня', 'дней')}${a.missed ? ` · не вышло ${a.missed}` : ''}`, 540, 1260, { size: 34, color: '#ded8ee' });
+    drawText(ctx, `${fmtDay(a.started)} — ${fmtDay(endDay(a))}`, 540, y + 16, { size: 28, color: '#8f87ad' });
+    return true;
+  }
+  if (p.type === 'lunar') {
+    const l = p.l;
+    ctx.save(); ctx.shadowColor = 'rgba(233,199,126,.45)'; ctx.shadowBlur = 60; drawText(ctx, String(l.n), 540, 560, { size: 300, weight: 600, color: '#e9c77e' }); ctx.restore();
+    let y = drawText(ctx, `${ordinal(l.n)} лунный день`, 540, 660, { size: 40, color: '#f5f2ea' });
+    if (l.title) y = drawText(ctx, l.title, 540, y + 30, { size: 50, weight: 600, color: '#e9c77e', maxW: 900 });
+    if (l.advice) y = drawText(ctx, l.advice, 540, y + 60, { size: 38, color: '#f5f2ea', maxW: 860, lh: 1.42 });
+    drawText(ctx, l.period, 540, Math.max(y + 60, 1440), { size: 26, color: '#8f87ad', maxW: 900 });
+    return true;
+  }
+  if (p.type === 'sky') {
+    const s = p.sky;
+    drawText(ctx, 'НА НЕБЕ', 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
+    pcMoonDisc(ctx, 540, 470, 170, s.moon.illumination, s.moon.waxing);
+    let y = drawText(ctx, `${s.moon.phase} ${s.moon.signIn}`, 540, 760, { size: 50, weight: 600, color: '#e9c77e', maxW: 900 });
+    y = drawText(ctx, `Луна освещена на ${s.moon.illumination}% · Солнце в знаке ${s.sun.sign}`, 540, y + 10, { size: 28, color: '#b9b2cf', maxW: 900 });
+    if (s.retro.length) y = drawText(ctx, s.retro.map(r => `${r.name} — ${r.adj}`).join(' · '), 540, y + 20, { size: 30, color: '#ded8ee', maxW: 900 });
+    const lines = [...s.today.map(e => ({ ...e, now: true })), ...s.upcoming].slice(0, 5);
+    y += 70;
+    for (const e of lines) {
+      y = drawText(ctx, (e.now ? 'Сегодня · ' : new Date(e.at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) + ' · ') + e.title, 540, y, { size: e.now ? 34 : 30, weight: e.now ? 600 : 400, color: e.now ? '#f0d79a' : '#f5f2ea', maxW: 900, lh: 1.3 });
+      y += 22;
+    }
+    return true;
+  }
+  return false;
+}
 /* ── старт ── */
+const OPEN_MAP = { card: ['today', 'card'], mood: ['today', 'mood'], habits: ['today', 'habits'], askesis: ['today', 'askesis'], journal: ['history', 'journal'],
+  lunar: ['around', 'lunar'], sky: ['around', 'sky'], moodreport: ['history', 'hmood'], remind: ['account', 'remind'] };
 function startApp(){
   paintHome(); paintToday(); go('home');
   if (S.day.card) { showFlipped(); $('t-after').style.display = 'block'; }   /* карта на сегодня уже открыта — она в истории */
   loadCatalog().then(() => { if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); }).catch(() => {});
+  /* из уведомления приходят сразу в нужный раздел */
+  try {
+    const open = new URLSearchParams(location.search).get('open');
+    if (open && OPEN_MAP[open]) { go(OPEN_MAP[open][0]); openWidget(OPEN_MAP[open][1]); history.replaceState(null, '', location.pathname); }
+  } catch (e) {}
 }
 (async function(){
   try{

@@ -23,6 +23,8 @@ import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSe
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
 import * as W from './workspace.mjs';
 import { natalChart } from './astro.mjs';
+import { skyNow } from './sky.mjs';
+import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow } from './reminders.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -57,6 +59,7 @@ const EVENT_TYPES = new Set([
   'journal_add', 'wish_add', 'compat_calc', 'share_card', 'install_prompt', 'installed',
   'paywall_view', 'paywall_click', 'invite_copy', 'invite_used', 'push_on', 'push_off', 'pay_start', 'payment_success',
   'support_open', 'support_new', 'utm_seen', 'natal_view', 'card_download',
+  'reminder_on', 'reminder_off', 'reminder_test', 'habit_add', 'habit_mark', 'askesis_start', 'askesis_mark', 'sky_view', 'lunar_view', 'moodreport_view',
 ]);
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
@@ -100,6 +103,18 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
     ts TEXT NOT NULL, text TEXT NOT NULL, done INTEGER DEFAULT 0, done_ts TEXT DEFAULT ''
   );
+  /* Дневник привычек: привычка и отметки по дням */
+  CREATE TABLE IF NOT EXISTS habits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT NOT NULL,
+    created_at TEXT NOT NULL, archived INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS habit_marks (habit_id INTEGER NOT NULL, day TEXT NOT NULL, PRIMARY KEY (habit_id, day));
+  /* Аскеза: обещание себе на срок, отметки по дням с парой слов */
+  CREATE TABLE IF NOT EXISTS askesis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT NOT NULL, days INTEGER NOT NULL,
+    started TEXT NOT NULL, status TEXT DEFAULT 'active', finished_at TEXT DEFAULT ''
+  );
+  CREATE TABLE IF NOT EXISTS askesis_days (askesis_id INTEGER NOT NULL, day TEXT NOT NULL, kept INTEGER DEFAULT 1, note TEXT DEFAULT '', PRIMARY KEY (askesis_id, day));
   CREATE TABLE IF NOT EXISTS usage (
     user_id INTEGER NOT NULL, day TEXT NOT NULL, spreads INTEGER DEFAULT 0,
     PRIMARY KEY (user_id, day)
@@ -136,6 +151,14 @@ db.exec(`
     notify INTEGER DEFAULT 0, email TEXT DEFAULT ''
   );
 `);
+
+/* Привычки и аскезы — личное; стираются вместе с историей */
+function wipePersonal(userId) {
+  db.prepare('DELETE FROM habit_marks WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)').run(userId);
+  db.prepare('DELETE FROM habits WHERE user_id = ?').run(userId);
+  db.prepare('DELETE FROM askesis_days WHERE askesis_id IN (SELECT id FROM askesis WHERE user_id = ?)').run(userId);
+  db.prepare('DELETE FROM askesis WHERE user_id = ?').run(userId);
+}
 
 /* Приглашения: свой код у каждого и запись, кто кого привёл. */
 {
@@ -187,6 +210,7 @@ db.exec(`
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email <> \'\'');
 }
 
+initReminders(db);   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
 initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
 initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
@@ -492,10 +516,58 @@ function dayPack(u, day) {
 function lunarPack(u) {
   try {
     const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);
-    return ld ? { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || 'Europe/Moscow') } : null;
+    if (!ld) return null;
+    const [title, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', ''];
+    return { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || 'Europe/Moscow'), title, advice };
   } catch (e) { return null; }
 }
 const topicOf = (q) => (C.TOPICS.find(([, re]) => re.test(q)) || ['self'])[0];
+const testRate = new Map();
+const MOOD_RU = { joy: 'радостно', calm: 'спокойно', tired: 'устало', anx: 'тревожно', sad: 'грустно' };
+/* Неделя по отметкам настроения — для «Итогов недели» и отчёта по настроениям */
+function weekSummary(u) {
+  const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+  const moods = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day>=? GROUP BY mood ORDER BY c DESC').all(u.id, since);
+  const days = db.prepare('SELECT COUNT(DISTINCT day) c FROM moods WHERE user_id=? AND day>=?').get(u.id, since).c;
+  const total = moods.reduce((s, m) => s + m.c, 0);
+  let summary = '';
+  if (!total) summary = 'На этой неделе вы ещё не отмечали состояние. Одна отметка в день — и через неделю здесь появится картина.';
+  else {
+    const top = moods[0];
+    const share = Math.round((top.c / total) * 100);
+    summary = `Вы отмечались ${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'}. Чаще всего было ${MOOD_RU[top.mood] || top.mood} — ${share}% отметок.`;
+    const calmish = moods.filter((m) => m.mood === 'calm' || m.mood === 'joy').reduce((s, m) => s + m.c, 0);
+    if (calmish / total >= 0.6) summary += ' Неделя выдалась ровной.';
+    else if ((total - calmish) / total >= 0.6) summary += ' Неделя была непростой — это видно по отметкам.';
+  }
+  return { since, moods, days, total, summary };
+}
+/* Привычки с отметками за последние 7 дней и серией подряд */
+function habitList(userId, d) {
+  const week = []; for (let i = 6; i >= 0; i--) week.push(new Date(Date.parse(d) - i * 864e5).toISOString().slice(0, 10));
+  return db.prepare('SELECT id, title, created_at FROM habits WHERE user_id = ? AND archived = 0 ORDER BY id').all(userId).map((h) => {
+    const marks = new Set(db.prepare('SELECT day FROM habit_marks WHERE habit_id = ?').all(h.id).map((m) => m.day));
+    let streak = 0, cur = marks.has(d) ? d : new Date(Date.parse(d) - 864e5).toISOString().slice(0, 10);
+    while (marks.has(cur)) { streak++; cur = new Date(Date.parse(cur) - 864e5).toISOString().slice(0, 10); }
+    return { id: h.id, title: open_(h.title), since: h.created_at.slice(0, 10), streak, today: marks.has(d), total: marks.size, week: week.map((day) => ({ day, done: marks.has(day) })) };
+  });
+}
+/* Аскезы: активные с номером дня и прошедшие. Истёкшие закрываются сами. */
+function askesisList(userId, d) {
+  const dayN = (a) => Math.floor((Date.parse(d) - Date.parse(a.started)) / 864e5) + 1;
+  for (const a of db.prepare("SELECT id, days, started FROM askesis WHERE user_id = ? AND status = 'active'").all(userId))
+    if (dayN(a) > a.days) db.prepare("UPDATE askesis SET status = 'done', finished_at = ? WHERE id = ?").run(new Date(Date.parse(a.started) + (a.days - 1) * 864e5).toISOString().slice(0, 10), a.id);
+  const shape = (a) => {
+    const marks = db.prepare('SELECT day, kept, note FROM askesis_days WHERE askesis_id = ? ORDER BY day').all(a.id).map((m) => ({ day: m.day, kept: !!m.kept, note: open_(m.note) }));
+    const t = marks.find((m) => m.day === d) || null;
+    return { id: a.id, title: open_(a.title), days: a.days, started: a.started, status: a.status, finished: a.finished_at,
+      day: Math.min(a.days, Math.max(1, dayN(a))), kept: marks.filter((m) => m.kept).length, missed: marks.filter((m) => !m.kept).length, marks, today: t };
+  };
+  return {
+    active: db.prepare("SELECT * FROM askesis WHERE user_id = ? AND status = 'active' ORDER BY id DESC").all(userId).map(shape),
+    past: db.prepare("SELECT * FROM askesis WHERE user_id = ? AND status <> 'active' ORDER BY id DESC LIMIT 12").all(userId).map(shape),
+  };
+}
 
 /* ── пользователь ── */
 function parseCookies(req) {
@@ -594,7 +666,7 @@ const server = createServer(async (req, res) => {
        правки в content/ доедут до людей не позже. */
     if (p === '/api/catalog' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
-      return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS }));
+      return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS, lunarDays: [...C.LUNAR_DAYS], askesisIdeas: [...C.ASKESIS_IDEAS], habitIdeas: [...C.HABIT_IDEAS] }));
     }
 
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.
@@ -1114,31 +1186,105 @@ const server = createServer(async (req, res) => {
       /* Итог недели: сколько дней отмечено, какое состояние преобладало,
          о чём чаще спрашивали. Считается по фактам, без чтения текстов. */
       if (p === '/api/week' && req.method === 'GET') {
-        const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
-        const moods = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day>=? GROUP BY mood ORDER BY c DESC').all(u.id, since);
-        const asked = db.prepare('SELECT kind, COUNT(*) c FROM entries WHERE user_id=? AND day>=? GROUP BY kind').all(u.id, since);
-        const notes = db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id=? AND day>=?').get(u.id, since).c;
-        const days = db.prepare('SELECT COUNT(DISTINCT day) c FROM moods WHERE user_id=? AND day>=?').get(u.id, since).c;
-        const total = moods.reduce((s, m) => s + m.c, 0);
-        const MOOD_RU = { joy: 'радостно', calm: 'спокойно', tired: 'устало', anx: 'тревожно', sad: 'грустно' };
+        const w = weekSummary(u);
+        const asked = db.prepare('SELECT kind, COUNT(*) c FROM entries WHERE user_id=? AND day>=? GROUP BY kind').all(u.id, w.since);
+        const notes = db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id=? AND day>=?').get(u.id, w.since).c;
         const KIND_RU = { yesno: 'вопросы «Да / Нет»', rune: 'руны', runes: 'расклады рун', spread: 'расклады Таро', card: 'карты дня' };
-        let summary = '';
-        if (!total) summary = 'На этой неделе вы ещё не отмечали состояние. Одна отметка в день — и через неделю здесь появится картина.';
-        else {
-          const top = moods[0];
-          const share = Math.round((top.c / total) * 100);
-          summary = `Вы отмечались ${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'}. Чаще всего было ${MOOD_RU[top.mood] || top.mood} — ${share}% отметок.`;
-          const calmish = moods.filter((m) => m.mood === 'calm' || m.mood === 'joy').reduce((s, m) => s + m.c, 0);
-          if (calmish / total >= 0.6) summary += ' Неделя выдалась ровной.';
-          else if ((total - calmish) / total >= 0.6) summary += ' Неделя была непростой — это видно по отметкам.';
-        }
         return json(res, 200, {
-          days, notes,
-          moods: moods.map((m) => ({ mood: MOOD_RU[m.mood] || m.mood, count: m.c })),
+          days: w.days, notes,
+          moods: w.moods.map((m) => ({ mood: MOOD_RU[m.mood] || m.mood, count: m.c })),
           asked: asked.map((a) => ({ kind: KIND_RU[a.kind] || a.kind, count: a.c })),
-          summary,
+          summary: w.summary,
         });
       }
+
+      /* Отчёт по настроениям: неделя по дням, месяц по долям, итог словами */
+      if (p === '/api/mood/report' && req.method === 'GET') {
+        const w = weekSummary(u);
+        const week = [];
+        for (let i = 6; i >= 0; i--) {
+          const day = new Date(Date.parse(d) - i * 864e5).toISOString().slice(0, 10);
+          const row = db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, day);
+          week.push({ day, mood: row ? row.mood : '' });
+        }
+        const month = d.slice(0, 7);
+        const stats = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day LIKE ? GROUP BY mood ORDER BY c DESC').all(u.id, month + '%');
+        const total = db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ?').get(u.id).c;
+        return json(res, 200, { week, month: { key: month, stats, days: stats.reduce((s, m) => s + m.c, 0) }, total, summary: w.summary, labels: MOOD_RU });
+      }
+
+      /* ── напоминания по функциям ── */
+      if (p === '/api/reminders' && req.method === 'GET')
+        return json(res, 200, { items: listReminders(u.id), push: { on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id = ?').get(u.id), key: PUSH.publicKey } });
+      if (p === '/api/reminders' && req.method === 'POST') {
+        const b = await readBody(req);
+        const r = saveReminder(u.id, b);
+        if (!r.ok) return json(res, 400, r);
+        if (b.enabled !== undefined) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, b.enabled ? 'reminder_on' : 'reminder_off', String(b.feature || ''), ageBand(u.birth));
+        return json(res, 200, r);
+      }
+      if (p === '/api/reminders/test' && req.method === 'POST') {
+        const b = await readBody(req);
+        if (!allowRate(testRate, String(u.id), 3)) return json(res, 429, { ok: false, error: 'too_many' });
+        const r = await sendNow(u, String(b.feature || 'card'), PUSH);
+        if (r.ok) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'reminder_test', String(b.feature || ''), ageBand(u.birth));
+        return json(res, r.ok ? 200 : 400, r);
+      }
+      /* сигнал пришёл — service worker забирает тексты, которые ещё не показывал на этом устройстве */
+      if (p === '/api/push/next' && req.method === 'POST') {
+        const b = await readBody(req);
+        return json(res, 200, { items: pendingFor(u.id, clean(b.endpoint, 500)) });
+      }
+
+      /* ── дневник привычек ── */
+      if (p === '/api/habits') {
+        if (req.method === 'POST') {
+          const b = await readBody(req);
+          const title = clean(b.title, 80);
+          if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
+          if (db.prepare('SELECT COUNT(*) c FROM habits WHERE user_id = ? AND archived = 0').get(u.id).c >= 12) return json(res, 400, { ok: false, error: 'too_many' });
+          db.prepare('INSERT INTO habits (user_id, title, created_at) VALUES (?,?,?)').run(u.id, seal(title), nowISO());
+          touchStreak(u);
+        } else if (req.method === 'PATCH') {
+          const b = await readBody(req);
+          const h = db.prepare('SELECT id FROM habits WHERE id = ? AND user_id = ? AND archived = 0').get(Number(b.id) || 0, u.id);
+          if (!h) return json(res, 404, { ok: false, error: 'not_found' });
+          const day = /^\d{4}-\d{2}-\d{2}$/.test(b.day || '') && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
+          if (db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day)) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
+          else { db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u); }
+        } else if (req.method === 'DELETE') {
+          db.prepare('UPDATE habits SET archived = 1 WHERE id = ? AND user_id = ?').run(Number(url.searchParams.get('id')) || 0, u.id);
+        }
+        return json(res, 200, { items: habitList(u.id, d), streak: u.streak });
+      }
+
+      /* ── аскеза ── */
+      if (p === '/api/askesis') {
+        if (req.method === 'POST') {
+          const b = await readBody(req);
+          const title = clean(b.title, 80), days = Math.min(90, Math.max(3, Number(b.days) || 21));
+          if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
+          if (db.prepare("SELECT COUNT(*) c FROM askesis WHERE user_id = ? AND status = 'active'").get(u.id).c >= 3) return json(res, 400, { ok: false, error: 'too_many' });
+          db.prepare('INSERT INTO askesis (user_id, title, days, started) VALUES (?,?,?,?)').run(u.id, seal(title), days, d);
+          touchStreak(u);
+        } else if (req.method === 'PATCH') {
+          const b = await readBody(req);
+          const a = db.prepare("SELECT * FROM askesis WHERE id = ? AND user_id = ? AND status = 'active'").get(Number(b.id) || 0, u.id);
+          if (!a) return json(res, 404, { ok: false, error: 'not_found' });
+          const note = clean(b.note, 300);
+          db.prepare('INSERT INTO askesis_days (askesis_id, day, kept, note) VALUES (?,?,?,?) ON CONFLICT(askesis_id, day) DO UPDATE SET kept = excluded.kept, note = excluded.note')
+            .run(a.id, d, b.kept === false ? 0 : 1, seal(note));
+          touchStreak(u);
+        } else if (req.method === 'DELETE') {
+          db.prepare("UPDATE askesis SET status = 'stopped', finished_at = ? WHERE id = ? AND user_id = ? AND status = 'active'").run(d, Number(url.searchParams.get('id')) || 0, u.id);
+        }
+        return json(res, 200, askesisList(u.id, d));
+      }
+
+      /* ── на небе: сейчас и ближайшие недели ── */
+      if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyNow(Date.now(), u.tz || 'Europe/Moscow'));
+
+      /* ── полочки: что Лунарио знает о человеке — три полки и досье текстом для разборов ── */
 
       if (p === '/api/numerology' && req.method === 'GET') {
         if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
@@ -1169,11 +1315,13 @@ const server = createServer(async (req, res) => {
 
       if (p === '/api/data' && req.method === 'DELETE') {
         for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
-        db.prepare('UPDATE users SET streak = 0, streak_date = "" WHERE id = ?').run(u.id);
+        wipePersonal(u.id);
+        db.prepare("UPDATE users SET streak = 0, streak_date = '' WHERE id = ?").run(u.id);
         return json(res, 200, { ok: true });
       }
       if (p === '/api/account' && req.method === 'DELETE') {
         for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'sessions', 'push_subs']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
+        wipePersonal(u.id); clearReminders(u.id);
         // замер интереса остаётся (обезличенный факт клика), но почта и просьба «сообщите» уходят вместе с аккаунтом
         db.prepare("UPDATE interest SET email = '', notify = 0 WHERE user_id = ?").run(u.id);
         db.prepare('DELETE FROM users WHERE id = ?').run(u.id);

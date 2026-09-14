@@ -193,6 +193,26 @@ function bodiesAt(T, JD) {
   return { bodies: out, eps, dpsi, src };
 }
 
+/* Положения на момент времени (мс UTC): долгота, знак, ретроградность — для экрана «На небе» и напоминаний. */
+export function skyAt(ms) {
+  const JD = ms / 864e5 + 2440587.5;
+  const d = new Date(ms);
+  const JDE = JD + deltaT(d.getUTCFullYear() + d.getUTCMonth() / 12) / 86400;
+  const T = (JDE - 2451545) / 36525;
+  const { bodies } = bodiesAt(T, JD);
+  const later = bodiesAt(T + 0.5 / 36525, JD + 0.5).bodies;
+  const out = {};
+  for (const [k, name, symbol] of BODIES) {
+    const b = bodies[k]; if (!b) continue;
+    const p = place(b.lon);
+    out[k] = { key: k, name, ...p, signSymbol: p.symbol, symbol, retro: k === 'sun' || k === 'moon' ? false : norm(later[k].lon - b.lon + 180) - 180 < 0 };
+  }
+  const np = place(bodies.node.lon);
+  out.node = { key: 'node', name: 'Северный узел', ...np, signSymbol: np.symbol, symbol: '☊', retro: false };
+  return out;
+}
+export const ASPECT_LIST = ASPECTS;
+
 /* Натальная карта. birth: 'YYYY-MM-DD', time: 'HH:MM' | '', tzOffsetMin: смещение местного времени от UTC в минутах, lat/lon: градусы (восток и север положительные). */
 export function natalChart({ birth, time, tzOffsetMin = 0, lat = null, lon = null }) {
   const [Y, Mo, Da] = String(birth).split('-').map(Number);

@@ -34,7 +34,8 @@ class ViewController: UIViewController {
             // домены из WKAppBoundDomains: включает service worker — офлайн-оболочка работает
             config.limitsNavigationsToAppBoundDomains = true
         }
-        let boot = WKUserScript(source: "window.__LUN_IOS__ = true;",
+        // 2 — версия моста: страница знает, что телефон умеет напоминания по функциям (schedule)
+        let boot = WKUserScript(source: "window.__LUN_IOS__ = 2;",
                                 injectionTime: .atDocumentStart, forMainFrameOnly: true)
         config.userContentController.addUserScript(boot)
         config.userContentController.add(bridge, name: "lunario")

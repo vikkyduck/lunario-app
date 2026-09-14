@@ -113,6 +113,36 @@ export function lunarDay(nowMs, lat, lon) {
   return { n: Math.min(30, rises.length + 1), from: rises.length ? rises[rises.length - 1] : nm, to: after[0] || null, newMoon: nm };
 }
 
+/* Фазы Луны в интервале [fromMs, toMs]: новолуние (0°), первая четверть (90°), полнолуние (180°), последняя четверть (270°).
+   Возвращает моменты и долготу Луны в этот момент — по ней знак. Точность — минуты. */
+const elong360 = (jd) => norm(moonPos(jd + DT).lon - sunLon(jd + DT));
+export function moonPhasesBetween(fromMs, toMs) {
+  const out = [];
+  const step = 0.25;
+  let jd = jdOf(fromMs); const end = jdOf(toMs);
+  let prev = elong360(jd);
+  while (jd < end) {
+    const next = jd + step, cur = elong360(next);
+    for (const [phase, target] of [['new', 0], ['q1', 90], ['full', 180], ['q3', 270]]) {
+      // переход через target: для 0 — прыжок 360→0, для остальных — обычный
+      const a = target === 0 ? (prev > 300 ? prev - 360 : prev) : prev - target;
+      const b = target === 0 ? (cur > 300 ? cur - 360 : cur) : cur - target;
+      if (a < 0 && b >= 0 && Math.abs(b - a) < 180) {
+        const f = (x) => { const e = elong360(x); return target === 0 ? (e > 300 ? e - 360 : e) : e - target; };
+        const at = bisect(f, jd, next, 30);
+        out.push({ phase, at: msOf(at), moonLon: moonPos(at + DT).lon, sunLon: sunLon(at + DT) });
+      }
+    }
+    prev = cur; jd = next;
+  }
+  return out;
+}
+/* Освещённость диска и доля цикла на момент времени */
+export function moonState(ms) {
+  const e = elong360(jdOf(ms));
+  return { cycle: e / 360, illumination: Math.round((1 - Math.cos(e * R)) / 2 * 100), waxing: e < 180 };
+}
+
 /* «с 13 сентября 12:46 по 14 сентября 13:57» в часовом поясе человека */
 export function lunarPeriodText(ld, tz) {
   const fmt = (ms) => {

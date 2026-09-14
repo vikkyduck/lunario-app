@@ -136,20 +136,23 @@ export const FEATURES = [
   ['compat_calc',  'Обо мне',     'Совместимость',        'работает'],
   ['share_card',   'Социальное',  'Карточка для соцсетей','работает'],
   ['invite_copy',  'Социальное',  'Позвать подругу',      'работает'],
+  ['reminder_on',  'Аккаунт',     'Напоминания по функциям','работает'],
   ['push_on',      'Аккаунт',     'Напоминание',          'работает'],
   ['installed',    'Аккаунт',     'Установка на телефон', 'работает'],
   ['natal_view',   'Обо мне',     'Натальная карта',      'работает'],
   ['tests',        'Обо мне',     'Самопознание · тест',  'заглушка'],
   ['forecast',     'Мой день',    'Прогноз и сферы',      'заглушка'],
-  ['habits',       'Мой день',    'Привычки',             'заглушка'],
-  ['moon',         'Что вокруг',  'Лунный день',          'работает'],
-  ['sky',          'Что вокруг',  'События неба',         'заглушка'],
+  ['habit_mark',   'Мой день',    'Дневник привычек',     'работает'],
+  ['askesis_mark', 'Мой день',    'Аскеза',               'работает'],
+  ['lunar_view',   'Что вокруг',  'Лунный день',          'работает'],
+  ['sky_view',     'Что вокруг',  'На небе',              'работает'],
+  ['moodreport_view', 'История',  'Отчёт по настроениям', 'работает'],
   ['history',      'История',     'Прошлые записи',       'работает'],
   ['statistics',   'История',     'Моя статистика',       'заглушка'],
   ['report',       'История',     'Недельный ИИ-отчёт',   'заглушка'],
   ['chat',         'Свериться',   'ИИ-чат',               'заглушка'],
 ];
-const FUNC = ['card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'journal_add', 'wish_add', 'compat_calc', 'worry_pick', 'share_card', 'natal_view'];
+const FUNC = ['card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'journal_add', 'wish_add', 'compat_calc', 'worry_pick', 'share_card', 'natal_view', 'habit_mark', 'askesis_mark', 'lunar_view', 'sky_view', 'moodreport_view'];
 const ACTIVE = ['app_open', ...FUNC];
 const FNAME = Object.fromEntries(FEATURES.map((f) => [f[0], f[2]]));
 const EVENT_NAMES = {
@@ -158,6 +161,8 @@ const EVENT_NAMES = {
   card_open: 'Открыл карту дня', mood_set: 'Отметил настроение', ask_yesno: 'Спросил «Да / нет»', ask_rune: 'Вытянул руну', ask_spread: 'Сделал расклад', spread_limit: 'Упёрся в лимит раскладов',
   journal_add: 'Сделал запись', wish_add: 'Добавил желание', compat_calc: 'Посчитал совместимость', share_card: 'Поделился карточкой', install_prompt: 'Увидел «Установить»', installed: 'Установил на телефон',
   natal_view: 'Открыл натальную карту', paywall_view: 'Увидел платное', paywall_click: 'Нажал на платное', invite_copy: 'Скопировал приглашение', invite_used: 'Пришёл по приглашению', push_on: 'Включил напоминание', push_off: 'Выключил напоминание', pay_start: 'Начал оплату', payment_success: 'Оплатил',
+  reminder_on: 'Включил напоминание функции', reminder_off: 'Выключил напоминание функции', reminder_test: 'Прислал пробное напоминание', card_download: 'Скачал открытку',
+  habit_add: 'Добавил привычку', habit_mark: 'Отметил привычку', askesis_start: 'Взял аскезу', askesis_mark: 'Отметил день аскезы', sky_view: 'Открыл «На небе»', lunar_view: 'Открыл лунный день', moodreport_view: 'Открыл отчёт по настроениям',
 };
 
 const kpi = (title, value, o = {}) => ({ title, value, unit: o.unit || '', prev: o.prev ?? null, delta: o.delta === undefined ? delta(value, o.prev ?? null) : o.delta, sub: o.sub || '', state: o.state || (value === null ? 'nodata' : 'ok'), good: o.good || 'up' });

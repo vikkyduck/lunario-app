@@ -4,7 +4,7 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v6';
+const CACHE = 'lunario-app-v7';
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
 
@@ -64,21 +64,42 @@ async function trim(c) {
 
 /* Уведомление «карта дня готова». Текст живёт здесь, поэтому сервер шлёт
    пустой сигнал — личных данных в пути нет вовсе. */
+/* Сервер шлёт пустой сигнал «проснись» — через чужие почтовые службы не летит ни слова.
+   По сигналу забираем тексты со своего сервера (по куке аккаунта) и показываем каждое:
+   карта дня, настроение, привычки, аскеза, лунный день, небо. */
+const FALLBACK = { title: 'Лунарио', body: 'Ваша карта дня готова ✦', url: '/app/?open=card', feature: 'card' };
 self.addEventListener('push', (e) => {
-  e.waitUntil(self.registration.showNotification('Лунарио', {
-    body: 'Ваша карта дня готова',
-    icon: '/app/assets/icon-192.png?v=3',
-    badge: '/app/assets/badge-96.png?v=1',   /* монохромный силуэт: Android красит альфу */
-    tag: 'lunario-day',
-  }));
+  e.waitUntil((async () => {
+    let items = [];
+    try {
+      const sub = await self.registration.pushManager.getSubscription();
+      const r = await fetch('/app/api/push/next', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub ? sub.endpoint : '' }) });
+      if (r.ok) items = ((await r.json()).items || []).filter((n) => n && n.title);
+    } catch (err) { /* сеть не ответила — покажем общее */ }
+    if (!items.length) items = [FALLBACK];
+    for (const n of items) {
+      await self.registration.showNotification(n.title, {
+        body: n.body || '',
+        icon: '/app/assets/icon-192.png?v=3',
+        badge: '/app/assets/badge-96.png?v=1',   /* монохромный силуэт: Android красит альфу */
+        tag: 'lunario-' + (n.feature || 'day'),
+        data: { url: n.url || '/app/' },
+      });
+    }
+  })());
 });
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/app/';
   e.waitUntil((async () => {
     const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     const open = all.find((c) => c.url.includes('/app'));
-    if (open) return open.focus();
-    return clients.openWindow('/app/');
+    if (open) {
+      await open.focus();
+      if ('navigate' in open) { try { await open.navigate(url); } catch (err) { /* окно не даёт перейти — оно уже открыто */ } }
+      return;
+    }
+    return clients.openWindow(url);
   })());
 });
