@@ -425,6 +425,19 @@ function personalYear(birth, year) {
   const [, mm, dd] = birth.split('-').map(Number);
   return reduceNum(digits(`${dd}${mm}${year}`).reduce((a, b) => a + b, 0));
 }
+/* Личный год живёт от дня рождения до дня рождения: до него в календарном году действует число прошлого
+   года, с него — новое. Родившийся 6 апреля 1984 в 2026-м до 6 апреля проживает год 1, с 6 апреля — год 2.
+   Число всегда 1–9: тексты и картинки есть только для них, мастер-числа 11 и 22 сводятся дальше. */
+function personalYearAt(birth, day) {
+  const md = birth.slice(5), y = Number(day.slice(0, 4));
+  const year = day.slice(5) >= md ? y : y - 1;                       // год, в котором начался текущий личный год
+  const single = (n) => (n > 9 ? digits(n).reduce((a, b) => a + b, 0) : n);
+  const bday = (yy) => md === '02-29' && !(yy % 4 === 0 && (yy % 100 !== 0 || yy % 400 === 0)) ? `${yy}-03-01` : `${yy}-${md}`;
+  return {
+    n: single(personalYear(birth, year)), year, from: bday(year), to: bday(year + 1),   // «to» — следующий день рождения, не включая
+    next: { n: single(personalYear(birth, year + 1)), from: bday(year + 1) },
+  };
+}
 const dayNum = (day) => { let n = reduceNum(digits(day).reduce((a, b) => a + b, 0)); return n > 9 ? reduceNum(digits(n).reduce((a, b) => a + b, 0)) : n; };
 function moonPhase(day) {                       // 0..1 доля цикла
   const t = Date.parse(day + 'T12:00:00Z');
@@ -712,9 +725,19 @@ const server = createServer(async (req, res) => {
           if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.materialSave(b, u.email)); }
           if (req.method === 'DELETE') return json(res, 200, W.materialRemove(url.searchParams.get('id')));
         }
+        if (p === '/api/cabinet/media/archive' && req.method === 'POST') {
+          if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });
+          const b = await readBody(req); return json(res, 200, W.mediaArchive(b.id, !!b.on));
+        }
+        if (p === '/api/cabinet/media/download' && req.method === 'GET') {
+          if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });
+          const f = W.mediaFile(url.searchParams.get('id')); if (!f) return json(res, 404, { ok: false, error: 'not_found' });
+          res.writeHead(200, { 'Content-Type': f.type || 'application/octet-stream', 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(f.name)}`, 'Cache-Control': 'no-store' });
+          return res.end(readFileSync(f.path));
+        }
         if (p === '/api/cabinet/media') {
           if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });
-          if (req.method === 'GET') return json(res, 200, { items: W.mediaList() });
+          if (req.method === 'GET') return json(res, 200, W.mediaList());
           if (req.method === 'POST') { const b = await readBody(req, 7 * 1024 * 1024); return json(res, 200, W.mediaAdd(b, u.email)); }
           if (req.method === 'DELETE') return json(res, 200, W.mediaRemove(url.searchParams.get('id')));
         }
@@ -1119,10 +1142,10 @@ const server = createServer(async (req, res) => {
 
       if (p === '/api/numerology' && req.method === 'GET') {
         if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
-        const dn = destinyNum(u.birth), py = personalYear(u.birth, Number(d.slice(0, 4))), dd = dayNum(d);
+        const dn = destinyNum(u.birth), dd = dayNum(d), py = personalYearAt(u.birth, d);
         return json(res, 200, {
           destiny: { n: dn, title: C.NUM_DESTINY[dn][0], text: C.NUM_DESTINY[dn][1], formula: numFormula(u.birth) },
-          year: { n: py, year: Number(d.slice(0, 4)), text: C.NUM_YEAR[py] || C.NUM_YEAR[reduceNum(py)] },
+          year: { ...py, text: C.NUM_YEAR[py.n], info: C.YEARS[py.n] || null },
           day: { n: dd, text: C.NUM_DAY[dd] },
         });
       }

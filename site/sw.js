@@ -4,7 +4,8 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v5';
+const CACHE = 'lunario-app-v6';
+const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
 
 self.addEventListener('install', (e) => {
@@ -22,6 +23,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const u = new URL(e.request.url);
   if (e.request.method !== 'GET' || u.pathname.startsWith('/app/api/')) return;   // данные — только из сети
+  if (u.pathname.startsWith('/app/uploads/') || u.pathname.startsWith('/app-test/uploads/')) return;   // материалы кабинета не оседают на телефоне
   // манифест и сам воркер — мимо кэша: иначе Chrome не видит новые иконки и имя приложения
   if (e.request.destination === 'manifest' || u.pathname === '/app/manifest.webmanifest' || u.pathname === '/app/sw.js') return;
 
@@ -44,11 +46,21 @@ self.addEventListener('fetch', (e) => {
   // шрифты, иконки и прочая неизменная статика — из кэша, это быстро и безопасно
   e.respondWith(
     caches.match(e.request).then((hit) => hit || fetch(e.request).then((r) => {
-      if (r.ok && u.origin === location.origin) { const cp = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, cp)); }
+      if (r.ok && u.origin === location.origin && /\.(woff2|svg|png|webp|css|js|json)$/i.test(u.pathname)) {
+        const cp = r.clone();
+        caches.open(CACHE).then(async (c) => { await c.put(e.request, cp); trim(c); });
+      }
       return r;
     }).catch(() => caches.match('/app/')))
   );
 });
+
+/* кеш не растёт бесконечно: старые файлы сверх лимита выбрасываем, оболочка остаётся */
+async function trim(c) {
+  const keys = await c.keys();
+  const extra = keys.filter((k) => !SHELL.includes(new URL(k.url).pathname));
+  for (const k of extra.slice(0, Math.max(0, extra.length - RUNTIME_LIMIT))) await c.delete(k);
+}
 
 /* Уведомление «карта дня готова». Текст живёт здесь, поэтому сервер шлёт
    пустой сигнал — личных данных в пути нет вовсе. */
