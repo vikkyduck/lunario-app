@@ -4,6 +4,7 @@
    астрономический признак, но без расчёта видимости из конкретного города. Тексты — опора, не прогноз. */
 import { skyAt, ASPECT_LIST, SIGNS } from './astro.mjs';
 import { moonPhasesBetween, moonState } from './lunar.mjs';
+import * as C from './content.mjs';
 
 const norm = (x) => ((x % 360) + 360) % 360;
 const DAY = 864e5;
@@ -12,6 +13,8 @@ const signOf = (lon) => SIGNS[Math.floor(norm(lon) / 30)];
 const SIGN_IN = { Овен: 'в Овне', Телец: 'в Тельце', Близнецы: 'в Близнецах', Рак: 'в Раке', Лев: 'во Льве', Дева: 'в Деве', Весы: 'в Весах', Скорпион: 'в Скорпионе', Стрелец: 'в Стрельце', Козерог: 'в Козероге', Водолей: 'в Водолее', Рыбы: 'в Рыбах' };
 export const inSign = (s) => SIGN_IN[s] || `в ${s}`;
 
+/* Тексты — из content/небо.txt; чего там нет, берётся из запасных ниже */
+const T = (kind, key, fallback) => (C.SKY[kind] && C.SKY[kind][key]) || fallback;
 const PHASE_TEXT = {
   new: ['Новолуние', 'Хорошее время для намерений и первого малого шага. Не требуйте от себя больших сил — они придут с ростом Луны.'],
   q1: ['Первая четверть', 'Момент усилия: то, что задумали в новолуние, просит первого действия. Сопротивление сейчас — это нормально.'],
@@ -45,13 +48,13 @@ export function skyEvents(fromMs, days = 60) {
   const out = [];
   for (const p of moonPhasesBetween(fromMs, toMs)) {
     const sign = signOf(p.moonLon);
-    const [title, note] = PHASE_TEXT[p.phase];
+    const [title, note] = T('phase', p.phase, PHASE_TEXT[p.phase]);
     out.push({ at: new Date(p.at).toISOString(), type: p.phase, title: `${title} ${inSign(sign)}`, note });
     if (p.phase === 'new' || p.phase === 'full') {
       const node = skyAt(p.at).node.lon;
       const x = norm(p.sunLon - node), d = Math.min(x, 360 - x, Math.abs(x - 180));
       const kind = p.phase === 'new' ? (d < 15.4 ? 'solar' : null) : (d < 12 ? 'lunar' : null);
-      if (kind) { const [t, n] = ECLIPSE_TEXT[kind]; out.push({ at: new Date(p.at).toISOString(), type: 'eclipse', title: `${t} ${inSign(sign)}`, note: n }); }
+      if (kind) { const [t, n] = T('eclipse', kind, ECLIPSE_TEXT[kind]); out.push({ at: new Date(p.at).toISOString(), type: 'eclipse', title: `${t} ${inSign(sign)}`, note: n }); }
     }
   }
   /* ретроградность и вход Солнца в знак — по дням, момент перемены уточняется делением отрезка */
@@ -61,7 +64,7 @@ export function skyEvents(fromMs, days = 60) {
     const cur = skyAt(t);
     for (const k of Object.keys(RETRO)) {
       if (!cur[k] || !prev[k] || cur[k].retro === prev[k].retro) continue;
-      const [name, retroAdj, directAdj, startNote, endNote] = RETRO[k];
+      const [name, retroAdj, directAdj, startNote, endNote] = T('retro', k, RETRO[k]);
       const at = new Date(when(tPrev, t, (x) => x[k].retro === cur[k].retro)).toISOString();
       out.push(cur[k].retro
         ? { at, type: 'retro', planet: k, title: `${name} — ${retroAdj} ${inSign(cur[k].sign)}`, note: startNote }
@@ -69,7 +72,7 @@ export function skyEvents(fromMs, days = 60) {
     }
     if (cur.sun.signIndex !== prev.sun.signIndex) {
       const at = new Date(when(tPrev, t, (x) => x.sun.signIndex === cur.sun.signIndex)).toISOString();
-      out.push({ at, type: 'ingress', title: `Солнце входит в знак ${cur.sun.sign}`, note: SEASON[cur.sun.sign] || '' });
+      out.push({ at, type: 'ingress', title: `Солнце входит в знак ${cur.sun.sign}`, note: T('season', cur.sun.sign, SEASON[cur.sun.sign] || '') });
     }
     prev = cur; tPrev = t;
   }
@@ -81,7 +84,7 @@ export function skyNow(ms = Date.now(), tz = 'Europe/Moscow') {
   const b = skyAt(ms);
   const m = moonState(ms);
   const phaseName = ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Старая Луна'][Math.floor(((m.cycle + 1 / 16) % 1) * 8)];
-  const retro = Object.keys(RETRO).filter((k) => b[k] && b[k].retro).map((k) => ({ key: k, name: b[k].name, symbol: b[k].symbol, sign: b[k].sign, adj: RETRO[k][1], note: RETRO[k][3] }));
+  const retro = Object.keys(RETRO).filter((k) => b[k] && b[k].retro).map((k) => { const r = T('retro', k, RETRO[k]); return { key: k, name: b[k].name, symbol: b[k].symbol, sign: b[k].sign, adj: r[1], note: r[3] }; });
   const keys = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'];
   const aspects = [];
   for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
@@ -96,7 +99,7 @@ export function skyNow(ms = Date.now(), tz = 'Europe/Moscow') {
   return {
     date: day,
     moon: { phase: phaseName, illumination: m.illumination, waxing: m.waxing, sign: b.moon.sign, signIn: inSign(b.moon.sign), text: b.moon.text },
-    sun: { sign: b.sun.sign, text: b.sun.text, season: SEASON[b.sun.sign] || '' },
+    sun: { sign: b.sun.sign, text: b.sun.text, season: T('season', b.sun.sign, SEASON[b.sun.sign] || '') },
     planets: ['mercury', 'venus', 'mars', 'jupiter', 'saturn'].filter((k) => b[k]).map((k) => ({ key: k, name: b[k].name, symbol: b[k].symbol, sign: b[k].sign, retro: b[k].retro })),
     retro, aspects: aspects.slice(0, 5),
     today: events.filter((e) => dayOf(e) === day),

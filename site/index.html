@@ -1870,7 +1870,8 @@ function loadCatalog(){
   if (catPromise) return catPromise;
   catPromise = api('/catalog?v=' + encodeURIComponent(S.catalogV || 1)).then(c => {
     CAT = { cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
-      news: c.news || [], moods: c.moods || [], moodFamilies: c.moodFamilies || null, legacyMoods: c.legacyMoods || null };
+      news: c.news || [], moods: c.moods || [], moodFamilies: c.moodFamilies || null, legacyMoods: c.legacyMoods || null,
+      worries: c.worries || [], awards: c.awards || [], reminderTexts: c.reminderTexts || {} };
     return CAT;
   }).catch(e => { catPromise = null; throw e; });
   return catPromise;
@@ -2269,7 +2270,7 @@ const IOS_BRIDGE = typeof window.__LUN_IOS__ === 'number' ? window.__LUN_IOS__ :
 const PUSH_OK = !IOS_SHELL && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })();
 const GEAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
-const NATIVE_TEXT = { card: ['Лунарио', 'Ваша карта дня готова ✦'], mood: ['Как прошёл день?', 'Отметьте настроение — одно нажатие'], moodreport: ['Отчёт по настроениям', 'Ваш отчёт за неделю готов'],
+const NATIVE_TEXT_FALLBACK = { card: ['Лунарио', 'Ваша карта дня готова ✦'], mood: ['Как прошёл день?', 'Отметьте настроение — одно нажатие'], moodreport: ['Отчёт по настроениям', 'Ваш отчёт за неделю готов'],
   habits: ['Привычки', 'Отметьте привычки за сегодня'], askesis: ['Аскеза', 'Вы держитесь — загляните, сколько дней осталось'], gratitude: ['Кому и за что я благодарна сегодня?', 'Пара слов — и запись останется в дневнике'], lunar: ['Лунный день', 'Посмотрите рекомендацию на сегодня'], sky: ['На небе', 'Сегодня на небе что-то происходит — посмотрите'] };
 let remPromise = null, remEditing = {};
 function loadReminders(force){
@@ -2345,7 +2346,9 @@ async function nativeSchedule(f){
   const r = S.rem && S.rem[f]; if (!r) return;
   if (IOS_BRIDGE < 2) { if (f === 'card') nativePost({ type: 'reminder', on: r.enabled }); return; }
   const [hh, mm] = r.time.split(':').map(Number);
-  const msg = { type: 'schedule', id: f, on: r.enabled, hour: hh, minute: mm, freq: r.freq, weekday: r.weekday, title: NATIVE_TEXT[f][0], body: NATIVE_TEXT[f][1] };
+  /* у телефона нет подстановок — берём заголовок из текстов напоминаний, если он без {скобок}, иначе запасной */
+  const rt = CAT && CAT.reminderTexts && CAT.reminderTexts[f], nt = NATIVE_TEXT_FALLBACK[f];
+  const msg = { type: 'schedule', id: f, on: r.enabled, hour: hh, minute: mm, freq: r.freq, weekday: r.weekday, title: rt && !/[{}]/.test(rt[0]) ? rt[0] : nt[0], body: rt && !/[{}]/.test(rt[1]) ? rt[1] : nt[1] };
   if (f === 'sky' && r.freq === 'events') {
     try { const sky = S.sky || (S.sky = await api('/sky')); msg.dates = [...new Set([...sky.today, ...sky.upcoming].map(e => new Date(e.at).toLocaleDateString('sv-SE')))].slice(0, 20); } catch (e) { /* без дат — телефон напомнит ежедневно */ }
   }
@@ -2546,7 +2549,7 @@ async function drawPostcardExtra(ctx, p){
   }
   if (p.type === 'gratitude') {
     drawText(ctx, 'БЛАГОДАРНОСТЬ', 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
-    let y = drawText(ctx, GRAT_Q, 540, 470, { size: 44, weight: 600, color: '#e9c77e', maxW: 880, lh: 1.25 });
+    let y = drawText(ctx, gratQ(), 540, 470, { size: 44, weight: 600, color: '#e9c77e', maxW: 880, lh: 1.25 });
     drawText(ctx, p.text, 540, y + 80, { size: 40, color: '#f5f2ea', maxW: 860, lh: 1.42 });
     return true;
   }
@@ -2625,14 +2628,16 @@ function pcSmiley(ctx, mood, cx, cy, size){
 }
 
 /* ══════════ «Что вас сегодня беспокоит?»: свой запрос или плашка, потом — как получить ответ ══════════ */
-const WORRIES = ['Я не чувствую себя желанной', 'Как снизить тревогу во время беременности?', 'Силы на открытие своего бизнеса',
+const WORRIES_FALLBACK = ['Я не чувствую себя желанной', 'Как снизить тревогу во время беременности?', 'Силы на открытие своего бизнеса',
   'Практики для принятия себя и своей внешности', 'Как поднять свою самоценность', 'Как выйти из грусти от потери', 'Беспокоит бессонница',
   'Как перестать бояться идти своим путём'];
+const worries = () => (CAT && CAT.worries && CAT.worries.length ? CAT.worries : WORRIES_FALLBACK);
 const HUB_OPTS = [['rune', 'rune', 'Руна', 'one'], ['runes3', 'rune', 'Три руны', 'three'], ['spread', 'tarot', 'Три карты', 'three'], ['fork', 'tarot', 'Выбор', 'fork']];
 function renderHub(){
   const w = $('t-worry'); if (!w) return;
+  if (!CAT) loadCatalog().then(() => { if (wgOpen === 'worry' && !($('hub-q') && $('hub-q').value)) renderHub(); }).catch(() => {});
   w.innerHTML = `<div class="card hubq"><div class="field" style="margin-bottom:10px"><label>Мой запрос</label><textarea id="hub-q" maxlength="300" placeholder="Что беспокоит или о чём хочется спросить…" oninput="hubCheck()"></textarea></div>
-      <div class="chips flow" id="hub-chips">${WORRIES.map((t) => `<button type="button" class="chip" onclick="hubPick(this)">${esc(t)}</button>`).join('')}</div>
+      <div class="chips flow" id="hub-chips">${worries().map((t) => `<button type="button" class="chip" onclick="hubPick(this)">${esc(t)}</button>`).join('')}</div>
       <div id="hub-opts" style="display:none;margin-top:14px"><span class="eyebrow" style="margin-bottom:8px">Как получить ответ</span>
         <div class="chips flow">${HUB_OPTS.map(([k, ic, l]) => `<button type="button" class="chip" onclick="hubAsk('${k}',this)"><i class="ico ${ic}" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>${l}</button>`).join('')}</div></div>
     </div><div id="hub-res" style="display:none;margin-top:12px"></div>`;
@@ -2667,9 +2672,10 @@ async function saveAnswer(){
 }
 
 /* ══════════ Дневник благодарности ══════════ */
-const GRAT_Q = 'Кому и за что я благодарна сегодня?';
+const gratQ = () => (CAT && CAT.reminderTexts && CAT.reminderTexts.gratitude && CAT.reminderTexts.gratitude[0]) || 'Кому и за что я благодарна сегодня?';
 async function loadGratitude(){
   const box = $('gr-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
+  await loadCatalog().catch(() => {});
   try { const r = await api('/journal?kind=gratitude'); S.grat = r; paintGratitude(); }
   catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
   loadReminders().then(() => paintRem('gratitude')).catch(() => {});
@@ -2677,7 +2683,7 @@ async function loadGratitude(){
 function paintGratitude(){
   const r = S.grat, box = $('gr-box'), todayItem = r.items.find(i => i.day === S.day.date);
   const id = todayItem ? regRes({ type: 'gratitude', text: todayItem.text, day: S.day.date }) : '';
-  box.innerHTML = `<div class="card"><span class="eyebrow">Практика на каждый день</span><p style="color:#fff;font-size:18px;line-height:1.45;margin-top:8px">${GRAT_Q}</p>
+  box.innerHTML = `<div class="card"><span class="eyebrow">Практика на каждый день</span><p style="color:#fff;font-size:18px;line-height:1.45;margin-top:8px">${esc(gratQ())}</p>
       ${todayItem ? `<p style="margin-top:12px;font-size:15px;color:#ded8ee">Сегодня: ${esc(todayItem.text)}</p>` : ''}
       <div class="field" style="margin:12px 0 0"><textarea id="gr-text" maxlength="2000" placeholder="${todayItem ? 'Добавить ещё…' : 'Например: маме — за звонок, себе — за то, что дошла до конца дня'}"></textarea></div>
       <button class="btn${todayItem ? ' ghost' : ''} sm" style="width:100%;margin-top:10px" onclick="saveGratitude()">Записать</button></div>
@@ -2688,7 +2694,7 @@ function paintGratitude(){
 }
 async function saveGratitude(){
   const t = ($('gr-text').value || '').trim(); if (t.length < 3) { toast('Напишите хотя бы пару слов'); return; }
-  try { const r = await api('/journal', { method: 'POST', body: JSON.stringify({ text: t, kind: 'gratitude', title: GRAT_Q }) }); bumpStreak(r.streak); hap([0, 14, 45, 22]); toast('Записано ✦'); await loadGratitude(); }
+  try { const r = await api('/journal', { method: 'POST', body: JSON.stringify({ text: t, kind: 'gratitude', title: gratQ() }) }); bumpStreak(r.streak); hap([0, 14, 45, 22]); toast('Записано ✦'); await loadGratitude(); }
   catch (e) { toast('Не получилось сохранить'); }
 }
 
@@ -2752,8 +2758,9 @@ async function habitRemove(id){
   try { const r = await api('/habits?id=' + id, { method: 'DELETE' }); HB = r.items; hbEditing = null; paintHabits(); } catch (e) { toast('Не получилось'); }
 }
 /* награды: луна растёт вместе с серией — от молодого серпа до солнца */
-const AWARDS = { 30: ['Молодая луна', 'Тридцать дней подряд. Привычка родилась — теперь ей есть на что опереться.'], 60: ['Растущая луна', 'Два месяца без пропуска. Это уже не усилие, а часть вашего дня.'],
+const AWARDS_FALLBACK = { 30: ['Молодая луна', 'Тридцать дней подряд. Привычка родилась — теперь ей есть на что опереться.'], 60: ['Растущая луна', 'Два месяца без пропуска. Это уже не усилие, а часть вашего дня.'],
   90: ['Почти полная', 'Девяносто дней. Так рождается характер — тихо и каждый день.'], 180: ['Полнолуние', 'Полгода. Привычка стала вашей — как чистить зубы, только важнее.'], 365: ['Солнце', 'Год без пропуска. Это уже не привычка, а вы.'] };
+const awardText = (days) => { const a = CAT && CAT.awards && CAT.awards.find((x) => x[0] === days); return a ? [a[1], a[2]] : AWARDS_FALLBACK[days] || ['Награда', '']; };
 function awardIcon(days, size){
   const k = days >= 365 ? 1 : days >= 180 ? 1 : days >= 90 ? .8 : days >= 60 ? .5 : .18;
   if (days >= 365) return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" stroke="#f0d79a" stroke-width="2.5" stroke-linecap="round"><circle cx="32" cy="32" r="13" fill="#f0d79a"/>${[...Array(12)].map((_, i) => { const a = i * Math.PI / 6; return `<line x1="${32 + Math.cos(a) * 19}" y1="${32 + Math.sin(a) * 19}" x2="${32 + Math.cos(a) * 27}" y2="${32 + Math.sin(a) * 27}"/>`; }).join('')}</svg>`;
@@ -2761,7 +2768,7 @@ function awardIcon(days, size){
   return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="20" fill="#2a2150" stroke="rgba(240,215,154,.35)"/><path d="M32 12A20 20 0 0 1 32 52A${rx} 20 0 0 ${sweep} 32 12Z" fill="#f0d79a"/></svg>`;
 }
 function showAward(a){
-  const [name, text] = AWARDS[a.days] || ['Награда', ''];
+  const [name, text] = awardText(a.days);
   const id = regRes({ type: 'award', days: a.days, name, text, title: a.title, day: S.day.date });
   $('award-box').innerHTML = `<div class="award">${awardIcon(a.days, 180)}<span class="eyebrow" style="margin-top:14px">${a.days} ${plural(a.days, 'день', 'дня', 'дней')} подряд</span>
       <div class="serif" style="font-size:26px;color:var(--gold);margin-top:6px">${esc(name)}</div>

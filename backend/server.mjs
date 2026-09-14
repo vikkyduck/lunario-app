@@ -683,9 +683,6 @@ function habitList(userId, d) {
   });
 }
 /* Аскезы: отказ или ограничение до выбранной даты. Истёкшие закрываются сами; заметки-наблюдения — по желанию. */
-const ASKESIS_SUPPORT = ['Вы держитесь — и это уже меняет привычный ход дня.', 'Каждый день без этого — день с собой. Так держать.', 'Отказ — это не лишение, а место для нового.',
-  'Вы уже дальше, чем были вчера. Спокойно и по-своему.', 'Обещание себе — самое честное из обещаний. Вы его держите.', 'Не идеально, а по-настоящему. Этого достаточно.',
-  'Сила не шумит — она продолжает. Как вы сегодня.'];
 function askesisList(userId, d) {
   for (const a of db.prepare("SELECT id, until FROM askesis WHERE user_id = ? AND status = 'active'").all(userId))
     if (a.until && a.until < d) db.prepare("UPDATE askesis SET status = 'done', finished_at = ? WHERE id = ?").run(a.until, a.id);
@@ -695,7 +692,7 @@ function askesisList(userId, d) {
     const total = Math.max(1, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1);
     const done = Math.min(total, Math.max(0, Math.round((Date.parse(d < until ? d : until) - Date.parse(a.started)) / 864e5) + 1));
     return { id: a.id, title: open_(a.title), started: a.started, until, total, done, left: Math.max(0, Math.round((Date.parse(until) - Date.parse(d)) / 864e5)),
-      status: a.status, finished: a.finished_at, notes, today: notes.find((n) => n.day === d) || null, support: ASKESIS_SUPPORT[(a.id + Number(d.slice(-2))) % ASKESIS_SUPPORT.length] };
+      status: a.status, finished: a.finished_at, notes, today: notes.find((n) => n.day === d) || null, support: C.ASKESIS_SUPPORT[(a.id + Number(d.slice(-2))) % Math.max(1, C.ASKESIS_SUPPORT.length)] || '' };
   };
   return {
     active: db.prepare("SELECT * FROM askesis WHERE user_id = ? AND status = 'active' ORDER BY id DESC").all(userId).map(shape),
@@ -822,7 +819,8 @@ const server = createServer(async (req, res) => {
     if (p === '/api/catalog' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
       return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS, lunarDays: [...C.LUNAR_DAYS], askesisIdeas: [...C.ASKESIS_IDEAS], habitIdeas: [...C.HABIT_IDEAS],
-        news: [...C.NEWS], moods: C.MOODS, moodFamilies: C.MOOD_FAMILIES, legacyMoods: C.LEGACY_MOODS }));
+        news: [...C.NEWS], moods: [...C.MOODS], moodFamilies: { ...C.MOOD_FAMILIES }, legacyMoods: C.LEGACY_MOODS,
+        worries: [...C.WORRIES], awards: [...C.AWARDS], reminderTexts: Object.fromEntries(['card', 'mood', 'moodreport', 'habits', 'askesis', 'gratitude', 'lunar', 'sky'].map((k) => [k, C.REMINDER_TEXTS[k]])) }));
     }
 
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.

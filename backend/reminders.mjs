@@ -99,52 +99,61 @@ export const clearReminders = (userId) => { db.prepare('DELETE FROM reminders WH
 
 /* ── текст уведомления по функции; null — сегодня напоминать не о чем ── */
 const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
+/* Текст из content/напоминания.txt с подстановками {…}; лишние подстановки убираются */
+const tpl = (key, vars) => {
+  const [title, body] = C.REMINDER_TEXTS[key] || ['Лунарио', ''];
+  const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : '')).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
+  return { title: fill(title), body: fill(body) };
+};
 const MOOD_RU = { joy: 'радостно', calm: 'спокойно', tired: 'устало', anx: 'тревожно', sad: 'грустно' };
 export function notificationFor(feature, u) {
   const d = todayMSK(), url = FEATURES[feature].url;
-  if (feature === 'card') return { title: 'Лунарио', body: 'Ваша карта дня готова ✦', url };
+  if (feature === 'card') return { ...tpl('card'), url };
   if (feature === 'mood') {
     if (db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ?').get(u.id, d)) return null;
-    return { title: 'Как прошёл день?', body: 'Отметьте настроение — одно нажатие, и вечером станет яснее.', url };
+    return { ...tpl('mood'), url };
   }
   if (feature === 'moodreport') {
     const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
     const moods = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day >= ? GROUP BY mood ORDER BY c DESC').all(u.id, since);
     const total = moods.reduce((s, m) => s + m.c, 0);
-    if (!total) return { title: 'Отчёт по настроениям', body: 'На этой неделе отметок не было. Начните с сегодняшней — и через неделю будет картина.', url };
-    const top = moods[0];
-    return { title: 'Отчёт по настроениям за неделю', body: `Отмечено ${total} ${plural(total, 'день', 'дня', 'дней')}, чаще всего — ${MOOD_RU[top.mood] || top.mood}. Откройте, чтобы увидеть неделю целиком.`, url };
+    if (!total) return { ...tpl('moodreport-пусто'), url };
+    const top = moods[0], m = C.moodInfo(top.mood);
+    return { ...tpl('moodreport', { 'дней': `${total} ${plural(total, 'день', 'дня', 'дней')}`, 'настроение': m ? m.label : top.mood }), url };
   }
   if (feature === 'habits') {
     const items = hooks.habitList ? hooks.habitList(u.id, d) : [];
-    if (!items.length) return { title: 'Дневник привычек', body: 'Добавьте первую привычку — с одной маленькой начинается ритм.', url };
+    if (!items.length) return { ...tpl('habits-пусто'), url };
     const left = items.filter((h) => h.due && !h.today);
     if (!left.length) return null;
-    return { title: 'Привычки на сегодня', body: `Осталось отметить: ${left.map((h) => h.title).join(', ')}. Минута — и день закрыт ✦`.slice(0, 220), url };
+    const t = tpl('habits', { 'список': left.map((h) => h.title).join(', '), 'осталось': left.length, 'всего': items.filter((h) => h.due).length });
+    return { title: t.title, body: t.body.slice(0, 220), url };
   }
   if (feature === 'askesis') {
     const act = hooks.askesisList ? hooks.askesisList(u.id, d).active : [];
     if (!act.length) return null;
     const a = act[0];
-    const leftText = a.left === 0 ? 'сегодня последний день' : `до конца осталось ${a.left} ${plural(a.left, 'день', 'дня', 'дней')}`;
+    const leftText = a.left === 0 ? 'Сегодня последний день' : `До конца осталось ${a.left} ${plural(a.left, 'день', 'дня', 'дней')}`;
     const more = act.length > 1 ? ` Ещё ${act.length - 1} ${plural(act.length - 1, 'аскеза', 'аскезы', 'аскез')} — в приложении.` : '';
-    return { title: `Аскеза «${a.title}» · день ${a.done} из ${a.total}`, body: `${a.support} ${leftText.charAt(0).toUpperCase()}${leftText.slice(1)}.${more}`.slice(0, 220), url };
+    const t = tpl('askesis', { 'название': a.title, 'день': a.done, 'всего': a.total, 'осталось': leftText, 'поддержка': a.support });
+    return { title: t.title, body: (t.body + more).slice(0, 220), url };
   }
   if (feature === 'gratitude') {
     if (db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = 'gratitude'").get(u.id, d)) return null;
-    return { title: 'Кому и за что я благодарна сегодня?', body: 'Пара слов — и запись останется в дневнике.', url };
+    return { ...tpl('gratitude'), url };
   }
   if (feature === 'lunar') {
     const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);
     if (!ld) return null;
     const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['Лунный день', ''];
-    return { title: `${ld.n}-й лунный день · ${name}`, body: advice, url };
+    return { ...tpl('lunar', { n: ld.n, 'название': name, 'рекомендация': advice }), url };
   }
   if (feature === 'sky') {
     const now = skyNow(Date.now(), u.tz || MSK);
     if (!now.today.length) return null;
     const first = now.today[0];
-    return { title: 'На небе сегодня', body: `${now.today.map((e) => e.title).join(' · ')}. ${first.note}`.slice(0, 220), url };
+    const t = tpl('sky', { 'события': now.today.map((e) => e.title).join(' · '), 'совет': first.note });
+    return { title: t.title, body: t.body.slice(0, 220), url };
   }
   return null;
 }
@@ -193,7 +202,7 @@ export function pendingFor(userId, endpoint) {
 
 /* Пробное уведомление прямо сейчас — чтобы человек увидел, как оно выглядит. */
 export async function sendNow(u, feature, keys) {
-  const n = FEATURES[feature] ? (notificationFor(feature, u) || { title: FEATURES[feature].title, body: 'Сегодня напоминать не о чем — но напоминания работают ✦', url: FEATURES[feature].url }) : null;
+  const n = FEATURES[feature] ? (notificationFor(feature, u) || { ...tpl('пробное'), url: FEATURES[feature].url }) : null;
   if (!n) return { ok: false, error: 'bad_feature' };
   const subs = db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ?').all(u.id);
   if (!subs.length) return { ok: false, error: 'no_push' };

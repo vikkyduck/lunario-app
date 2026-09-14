@@ -293,7 +293,7 @@ const HABITS_FALLBACK = ['Стакан воды утром', '10 минут пр
    Восемь лепестков по три степени плюс восемь сочетаний между лепестками. Прежние пять
    настроений остаются читаемыми в старых отметках. ── */
 const M = (key, label, family, tone) => ({ key, label, family, tone });
-export const MOODS = [
+const MOODS_FALLBACK = [
   M('serenity', 'безмятежность', 'joy', '+'), M('joy', 'радость', 'joy', '+'), M('ecstasy', 'восторг', 'joy', '+'),
   M('acceptance', 'принятие', 'trust', '+'), M('trust', 'доверие', 'trust', '+'), M('admiration', 'восхищение', 'trust', '+'),
   M('apprehension', 'тревога', 'fear', '-'), M('fear', 'страх', 'fear', '-'), M('terror', 'ужас', 'fear', '-'),
@@ -305,12 +305,27 @@ export const MOODS = [
   M('optimism', 'оптимизм', 'dyad', '+'), M('love', 'любовь', 'dyad', '+'), M('submission', 'покорность', 'dyad', '0'), M('awe', 'трепет', 'dyad', '0'),
   M('disappointment', 'разочарование', 'dyad', '-'), M('remorse', 'раскаяние', 'dyad', '-'), M('contempt', 'презрение', 'dyad', '-'), M('aggressiveness', 'агрессия', 'dyad', '-'),
 ];
-export const MOOD_FAMILIES = { joy: ['Радость', '#f2c94c'], trust: ['Доверие', '#9ccc3c'], fear: ['Страх', '#3aa35a'], surprise: ['Удивление', '#2aa7c9'],
+const MOOD_FAMILIES_FALLBACK = { joy: ['Радость', '#f2c94c'], trust: ['Доверие', '#9ccc3c'], fear: ['Страх', '#3aa35a'], surprise: ['Удивление', '#2aa7c9'],
   sadness: ['Грусть', '#4c78c8'], disgust: ['Отвращение', '#8f5fb8'], anger: ['Злость', '#e0475c'], anticipation: ['Ожидание', '#f0932b'], dyad: ['На стыке', '#b9b2cf'] };
 /* прежние пять отметок — чтобы старая история читалась */
 export const LEGACY_MOODS = { joy: 'joy', calm: 'serenity', tired: 'pensiveness', anx: 'apprehension', sad: 'sadness' };
-const moodByKey = Object.fromEntries(MOODS.map((m) => [m.key, m]));
-export const moodInfo = (key) => moodByKey[LEGACY_MOODS[key] || key] || null;
+export const moodInfo = (key) => (data.MOOD_BY_KEY[LEGACY_MOODS[key] || key]) || null;
+/* Тексты напоминаний по функции — запасные, те же, что в content/напоминания.txt */
+const REMINDER_TEXTS_FALLBACK = {
+  card: ['Лунарио', 'Ваша карта дня готова ✦'], mood: ['Как прошёл день?', 'Отметьте настроение — одно нажатие, и вечером станет яснее.'],
+  moodreport: ['Отчёт по настроениям за неделю', 'Отмечено {дней}, чаще всего — {настроение}. Откройте, чтобы увидеть неделю целиком.'],
+  'moodreport-пусто': ['Отчёт по настроениям', 'На этой неделе отметок не было. Начните с сегодняшней — и через неделю будет картина.'],
+  habits: ['Привычки на сегодня', 'Осталось отметить: {список}. Минута — и день закрыт ✦'], 'habits-пусто': ['Дневник привычек', 'Добавьте первую привычку — с одной маленькой начинается ритм.'],
+  askesis: ['Аскеза «{название}» · день {день} из {всего}', '{поддержка} {осталось}.'], gratitude: ['Кому и за что я благодарна сегодня?', 'Пара слов — и запись останется в дневнике.'],
+  lunar: ['{n}-й лунный день · {название}', '{рекомендация}'], sky: ['На небе сегодня', '{события}. {совет}'], 'пробное': ['Лунарио', 'Сегодня напоминать не о чем — но напоминания работают ✦'],
+};
+const ASKESIS_SUPPORT_FALLBACK = ['Вы держитесь — и это уже меняет привычный ход дня.', 'Каждый день без этого — день с собой. Так держать.', 'Отказ — это не лишение, а место для нового.',
+  'Вы уже дальше, чем были вчера. Спокойно и по-своему.', 'Обещание себе — самое честное из обещаний. Вы его держите.', 'Не идеально, а по-настоящему. Этого достаточно.',
+  'Сила не шумит — она продолжает. Как вы сегодня.'];
+const AWARDS_FALLBACK = [[30, 'Молодая луна', 'Тридцать дней подряд. Привычка родилась — теперь ей есть на что опереться.'], [60, 'Растущая луна', 'Два месяца без пропуска. Это уже не усилие, а часть вашего дня.'],
+  [90, 'Почти полная', 'Девяносто дней. Так рождается характер — тихо и каждый день.'], [180, 'Полнолуние', 'Полгода. Привычка стала вашей — как чистить зубы, только важнее.'], [365, 'Солнце', 'Год без пропуска. Это уже не привычка, а вы.']];
+const WORRIES_FALLBACK = ['Я не чувствую себя желанной', 'Как снизить тревогу во время беременности?', 'Силы на открытие своего бизнеса', 'Практики для принятия себя и своей внешности',
+  'Как поднять свою самоценность', 'Как выйти из грусти от потери', 'Беспокоит бессонница', 'Как перестать бояться идти своим путём'];
 
 /* ── Установки дня: запасной набор на случай отсутствия файла ── */
 const SETS_FALLBACK = [
@@ -480,6 +495,31 @@ function build() {
   /* «Новое в приложении»: месяц | название | раздел:виджет | описание */
   r.NEWS = (rows('новое.txt', 4) || []).map((c) => { const [view, widget] = c[2].split(':'); return { month: c[0], title: c[1], view: view.trim(), widget: (widget || '').trim(), text: c[3] }; });
 
+  /* Круг эмоций: «лепесток | ключ | Название | цвет» и «ключ | название | лепесток | тон» в одном файле */
+  const em = rows('эмоции.txt', 4);
+  const fams = em ? em.filter((c) => c[0] === 'лепесток') : [];
+  const moods = em ? em.filter((c) => c[0] !== 'лепесток').map((c) => M(c[0], c[1], c[2], c[3])) : [];
+  r.MOODS = moods.length >= 8 ? moods : MOODS_FALLBACK;
+  r.MOOD_FAMILIES = fams.length >= 8 ? Object.fromEntries(fams.map((c) => [c[1], [c[2], c[3]]])) : MOOD_FAMILIES_FALLBACK;
+  r.MOOD_BY_KEY = Object.fromEntries(r.MOODS.map((m) => [m.key, m]));
+  /* Тексты напоминаний, поддержка аскезы, награды за привычки, плашки-запросы */
+  const rt = rows('напоминания.txt', 3);
+  r.REMINDER_TEXTS = Object.assign({}, REMINDER_TEXTS_FALLBACK, rt ? Object.fromEntries(rt.map((c) => [c[0], [c[1], c[2]]])) : {});
+  r.ASKESIS_SUPPORT = lines('поддержка-аскезы.txt') || ASKESIS_SUPPORT_FALLBACK;
+  const aw = rows('награды.txt', 3);
+  r.AWARDS = aw ? aw.map((c) => [num(c[0], 0), c[1], c[2]]).filter((a) => a[0] > 0) : AWARDS_FALLBACK;
+  r.WORRIES = lines('запросы.txt') || WORRIES_FALLBACK;
+  /* Тексты неба: тип | ключ | … — в объект по типам; чего нет в файле, то возьмёт sky.mjs из своих запасных */
+  const sk = rows('небо.txt', 3) || [];
+  const sky = { phase: {}, eclipse: {}, retro: {}, season: {} };
+  for (const c of sk) {
+    if (c[0] === 'фаза' && c.length >= 4) sky.phase[c[1]] = [c[2], c[3]];
+    else if (c[0] === 'затмение' && c.length >= 4) sky.eclipse[c[1]] = [c[2], c[3]];
+    else if (c[0] === 'ретро' && c.length >= 7) sky.retro[c[1]] = [c[2], c[3], c[4], c[5], c[6]];
+    else if (c[0] === 'сезон') sky.season[c[1]] = c[2];
+  }
+  r.SKY = sky;
+
   r.AFFIRMATIONS = lines('аффирмации.txt') || AFFIRMATIONS_FALLBACK;
   r.WISHES = lines('пожелания.txt') || WISHES_FALLBACK;
   r.DAY_QUESTIONS = lines('вопросы-дня.txt') || DAY_QUESTIONS_FALLBACK;
@@ -509,6 +549,13 @@ export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) }
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
 export const SETS = new Proxy([], { get: (_, k) => Reflect.get(data.SETS, k) });
+export const MOODS = new Proxy([], { get: (_, k) => Reflect.get(data.MOODS, k) });
+export const MOOD_FAMILIES = new Proxy({}, { get: (_, k) => Reflect.get(data.MOOD_FAMILIES, k), ownKeys: () => Reflect.ownKeys(data.MOOD_FAMILIES), getOwnPropertyDescriptor: (_, k) => ({ value: data.MOOD_FAMILIES[k], enumerable: true, configurable: true }) });
+export const REMINDER_TEXTS = new Proxy({}, { get: (_, k) => Reflect.get(data.REMINDER_TEXTS, k) });
+export const ASKESIS_SUPPORT = new Proxy([], { get: (_, k) => Reflect.get(data.ASKESIS_SUPPORT, k) });
+export const AWARDS = new Proxy([], { get: (_, k) => Reflect.get(data.AWARDS, k) });
+export const WORRIES = new Proxy([], { get: (_, k) => Reflect.get(data.WORRIES, k) });
+export const SKY = new Proxy({}, { get: (_, k) => Reflect.get(data.SKY, k) });
 export const NEWS = new Proxy([], { get: (_, k) => Reflect.get(data.NEWS, k) });
 export const ASKESIS_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.ASKESIS_IDEAS, k) });
 export const HABIT_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.HABIT_IDEAS, k) });
