@@ -658,7 +658,7 @@ const server = createServer(async (req, res) => {
         }
         db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);
 
-        const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        let existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
         if (!existing) {
           // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся
           db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), u.id);
@@ -668,6 +668,12 @@ const server = createServer(async (req, res) => {
 
         // аккаунт с этой почтой уже есть — переключаем устройство на него
         newSession(existing.id, res, req.headers['user-agent']);
+        if (u.onboarded && !existing.onboarded) {   // анкету только что заполнили на этом устройстве — она едет в найденный аккаунт
+          db.prepare(`UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
+                      consent_version=?, consent_ts=? WHERE id=?`)
+            .run(u.name, u.birth, u.birth_time, u.city, u.city_region, u.lat, u.lon, u.tz, u.consent_version, u.consent_ts, existing.id);
+          existing = db.prepare('SELECT * FROM users WHERE id = ?').get(existing.id);
+        }
         const empty = !u.email && !db.prepare('SELECT 1 FROM entries WHERE user_id = ? LIMIT 1').get(u.id)
           && !db.prepare('SELECT 1 FROM journal WHERE user_id = ? LIMIT 1').get(u.id);
         if (empty) {                              // пустой анонимный профиль этого устройства не копим
