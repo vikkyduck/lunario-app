@@ -2203,7 +2203,7 @@ async function drawPostcard(p){
       ctx.fillStyle = 'rgba(217,184,104,.6)'; ctx.fillRect(512, yy + 18, 56, 2);
       yy = drawText(ctx, i.message, 540, yy + 74, { size: 36, color: '#ded8ee', maxW: 900, lh: 1.35, italic: true });
     } else if (i.caption) yy = drawText(ctx, i.caption, 540, yy + 34, { size: 30, italic: true, color: '#ded8ee', maxW: 880, lh: 1.35 });
-    if (y.from) drawText(ctx, `с ${ruDate(y.from, true)} по ${ruDate(dayBefore(y.to), true)}`, 540, Math.max(yy + 40, 1660), { size: 24, color: '#8f87ad' });
+    /* дат на открытке нет намеренно: это послание на экран блокировки, а не справка; период года виден на экране */
   } else if (p.type === 'runes' || p.type === 'spread') {
     const kind = p.type === 'spread' ? 'tarot' : 'rune';
     const L = layoutOf(kind, p.layout) || { title: '', pos: [] };
