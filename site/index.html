@@ -351,7 +351,6 @@ body.hello .heromoon{display:block}
 .w-big{font-size:24px;line-height:1.4;color:#fff;text-align:center;margin-top:28px}
 body.wg-open{overflow:hidden}
 /* на телефоне навигации внизу нет: разделы открываются с главной */
-/* ── широкий экран (≥900px): тот же телефонный сценарий в столбике пошире, виджеты — панелью по центру ── */
 /* ── широкий экран (≥900px): два формата, а не растянутый телефон. Контейнер во всю ширину до 1180px,
    плитки раскладываются по ширине; формы (анкета, вход) остаются колонкой — им ширина ни к чему ── */
 @media(min-width:900px){
@@ -578,9 +577,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 </div>
 <div class="wrap">
 
-  <!-- ЗНАКОМСТВО: текст Виктории, две кнопки; вариант раскладки — ?hello=a|b|c -->
+  <!-- ЗНАКОМСТВО: текст Виктории, две кнопки -->
   <section class="view" id="v-hello">
-    <h1 class="wordmark hero"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
+    <h1 class="wordmark hero" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
     <p class="hl1">Здесь можно выдохнуть,<br>свериться с собой<br>и <em>найти опору</em></p>
     <p class="hl3">Укажите имя, дату, время и место рождения</p>
     <div class="gifts">
@@ -588,7 +587,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <div class="gift"><i class="ico moon"></i><span><b>Персональное предсказание</b><small>на этот год</small></span></div>
     </div>
     <div class="cta">
-      <button class="btn" onclick="openForm()">Заполнить анкету&nbsp;&nbsp;→</button>
+      <button class="btn" aria-label="Заполнить анкету" onclick="openForm()">Заполнить анкету&nbsp;&nbsp;→</button>
       <button class="btn ghost" onclick="go('nodemo')">Посмотреть без анкеты</button>
     </div>
     <p class="trust">Бесплатно · Записи хранятся в России и видны только вам</p>
