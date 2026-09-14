@@ -224,29 +224,44 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
 body.fixed{height:100dvh;overflow:hidden}
 body.fixed .wrap{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 body.fixed .view.on{flex:1 1 0;min-height:0!important}
-#v-hello.on{display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+#v-hello.on{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
 #v-hello .hero{display:block;font-size:clamp(46px,15vw,64px);line-height:1;padding:12px 0 0;white-space:nowrap}
 #v-hello .o-wrap{position:relative;display:inline-block}
 #v-hello .hero .mark{position:absolute;left:var(--mx,50%);top:var(--my,50%);width:var(--ms,.9em);height:var(--ms,.9em);margin:0;transform:translate(-50%,-50%);animation:none;line-height:0}
 #v-hello .hero .moon-img{width:100%;height:100%}
 #v-hello .hero .spark{width:4px;height:4px}
-#v-hello .hl1{margin-top:30px;font-size:20px;line-height:1.4;color:#fff;font-weight:600}
-#v-hello .hl2{margin-top:12px;font-size:16px}
-#v-hello .hl3{margin-top:12px;font-size:15px}
-#v-hello .cta{margin-top:auto;padding-top:28px;display:grid;gap:10px}
-#v-hello .trust{text-align:center;margin-top:18px;font-size:13px}
+#v-hello .hl1{position:relative;margin-top:26px;font-size:clamp(27px,7.6vw,34px);line-height:1.14;color:#fff;font-weight:600;letter-spacing:-.01em;text-shadow:0 2px 24px rgba(11,10,20,.7)}
+#v-hello .hl1 em{font-style:normal;color:var(--gold-2)}
+#v-hello .hl3{position:relative;margin-top:22px;font-size:14.5px;color:#cdc6e2}
+/* что даст анкета: две строки с иконками, как на карточке */
+#v-hello .gifts{position:relative;margin-top:10px;display:grid;gap:8px}
+#v-hello .gift{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:18px;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow)}
+#v-hello .gift .ico{width:30px;height:30px}
+#v-hello .gift b{display:block;font-size:15.5px;font-weight:600;line-height:1.25}
+#v-hello .gift small{display:block;font-size:13.5px;color:#b9b2cf;margin-top:2px}
+#v-hello .cta{position:relative;margin-top:auto;padding-top:22px;display:grid;gap:10px}
+#v-hello .trust{position:relative;text-align:center;margin-top:16px;font-size:12.5px;text-wrap:balance}
+/* луна приветствия живёт в фоне: на телефоне заходит справа за край, на широком экране — справа от колонки */
+.heromoon{position:absolute;display:none;pointer-events:none;width:620px;height:620px;right:-222px;top:calc(env(safe-area-inset-top) + 56px)}
+body.hello .heromoon{display:block}
+.heromoon canvas{width:100%;height:100%;display:block;filter:drop-shadow(0 0 60px rgba(217,184,104,.18))}
+@media(min-width:900px){.heromoon{width:680px;height:680px;right:auto;left:calc(50% + 70px);top:calc(50% - 340px)}}
 @media(max-height:720px){
   #v-hello .hero{font-size:clamp(40px,12vw,54px);padding-top:4px}
-  #v-hello .hl1{margin-top:16px;font-size:18px;line-height:1.3}
-  #v-hello .hl2,#v-hello .hl3{margin-top:8px;font-size:14px;line-height:1.4}
+  #v-hello .hl1{margin-top:16px;font-size:clamp(24px,6.6vw,28px)}
+  #v-hello .hl3{margin-top:14px;font-size:14px}
+  #v-hello .gift{padding:10px 14px}
   #v-hello .cta{padding-top:14px;gap:8px}
   #v-hello .cta .btn{min-height:52px}
   #v-hello .trust{margin-top:10px;font-size:12px}
   #v-hello .linkline{margin-top:8px}
+  .heromoon{width:520px;height:520px;right:-190px;top:calc(env(safe-area-inset-top) + 40px)}
 }
 @media(max-height:600px){
   #v-hello .hl3{display:none}
-  #v-hello .hl1{margin-top:10px;font-size:16px}
+  #v-hello .gifts{gap:6px;margin-top:10px}
+  #v-hello .gift small{display:none}
+  #v-hello .hl1{margin-top:10px;font-size:22px}
 }
 /* ── главная: один экран, без прокрутки — квадраты по центру, мелкое внизу ── */
 #v-home.on{display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
@@ -526,20 +541,25 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="orb orb-1"></div><div class="orb orb-2"></div>
   <div class="cloud cloud-1"></div><div class="cloud cloud-2"></div>
   <canvas class="sky" id="sky"></canvas>
+  <!-- луна приветствия: тёмной стороной к тексту, светлой — к краю экрана -->
+  <div class="heromoon"><canvas id="moonHero" width="480" height="480"></canvas></div>
 </div>
 <div class="wrap">
 
   <!-- ЗНАКОМСТВО: текст Виктории, две кнопки; вариант раскладки — ?hello=a|b|c -->
   <section class="view" id="v-hello">
     <h1 class="wordmark hero"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
-    <p class="hl1">Здесь можно выдохнуть, свериться с собой и найти опору.</p>
-    <p class="hl2">Лунарио подсвечивает ответы, которые вы и так в глубине души знаете.</p>
-    <p class="hl3">Укажите имя, дату и место рождения, и в приложении появится личный гороскоп и персональное предсказание на этот год</p>
+    <p class="hl1">Здесь можно выдохнуть,<br>свериться с собой<br>и <em>найти опору</em></p>
+    <p class="hl3">Укажите имя, дату, время и место рождения</p>
+    <div class="gifts">
+      <div class="gift"><i class="ico star"></i><span><b>Личный гороскоп</b><small>по дате и месту рождения</small></span></div>
+      <div class="gift"><i class="ico moon"></i><span><b>Персональное предсказание</b><small>на этот год</small></span></div>
+    </div>
     <div class="cta">
-      <button class="btn" onclick="openForm()">Заполнить анкету</button>
+      <button class="btn" onclick="openForm()">Заполнить анкету&nbsp;&nbsp;→</button>
       <button class="btn ghost" onclick="go('nodemo')">Посмотреть без анкеты</button>
     </div>
-    <p class="trust">Бесплатно. Записи хранятся в России и видны только вам.</p>
+    <p class="trust">Бесплатно · Записи хранятся в России и видны только вам</p>
     <p class="linkline" id="hello-login" style="display:none">Уже пользовались Лунарио? <button type="button" onclick="openLogin()">Войти по почте</button></p>
   </section>
 
@@ -625,7 +645,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="sq" type="button" onclick="go('about')"><i class="ico person"></i>Обо мне</button>
       <button class="sq" type="button" onclick="go('around')"><i class="ico orbit"></i>Внешний фон</button>
       <button class="sq" type="button" onclick="go('history')"><i class="ico journal"></i>История</button>
-      <button class="sq" type="button" onclick="go('news')"><i class="ico spark"></i>Новое в приложении</button>
+      <button class="sq" type="button" onclick="go('news')"><i class="ico star"></i>Новое в приложении</button>
     </div>
     <div class="mini">
       <button type="button" onclick="openWidget('invite')"><i class="ico users"></i><b>Позвать подругу</b></button>
@@ -839,7 +859,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 <script>
 /* ── Луна с обложки: рисуется один раз с настоящей фазой на сегодня; дыхание и искры — в CSS ── */
 (function () {
-  const canvases = ['moonHello', 'moonToday'].map((id) => document.getElementById(id)).filter(Boolean);
+  const canvases = ['moonHello', 'moonToday', 'moonHero'].map((id) => document.getElementById(id)).filter(Boolean);
   if (!canvases.length) return;
   let phase = 0.42;                        /* пока данных нет — молодая растущая луна */
 
@@ -917,7 +937,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     const ctx = cv.getContext('2d');
     if (!ctx || (ctx.isContextLost && ctx.isContextLost())) return;   /* контекст потерян — дорисуем по contextrestored */
     const R = S * 0.34, Rp = R * dpr;
-    const p = phase * Math.PI * 2, c = Math.cos(p), waxing = phase < 0.5, sign = waxing ? 1 : -1;
+    const ph = cv.id === 'moonHero' ? 0.22 : phase;   /* большая луна приветствия — декорация с закреплённой фазой: растущий серп, тёмной стороной к тексту */
+    const p = ph * Math.PI * 2, c = Math.cos(p), waxing = ph < 0.5, sign = waxing ? 1 : -1;
     const tex = moonTexture(px, Rp, letter); if (!tex) return;
     /* всё рисуем в устройственных пикселях; при убывающей луне зеркалим по x — свет на текстуре всегда справа */
     const litPath = (g) => { g.beginPath(); g.arc(0, 0, Rp, -Math.PI / 2, Math.PI / 2, false); g.ellipse(0, 0, Math.max(0.001, Rp * Math.abs(c)), Rp, 0, Math.PI / 2, -Math.PI / 2, c > 0); g.closePath(); };
@@ -932,7 +953,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     ctx.setTransform(sign, 0, 0, 1, px / 2, px / 2);
     /* ночная сторона: та же поверхность в сумерках — рельеф едва читается */
     ctx.drawImage(tex, -px / 2, -px / 2);
-    ctx.fillStyle = 'rgba(22,19,42,.86)';               /* ночная сторона — цвет самого неба, сквозь него едва проступает рельеф */
+    ctx.fillStyle = cv.id === 'moonHero' ? 'rgba(16,14,30,.93)' : 'rgba(22,19,42,.86)';   /* ночная сторона — цвет самого неба, сквозь него едва проступает рельеф; у большой луны — темнее, чтобы не спорить с текстом */
     ctx.beginPath(); ctx.arc(0, 0, Rp, 0, Math.PI * 2); ctx.fill();
     /* освещённая часть с мягким терминатором: маска размывается, если холст умеет фильтры */
     const lit = document.createElement('canvas'); lit.width = lit.height = px;
@@ -1209,6 +1230,7 @@ function go(v){
   closeWidget();
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
   document.body.classList.toggle('fixed', v==='hello' || v==='home');   // эти экраны не листаются
+  document.body.classList.toggle('hello', v==='hello');                // большая луна в фоне — только на приветствии
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
   window.scrollTo(0,0);
   if(v==='about') loadAbout();
