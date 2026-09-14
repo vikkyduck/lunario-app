@@ -3,7 +3,7 @@
    Аккаунт анонимный: httpOnly-cookie с токеном, e-mail можно привязать позже. */
 import { createServer } from 'node:http';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
-import { join, extname, normalize, dirname } from 'node:path';
+import { join, extname, normalize, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt, createHash, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
@@ -24,6 +24,7 @@ import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, 
 import * as W from './workspace.mjs';
 import { natalChart } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
+import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
 import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow } from './reminders.mjs';
 
@@ -33,6 +34,9 @@ const HOST = process.env.HOST || '127.0.0.1';
 const SITE_DIR = process.env.SITE_DIR || join(__dirname, '..', 'site');
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, '..', 'data');
 const BASE = process.env.BASE_PATH || '/app';
+/* Резервные копии: ночью — cron (тот же backup.mjs), днём — кнопка в кабинете админа */
+const BACKUP_DIR = process.env.BACKUP_DIR || join(__dirname, '..', 'backups');
+const Backup = createBackup({ dataDir: DATA_DIR, contentDir: CONTENT_DIR, backupDir: BACKUP_DIR });
 const CONSENT_VERSION = '2026-08-23';
 const PUSH = vapidKeys(DATA_DIR);
 const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replace(/\/+$/, '');
@@ -787,6 +791,23 @@ const server = createServer(async (req, res) => {
           if (!r) return json(res, 404, { ok: false, error: 'not_found' });
           if (kind === 'content') r.files = contentFiles();
           return json(res, 200, r);
+        }
+        /* ── резервные копии: список — всем, у кого есть «Здоровье системы»; снять и скачать — только админам ── */
+        if (p === '/api/cabinet/backups' && req.method === 'GET') {
+          if (!allowed('system')) return json(res, 403, { ok: false, error: 'no_access' });
+          return json(res, 200, { ...Backup.list(), schedule: 'каждую ночь в 03:40 по серверу', keep: 14, admin });
+        }
+        if (p === '/api/cabinet/backups' && req.method === 'POST') {
+          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
+          try { const r = await Backup.run(true); console.log(`[кабинет] ${u.email} снял резервную копию: ${r.files.join(', ')}`); return json(res, 200, { ok: true, ...r }); }
+          catch (e) { logError('/api/cabinet/backups', e.message); return json(res, 500, { ok: false, error: 'backup_failed', message: e.message }); }
+        }
+        if (p === '/api/cabinet/backups/download' && req.method === 'GET') {
+          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
+          const f = Backup.file(url.searchParams.get('name')); if (!f) return json(res, 404, { ok: false, error: 'not_found' });
+          console.log(`[кабинет] ${u.email} скачал резервную копию ${basename(f)}`);
+          res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${basename(f)}"`, 'Cache-Control': 'no-store' });
+          return res.end(readFileSync(f));
         }
         if (p === '/api/cabinet/user') {
           if (!allowed('users')) return json(res, 403, { ok: false, error: 'no_access' });

@@ -376,6 +376,21 @@ const field = (label, inner) => `<label style="display:flex;flex-direction:colum
 const utmLink = (c) => { const u = new URL('https://lunario.online/app/'); for (const k of ['source', 'medium', 'campaign', 'content', 'term']) if (c[k]) u.searchParams.set('utm_' + k, c[k]); return u.toString(); };
 const copy = (t) => navigator.clipboard.writeText(t).then(() => toast('Ссылка скопирована')).catch(() => prompt('Скопируйте ссылку', t));
 const EXTRAS = {
+  /* резервные копии — на странице «Здоровье системы»: статус, снять сейчас, скачать */
+  async system() {
+    const r = await api('/cabinet/backups');
+    const ageH = (t) => (t ? (Date.now() - Date.parse(t)) / 36e5 : null);
+    const fresh = (t) => t !== null && ageH(t) !== null && ageH(t) < 26;
+    const when = (t) => (t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'ещё не было');
+    const mbs = (b) => (b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' КБ' : (b / 1048576).toFixed(1).replace('.', ',') + ' МБ');
+    const kp = (title, t, sub) => ({ title, value: t ? when(t) : null, unit: '', sub: sub || (t ? (fresh(t) ? 'свежая' : 'старше суток — проверьте cron') : ''), state: t ? 'ok' : 'nodata' });
+    const rows = r.items.map((f) => `<tr><td>${f.kind === 'db' ? 'База и полочки' : 'Тексты и картинки'}</td><td>${when(f.ts)}</td><td>${mbs(f.size)}</td><td>${r.admin ? `<a class="btn sm" href="/app/api/cabinet/backups/download?name=${encodeURIComponent(f.name)}">Скачать</a>` : ''}</td></tr>`).join('');
+    $('extra').innerHTML = `<h3 style="margin-top:22px">Резервные копии</h3>
+      <div class="kpis" style="margin-top:10px">${kpiCard(kp('База приложения', r.last))}${kpiCard(kp('Тексты и картинки', r.lastContent))}${kpiCard({ title: 'Ключ шифрования', value: r.keys ? 'в копии' : null, unit: '', sub: r.keys ? 'без него база не читается' : 'нет — снимите копию', state: r.keys ? 'ok' : 'nodata' })}</div>
+      <div class="notice">Копии снимаются ${esc(r.schedule)}: база (люди, записи, полочки), ключ шифрования, ключи пушей и папка контента. Хранятся ${r.keep} последних каждого вида в ${esc(r.dir)} на сервере. Личные тексты внутри зашифрованы; скачать может только администратор — и это попадает в журнал.</div>
+      ${r.admin ? `<div class="row" style="margin-top:12px;gap:10px"><button class="btn gold sm fixed" id="bk-run" onclick="backupNow()">Снять копию сейчас</button><span class="hint" id="bk-msg"></span></div>` : ''}
+      <div class="tbl" style="margin-top:10px"><div class="scroll"><table><thead><tr><th>Что</th><th>Когда</th><th>Размер</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="empty">Копий пока нет.</td></tr>'}</tbody></table></div></div>`;
+  },
   async campaigns() {
     const r = await api('/cabinet/campaigns'); S.campaigns = r.items;
     $('extra').innerHTML = `<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn gold sm fixed" onclick="campaignForm(0)">+ Новая кампания</button></div>
@@ -462,6 +477,12 @@ function mediaUpload() {
   if (f.size > 5 * 1024 * 1024) { msg.textContent = 'До 5 МБ.'; return; }
   msg.textContent = 'Загружаем…';
   const rd = new FileReader(); rd.onload = async () => { try { const r = await api('/cabinet/media', { method: 'POST', body: JSON.stringify({ name: f.name, type: f.type, data: rd.result }) }); if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Такой тип не принимаем.' : 'Не загрузилось.'; return; } toast('Загружено'); EXTRAS.media(); } catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); } }; rd.readAsDataURL(f);
+}
+async function backupNow() {
+  const b = $('bk-run'), m = $('bk-msg'); b.disabled = true; m.textContent = 'Снимаем копию…';
+  try { const r = await api('/cabinet/backups', { method: 'POST' }); toast(r.ok ? 'Копия снята' : 'Не получилось'); m.textContent = r.ok ? '' : (r.message || 'ошибка'); if (r.ok) EXTRAS.system(); }
+  catch (e) { m.textContent = 'Не получилось: ' + (e.code || e.message); }
+  finally { b.disabled = false; }
 }
 async function mediaArchive(id, on) { const r = await api('/cabinet/media/archive', { method: 'POST', body: JSON.stringify({ id, on }) }); toast(r.ok ? (on ? 'Сгружено в архив' : 'Возвращено') : 'Не получилось'); EXTRAS.media(); }
 async function mediaDel(id) { if (!confirm('Удалить файл насовсем? Если он ещё может понадобиться — лучше «Сгрузить»: запись и скачивание останутся.')) return; await api('/cabinet/media?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.media(); }

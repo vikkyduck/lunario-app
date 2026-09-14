@@ -12,8 +12,8 @@ echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app/backend/lunario-app.service /etc/systemd/system/lunario-app.service \
   && install -m644 /opt/lunario-app/backend/lunario-daily.service /etc/systemd/system/lunario-daily.service \
   && install -m644 /opt/lunario-app/backend/lunario-daily.timer /etc/systemd/system/lunario-daily.timer \
-  && install -m644 /dev/stdin /etc/cron.d/lunario-app-backup <<< "40 3 * * * root /opt/lunario-app/backend/lunario-app-backup.sh" \
-  && chmod 755 /opt/lunario-app/backend/lunario-app-backup.sh \
+  && mkdir -p /opt/lunario-app-backups \
+  && install -m644 /dev/stdin /etc/cron.d/lunario-app-backup <<< "40 3 * * * root DATA_DIR=/opt/lunario-app/data CONTENT_DIR=/opt/lunario-content BACKUP_DIR=/opt/lunario-app-backups /usr/bin/node /opt/lunario-app/backend/backup.mjs >>/var/log/lunario-app-backup.log 2>&1" \
   && systemctl daemon-reload && systemctl enable lunario-app >/dev/null \
   && systemctl enable --now lunario-daily.timer >/dev/null && systemctl restart lunario-daily.timer \
   && systemctl restart lunario-app && sleep 1 \
