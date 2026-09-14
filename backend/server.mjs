@@ -23,6 +23,7 @@ import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSe
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
 import * as W from './workspace.mjs';
 import { natalChart } from './astro.mjs';
+import { createShelves } from './shelves.mjs';
 import { skyNow } from './sky.mjs';
 import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow } from './reminders.mjs';
 
@@ -653,6 +654,26 @@ function serveStatic(res, rel, cacheSec = 3600, headOnly = false) {
 }
 
 /* ── маршруты ── */
+/* ── полочки: досье каждого человека — «Обо мне», «Мой день», «Истории».
+   Экран «Мои данные» показывает их человеку, разборы и гороскопы берут отсюда контекст. */
+const natalOf = (u) => {
+  const time = /^\d{2}:\d{2}$/.test(u.birth_time || '') ? u.birth_time : '';
+  const tzOff = u.tz ? tzOffsetMinutes(u.tz, `${u.birth}T${time || '12:00'}:00`) : 0;
+  return natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
+};
+const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, hasPlus, cardOfDay, dayPack, habitList, askesisList, natal: natalOf, MOOD_RU, nowISO });
+/* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку */
+const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/ritual', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data']);
+/* У тех, кто пришёл раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
+setTimeout(() => {
+  const ids = db.prepare('SELECT id FROM users WHERE onboarded = 1 AND id NOT IN (SELECT user_id FROM shelves)').all().map((r) => r.id);
+  if (!ids.length) return;
+  console.log(`Полочки: собираются для ${ids.length} человек`);
+  let i = 0;
+  const step = () => { if (i >= ids.length) { console.log('Полочки: собраны'); return; } Shelves.refresh(ids[i++], today()); setImmediate(step); };
+  step();
+}, 3000).unref();
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
@@ -738,6 +759,7 @@ const server = createServer(async (req, res) => {
     if (p.startsWith('/api/')) {
       const u = getUser(req, res);
       const d = today();
+      if (req.method !== 'GET' && SHELF_TOUCH.has(p) && u && u.id) { const uid = u.id; res.once('finish', () => Shelves.refresh(uid, d)); }
 
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
       if (p.startsWith('/api/cabinet/')) {
@@ -1285,6 +1307,8 @@ const server = createServer(async (req, res) => {
       if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyNow(Date.now(), u.tz || 'Europe/Moscow'));
 
       /* ── полочки: что Лунарио знает о человеке — три полки и досье текстом для разборов ── */
+      if (p === '/api/shelves' && req.method === 'GET') return json(res, 200, Shelves.read(u, d));
+      if (p === '/api/shelves/context' && req.method === 'GET') return json(res, 200, { text: Shelves.contextText(Shelves.read(u, d)) });
 
       if (p === '/api/numerology' && req.method === 'GET') {
         if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
@@ -1314,13 +1338,13 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/data' && req.method === 'DELETE') {
-        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
+        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'shelves']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
         wipePersonal(u.id);
         db.prepare("UPDATE users SET streak = 0, streak_date = '' WHERE id = ?").run(u.id);
         return json(res, 200, { ok: true });
       }
       if (p === '/api/account' && req.method === 'DELETE') {
-        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'sessions', 'push_subs']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
+        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'sessions', 'push_subs', 'shelves']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
         wipePersonal(u.id); clearReminders(u.id);
         // замер интереса остаётся (обезличенный факт клика), но почта и просьба «сообщите» уходят вместе с аккаунтом
         db.prepare("UPDATE interest SET email = '', notify = 0 WHERE user_id = ?").run(u.id);

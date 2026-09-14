@@ -462,6 +462,12 @@ body.wg-open{overflow:hidden}
 /* ── небо ── */
 .skyev.now{border-color:rgba(217,184,104,.5)}
 .skyev b{margin-bottom:2px}
+.sh-rows{margin-top:8px}
+.sh-row{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.45}
+.sh-row:first-child{border-top:0}
+.sh-row>span{color:#8f87ad;font-size:12.5px;padding-top:2px}
+.sh-row>b{display:block;font-weight:500;font-size:14px;margin:0;color:#f5f2ea;min-width:0;overflow-wrap:anywhere}
+.sh-row small{color:#8f87ad;font-size:12.5px}
 .ios-shell #t-install{display:none!important}
 </style>
 <script>
@@ -668,6 +674,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="wid" type="button" onclick="openWidget('edit')"><i class="ico pen"></i><b>Изменить мои данные</b></button>
       <button class="wid" type="button" onclick="openWidget('mail')"><i class="ico mail"></i><b>Вход по почте</b><span>Дневник и серия переедут на другое устройство</span></button>
       <button class="wid" type="button" onclick="openWidget('remind')"><i class="ico bell"></i><b>Напоминания</b><span>Какие присылать, во сколько и как часто</span></button>
+      <button class="wid" type="button" onclick="openWidget('shelves')"><i class="ico list"></i><b>Мои данные</b><span>Что Лунарио знает о вас — три полки</span></button>
     </div>
     <div class="rows">
       <button class="rowbtn" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i>Установить на телефон</button>
@@ -693,6 +700,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div id="card-nudge"></div>
     <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
   </div>
+  <div class="wpane" id="w-shelves"><div class="list" id="sh-box"></div></div>
   <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p style="font-size:14px;margin-top:14px;text-align:center" id="t-moodstat"></p><div id="mood-extra"></div></div>
   <div class="wpane" id="w-habits"><div id="hb-box"></div></div>
   <div class="wpane" id="w-askesis"><div id="as-box"></div></div>
@@ -1187,7 +1195,7 @@ const WIDGETS = {
   ask:['Свериться',''], year:['Обо мне','Личный год'], birthnum:['Обо мне','Число рождения'], compat:['Обо мне','Совместимость'],
   lunar:['Что вокруг','Лунный день'], hmood:['История','Отчёт по настроениям'], hwishes:['История','Мои желания'],
   hentries:['История','Мои вопросы и ответы'], week:['История','Итоги недели'],
-  invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминания'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'],
+  invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминания'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'], shelves:['Аккаунт','Мои данные'],
   support:['Поддержка','Чат с поддержкой'], natal:['Обо мне','Натальная карта'],
   stub:['','']
 };
@@ -1215,6 +1223,7 @@ function openWidget(k, title){
   if (k==='support') supOpen();
   if (k==='natal') loadNatal();
   if (k==='mail') renderAuth();
+  if (k==='shelves') loadShelves();
   if (k==='year' || k==='birthnum') loadNumerology();
 }
 function closeWidget(e){
@@ -1229,6 +1238,38 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeWidget(
 
 /* ── натальная карта: расчёт на сервере, здесь только вывод ── */
 let natalCache = null;
+/* ── «Мои данные»: три полки досье — то же, что видят разборы и гороскопы ── */
+async function loadShelves(){
+  const box = $('sh-box'); box.innerHTML = '<div class="item"><p>Собираем полки…</p></div>';
+  try {
+    const s = await api('/shelves');
+    const a = s.about, dy = s.day, h = s.history;
+    const fd = (d) => String(d || '').split('-').reverse().join('.');
+    const row = (k, v) => v ? `<div class="sh-row"><span>${k}</span><b>${v}</b></div>` : '';
+    const ru = { yesno: '«Да / Нет»', rune: 'руны', runes: 'расклады рун', spread: 'расклады Таро', card: 'карты дня' };
+    const dayBefore = (d) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() - 1); return t.toISOString().slice(0, 10); };
+    const about = row('Имя', esc(a.name)) + row('Дата рождения', a.birth ? fd(a.birth) + (a.birthTime ? ' · ' + a.birthTime : '') : '')
+      + row('Город', esc(a.city) + (a.region ? `<small> · ${esc(a.region)}</small>` : '')) + row('Знак', a.sign ? `${a.sign.name}${a.sign.element ? ' · ' + a.sign.element : ''}` : '')
+      + row('Число судьбы', a.destiny ? `${a.destiny.n} · ${esc(a.destiny.title)}` : '')
+      + row('Личный год', a.year ? `${a.year.n}${a.year.energy ? ' · ' + esc(a.year.energy) : ''}<small> с ${fd(a.year.from)} по ${fd(dayBefore(a.year.to))}</small>` : '')
+      + row('Натальная карта', a.natal && a.natal.sun ? `☉ ${a.natal.sun}${a.natal.moon ? ` · ☽ ${a.natal.moon}` : ''}${a.natal.asc ? ` · Asc ${a.natal.asc}` : ''}` : '')
+      + row('В Лунарио', `с ${fd(a.since)}${a.streak ? ` · серия ${a.streak}` : ''}${a.plus ? ' · Плюс' : ''}`) + row('Почта', esc(a.email));
+    const wk = dy.week.filter((w) => w.moodRu).map((w) => `${fd(w.day).slice(0, 5)} — ${w.moodRu}`).join(', ');
+    const day = row('Настроение', esc(dy.moodRu)) + row('Карта дня', dy.card ? esc(dy.card.name) : '') + row('Число дня', dy.number && dy.number.n ? `${dy.number.n}<small> · ${esc(dy.number.text)}</small>` : '')
+      + row('Луна', `${esc(dy.moon || '')}${dy.lunar ? ` · ${dy.lunar.n}-й лунный день` : ''}`) + row('Неделя', esc(wk))
+      + row('Дневник', dy.journal.length ? dy.journal.map((j) => `<small>${fd(j.day).slice(0, 5)}</small> ${esc(j.text)}`).join('<br>') : '')
+      + row('Желания', dy.wishes.open.length ? esc(dy.wishes.open.join(' · ')) + (dy.wishes.done ? `<small> · исполнено ${dy.wishes.done}</small>` : '') : '')
+      + row('Привычки', dy.habits.map((x) => `${esc(x.title)}<small> · ${x.streak} подряд</small>`).join('<br>'))
+      + row('Аскезы', dy.askesis.map((x) => `${esc(x.title)}<small> · день ${x.day} из ${x.days}</small>`).join('<br>'));
+    const hist = !h.total ? '<p>Обращений пока не было.</p>'
+      : row('Всего', `${h.total}<small> · ${Object.entries(h.byKind).map(([k, n]) => `${ru[k] || k} ${n}`).join(', ')}</small>`)
+      + row('Темы', esc(h.topics.map((t) => `${t.name} ${t.n}`).join(', '))) + row('Ответы «Да / Нет»', esc(h.verdicts.map((v) => `${v.verdict} ${v.n}`).join(', ')))
+      + row('Последние', h.recent.slice(0, 6).map((r) => `<small>${fd(r.day).slice(0, 5)} · ${esc(r.kindRu)}</small> ${r.question ? esc(r.question) + ' → ' : ''}${esc(r.answer)}`).join('<br>'));
+    const shelf = (t, sub, body, i) => `<div class="item rise" style="--i:${i}"><b>${t}</b><small>${sub}</small><div class="sh-rows">${body || '<p>Пока пусто.</p>'}</div></div>`;
+    box.innerHTML = shelf('Обо мне', 'анкета и то, что из неё считается', about, 0) + shelf('Мой день', `сегодня, ${fd(dy.date)}, и последняя неделя`, day, 1) + shelf('Истории', 'к чему вы возвращаетесь и что вам отвечали', hist, 2)
+      + `<p style="font-size:12.5px;color:#8f87ad;margin-top:4px">Эти три полки — основа персональных разборов и гороскопов: они видят только то, что здесь. Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? new Date(s.updated).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
+  } catch (e) { box.innerHTML = `<div class="item"><p>${e.code === 'no_birth' ? 'Заполните анкету — тогда появятся полки.' : 'Не получилось собрать полки, попробуйте позже.'}</p></div>`; }
+}
 async function loadNatal(){
   const box = $('natal-box');
   try{
