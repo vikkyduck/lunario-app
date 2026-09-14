@@ -253,6 +253,16 @@ body.fixed .view.on{flex:1 1 0;min-height:0!important}
 .mini button b{font-weight:500;color:#d3cde6}
 /* ── главная (старые правила) ── */
 .acct{position:absolute;right:0;top:0;width:42px;height:42px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--gold);font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:grid;place-items:center}
+/* сотрудникам и админам — обратный путь в кабинеты прямо с главной; кнопка не сдвигает статичный экран */
+.cabs{position:absolute;right:52px;top:0;height:42px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:999px;background:var(--glass-bg);border:1px solid rgba(217,184,104,.45);box-shadow:var(--glass-shadow);color:var(--gold-2);font-size:13.5px;font-weight:650;text-decoration:none;white-space:nowrap}
+.cabs[hidden]{display:none}
+#v-home .row.staff{padding-right:168px}
+@media(max-width:600px){
+  .cabs{width:42px;padding:0;justify-content:center;font-size:0;gap:0}
+  .cabs::before{content:'';width:20px;height:20px;background:var(--gold);-webkit-mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat;mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat}
+  #v-home .row.staff{padding-right:104px}
+  body.staff .sq{max-height:calc((100dvh - 452px)/2)}
+}
 .moonline{display:flex;align-items:center;gap:12px;margin-top:14px;background:none;border:0;padding:0;color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
 .moonline p{font-size:15.5px;color:var(--text)}
 .moonline small{display:block;color:#8f87ad;font-size:12.5px;margin-top:3px}
@@ -418,6 +428,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <section class="view" id="v-home">
     <div class="row" style="position:relative;padding-right:52px;align-items:flex-start">
       <div class="grow"><span class="eyebrow" id="h-date"></span><h1 id="h-wish" style="margin-top:6px">Лунарио</h1></div>
+      <a class="cabs" id="h-cabs" href="/app/cabinet" onclick="openCabinet();return false" hidden aria-label="Вернуться в кабинеты">← Кабинеты</a>
       <button class="acct" id="h-acct" type="button" onclick="go('account')" aria-label="Аккаунт">✦</button>
     </div>
     <button class="moonline" type="button" onclick="openLunar()">
@@ -1082,6 +1093,8 @@ function paintHome(){
   const greet=(h<5?'Доброй ночи':h<12?'Доброе утро':h<18?'Добрый день':'Добрый вечер');
   $('h-wish').textContent = d.wish ? d.wish+' вам'+(u.name?', '+u.name:'') : greet+(u.name?', '+u.name:'');
   $('h-acct').textContent = (u.name||'').trim().charAt(0).toUpperCase() || '✦';
+  const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
+  $('h-cabs').hidden = !staff; $('h-cabs').closest('.row').classList.toggle('staff', staff); document.body.classList.toggle('staff', staff);
   $('h-moon').textContent = d.moon + (d.lunar ? ' · ' + ordinal(d.lunar.n) + ' лунный день' : '');
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
   moonSetPhase(d.moonPhase);
