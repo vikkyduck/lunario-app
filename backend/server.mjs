@@ -17,9 +17,9 @@ const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.t
   return { name, lines, size: text.length, mtime: statSync(join(CONTENT_DIR, name)).mtime.toISOString().slice(0, 16).replace('T', ' ') };
 });
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
-import { sendMail, mailReady, loginMail, verifySmtp } from './mailer.mjs';
+import { sendMail, mailReady, loginMail, staffMail, verifySmtp } from './mailer.mjs';
 import { lunarDay, lunarPeriodText } from './lunar.mjs';
-import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
+import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 import { initReports, overview, report, userCard, ROLE_MENUS, REPORT_META } from './reports.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -187,6 +187,29 @@ const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: MSK }); /
 const nowISO = () => new Date().toISOString();
 const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().slice(0, max);
 const sha = (s) => createHash('sha256').update(s).digest('hex');
+// код действует 15 минут; используется и на обычном входе, и при выдаче доступа сотруднику
+function issueLoginCode(email) {
+  const code = String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
+  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts)
+    VALUES (?,?,?,?,0) ON CONFLICT(email) DO UPDATE SET
+    code_hash = excluded.code_hash, created_at = excluded.created_at,
+    expires_at = excluded.expires_at, attempts = 0`)
+    .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString());
+  return code;
+}
+// сотруднику, которому только что назначили роль, шлём код входа сразу — не нужно самому запрашивать
+async function notifyStaffAccess(email, roleKeys) {
+  const names = (roleKeys || []).filter((r) => r !== 'user' && r in ROLES && r !== 'admin').map((r) => ROLES[r]);
+  if (!names.length || !mailLive()) return;
+  try {
+    const code = issueLoginCode(email);
+    const m = staffMail(names, code);
+    await sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });
+  } catch (e) {
+    console.error('письмо о доступе не ушло:', e.message);
+    logError('mail', e.message);
+  }
+}
 /* Возрастная когорта вместо точного возраста: ядро аудитории 35+ смотрим отдельно,
    но саму дату рождения в аналитику не тащим. */
 /* Личные тексты — вопросы, дневник, желания — лежат в базе зашифрованными.
@@ -639,7 +662,12 @@ const server = createServer(async (req, res) => {
         if (p === '/api/cabinet/staff') {
           if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
           if (req.method === 'GET') return json(res, 200, { items: staffList(), admins: ADMIN_EMAILS });
-          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, staffSet(b.email, b.name, b.roles, u.email)); }
+          if (req.method === 'POST') {
+            const b = await readBody(req);
+            const r = staffSet(b.email, b.name, b.roles, u.email);
+            if (r.ok) notifyStaffAccess(String(b.email || '').toLowerCase().trim(), Array.isArray(b.roles) ? b.roles : []);
+            return json(res, 200, r);
+          }
           if (req.method === 'DELETE') return json(res, 200, staffRemove(url.searchParams.get('email')));
         }
         if (p === '/api/cabinet/costs') {
@@ -657,12 +685,7 @@ const server = createServer(async (req, res) => {
         if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) return json(res, 400, { ok: false, error: 'bad_email' });
         if (!allowRate(codeRate, clientIp(req), 5)) return json(res, 429, { ok: false, error: 'too_often' });
         if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
-        const code = String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
-        db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts)
-          VALUES (?,?,?,?,0) ON CONFLICT(email) DO UPDATE SET
-          code_hash = excluded.code_hash, created_at = excluded.created_at,
-          expires_at = excluded.expires_at, attempts = 0`)
-          .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString());
+        const code = issueLoginCode(email);
         try {
           const m = loginMail(code);
           await sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });

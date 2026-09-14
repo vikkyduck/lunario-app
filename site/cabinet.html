@@ -159,6 +159,18 @@ td small{display:block;color:var(--faint);font-size:13px}
 .file{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);cursor:pointer;color:inherit;font:inherit;text-align:left}
 .file:hover{border-color:rgba(224,192,112,.6)}
 .file small{color:var(--faint);font-size:13px}
+@media(max-width:700px){
+  .staff-tbl{table-layout:fixed;width:100%}
+  .staff-tbl th,.staff-tbl td{white-space:normal;word-break:break-word;overflow-wrap:anywhere;padding:8px 6px;font-size:13.5px}
+  .staff-tbl th:nth-child(1),.staff-tbl td:nth-child(1){width:19%}
+  .staff-tbl th:nth-child(2),.staff-tbl td:nth-child(2){width:23%}
+  .staff-tbl th:nth-child(3),.staff-tbl td:nth-child(3){width:31%}
+  .staff-tbl th:nth-child(4),.staff-tbl td:nth-child(4){width:27%}
+  .staff-tbl th,.staff-tbl td{padding:8px 3px}
+  .staff-tbl td:nth-child(4){text-align:right}
+  .staff-tbl .btn.sm{width:100%;margin:2px 0;padding:0 6px;font-size:12.5px}
+  .staff-tbl .lock{white-space:nowrap}
+}
 </style>
 </head>
 <body>
@@ -260,7 +272,7 @@ function renderRoles() {
   $('who').innerHTML = `<span>${esc(me.name || '')}${me.name ? ' · ' : ''}${esc(me.email)}</span><a class="btn sm" href="/app/?app=1">В приложение</a><button class="btn sm" onclick="logout()">Выйти</button>`;
   renderTeam();
 }
-const staffRows = (items) => items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="white-space:nowrap;text-align:right">${s.locked ? '<span class="lock">защищённый админ</span>' : `<button class="btn sm" onclick="staffForm('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td></tr>`).join('');
+const staffRows = (items) => items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="text-align:right">${s.locked ? '<span class="lock">защищён</span>' : `<button class="btn sm" onclick="staffForm('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td></tr>`).join('');
 async function renderTeam() {
   const box = $('team');
   if (!S.me.isAdmin) {
@@ -270,8 +282,8 @@ async function renderTeam() {
   }
   box.innerHTML = '<p class="empty">Загружаем доступы…</p>';
   const r = await api('/cabinet/staff'); S.staff = r.items;
-  box.innerHTML = `<div class="head"><div><span class="eyebrow">Доступы команды</span><h2 style="margin-top:6px">Кто и куда заходит</h2></div><button class="btn gold sm" onclick="staffForm('')">+ Добавить участника</button></div>
-    <div class="tbl" style="margin-top:10px"><div class="scroll"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div></div>`;
+  box.innerHTML = `<div class="row" style="justify-content:flex-end"><button class="btn gold sm fixed" onclick="staffForm('')">+ Добавить участника</button></div>
+    <div class="tbl" style="margin-top:10px"><div class="scroll"><table class="staff-tbl"><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div></div>`;
 }
 function staffForm(email) {
   const s = (S.staff || []).find((x) => x.email === email);
@@ -514,9 +526,9 @@ async function renderAccess() {
   const box = $('report');
   if (!S.me.isAdmin) { box.innerHTML += '<p class="msg err">Таблица доступов видна только админам.</p>'; return; }
   const r = await api('/cabinet/staff'); S.staff = r.items;
-  box.innerHTML = `<div class="head"><div><span class="eyebrow">Админ · рабочий кабинет</span><h1 style="margin-top:6px">Управление доступами</h1><p style="margin-top:6px">Кто и куда заходит</p></div><button class="btn gold sm" onclick="staffForm('')">+ Добавить участника</button></div>
+  box.innerHTML = `<div class="head"><div><span class="eyebrow">Админ · рабочий кабинет</span><h1 style="margin-top:6px">Управление доступами</h1></div><button class="btn gold sm" onclick="staffForm('')">+ Добавить участника</button></div>
     <div class="notice">Два администратора имеют одинаковые права. Их нельзя удалить или понизить. Любому другому участнику можно назначить несколько ролей — роль «Пользователь» есть у каждого.</div>
-    <div class="tbl"><div class="scroll"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div></div>`;
+    <div class="tbl"><div class="scroll"><table class="staff-tbl"><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div></div>`;
 }
 async function refreshStaff() { if ($('v-home').classList.contains('on')) renderTeam(); else if (S.page === 'access') renderAccess(); }
 async function staffSave() {
