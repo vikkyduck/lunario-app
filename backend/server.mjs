@@ -584,7 +584,7 @@ function lunarPack(u) {
 }
 const topicOf = (q) => (C.TOPICS.find(([, re]) => re.test(q)) || ['self'])[0];
 const testRate = new Map();
-const MOOD_RU = new Proxy({}, { get: (_, k) => { const m = C.moodInfo(k); return m ? m.label : String(k); } });
+const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : String(k); } });
 const moodTone = (k) => { const m = C.moodInfo(k); return m ? m.tone : '0'; };
 /* Неделя по отметкам настроения — для «Итогов недели» и отчёта по настроениям */
 function weekSummary(u) {
@@ -612,23 +612,33 @@ function weekSummary(u) {
 const HABIT_MILESTONES = [30, 60, 90, 180, 365];
 const WD_RULES = [[1, /(^|[^а-я])(пн|понедельн)/], [2, /(^|[^а-я])(вт([^а-я]|$)|вторн)/], [3, /(^|[^а-я])(ср([^а-я]|$)|сред)/], [4, /(^|[^а-я])(чт|четверг)/],
   [5, /(^|[^а-я])(пт|пятниц)/], [6, /(^|[^а-я])(сб|суббот)/], [7, /(^|[^а-я])(вс([^а-я]|$)|воскрес)/]];
+const WORD_NUM = { один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10, пару: 2, пара: 2 };
+const numIn = (t, re) => { const m = re.exec(t); if (!m) return null; const v = m[1]; return /^\d+$/.test(v) ? Number(v) : WORD_NUM[v] || null; };
 function parseRule(text) {
-  const t = String(text || '').toLowerCase().replace(/ё/g, 'е').trim();
-  if (!t || /кажд(ый|ого|ое|ую) ?(день|дня|утро|вечер|ночь)|ежеднев|daily|всегда|постоянно/.test(t)) return 'daily';
-  if (/будн/.test(t)) return 'weekdays';
+  const t = String(text || '').toLowerCase().replace(/ё/g, 'е').replace(/[.,!]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t || /кажд(ый|ого|ое|ую) ?(день|дня|утро|вечер|ночь|сутки)|ежеднев|daily|всегда|постоянно|утром|вечером|перед сном|на ночь|за завтраком|раз в день|в день/.test(t)) return 'daily';
+  if (/будн|рабоч/.test(t)) return 'weekdays';
   if (/выходн/.test(t)) return 'weekend';
-  if (/через ?день/.test(t)) return 'alt';
+  if (/через ?день|день через день/.test(t)) return 'alt';
+  const everyDays = numIn(t, /кажд(?:ые|ый|ую)?\s+([а-я\d]+)\s*(?:дн|день|сут)/) ?? numIn(t, /раз\s+в\s+([а-я\d]+)\s*(?:дн|сут)/) ?? numIn(t, /через\s+([а-я\d]+)\s*(?:дн|сут)/);
+  if (everyDays && everyDays >= 2) return 'every:' + Math.min(60, everyDays);
+  const everyWeeks = numIn(t, /кажд(?:ые|ую)?\s+([а-я\d]+)\s*недел/) ?? numIn(t, /раз\s+в\s+([а-я\d]+)\s*недел/);
+  if (everyWeeks && everyWeeks >= 2) return 'every:' + Math.min(60, everyWeeks * 7);
   const days = WD_RULES.filter(([, re]) => re.test(t)).map(([n]) => n);
   if (days.length) return 'days:' + days.join(',');
-  const m = /(\d+)\s*раз/.exec(t);
-  if (/недел/.test(t)) return m && Number(m[1]) > 1 ? 'times:' + Math.min(6, Number(m[1])) : 'weekly';
-  if (/месяц|ежемес/.test(t)) return 'monthly';
-  return 'daily';
+  const times = numIn(t, /([а-я\d]+)\s*раз/);
+  if (/недел/.test(t)) return times && times > 1 ? 'times:' + Math.min(6, times) : 'weekly';
+  if (/месяц|ежемес/.test(t)) return times && times > 1 ? 'mtimes:' + Math.min(20, times) : 'monthly';
+  if (/год|ежегод/.test(t)) return 'free';
+  return 'free';   /* непонятный ритм не подгоняем под ежедневный — привычка ждёт отметки, когда нужно человеку */
 }
 const RULE_LABEL = (rule) => rule === 'daily' ? 'каждый день' : rule === 'weekdays' ? 'по будням' : rule === 'weekend' ? 'по выходным' : rule === 'alt' ? 'через день'
-  : rule === 'weekly' ? 'раз в неделю' : rule === 'monthly' ? 'раз в месяц' : rule.startsWith('times:') ? `${rule.slice(6)} раза в неделю`
+  : rule === 'weekly' ? 'раз в неделю' : rule === 'monthly' ? 'раз в месяц' : rule === 'free' ? 'в своём ритме' : rule.startsWith('times:') ? `${rule.slice(6)} раза в неделю`
+  : rule.startsWith('mtimes:') ? `${rule.slice(7)} раза в месяц` : rule.startsWith('every:') ? `каждые ${rule.slice(6)} дн.`
   : rule.startsWith('days:') ? rule.slice(5).split(',').map((n) => ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'][Number(n)]).join(', ') : rule;
 const wdOf = (day) => ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;     // 1 — понедельник … 7 — воскресенье
+/* Ритм привычек перечитывается из слов человека при каждом запуске: парсер умнеет — старые записи подтягиваются */
+for (const h of db.prepare("SELECT id, rule, rule_text FROM habits WHERE rule_text <> ''").all()) { const r = parseRule(h.rule_text); if (r !== h.rule) db.prepare('UPDATE habits SET rule = ? WHERE id = ?').run(r, h.id); }
 const addDays = (day, n) => new Date(Date.parse(day) + n * 864e5).toISOString().slice(0, 10);
 const weekStart = (day) => addDays(day, 1 - wdOf(day));
 /* нужно ли делать привычку в этот день; для недельных и месячных — «ещё не сделана в этом периоде» */
@@ -639,6 +649,13 @@ function habitDue(h, day, marks) {
   if (r === 'weekend') return wd >= 6;
   if (r === 'alt') return Math.round((Date.parse(day) - Date.parse(h.created_at.slice(0, 10))) / 864e5) % 2 === 0;
   if (r.startsWith('days:')) return r.slice(5).split(',').map(Number).includes(wd);
+  if (r === 'free') return true;
+  if (r.startsWith('every:')) {   /* каждые N дней: отсчёт от первой отметки, до неё — от дня добавления */
+    const n = Math.max(2, Number(r.slice(6))), first = [...marks].sort()[0] || h.created_at.slice(0, 10);
+    const diff = Math.round((Date.parse(day) - Date.parse(first)) / 864e5);
+    return diff >= 0 && diff % n === 0 || marks.has(day);
+  }
+  if (r.startsWith('mtimes:')) { const need = Number(r.slice(7)), m = day.slice(0, 7); return [...marks].filter((x) => x.startsWith(m) && x !== day).length < need || marks.has(day); }
   if (r === 'weekly' || r.startsWith('times:')) {
     const need = r === 'weekly' ? 1 : Number(r.slice(6)), ws = weekStart(day);
     let done = 0; for (let i = 0; i < 7; i++) if (marks.has(addDays(ws, i))) done++;
@@ -650,6 +667,19 @@ function habitDue(h, day, marks) {
 /* серия: сколько подряд «нужных» дней (для недельных — недель, для месячных — месяцев) отмечено к сегодняшнему дню */
 function habitStreak(h, d, marks) {
   const r = h.rule || 'daily';
+  if (r === 'free') return marks.size;                       /* свой ритм: считаем отметки, а не пропуски */
+  if (r.startsWith('every:')) {                              /* каждые N дней: подряд закрытые «нужные» дни */
+    const n = Math.max(2, Number(r.slice(6))), first = [...marks].sort()[0]; if (!first) return 0;
+    let c = 0, cur = first; const last = marks.has(d) ? d : addDays(d, -1);
+    while (cur <= last) { if (marks.has(cur)) c++; else if (cur < addDays(last, -(n - 1))) c = 0; cur = addDays(cur, n); }
+    return c;
+  }
+  if (r.startsWith('mtimes:')) {
+    const need = Number(r.slice(7)); let n = 0; const cnt = (m) => [...marks].filter((x) => x.startsWith(m)).length;
+    let [y, m] = d.split('-').map(Number); if (cnt(d.slice(0, 7)) >= need) n++;
+    for (let k = 1; k < 120; k++) { m--; if (m === 0) { m = 12; y--; } if (cnt(`${y}-${String(m).padStart(2, '0')}`) >= need) n++; else break; }
+    return n;
+  }
   if (r === 'weekly' || r.startsWith('times:')) {
     const need = r === 'weekly' ? 1 : Number(r.slice(6)); let n = 0; const ws = weekStart(d);
     const count = (start) => { let c = 0; for (let i = 0; i < 7; i++) if (marks.has(addDays(start, i))) c++; return c; };
@@ -1260,8 +1290,9 @@ const server = createServer(async (req, res) => {
 
       if (p === '/api/mood' && req.method === 'POST') {
         const b = await readBody(req);
-        const mood = clean(b.mood, 20);
-        if (!C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
+        const mood = clean(b.mood, 30);
+        const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* своё слово: «own:собранно» */
+        if (!own && !C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
         db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
         const month = d.slice(0, 7);
         const stats = db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, month + '%');

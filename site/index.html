@@ -275,11 +275,13 @@ body.fixed .view.on{flex:1 1 0;min-height:0!important}
 /* сотрудникам и админам — обратный путь в кабинеты прямо с главной; кнопка не сдвигает статичный экран */
 .cabs{position:absolute;right:52px;top:0;height:42px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:999px;background:var(--glass-bg);border:1px solid rgba(217,184,104,.45);box-shadow:var(--glass-shadow);color:var(--gold-2);font-size:13.5px;font-weight:650;text-decoration:none;white-space:nowrap}
 .cabs[hidden]{display:none}
-#v-home .row.staff{padding-right:168px}
+#v-home .row.hdr .cabs,#v-home .row.hdr .acct{position:static;flex:0 0 auto}
+#v-home .row.hdr{gap:8px}
+#v-home .row.hdr .grow{min-width:0}
+#v-home .row.hdr h1{overflow-wrap:anywhere}
 @media(max-width:600px){
   .cabs{width:42px;padding:0;justify-content:center;font-size:0;gap:0}
   .cabs::before{content:'';width:20px;height:20px;background:var(--gold);-webkit-mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat;mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat}
-  #v-home .row.staff{padding-right:104px}
   body.staff .sq{max-height:calc((100dvh - 452px)/2)}
 }
 .moonline{display:flex;align-items:center;gap:12px;margin-top:14px;background:none;border:0;padding:0;color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
@@ -607,7 +609,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 
   <!-- ГЛАВНАЯ: пожелание, луна и лунный день, пять квадратов, всё остальное плитками -->
   <section class="view" id="v-home">
-    <div class="row" style="position:relative;padding-right:52px;align-items:flex-start">
+    <div class="row hdr" style="align-items:flex-start">
       <div class="grow"><span class="eyebrow" id="h-date"></span><h1 id="h-wish" style="margin-top:6px">Лунарио</h1></div>
       <a class="cabs" id="h-cabs" href="/app/cabinet" onclick="openCabinet();return false" hidden aria-label="Вернуться в кабинеты">← Кабинеты</a>
       <button class="acct" id="h-acct" type="button" onclick="go('account')" aria-label="Аккаунт">✦</button>
@@ -1303,7 +1305,7 @@ async function loadShelves(){
       + row('Натальная карта', a.natal && a.natal.sun ? `☉ ${a.natal.sun}${a.natal.moon ? ` · ☽ ${a.natal.moon}` : ''}${a.natal.asc ? ` · Asc ${a.natal.asc}` : ''}` : '')
       + row('В Лунарио', `с ${fd(a.since)}${a.streak ? ` · серия ${a.streak}` : ''}${a.plus ? ' · Плюс' : ''}`) + row('Почта', esc(a.email));
     const wk = dy.week.filter((w) => w.moodRu).map((w) => `${fd(w.day).slice(0, 5)} — ${w.moodRu}`).join(', ');
-    const day = row('Настроение', esc(dy.moodRu)) + row('Карта дня', dy.card ? esc(dy.card.name) : '') + row('Число дня', dy.number && dy.number.n ? `${dy.number.n}<small> · ${esc(dy.number.text)}</small>` : '')
+    const day = row('Настроение', esc(dy.moodRu)) + row('Карта дня', dy.card ? esc(dy.card.name) : '')
       + row('Луна', `${esc(dy.moon || '')}${dy.lunar ? ` · ${dy.lunar.n}-й лунный день` : ''}`) + row('Неделя', esc(wk))
       + row('Дневник', dy.journal.length ? dy.journal.map((j) => `<small>${fd(j.day).slice(0, 5)}</small> ${esc(j.text)}`).join('<br>') : '')
       + row('Желания', dy.wishes.open.length ? esc(dy.wishes.open.join(' · ')) + (dy.wishes.done ? `<small> · исполнено ${dy.wishes.done}</small>` : '') : '')
@@ -1421,6 +1423,7 @@ function paintToday(){
   renderMoods(); paintCardTile(); paintLunar(); loadNumerology();
 }
 const plural=(n,a,b,c)=>{const m=n%100;if(m>=11&&m<=14)return c;const l=n%10;return l===1?a:l>=2&&l<=4?b:c;};
+function pickOwnMood(){ const w = ($('mood-own').value || '').trim().split(/\s+/)[0] || ''; if (!w) { toast('Напишите одно слово'); return; } pickMood('own:' + w.slice(0, 24)); }
 async function pickMood(id){
   hap(9);
   try{
@@ -1478,7 +1481,7 @@ function yearHtml(y){
     <img class="yr-img" src="${i.image}?v=1" width="1080" height="1080" alt="Личный год ${y.n} · ${esc(i.energy)}">
     <div class="row" style="gap:14px;align-items:flex-start;margin-top:14px">
       <span class="serif" style="font-size:36px;color:var(--gold);width:44px;text-align:center">${y.n}</span>
-      <div class="grow"><b>Личный год ${y.n}</b><small>${esc(i.planet)} · ${esc(i.energy)}<br>${yearPeriod(y)}</small><p style="font-size:14px;margin-top:6px">${esc(y.text || '')}</p></div>
+      <div class="grow"><b>Личный год ${y.n}</b><small>${esc(i.planet)} · ${esc(i.energy)}<br>${yearPeriod(y)}</small>${i.message ? `<p style="font-size:16px;margin-top:8px;color:#fff;font-style:italic">${esc(i.message)}</p>` : `<p style="font-size:14px;margin-top:6px">${esc(y.text || '')}</p>`}</div>
     </div>
     ${actionsHtml(id)}
   </div>
@@ -2196,11 +2199,10 @@ async function drawPostcard(p){
     let yy = drawText(ctx, `ЛИЧНЫЙ ГОД ${y.n} · ${y.from ? 'С ' + ruDate(y.from, true).toUpperCase() : y.year}`, 540, 1240, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
     yy = drawText(ctx, i.energy || '', 540, yy + 24, { size: 62, weight: 600, color: '#f5f2ea', maxW: 940, lh: 1.15 });
     if (i.planet) yy = drawText(ctx, i.planet.toUpperCase(), 540, yy + 4, { size: 28, color: '#b9b2cf', spacing: 5 });
-    if (i.caption) yy = drawText(ctx, i.caption, 540, yy + 34, { size: 30, italic: true, color: '#ded8ee', maxW: 880, lh: 1.35 });
-    if (y.text) {
-      ctx.fillStyle = 'rgba(217,184,104,.6)'; ctx.fillRect(512, yy + 16, 56, 2);
-      drawText(ctx, y.text, 540, yy + 70, { size: 34, color: '#f5f2ea', maxW: 880, lh: 1.42 });
-    }
+    if (i.message) {   /* послание года — фраза, которую не стыдно поставить на экран блокировки */
+      ctx.fillStyle = 'rgba(217,184,104,.6)'; ctx.fillRect(512, yy + 22, 56, 2);
+      drawText(ctx, i.message, 540, yy + 84, { size: 42, weight: 600, color: '#f5f2ea', maxW: 900, lh: 1.32 });
+    } else if (i.caption) yy = drawText(ctx, i.caption, 540, yy + 34, { size: 30, italic: true, color: '#ded8ee', maxW: 880, lh: 1.35 });
   } else if (p.type === 'runes' || p.type === 'spread') {
     const kind = p.type === 'spread' ? 'tarot' : 'rune';
     const L = layoutOf(kind, p.layout) || { title: '', pos: [] };
@@ -2339,7 +2341,11 @@ async function remSave(f, patch){
 }
 async function remTest(f){
   track('reminder_test', f);
-  try { const r = await api('/reminders/test', { method: 'POST', body: JSON.stringify({ feature: f }) }); toast(r.ok ? 'Отправили — появится через пару секунд' : 'Не получилось отправить'); }
+  try {
+    const r = await api('/reminders/test', { method: 'POST', body: JSON.stringify({ feature: f }) });
+    toast(r.ok ? 'Отправили — появится через пару секунд' : 'Не получилось отправить');
+    if (r.ok) setTimeout(() => { const box = document.querySelector(`[data-rem="${f}"] .rem-status`); if (box) box.innerHTML += `<br><span style="color:#cdc6e2">Не появилось? ${IS_IOS ? 'На айфоне уведомления приходят только в приложение с экрана «Домой».' : /Mac/.test(navigator.platform) ? 'Проверьте, разрешены ли уведомления для этого браузера: Системные настройки → Уведомления. Режим «Не беспокоить» тоже их прячет.' : /Android/.test(navigator.userAgent) ? 'Проверьте разрешение на уведомления для браузера в настройках Android и что сайт не в «тихом» режиме.' : 'Проверьте, что уведомления браузера разрешены в системе.'}</span>`; }, 6000);
+  }
   catch (e) { toast(e.code === 'too_many' ? 'Не чаще трёх раз за десять минут' : e.code === 'no_push' ? 'Сначала включите напоминание' : 'Не получилось отправить'); }
 }
 /* публичный ключ сервера приходит строкой base64url — браузеру он нужен байтами */
@@ -2670,17 +2676,21 @@ const MOUTH = { joy:'M11.5 18.5q4.5 4.5 9 0', trust:'M12 19q4 3 8 0', fear:'M11.
   sadness:'M11.5 20.5q4.5-4 9 0', disgust:'M11.5 19.5q2 1.6 4.5 0t4.5 0', anger:'M11.5 20.5q4.5-3 9 0', anticipation:'M12.5 19.5h7' };
 const moodList = () => (CAT && CAT.moods && CAT.moods.length ? CAT.moods : MOOD_FALLBACK.map(([key, label, family]) => ({ key, label, family })));
 const moodFams = () => (CAT && CAT.moodFamilies) || FAM_FALLBACK;
-function moodInfo(key){ const k = ((CAT && CAT.legacyMoods) || LEGACY_FALLBACK)[key] || key; return moodList().find(m => m.key === k) || null; }
+/* своё слово: хранится как «own:слово» — на экране и в отчёте показывается как есть, без лепестка */
+const ownMood = (key) => typeof key === 'string' && key.startsWith('own:') ? key.slice(4) : '';
+function moodInfo(key){ if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = ((CAT && CAT.legacyMoods) || LEGACY_FALLBACK)[key] || key; return moodList().find(m => m.key === k) || null; }
 const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : String(k); } });
-const moodFace = (key) => { const m = moodInfo(key); if (!m) return 'joy'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
-const moodColor = (key) => { const m = moodInfo(key); const fam = m ? (m.family === 'dyad' ? moodFace(key) : m.family) : 'dyad'; return (moodFams()[fam] || FAM_FALLBACK.dyad)[1]; };
+const moodFace = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return 'anticipation'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
+const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || FAM_FALLBACK.dyad)[1]; };
 const moodSvg = (mood, size) => `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" style="color:${moodColor(mood)}"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/><path d="${MOUTH[moodFace(mood)]}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
 function renderMoods(){
   const fams = moodFams(), list = moodList();
   const chip = (m) => `<button type="button" class="chip mchip${S.mood === m.key ? ' on' : ''}" style="--c:${moodColor(m.key)}" onclick="pickMood('${m.key}')">${esc(m.label)}</button>`;
   const cur = moodInfo(S.mood);
   $('t-moods').className = 'mfams';
+  const own = ownMood(S.mood);
   $('t-moods').innerHTML = (cur ? `<div class="mpick">${moodSvg(S.mood, 40)}<div class="grow"><b style="display:block;font-size:15px;color:#fff">Сегодня — ${esc(cur.label)}</b><small style="color:#8f87ad;font-size:12.5px">Можно выбрать другой оттенок — отметка обновится</small></div></div>` : '')
+    + `<div class="mfam"><i class="fdot" style="background:#e9c77e"></i><span class="fname">Своё слово</span><div class="grow"><div class="row" style="gap:8px"><input id="mood-own" maxlength="24" placeholder="Например: собранно" value="${esc(own)}" onkeydown="if(event.key==='Enter')pickOwnMood()" style="min-height:44px;padding:10px 14px;border-radius:14px"><button class="btn sm" type="button" style="min-height:44px;padding:0 16px" onclick="pickOwnMood()">✓</button></div><small class="hint" style="display:block;margin-top:6px">Одно слово — как есть у вас сейчас</small></div></div>`
     + ['joy', 'trust', 'fear', 'surprise', 'sadness', 'disgust', 'anger', 'anticipation', 'dyad'].map((f) => `<div class="mfam"><i class="fdot" style="background:${fams[f][1]}"></i><span class="fname">${esc(fams[f][0])}</span><div class="chips flow">${list.filter(m => m.family === f).map(chip).join('')}</div></div>`).join('');
 }
 /* смайлик настроения на открытке — лепесток даёт рот и цвет */
@@ -2780,11 +2790,11 @@ function paintHabits(){
   const id = HB.length ? regRes({ type: 'habits', items: HB, day: today }) : '';
   box.innerHTML = `${HB.length ? `<div class="card today-list"><span class="eyebrow">Сегодня</span>
       ${due.length ? `<p style="font-size:14px;margin-top:6px;color:${done === due.length ? 'var(--gold)' : 'inherit'}">${done === due.length ? 'Всё на сегодня отмечено ✦' : `Отмечено ${done} из ${due.length}`}</p>
-      <div class="list" style="margin-top:10px">${due.map(h => `<div class="item hb${h.today ? ' on' : ''}" style="padding:10px 12px"><button type="button" class="hb-check" onclick="habitMark(${h.id})" aria-label="Отметить">${h.today ? '✓' : ''}</button><div class="grow"><b style="margin:0">${esc(h.title)}</b><small>${h.streak ? `серия · ${h.streak} ${h.daily ? plural(h.streak, 'день', 'дня', 'дней') : h.rule === 'monthly' ? plural(h.streak, 'месяц', 'месяца', 'месяцев') : plural(h.streak, 'неделя', 'недели', 'недель')}` : esc(h.ruleLabel)}</small></div></div>`).join('')}</div>` : '<p style="font-size:14px;margin-top:6px">На сегодня ничего не запланировано — отдыхайте.</p>'}</div>` : '<p style="font-size:14.5px;text-align:center">Привычка — то, что нужно встроить в каждый день, как чистить зубы. Запишите, что прививаете, и как часто.</p>'}
+      <div class="list" style="margin-top:10px">${due.map(h => `<div class="item hb${h.today ? ' on' : ''}" style="padding:10px 12px"><button type="button" class="hb-check" onclick="habitMark(${h.id})" aria-label="Отметить">${h.today ? '✓' : ''}</button><div class="grow"><b style="margin:0">${esc(h.title)}</b><small>${esc(h.ruleText || h.ruleLabel)}${h.streak && h.rule !== 'free' ? ` · серия ${h.streak}` : ''}</small></div></div>`).join('')}</div>` : '<p style="font-size:14px;margin-top:6px">На сегодня ничего не запланировано — отдыхайте.</p>'}</div>` : '<p style="font-size:14.5px;text-align:center">Привычка — то, что нужно встроить в каждый день, как чистить зубы. Запишите, что прививаете, и как часто.</p>'}
     ${HB.length ? `<span class="eyebrow" style="margin-top:18px">Мои привычки</span><div class="list" style="margin-top:8px">${HB.map(h => `<div class="item hb${h.today ? ' on' : ''}${hbEditing === h.id ? ' editing' : ''}">
         <button type="button" class="hb-check" onclick="habitMark(${h.id})" aria-label="Отметить сегодня">${h.today ? '✓' : ''}</button>
-        <div class="grow"><b>${esc(h.title)}<span class="hb-rule">${esc(h.ruleLabel)}</span>${h.awards.length ? `<span class="hb-badge">${awardIcon(h.awards[h.awards.length - 1], 16)} ${h.awards[h.awards.length - 1]}</span>` : ''}</b>
-          <small>${h.streak ? `серия · ${h.streak} ${h.daily ? plural(h.streak, 'день', 'дня', 'дней') : h.rule === 'monthly' ? plural(h.streak, 'месяц', 'месяца', 'месяцев') : plural(h.streak, 'неделя', 'недели', 'недель')}` : 'серия ещё не началась'}${h.daily && h.next ? ` · до награды ${h.next - h.streak} ${plural(h.next - h.streak, 'день', 'дня', 'дней')}` : ''}</small>
+        <div class="grow"><b>${esc(h.title)}<span class="hb-rule">${esc(h.ruleText || h.ruleLabel)}</span>${h.awards.length ? `<span class="hb-badge">${awardIcon(h.awards[h.awards.length - 1], 16)} ${h.awards[h.awards.length - 1]}</span>` : ''}</b>
+          <small>${h.rule === 'free' ? `отмечено ${h.total} ${plural(h.total, 'раз', 'раза', 'раз')} · ритм ваш, отмечайте когда нужно` : h.streak ? `серия · ${h.streak} ${h.daily ? plural(h.streak, 'день', 'дня', 'дней') : h.rule === 'monthly' || h.rule.startsWith('mtimes:') ? plural(h.streak, 'месяц', 'месяца', 'месяцев') : h.rule.startsWith('every:') ? plural(h.streak, 'раз', 'раза', 'раз') : plural(h.streak, 'неделя', 'недели', 'недель')}` : 'серия ещё не началась'}${h.daily && h.next ? ` · до награды ${h.next - h.streak} ${plural(h.next - h.streak, 'день', 'дня', 'дней')}` : ''}</small>
           <div class="hd-row">${h.week.map(w => `<button type="button" class="hd${w.done ? ' on' : ''}${w.day === today ? ' today' : ''}" style="${w.due ? '' : 'opacity:.35'}" onclick="habitMark(${h.id},'${w.day}')" aria-label="${fmtDay(w.day)}"><span>${WD_SHORT[wdIdx(w.day)]}</span></button>`).join('')}</div>
           <div class="hb-edit"><div class="field" style="margin-bottom:8px"><label>Название</label><input id="hb-t-${h.id}" value="${esc(h.title)}" maxlength="80"></div>
             <div class="field" style="margin-bottom:8px"><label>Регулярность — своими словами</label><input id="hb-r-${h.id}" value="${esc(h.ruleText || h.ruleLabel)}" maxlength="60" list="rule-ideas"></div>
@@ -2793,11 +2803,11 @@ function paintHabits(){
         <button type="button" class="hb-x" onclick="hbEditing===${h.id}?habitRemove(${h.id}):(hbEditing=${h.id},paintHabits())" aria-label="Изменить">${hbEditing === h.id ? '×' : '✎'}</button></div>`).join('')}</div>` : ''}
     <div class="card" style="margin-top:12px"><span class="eyebrow">Новая привычка</span>
       <div class="field" style="margin:10px 0 8px"><label>Что прививаю</label><input id="hb-new" placeholder="Например: 10 000 шагов" maxlength="80" list="hb-ideas"></div>
-      <div class="field" style="margin-bottom:8px"><label>Как часто — своими словами</label><input id="hb-rule" placeholder="каждый день, по будням, пн и чт, раз в неделю…" maxlength="60" list="rule-ideas"></div>
+      <div class="field" style="margin-bottom:8px"><label>Как часто — своими словами</label><input id="hb-rule" placeholder="каждый день, каждые 3 дня, пн и чт, 2 раза в неделю…" maxlength="60" list="rule-ideas"></div>
       <div class="chips flow" style="margin-bottom:10px">${RULE_CHIPS.map(t => `<button type="button" class="chip" onclick="$('hb-rule').value=this.textContent">${t}</button>`).join('')}</div>
       <button class="btn ghost sm" style="width:100%" onclick="habitAdd()">Добавить</button>
       <datalist id="hb-ideas">${ideas.map(t => `<option value="${esc(t)}">`).join('')}</datalist><datalist id="rule-ideas">${RULE_CHIPS.map(t => `<option value="${t}">`).join('')}</datalist>
-      <p class="hint" style="margin-top:10px">За ежедневные привычки без пропусков — награды на 30, 60, 90, 180 и 365 дней.</p></div>
+      <p class="hint" style="margin-top:10px">Ритм — любой, вашими словами. Если мы его не поняли, привычка просто будет ждать отметки, когда вам нужно. За ежедневные без пропусков — награды на 30, 60, 90, 180 и 365 дней.</p></div>
     <div class="card" style="margin-top:12px">${remBox('habits')}</div>
     ${HB.length ? actionsHtml(id, true) : ''}`;
   paintRem('habits'); preparePending();
@@ -2924,17 +2934,16 @@ function renderWishes(r){
 /* картинка уменьшается прямо в телефоне до нужной стороны и уходит как jpeg */
 function pickImage(maxSide, quality){
   return new Promise((resolve) => {
-    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
-    inp.onchange = () => {
-      const f = inp.files && inp.files[0]; if (!f) return resolve(null);
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif';
+    inp.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0'; document.body.appendChild(inp);
+    const done = (v) => { inp.remove(); resolve(v); };
+    inp.onchange = async () => {
+      const f = inp.files && inp.files[0]; if (!f) return done(null);
+      const draw = (w, h, src) => { const k = Math.min(1, maxSide / Math.max(w, h)), cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k); cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height); return cv.toDataURL('image/jpeg', quality); };
+      try { if (window.createImageBitmap) { const bm = await createImageBitmap(f); const out = draw(bm.width, bm.height, bm); bm.close && bm.close(); return done(out); } } catch (e) { /* формат не читается — пробуем через Image */ }
       const im = new Image(); const url = URL.createObjectURL(f);
-      im.onload = () => {
-        const k = Math.min(1, maxSide / Math.max(im.width, im.height)), cv = document.createElement('canvas');
-        cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
-        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
-        resolve(cv.toDataURL('image/jpeg', quality));
-      };
-      im.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      im.onload = () => { const out = draw(im.width, im.height, im); URL.revokeObjectURL(url); done(out); };
+      im.onerror = () => { URL.revokeObjectURL(url); toast('Не удалось прочитать файл — выберите JPG, PNG или скриншот'); done(null); };
       im.src = url;
     };
     inp.click();
@@ -2943,7 +2952,7 @@ function pickImage(maxSide, quality){
 async function wishPhoto(id){
   const photo = await pickImage(900, 0.82); if (!photo) return;
   try { const r = await api('/wishes/photo', { method: 'POST', body: JSON.stringify({ id, photo }) }); renderWishes(r); track('wish_add', 'photo'); toast('Фото добавлено ✦'); }
-  catch (e) { toast('Не получилось загрузить фото'); }
+  catch (e) { toast(e.status === 413 ? 'Фото слишком большое — попробуйте другое' : 'Не получилось загрузить фото'); }
 }
 function showWishPhoto(id, t){
   $('pc-img').src = `/app/api/wishes/photo?id=${id}&t=${t}`; $('pc').classList.add('on');
@@ -2962,7 +2971,7 @@ function paintAvatar(){
 async function setPhoto(){
   const photo = await pickImage(320, 0.85); if (!photo) return;
   try { const r = await api('/photo', { method: 'POST', body: JSON.stringify({ photo }) }); S.user = Object.assign(S.user, r.user); paintAvatar(); toast('Фото сохранено ✦'); }
-  catch (e) { toast('Не получилось загрузить фото'); }
+  catch (e) { toast(e.status === 413 ? 'Фото слишком большое — попробуйте другое' : 'Не получилось загрузить фото'); }
 }
 async function removePhoto(){ try { const r = await api('/photo', { method: 'DELETE' }); S.user = Object.assign(S.user, r.user); paintAvatar(); } catch (e) { toast('Не получилось'); } }
 

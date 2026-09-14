@@ -124,7 +124,7 @@ export function notificationFor(feature, u) {
   if (feature === 'habits') {
     const items = hooks.habitList ? hooks.habitList(u.id, d) : [];
     if (!items.length) return { ...tpl('habits-пусто'), url };
-    const left = items.filter((h) => h.due && !h.today);
+    const left = items.filter((h) => h.due && !h.today && h.rule !== 'free');   /* свой ритм не подгоняем напоминаниями */
     if (!left.length) return null;
     const t = tpl('habits', { 'список': left.map((h) => h.title).join(', '), 'осталось': left.length, 'всего': items.filter((h) => h.due).length });
     return { title: t.title, body: t.body.slice(0, 220), url };

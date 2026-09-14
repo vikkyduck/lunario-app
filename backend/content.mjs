@@ -378,7 +378,7 @@ const NUM_YEAR_FALLBACK = {
 const yearFromArticle = (e) => {
   const f = e.fields;
   return {
-    n: num(f['число'], 0), planet: f['планета'] || '', energy: f['энергия'] || '', caption: f['подпись'] || '',
+    n: num(f['число'], 0), planet: f['планета'] || '', energy: f['энергия'] || '', caption: f['подпись'] || '', message: f['послание'] || '',
     image: img('year', f['картинка']), blocks: e.sections['Описание'] || [],
   };
 };
