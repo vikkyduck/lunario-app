@@ -245,7 +245,8 @@ body.fixed .view.on{flex:1 1 0;min-height:0!important}
 .heromoon{position:absolute;display:none;pointer-events:none;width:620px;height:620px;right:-222px;top:calc(env(safe-area-inset-top) + 56px)}
 body.hello .heromoon{display:block}
 .heromoon canvas{width:100%;height:100%;display:block;filter:drop-shadow(0 0 60px rgba(217,184,104,.18))}
-@media(min-width:900px){.heromoon{width:680px;height:680px;right:auto;left:calc(50% + 70px);top:calc(50% - 340px)}}
+@media(min-width:900px){.heromoon{width:680px;height:680px;right:auto;left:calc(50% - 60px);top:calc(50% - 340px)}}
+@media(min-width:1400px){.heromoon{width:760px;height:760px;left:calc(50% - 100px);top:calc(50% - 380px)}}
 @media(max-height:720px){
   #v-hello .hero{font-size:clamp(40px,12vw,54px);padding-top:4px}
   #v-hello .hl1{margin-top:16px;font-size:clamp(24px,6.6vw,28px)}
@@ -351,19 +352,50 @@ body.hello .heromoon{display:block}
 body.wg-open{overflow:hidden}
 /* на телефоне навигации внизу нет: разделы открываются с главной */
 /* ── широкий экран (≥900px): тот же телефонный сценарий в столбике пошире, виджеты — панелью по центру ── */
+/* ── широкий экран (≥900px): два формата, а не растянутый телефон. Контейнер во всю ширину до 1180px,
+   плитки раскладываются по ширине; формы (анкета, вход) остаются колонкой — им ширина ни к чему ── */
 @media(min-width:900px){
-  body.inner .wrap{max-width:760px;padding:36px 40px 56px}
-  #v-home.on,#v-hello.on{max-width:520px;margin:0 auto;min-height:calc(100dvh - 92px)}
-  .sqs{max-width:430px;width:100%;margin-left:auto;margin-right:auto}
+  .wrap{max-width:1180px;padding:36px 48px 56px}
+  body.inner .wrap{max-width:1180px;padding:36px 48px 56px}
+  h1{font-size:36px}
   #v-onb.on,#v-login.on,#v-nodemo.on{max-width:520px;margin:0 auto}
   .chip:hover{border-color:rgba(217,184,104,.45)}
   .btn.ghost:hover{background:rgba(255,255,255,.1)}
-  .wid:hover,.sq:hover{border-color:rgba(217,184,104,.6)}
+  .wid:hover,.sq:hover,.mini button:hover{border-color:rgba(217,184,104,.6)}
   #t-install{display:none!important}
-  .wids{grid-template-columns:repeat(3,1fr);gap:12px}
+  /* приветствие: текст слева колонкой, луна — в правой половине */
+  #v-hello.on{max-width:560px;margin:0;min-height:calc(100dvh - 92px);justify-content:center}
+  #v-hello .hero{padding-top:0}
+  #v-hello .hl1{margin-top:32px;font-size:40px}
+  #v-hello .hl3{margin-top:26px;font-size:15.5px}
+  #v-hello .cta{margin-top:30px;padding-top:0}
+  #v-hello .linkline{margin-top:18px}
+  /* главная: шапка слева, шесть квадратов и шесть плиток — по ширине экрана, блок по центру высоты */
+  #v-home.on{max-width:none;margin:0;min-height:calc(100dvh - 92px)}
+  #v-home h1{font-size:34px;max-width:760px}
+  #v-home .row.hdr{gap:12px;align-items:flex-start}
+  .moonline{max-width:560px;margin-top:18px}
+  #v-home .sqs{max-width:none;flex:0 0 auto;align-content:start;margin-top:auto;padding-top:28px;grid-template-columns:repeat(3,1fr);gap:16px}
+  #v-home .sq{grid-column:auto;aspect-ratio:auto;max-height:none;min-height:150px;font-size:16px;gap:14px;border-radius:22px}
+  #v-home .sq .ico{width:44px;height:44px}
+  #v-home .mini{margin-top:16px;margin-bottom:auto;padding-bottom:12px;grid-template-columns:repeat(3,1fr);gap:12px}
+  #v-home .mini button{padding:16px 10px 14px;font-size:13px;gap:8px;border-radius:18px}
+  #v-home .mini button .ico{width:24px;height:24px}
+  /* разделы: плитки по ширине, сколько влезает по 230px; последний ряд растягивается */
+  .wids{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:28px}
+  .wid{padding:20px 18px 18px;min-height:150px;gap:8px;border-radius:20px}
+  .wid .ico{width:30px;height:30px;margin-bottom:6px}
+  .wid b{font-size:16px}
+  .wid span{font-size:13.5px}
+  .rows{grid-template-columns:repeat(2,1fr);gap:12px;margin-top:28px}
   .daycard{width:210px;height:334px}
-  .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:88vh;border-radius:28px;
+  .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,92vw);max-height:88vh;border-radius:28px;
     background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
+}
+@media(min-width:1180px){
+  #v-home .sqs{grid-template-columns:repeat(6,1fr)}
+  #v-home .sq{aspect-ratio:1/1.02;min-height:0}
+  #v-home .mini{grid-template-columns:repeat(6,1fr)}
 }
 /* ── карта дня: иллюстрация аркана на лицевой стороне ── */
 .daycard{width:196px;height:368px}
