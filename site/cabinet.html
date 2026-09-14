@@ -167,6 +167,11 @@ td small{display:block;color:var(--faint);font-size:13px}
 .file{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);cursor:pointer;color:inherit;font:inherit;text-align:left}
 .file:hover{border-color:rgba(224,192,112,.6)}
 .file small{color:var(--faint);font-size:13px}
+.thread{display:flex;flex-direction:column;gap:8px;max-height:44dvh;overflow:auto;margin-top:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.thread .m{max-width:82%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.thread .m.user{align-self:flex-start;background:rgba(255,255,255,.08)}
+.thread .m.support{align-self:flex-end;background:rgba(224,192,112,.18);border:1px solid rgba(224,192,112,.35)}
+.thread .m small{display:block;color:var(--faint);font-size:12px;margin-bottom:3px}
 @media(max-width:700px){
   .staff-tbl{table-layout:fixed;width:100%}
   .staff-tbl th,.staff-tbl td{white-space:normal;word-break:break-word;overflow-wrap:anywhere;padding:8px 6px;font-size:13.5px}
@@ -361,9 +366,132 @@ function renderReport(r) {
   if (r.key === 'users') html += usersTable(r);
   if (r.key === 'content') html += contentFiles(r);
   for (const t of r.tables || []) html += tableCard(t, r.key);
+  html += `<div id="extra"></div>`;
   if (r.how) html += `<div class="how"><b>Как считается.</b> ${esc(r.how)}</div>`;
   $('report').innerHTML = html;
+  const ex = EXTRAS[r.key]; if (ex) ex(r).catch((e) => { $('extra').innerHTML = `<p class="msg err">Не загрузилось: ${esc(e.code || e.message)}</p>`; });
 }
+const fmtTs = (t) => (t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
+const field = (label, inner) => `<label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--faint)">${label}${inner}</label>`;
+const utmLink = (c) => { const u = new URL('https://lunario.online/app/'); for (const k of ['source', 'medium', 'campaign', 'content', 'term']) if (c[k]) u.searchParams.set('utm_' + k, c[k]); return u.toString(); };
+const copy = (t) => navigator.clipboard.writeText(t).then(() => toast('Ссылка скопирована')).catch(() => prompt('Скопируйте ссылку', t));
+const EXTRAS = {
+  async campaigns() {
+    const r = await api('/cabinet/campaigns'); S.campaigns = r.items;
+    $('extra').innerHTML = `<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn gold sm fixed" onclick="campaignForm(0)">+ Новая кампания</button></div>
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>Кампания</th><th>UTM</th><th>Обещание · размещение</th><th>Расходы</th><th>Даты</th><th>Ссылка</th><th></th></tr></thead><tbody>${r.items.map((c) => `<tr><td><b>${esc(c.name)}</b><small>${esc((c.created_by || '').split('@')[0])}</small></td><td>${esc([c.source, c.medium, c.campaign, c.content].filter(Boolean).join(' / '))}</td><td>${esc(c.promise) || '—'}<small>${esc(c.placement)}</small></td><td class="num">${fmt(Math.round(c.cost))} ₽</td><td>${c.start_day || '—'}${c.end_day ? ' — ' + c.end_day : ''}</td><td><button class="btn sm" data-link="${esc(utmLink(c))}" onclick="copy(this.dataset.link)">Скопировать</button></td><td class="num"><button class="btn sm" onclick="campaignForm(${c.id})">Изменить</button> <button class="btn sm warn" onclick="campaignDel(${c.id})">✕</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Кампаний пока нет. Заведите первую — и получите ссылку с UTM.</td></tr>'}</tbody></table></div>
+      <p class="note">Ссылка ведёт в приложение; лендинг тоже пробрасывает UTM в приложение, так что можно вести и на lunario.online. Расходы и обещание нужны, чтобы в «Привлечении» посчиталась цена регистрации и удержанного.</p></div>`;
+  },
+  async materials() {
+    const r = await api('/cabinet/materials'); S.materials = r; const st = (k) => `<span class="pill" style="${k === 'published' ? 'border-color:rgba(168,236,198,.6);color:var(--ok)' : k === 'draft' ? 'opacity:.7' : ''}">${esc(r.statuses[k] || k)}</span>`;
+    $('extra').innerHTML = `<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn gold sm fixed" onclick="materialForm(0)">+ Новый материал</button></div>
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>Материал</th><th>Тип · раздел</th><th>Дата показа</th><th>Статус</th><th>Изменён</th><th></th></tr></thead><tbody>${r.items.map((m) => `<tr><td><b>${esc(m.title || m.text.slice(0, 60))}</b>${m.image ? `<small><a href="${esc(m.image)}" target="_blank">картинка</a></small>` : ''}</td><td>${esc(r.kinds[m.kind] || m.kind)}<small>${esc(m.section)}</small></td><td>${m.show_day || 'каждый день'}</td><td>${st(m.status)}</td><td>${fmtTs(m.updated_at)}<small>${esc((m.created_by || '').split('@')[0])}</small></td><td class="num"><button class="btn sm" onclick="materialForm(${m.id})">Открыть</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Материалов пока нет.</td></tr>'}</tbody></table></div></div>`;
+  },
+  async media() {
+    const r = await api('/cabinet/media');
+    $('extra').innerHTML = `<div class="viz" style="margin-top:14px"><h3>Загрузить</h3><div class="row" style="margin-top:10px"><input type="file" id="m-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,application/pdf" style="padding:8px"><button class="btn gold fixed" onclick="mediaUpload()">Загрузить</button><span class="hint" id="m-msg"></span></div></div>
+      <div class="files" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${r.items.map((m) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default">${m.type.startsWith('image/') && m.type !== 'image/svg+xml' ? `<img src="/app/uploads/${esc(m.file)}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:10px">` : `<div style="height:60px;display:grid;place-items:center;color:var(--faint)">${esc(m.type)}</div>`}<span style="margin-top:8px">${esc(m.name)}<br><small>${Math.round(m.size / 1024)} КБ · ${fmtTs(m.created_at)}</small></span><div class="row" style="margin-top:8px"><button class="btn sm" data-link="${location.origin}/app/uploads/${esc(m.file)}" onclick="copy(this.dataset.link)">Ссылка</button><button class="btn sm warn fixed" onclick="mediaDel(${m.id})">✕</button></div></div>`).join('') || '<p class="empty">Файлов пока нет.</p>'}</div>`;
+  },
+  async backlog() {
+    const r = await api('/cabinet/tasks'); S.tasks = r;
+    const sel = (t) => `<select style="min-height:34px;padding:4px 30px 4px 10px;font-size:14px" onchange="taskStatus(${t.id},this.value)">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${t.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
+    $('extra').innerHTML = `${r.canCreate ? `<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn gold sm fixed" onclick="taskForm(0)">+ Новая задача</button></div>` : `<div class="notice">Вы видите задачи, поставленные вашей роли${r.own ? ` («${esc(r.roles[r.own])}»)` : ''}. Меняйте статус — постановщик увидит его сразу.</div>`}
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>Задача</th><th>Кому</th><th>Приоритет</th><th>Срок</th><th>Статус</th><th>Поставил</th><th></th></tr></thead><tbody>${r.items.map((t) => `<tr style="${t.status === 'done' ? 'opacity:.55' : ''}"><td><b>${esc(t.title)}</b>${t.text ? `<small>${esc(t.text.slice(0, 140))}</small>` : ''}</td><td>${esc(r.roles[t.role] || t.role)}${t.assignee ? `<small>${esc(t.assignee)}</small>` : ''}</td><td>${t.priority === 'high' ? '<span class="pill" style="color:var(--warn);border-color:rgba(255,184,184,.5)">высокий</span>' : 'обычный'}</td><td>${t.due_day || '—'}</td><td>${sel(t)}</td><td>${esc(t.created_by)}<small>${fmtTs(t.created_at)}</small></td><td class="num">${r.canCreate ? `<button class="btn sm" onclick="taskForm(${t.id})">✎</button> <button class="btn sm warn" onclick="taskDel(${t.id})">✕</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Задач пока нет.</td></tr>'}</tbody></table></div></div>`;
+  },
+  async tickets() {
+    const q = S.data.queue || [], st = S.data.statuses || {};
+    const f = S.filters.tstatus || '';
+    const rows = q.filter((t) => !f || t.status === f);
+    $('extra').innerHTML = `<div class="chips" style="margin-top:14px">${[['', 'Все'], ...Object.entries(st)].map(([k, v]) => `<span class="chip${f === k ? ' on' : ''}" onclick="S.filters.tstatus='${k}';EXTRAS.tickets()">${esc(v)}</span>`).join('')}</div>
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>№</th><th>Пользователь</th><th>Тема</th><th>Статус</th><th>Приоритет</th><th>Первый ответ</th><th>Последнее</th><th></th></tr></thead><tbody>${rows.map((t) => `<tr><td class="num">${t.id}${t.unread ? ` <span class="pill" style="color:var(--gold-2)">${t.unread} нов.</span>` : ''}</td><td>${esc(t.user.name) || '—'}<small>${esc(t.user.email) || 'без почты'} · id ${t.user.id}</small></td><td><b>${esc(t.subject)}</b><small>${esc(t.topic)}</small></td><td>${esc(t.statusName)}</td><td>${t.priority === 'high' ? '<span style="color:var(--warn)">высокий</span>' : 'обычный'}</td><td>${t.firstReplyMin === null ? (t.status === 'resolved' ? '—' : '<span style="color:var(--warn)">ждёт</span>') : `${t.firstReplyMin} мин ${t.slaOk ? '<span class="up">✓</span>' : '<span class="down">поздно</span>'}`}</td><td>${fmtTs(t.last_at)}<small>${t.last_by === 'support' ? 'мы' : 'пользователь'}</small></td><td class="num"><button class="btn sm" onclick="ticketOpen(${t.id})">Открыть чат</button></td></tr>`).join('') || '<tr><td colspan="8" class="empty">Обращений нет.</td></tr>'}</tbody></table></div></div>`;
+  },
+  async ai() {
+    const r = await api('/cabinet/ai');
+    $('extra').innerHTML = `<div class="cfg-sec"><h3>Провайдеры ИИ</h3><p class="hint">Ключи хранятся зашифрованными и наружу не отдаются — виден только хвост. Проверка живая у GPT и Gemini; у Алисы и ГигаЧата — OAuth, сработает при первом вызове.</p>
+      <div class="files" style="margin-top:10px">${r.items.map((p) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default"><div class="row"><b style="flex:1">${esc(p.label)}</b>${p.hasKey ? `<span class="pill" style="${p.check_ok === 1 ? 'color:var(--ok);border-color:rgba(168,236,198,.6)' : p.check_ok === 0 ? 'color:var(--warn)' : ''}">${p.check_ok === 1 ? 'проверен' : p.check_ok === 0 ? 'ошибка' : 'не проверен'}</span>` : '<span class="pill" style="opacity:.6">не подключён</span>'}</div>
+        <small>${esc(p.hint)}${p.hasKey ? ` · ключ ${esc(p.keyTail)} · модель ${esc(p.model)}` : ''}${p.check_note ? ` · ${esc(p.check_note)}` : ''}</small>
+        <div style="display:grid;gap:6px;margin-top:8px"><input id="ai-key-${p.provider}" placeholder="${p.hasKey ? 'новый ключ (пусто — оставить прежний)' : 'API-ключ'}" autocomplete="off"><div class="row"><input id="ai-model-${p.provider}" value="${esc(p.model)}" placeholder="модель"><input id="ai-extra-${p.provider}" value="${esc(p.extra)}" placeholder="доп. (folder id / scope)"></div>
+        <div class="row"><button class="btn gold sm fixed" onclick="aiSave('${p.provider}')">Сохранить</button>${p.hasKey ? `<button class="btn sm fixed" onclick="aiCheck('${p.provider}')">Проверить</button><button class="btn sm warn fixed" onclick="aiDel('${p.provider}')">Убрать</button>` : ''}</div></div></div>`).join('')}</div></div>`;
+  },
+};
+function campaignForm(id) {
+  const c = (S.campaigns || []).find((x) => x.id === id) || {};
+  openModal(`<div class="head"><div><span class="eyebrow">Кампания</span><h2 style="margin-top:6px">${id ? 'Изменить' : 'Новая кампания'}</h2></div><button class="btn sm" onclick="closeModal()">Закрыть</button></div>
+    <div style="display:grid;gap:10px;margin-top:12px">${field('Название', `<input id="cp-name" value="${esc(c.name || '')}" maxlength="80" placeholder="Телеграм · сентябрь">`)}
+    <div class="row">${field('utm_source', `<input id="cp-source" value="${esc(c.source || '')}" placeholder="telegram">`)}${field('utm_medium', `<input id="cp-medium" value="${esc(c.medium || '')}" placeholder="post">`)}${field('utm_campaign', `<input id="cp-campaign" value="${esc(c.campaign || '')}" placeholder="sep-launch">`)}</div>
+    <div class="row">${field('utm_content · размещение или автор', `<input id="cp-content" value="${esc(c.content || '')}" placeholder="story-1">`)}${field('utm_term', `<input id="cp-term" value="${esc(c.term || '')}">`)}</div>
+    ${field('Рекламное обещание', `<input id="cp-promise" value="${esc(c.promise || '')}" maxlength="200" placeholder="Карта дня бесплатно">`)}
+    ${field('Где размещено (канал, автор, ссылка на пост)', `<input id="cp-placement" value="${esc(c.placement || '')}" maxlength="120">`)}
+    <div class="row">${field('Расходы, ₽', `<input id="cp-cost" type="number" inputmode="decimal" value="${c.cost || ''}">`)}${field('Старт', `<input id="cp-start" type="date" value="${c.start_day || ''}">`)}${field('Конец', `<input id="cp-end" type="date" value="${c.end_day || ''}">`)}</div>
+    <p class="hint" id="cp-link" style="word-break:break-all"></p>
+    <div class="row"><button class="btn gold fixed" onclick="campaignSave(${id})">Сохранить</button><span class="hint" id="cp-msg"></span></div></div>`);
+  const upd = () => { $('cp-link').textContent = 'Ссылка: ' + utmLink({ source: $('cp-source').value.trim().toLowerCase(), medium: $('cp-medium').value.trim().toLowerCase(), campaign: $('cp-campaign').value.trim().toLowerCase(), content: $('cp-content').value.trim().toLowerCase(), term: $('cp-term').value.trim().toLowerCase() }); };
+  ['source', 'medium', 'campaign', 'content', 'term'].forEach((k) => $('cp-' + k).addEventListener('input', upd)); upd();
+}
+async function campaignSave(id) {
+  const g = (k) => $('cp-' + k).value.trim();
+  const r = await api('/cabinet/campaigns', { method: 'POST', body: JSON.stringify({ id, name: g('name'), source: g('source'), medium: g('medium'), campaign: g('campaign'), content: g('content'), term: g('term'), promise: g('promise'), placement: g('placement'), cost: +g('cost'), start_day: g('start'), end_day: g('end') }) });
+  if (!r.ok) { $('cp-msg').textContent = r.error === 'no_name' ? 'Нужно название.' : r.error === 'no_utm' ? 'Нужен хотя бы utm_source или utm_campaign.' : 'Не сохранилось.'; return; }
+  toast('Сохранено'); closeModal(); EXTRAS.campaigns();
+}
+async function campaignDel(id) { if (!confirm('Удалить кампанию? Люди, пришедшие по её UTM, останутся в базе.')) return; await api('/cabinet/campaigns?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.campaigns(); }
+function materialForm(id) {
+  const r = S.materials, m = (r.items || []).find((x) => x.id === id) || {};
+  openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${id ? 'Изменить' : 'Новый материал'}</h2></div><button class="btn sm" onclick="closeModal()">Закрыть</button></div>
+    <div style="display:grid;gap:10px;margin-top:12px"><div class="row">${field('Тип', `<select id="mt-kind">${Object.entries(r.kinds).map(([k, v]) => `<option value="${k}" ${m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}${field('Раздел', `<select id="mt-section">${['Мой день', 'Обо мне', 'Свериться', 'Что вокруг', 'История'].map((x) => `<option ${m.section === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</div>
+    ${field('Заголовок (для заметок)', `<input id="mt-title" value="${esc(m.title || '')}" maxlength="120">`)}
+    ${field('Текст', `<textarea id="mt-text" style="min-height:160px;font-family:inherit">${esc(m.text || '')}</textarea>`)}
+    ${field('Картинка (ссылка из «Картинки и файлы»)', `<input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/…">`)}
+    <div class="row">${field('Дата показа (пусто — каждый день)', `<input id="mt-day" type="date" value="${m.show_day || ''}">`)}${field('Статус', `<select id="mt-status">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${(m.status || 'draft') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}</div>
+    <p class="hint">«Вопрос дня» и «Аффирмация» в статусе «Опубликован» подменяют текст в «Моём дне» у всех — в указанный день или каждый день, если дата пуста.</p>
+    <div class="row"><button class="btn gold fixed" onclick="materialSave(${id})">Сохранить</button>${id ? `<button class="btn sm warn fixed" onclick="materialDel(${id})">Удалить</button>` : ''}<span class="hint" id="mt-msg"></span></div></div>`);
+}
+async function materialSave(id) {
+  const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ id, kind: $('mt-kind').value, section: $('mt-section').value, title: $('mt-title').value, text: $('mt-text').value, image: $('mt-image').value, show_day: $('mt-day').value, status: $('mt-status').value }) });
+  if (!r.ok) { $('mt-msg').textContent = 'Нужен текст или заголовок.'; return; } toast('Сохранено'); closeModal(); EXTRAS.materials();
+}
+async function materialDel(id) { if (!confirm('Удалить материал?')) return; await api('/cabinet/materials?id=' + id, { method: 'DELETE' }); toast('Удалено'); closeModal(); EXTRAS.materials(); }
+function mediaUpload() {
+  const f = $('m-file').files[0], msg = $('m-msg'); if (!f) { msg.textContent = 'Выберите файл.'; return; }
+  if (f.size > 5 * 1024 * 1024) { msg.textContent = 'До 5 МБ.'; return; }
+  msg.textContent = 'Загружаем…';
+  const rd = new FileReader(); rd.onload = async () => { try { const r = await api('/cabinet/media', { method: 'POST', body: JSON.stringify({ name: f.name, type: f.type, data: rd.result }) }); if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Такой тип не принимаем.' : 'Не загрузилось.'; return; } toast('Загружено'); EXTRAS.media(); } catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); } }; rd.readAsDataURL(f);
+}
+async function mediaDel(id) { if (!confirm('Удалить файл? Ссылки на него перестанут работать.')) return; await api('/cabinet/media?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.media(); }
+function taskForm(id) {
+  const r = S.tasks, t = (r.items || []).find((x) => x.id === id) || {};
+  openModal(`<div class="head"><div><span class="eyebrow">Беклог</span><h2 style="margin-top:6px">${id ? 'Изменить задачу' : 'Новая задача'}</h2></div><button class="btn sm" onclick="closeModal()">Закрыть</button></div>
+    <div style="display:grid;gap:10px;margin-top:12px">${field('Что сделать', `<input id="tk-title" value="${esc(t.title || '')}" maxlength="140">`)}
+    ${field('Подробности', `<textarea id="tk-text" style="min-height:120px;font-family:inherit">${esc(t.text || '')}</textarea>`)}
+    <div class="row">${field('Кому', `<select id="tk-role">${Object.entries(r.roles).map(([k, v]) => `<option value="${k}" ${(t.role || 'content') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}${field('Приоритет', `<select id="tk-priority"><option value="normal">обычный</option><option value="high" ${t.priority === 'high' ? 'selected' : ''}>высокий</option></select>`)}${field('Срок', `<input id="tk-due" type="date" value="${t.due_day || ''}">`)}</div>
+    ${field('Исполнитель (почта, необязательно)', `<input id="tk-assignee" value="${esc(t.assignee || '')}">`)}
+    <div class="row"><button class="btn gold fixed" onclick="taskSave(${id})">Сохранить</button><span class="hint" id="tk-msg"></span></div></div>`);
+}
+async function taskSave(id) {
+  const t = (S.tasks.items || []).find((x) => x.id === id) || {};
+  const r = await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id, title: $('tk-title').value, text: $('tk-text').value, role: $('tk-role').value, priority: $('tk-priority').value, due_day: $('tk-due').value, assignee: $('tk-assignee').value, status: t.status || 'new' }) });
+  if (!r.ok) { $('tk-msg').textContent = 'Нужно название задачи.'; return; } toast('Сохранено'); closeModal(); EXTRAS.backlog();
+}
+async function taskStatus(id, status) { await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id, status, onlyStatus: true }) }); toast('Статус обновлён'); EXTRAS.backlog(); }
+async function taskDel(id) { if (!confirm('Удалить задачу?')) return; await api('/cabinet/tasks?id=' + id, { method: 'DELETE' }); EXTRAS.backlog(); }
+async function ticketOpen(id) {
+  openModal('<p class="empty">Открываем…</p>');
+  const t = await api('/cabinet/ticket?id=' + id), st = S.data.statuses || {};
+  openModal(`<div class="head"><div><span class="eyebrow">Обращение № ${t.id} · ${esc(t.topic)}</span><h2 style="margin-top:6px">${esc(t.subject)}</h2><p class="hint">${esc(t.user.name) || 'без имени'} · ${esc(t.user.email) || 'без почты'} · id ${t.user.id} · создано ${fmtTs(t.created_at)}${t.first_reply_at ? ' · первый ответ ' + fmtTs(t.first_reply_at) : ''}</p></div><button class="btn sm" onclick="closeModal()">Закрыть</button></div>
+    <div class="row" style="margin-top:10px"><select id="tc-status" onchange="ticketSet(${t.id})">${Object.entries(st).map(([k, v]) => `<option value="${k}" ${t.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select><select id="tc-priority" onchange="ticketSet(${t.id})"><option value="normal" ${t.priority === 'normal' ? 'selected' : ''}>обычный</option><option value="high" ${t.priority === 'high' ? 'selected' : ''}>высокий</option></select></div>
+    <div class="thread" id="tc-thread">${t.messages.map((m) => `<div class="m ${m.who}"><small>${m.who === 'support' ? esc(m.author) : 'пользователь'} · ${fmtTs(m.ts)}</small>${esc(m.text)}</div>`).join('')}</div>
+    <div style="display:grid;gap:8px;margin-top:10px"><textarea id="tc-text" style="min-height:90px;font-family:inherit" placeholder="Ответ пользователю — он увидит его в приложении в разделе «Чат»"></textarea><div class="row"><button class="btn gold fixed" onclick="ticketReply(${t.id})">Отправить</button><button class="btn sm fixed" onclick="ticketReply(${t.id},'resolved')">Отправить и закрыть</button></div></div>`);
+  const th = $('tc-thread'); th.scrollTop = th.scrollHeight;
+}
+async function ticketReply(id, status) {
+  const text = $('tc-text').value.trim(); if (!text) return;
+  await api('/cabinet/ticket?id=' + id, { method: 'POST', body: JSON.stringify({ text, status: status || '' }) });
+  toast(status ? 'Отправлено, обращение закрыто' : 'Отправлено'); await openPage('tickets'); if (!status) ticketOpen(id); else closeModal();
+}
+async function ticketSet(id) { await api('/cabinet/ticket?id=' + id, { method: 'POST', body: JSON.stringify({ status: $('tc-status').value, priority: $('tc-priority').value }) }); toast('Обновлено'); openPage('tickets'); }
+async function aiSave(p) { const r = await api('/cabinet/ai', { method: 'POST', body: JSON.stringify({ provider: p, key: $('ai-key-' + p).value.trim(), model: $('ai-model-' + p).value.trim(), extra: $('ai-extra-' + p).value.trim() }) }); toast(r.ok ? 'Сохранено' : 'Не сохранилось'); EXTRAS.ai(); }
+async function aiCheck(p) { toast('Проверяем…'); const r = await api('/cabinet/ai/check', { method: 'POST', body: JSON.stringify({ provider: p }) }); toast(r.ok ? 'Ключ работает' : 'Не прошло: ' + r.note); EXTRAS.ai(); }
+async function aiDel(p) { if (!confirm('Убрать ключ провайдера?')) return; await api('/cabinet/ai?provider=' + p, { method: 'DELETE' }); EXTRAS.ai(); }
 function renderOverview(r) {
   const w = r.week;
   let html = head(r) + toolbar(r, false);
@@ -386,6 +514,8 @@ function vizCard(c) {
   return `<section class="viz"><h3>${esc(c.title)}</h3><div class="sub">${esc(c.subtitle)}</div>${body ? body(c.data) : ''}${c.insight ? `<div class="insight">${esc(c.insight)}</div>` : ''}</section>`;
 }
 function lineViz(d) {
+  const marks = d && !Array.isArray(d) ? (d.marks || []) : [];
+  if (d && !Array.isArray(d)) d = d.points || [];
   const pts = (d || []).filter((p) => p.y !== null && p.y !== undefined);
   if (pts.length < 2) return '<p class="empty">Мало точек для линии' + (pts.length === 1 ? `: ${esc(d[0].x)} — ${fmt(d[0].y)}` : '') + '.</p>';
   const W = 560, H = 190, L = 34, B = 26, T = 12, max = Math.max(1, ...pts.map((p) => p.y)), n = pts.length;
@@ -395,7 +525,8 @@ function lineViz(d) {
   const grid = [0, .5, 1].map((f) => `<line x1="${L}" x2="${W - 8}" y1="${Y(max * f).toFixed(1)}" y2="${Y(max * f).toFixed(1)}" stroke="rgba(255,255,255,.1)"/><text x="${L - 6}" y="${(Y(max * f) + 4).toFixed(1)}" text-anchor="end">${fmt(Math.round(max * f))}</text>`).join('');
   const lab = [0, Math.floor((n - 1) / 2), n - 1].map((i) => `<text x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${esc(/^\d{4}-\d{2}-\d{2}$/.test(pts[i].x) ? fmtDay(pts[i].x) : pts[i].x)}</text>`).join('');
   const dots = pts.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="${n > 40 ? 2 : 3.5}" fill="#f3dca0"><title>${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}">${grid}<path d="${area}" fill="rgba(224,192,112,.12)"/><path d="${path}" fill="none" stroke="#e0c070" stroke-width="2.2" stroke-linejoin="round"/>${dots}${lab}</svg>`;
+  const mk = marks.map((m) => { const i = pts.findIndex((p) => p.x === m.x); if (i < 0) return ''; return `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${T}" y2="${H - B}" stroke="#a9b8ff" stroke-width="1.5" stroke-dasharray="4 3"><title>${esc(m.label)} · ${esc(m.x)}</title></line><text x="${(X(i) + 4).toFixed(1)}" y="${T + 12}" style="fill:#a9b8ff">${esc(String(m.label).slice(0, 14))}</text>`; }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}">${grid}<path d="${area}" fill="rgba(224,192,112,.12)"/><path d="${path}" fill="none" stroke="#e0c070" stroke-width="2.2" stroke-linejoin="round"/>${mk}${dots}${lab}</svg>`;
 }
 function barsViz(rows) {
   rows = (rows || []).filter((r) => typeof r[1] === 'number');

@@ -21,6 +21,7 @@ import { sendMail, mailReady, loginMail, staffMail, verifySmtp } from './mailer.
 import { lunarDay, lunarPeriodText } from './lunar.mjs';
 import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
+import * as W from './workspace.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -54,6 +55,7 @@ const EVENT_TYPES = new Set([
   'card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'spread_limit',
   'journal_add', 'wish_add', 'compat_calc', 'share_card', 'install_prompt', 'installed',
   'paywall_view', 'paywall_click', 'invite_copy', 'invite_used', 'push_on', 'push_off', 'pay_start', 'payment_success',
+  'support_open', 'support_new', 'utm_seen',
 ]);
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
@@ -180,6 +182,7 @@ db.exec(`
 
 initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
 initReports(db, DATA_DIR);
+W.initWorkspace(db, DATA_DIR, seal, open_);
 
 /* ── утилиты ── */
 const MSK = 'Europe/Moscow';
@@ -441,8 +444,8 @@ function dayPack(u, day) {
     forecast: sign
       ? { title: tone[0], text: `${tone[1]} ${sign.trait[0].toUpperCase()}${sign.trait.slice(1)} — сегодня это особенно заметно.`, bars: tone[2] }
       : { title: tone[0], text: tone[1], bars: tone[2] },
-    affirmation: C.AFFIRMATIONS[hash32(seed + ':aff') % C.AFFIRMATIONS.length],
-    question: C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
+    affirmation: (W.materialForDay('affirmation', day) || {}).text || C.AFFIRMATIONS[hash32(seed + ':aff') % C.AFFIRMATIONS.length],
+    question: (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     wish: C.WISHES[hash32(seed + ':wish') % C.WISHES.length],
     lunar: lunarPack(u),
   };
@@ -522,10 +525,10 @@ function readRaw(req) {
   });
 }
 
-function readBody(req) {
+function readBody(req, max = 32768) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
-    req.on('data', (c) => { size += c.length; if (size > 32768) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
+    req.on('data', (c) => { size += c.length; if (size > max) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
     req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { reject(new Error('bad_json')); } });
     req.on('error', reject);
   });
@@ -666,6 +669,51 @@ const server = createServer(async (req, res) => {
             return json(res, 200, { ok: true });
           }
         }
+        if (p === '/api/cabinet/campaigns') {
+          if (!allowed('campaigns')) return json(res, 403, { ok: false, error: 'no_access' });
+          if (req.method === 'GET') return json(res, 200, { items: W.campaignList() });
+          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.campaignSave(b, u.email)); }
+          if (req.method === 'DELETE') return json(res, 200, W.campaignRemove(url.searchParams.get('id')));
+        }
+        if (p === '/api/cabinet/materials') {
+          if (!allowed('materials')) return json(res, 403, { ok: false, error: 'no_access' });
+          if (req.method === 'GET') return json(res, 200, { items: W.materialList(), kinds: W.MATERIAL_KINDS, statuses: W.MATERIAL_STATUS });
+          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.materialSave(b, u.email)); }
+          if (req.method === 'DELETE') return json(res, 200, W.materialRemove(url.searchParams.get('id')));
+        }
+        if (p === '/api/cabinet/media') {
+          if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });
+          if (req.method === 'GET') return json(res, 200, { items: W.mediaList() });
+          if (req.method === 'POST') { const b = await readBody(req, 7 * 1024 * 1024); return json(res, 200, W.mediaAdd(b, u.email)); }
+          if (req.method === 'DELETE') return json(res, 200, W.mediaRemove(url.searchParams.get('id')));
+        }
+        if (p === '/api/cabinet/ai' || p === '/api/cabinet/ai/check') {
+          if (!allowed('ai')) return json(res, 403, { ok: false, error: 'no_access' });
+          if (p.endsWith('/check') && req.method === 'POST') { const b = await readBody(req); return json(res, 200, await W.aiCheck(String(b.provider || ''))); }
+          if (req.method === 'GET') return json(res, 200, { items: W.aiList() });
+          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.aiSave(b, u.email)); }
+          if (req.method === 'DELETE') return json(res, 200, W.aiRemove(url.searchParams.get('provider')));
+        }
+        if (p === '/api/cabinet/tasks') {
+          if (!allowed('backlog')) return json(res, 403, { ok: false, error: 'no_access' });
+          // контент и поддержка видят только своё; продукт и админ — весь беклог
+          const own = admin || roles.includes('product') ? '' : (roles.includes('content') && !roles.includes('support') ? 'content' : roles.includes('support') && !roles.includes('content') ? 'support' : '');
+          if (req.method === 'GET') return json(res, 200, { items: own ? W.taskList(own) : W.taskList(url.searchParams.get('role') || ''), statuses: W.TASK_STATUS, roles: W.TASK_ROLES, canCreate: admin || roles.includes('product'), own });
+          if (req.method === 'POST') {
+            const b = await readBody(req);
+            if (b.id && b.onlyStatus) return json(res, 200, W.taskStatus(b.id, b.status, u.email));
+            if (!(admin || roles.includes('product'))) return json(res, 403, { ok: false, error: 'product_only' });
+            return json(res, 200, W.taskSave(b, u.email));
+          }
+          if (req.method === 'DELETE') { if (!(admin || roles.includes('product'))) return json(res, 403, { ok: false, error: 'product_only' }); return json(res, 200, W.taskRemove(url.searchParams.get('id'))); }
+        }
+        if (p === '/api/cabinet/tickets' || p === '/api/cabinet/ticket') {
+          if (!allowed('tickets')) return json(res, 403, { ok: false, error: 'no_access' });
+          if (p.endsWith('/tickets')) return json(res, 200, { items: W.ticketQueue(url.searchParams.get('status') || ''), statuses: W.TICKET_STATUS, topics: W.TICKET_TOPICS });
+          const id = url.searchParams.get('id');
+          if (req.method === 'GET') { const t = W.ticketThread(id); return t ? json(res, 200, t) : json(res, 404, { ok: false, error: 'not_found' }); }
+          if (req.method === 'POST') { const b = await readBody(req); if (b.text) { const r = W.ticketMessage(id, 'support', b.text, u.email); if (!r.ok) return json(res, 400, r); } if (b.status || b.priority || b.topic) W.ticketSet(id, b, u.email); return json(res, 200, { ok: true }); }
+        }
         if (p === '/api/cabinet/staff') {
           if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
           if (req.method === 'GET') return json(res, 200, { items: staffList(), admins: ADMIN_EMAILS });
@@ -683,6 +731,20 @@ const server = createServer(async (req, res) => {
           if (req.method === 'DELETE') return json(res, 200, costRemove(url.searchParams.get('id')));
         }
         return json(res, 404, { ok: false, error: 'not_found' });
+      }
+
+      /* ── первый источник (UTM с лендинга или рекламы) — один раз ── */
+      if (p === '/api/utm' && req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.setUtm(u.id, b)); }
+
+      /* ── чат с поддержкой: человек видит только свои обращения ── */
+      if (p === '/api/support/tickets') {
+        if (req.method === 'GET') return json(res, 200, { items: W.userTickets(u.id), topics: W.TICKET_TOPICS });
+        if (req.method === 'POST') { const b = await readBody(req); const r = W.ticketCreate(u.id, b); if (r.ok) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'support_new', String(b.topic || '').slice(0, 60), ageBand(u.birth)); return json(res, r.ok ? 200 : 400, r); }
+      }
+      if (p === '/api/support/ticket') {
+        const id = url.searchParams.get('id');
+        if (req.method === 'GET') { const t = W.ticketThread(id, u.id); return t ? json(res, 200, t) : json(res, 404, { ok: false, error: 'not_found' }); }
+        if (req.method === 'POST') { const b = await readBody(req); const r = W.ticketMessage(id, 'user', b.text, '', u.id); return json(res, r.ok ? 200 : 400, r); }
       }
 
       /* ── вход по коду на почту ── */
@@ -789,6 +851,7 @@ const server = createServer(async (req, res) => {
           plusUntil: u.plus_until || '',
           plusActive: hasPlus(u),
           mailReady: mailLive(),
+          supportUnread: W.userUnread(u.id),
           counts: {
             entries: db.prepare('SELECT COUNT(*) c FROM entries WHERE user_id = ?').get(u.id).c,
             wishes: db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ? AND done = 0').get(u.id).c,
@@ -1030,6 +1093,12 @@ const server = createServer(async (req, res) => {
     }
 
     /* ── статика ── */
+    if (p.startsWith('/uploads/') && (req.method === 'GET' || req.method === 'HEAD')) {
+      const f = W.mediaPath(p.slice('/uploads/'.length));
+      if (!f) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400' });
+      return res.end(req.method === 'HEAD' ? undefined : readFileSync(f));
+    }
     if (p === '/' || p === '/index.html') return serveStatic(res, 'index.html', 0);
     if (p === '/cabinet' || p === '/cabinet/') return serveStatic(res, 'cabinet.html', 0);
     if (p === '/manifest.webmanifest') return serveStatic(res, 'manifest.webmanifest', 0);

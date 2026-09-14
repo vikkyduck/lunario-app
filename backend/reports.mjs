@@ -5,6 +5,7 @@
 
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
+import { campaignList, campaignUsers, slaMetrics, ticketQueue, TICKET_STATUS } from './workspace.mjs';
 
 let db, DATA_DIR = '';
 export function initReports(database, dataDir) {
@@ -43,15 +44,19 @@ export function periodOf(q) {
 export const DEFAULT_PERIODS = [7, 30, 90];
 export const OVERVIEW_BLOCKS = ['new_users', 'activation', 'active', 'repeat', 'retention', 'features', 'costs', 'problems'];
 export const ROLE_MENUS = {
-  admin:     ['overview', 'users', 'lifecycle', 'economy', 'ai', 'system', 'data', 'events', 'access', 'saved'],
-  marketing: ['acquisition', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
-  product:   ['activity', 'retention', 'activation', 'features', 'placeholders', 'rituals', 'cohorts', 'notifications', 'ai', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
-  content:   ['content', 'quality', 'concerns', 'rituals', 'placeholders', 'feedback', 'faq', 'saved'],
-  support:   ['tickets', 'supportmetrics', 'faq', 'users', 'delivery', 'saved'],
+  admin:     ['overview', 'users', 'lifecycle', 'economy', 'ai', 'backlog', 'system', 'data', 'events', 'access', 'saved'],
+  marketing: ['acquisition', 'campaigns', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
+  product:   ['activity', 'retention', 'activation', 'features', 'placeholders', 'rituals', 'cohorts', 'notifications', 'ai', 'backlog', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
+  content:   ['materials', 'media', 'content', 'backlog', 'quality', 'concerns', 'rituals', 'placeholders', 'feedback', 'faq', 'saved'],
+  support:   ['tickets', 'supportmetrics', 'backlog', 'faq', 'users', 'delivery', 'saved'],
 };
 export const REPORT_META = {
   overview:      ['Единый дашборд', 'Что происходит с продуктом сейчас и куда перейти за объяснением'],
   acquisition:   ['Привлечение и кампании', 'Откуда приходят люди и сколько стоит тот, кто остаётся'],
+  campaigns:     ['Кампании и UTM-ссылки', 'Что запускаем, сколько стоит и какой ссылкой ведём'],
+  materials:     ['Материалы и публикации', 'Вопрос дня, аффирмации и заметки со статусами и датой показа'],
+  media:         ['Картинки и файлы', 'Загрузить и получить ссылку для приложения'],
+  backlog:       ['Задачи и беклог', 'Что поручено контенту и поддержке и в каком статусе'],
   funnel:        ['Воронка входа', 'Где люди останавливаются между приветствием и первым результатом'],
   delivery:      ['Коды на почту', 'Доходят ли письма с кодом и подтверждают ли почту'],
   viral:         ['Приглашения и карточки', 'Приводят ли люди других людей'],
@@ -67,7 +72,7 @@ export const REPORT_META = {
   placeholders:  ['Интерес к будущим функциям', 'Что нажимают из ещё не сделанного'],
   rituals:       ['Ритуалы и постоянство', 'Какие ежедневные действия входят в привычку'],
   notifications: ['Пуши и ежедневные письма', 'Включают ли напоминания и возвращаются ли после них'],
-  ai:            ['Расходы и качество ИИ', 'Токены, стоимость результата и невостребованные материалы'],
+  ai:            ['ИИ: провайдеры и расходы', 'Ключи GPT, Gemini, Алисы и ГигаЧата; токены и стоимость результата'],
   economy:       ['Экономика и бюджет', 'Расходы, прогноз и стоимость одного активного'],
   lifecycle:     ['Жизненный цикл', 'Стадии, предупреждения и удаления'],
   users:         ['Пользователи', 'Список для поиска и работы — без личных текстов'],
@@ -167,9 +172,9 @@ function userPlatforms() {
   const rows = all('SELECT user_id, ua FROM sessions ORDER BY last_seen');
   const m = {}; for (const r of rows) m[r.user_id] = platformOf(r.ua); return m;
 }
-const sourceOf = (u) => (u.invited_by ? 'Приглашение' : 'Прямой / лендинг');
+const sourceOf = (u) => (u.utm_source ? u.utm_source : u.invited_by ? 'Приглашение' : 'Прямой / лендинг');
 function registered(from, to) {
-  return all(`SELECT id, email, name, city, city_region, tz, birth, invited_by, onboarded, substr(email_at,1,10) day, created_at, last_seen FROM users
+  return all(`SELECT id, email, name, city, city_region, tz, birth, invited_by, onboarded, utm_source, utm_medium, utm_campaign, utm_content, substr(email_at,1,10) day, created_at, last_seen FROM users
     WHERE email <> '' AND email_at <> '' AND substr(email_at,1,10) BETWEEN ? AND ?`, from, to);
 }
 const firstFunc = (id) => one(`SELECT type, ts FROM events WHERE user_id = ? AND type IN (${inList(FUNC)}) ORDER BY ts LIMIT 1`, id);
@@ -323,7 +328,7 @@ export function overview(q) {
   const acts = one(`SELECT COUNT(*) c FROM events WHERE type IN (${inList(FUNC)}) AND day BETWEEN ? AND ?`, P.from, P.to).c;
   const actsP = one(`SELECT COUNT(*) c FROM events WHERE type IN (${inList(FUNC)}) AND day BETWEEN ? AND ?`, P.prevFrom, P.prevTo).c;
   const nuSeries = fill(days, all(`SELECT substr(email_at,1,10) day, COUNT(*) n FROM users WHERE email <> '' AND substr(email_at,1,10) BETWEEN ? AND ? GROUP BY day`, P.from, P.to));
-  const srcRows = (() => { const m = {}; for (const u of all("SELECT invited_by FROM users WHERE email <> ''")) { const k = sourceOf(u); m[k] = (m[k] || 0) + 1; } return Object.entries(m); })();
+  const srcRows = (() => { const m = {}; for (const u of all("SELECT invited_by, utm_source FROM users WHERE email <> ''")) { const k = sourceOf(u); m[k] = (m[k] || 0) + 1; } return Object.entries(m); })();
   const charts = [
     chart('line', 'Активная аудитория по дням', 'уникальные люди с содержательным действием', dauSeries(days, P.from, P.to, FUNC), 'Видно направление изменения и отдельные пики, а не только итог за период.'),
     chart('pie', 'Откуда пришли пользователи', 'первый известный источник, все аккаунты с почтой', srcRows, 'Неизвестный источник показан отдельно, без попытки угадать канал.'),
@@ -383,38 +388,50 @@ export function report(kind, q) {
   return R;
 }
 const builders = {
-  acquisition(R, { P, days, q }) {
+  acquisition(R, { P, days, q, today }) {
     const plat = userPlatforms();
     const cur = registered(P.from, P.to), prev = registered(P.prevFrom, P.prevTo);
+    const srcOpts = [...new Set(cur.concat(prev).map(sourceOf))].sort();
     const src = q.source || '', pf = q.platform || '';
     const group = cur.filter((u) => (!src || sourceOf(u) === src) && (!pf || (plat[u.id] || 'Неизвестно') === pf));
     R.filters = [
-      { key: 'source', label: 'Источник', options: [['Приглашение', 'Приглашение'], ['Прямой / лендинг', 'Прямой / лендинг']], value: src },
+      { key: 'source', label: 'Источник', options: srcOpts.map((x) => [x, x]), value: src },
       { key: 'platform', label: 'Платформа', options: [['iOS', 'iOS'], ['Android', 'Android'], ['Десктоп', 'Десктоп']], value: pf },
     ];
-    const act = (g) => g.filter((u) => { const f = firstFunc(u.id); return f && (Date.parse(f.ts) - Date.parse(u.day + 'T00:00:00Z')) < 48 * 36e5; }).length;
-    const invited = group.filter((u) => u.invited_by).length;
+    const activated = (u) => { const f = firstFunc(u.id); return !!f && (Date.parse(f.ts) - Date.parse(u.day + 'T00:00:00Z')) < 48 * 36e5; };
+    const d7 = (u) => addDays(u.day, 7) <= today && actedBetween(u.id, addDays(u.day, 7), addDays(u.day, 7), FUNC);
+    const w4 = (u) => addDays(u.day, 28) <= today && actedBetween(u.id, addDays(u.day, 22), addDays(u.day, 28), FUNC);
+    const act = group.filter(activated).length, invited = group.filter((u) => u.invited_by).length, unknown = group.filter((u) => !u.utm_source && !u.invited_by).length;
+    /* кампании: расходы и люди — только когда совпали UTM и когорта внутри периода */
+    const camps = campaignList().map((c) => {
+      const people = campaignUsers(c).filter((u) => u.day >= P.from && u.day <= P.to);
+      const a = people.filter(activated).length, e7 = people.filter((u) => addDays(u.day, 7) <= today), b7 = e7.filter(d7).length, e4 = people.filter((u) => addDays(u.day, 28) <= today), b4 = e4.filter(w4).length;
+      const cpa = people.length && c.cost ? Math.round(c.cost / people.length) : null, cpaAct = a && c.cost ? Math.round(c.cost / a) : null, cpaW4 = b4 && c.cost ? Math.round(c.cost / b4) : null;
+      return { c, people: people.length, a, e7: e7.length, b7, e4: e4.length, b4, cpa, cpaAct, cpaW4 };
+    });
+    const spent = camps.reduce((s, x) => s + (x.c.cost || 0), 0), regsFromCamps = camps.reduce((s, x) => s + x.people, 0);
     R.kpis = [
       kpi('Регистрации', group.length, { prev: prev.length, unit: 'чел.', sub: 'подтвердили почту за период' }),
-      kpi('Активированы', act(group), { unit: 'чел.', sub: 'первый результат в первые сутки' }),
-      kpi('По приглашению', invited, { unit: 'чел.', sub: `${pct(invited, group.length) ?? 0}% регистраций` }),
-      nodata('Стоимость регистрации', 'расходы на привлечение по кампаниям ещё не вносились'),
+      kpi('Активированы', act, { unit: 'чел.', sub: `${pct(act, group.length) ?? 0}% · первый результат в первые сутки` }),
+      kpi('Неизвестный источник', pct(unknown, group.length), { unit: '%', sub: `${unknown} чел. без UTM и приглашения · первый источник не заменяется источником возврата`, good: 'down' }),
+      kpi('Стоимость регистрации', regsFromCamps && spent ? Math.round(spent / regsFromCamps) : null, { unit: '₽', sub: spent ? `${Math.round(spent)} ₽ по кампаниям с датами в периоде · ${regsFromCamps} регистраций с их UTM` : 'внесите расходы в «Кампании и UTM-ссылки»', good: 'down' }),
     ];
-    const bySrc = {}; for (const u of group) { const s = sourceOf(u); bySrc[s] = bySrc[s] || { reg: 0, act: 0, d7: 0, w4: 0, elig7: 0, elig4: 0 }; bySrc[s].reg++; }
-    for (const u of group) { const s = sourceOf(u); const f = firstFunc(u.id); if (f && (Date.parse(f.ts) - Date.parse(u.day + 'T00:00:00Z')) < 48 * 36e5) bySrc[s].act++;
-      if (addDays(u.day, 7) <= R.today) { bySrc[s].elig7++; if (actedBetween(u.id, addDays(u.day, 7), addDays(u.day, 7), FUNC)) bySrc[s].d7++; }
-      if (addDays(u.day, 28) <= R.today) { bySrc[s].elig4++; if (actedBetween(u.id, addDays(u.day, 22), addDays(u.day, 28), FUNC)) bySrc[s].w4++; } }
+    const bySrc = {};
+    for (const u of group) { const k = sourceOf(u); bySrc[k] = bySrc[k] || { reg: 0, act: 0, d7: 0, e7: 0, w4: 0, e4: 0 }; const b = bySrc[k]; b.reg++; if (activated(u)) b.act++; if (addDays(u.day, 7) <= today) { b.e7++; if (d7(u)) b.d7++; } if (addDays(u.day, 28) <= today) { b.e4++; if (w4(u)) b.w4++; } }
+    const marks = campaignList().filter((c) => c.start_day && c.start_day >= P.from && c.start_day <= P.to).map((c) => ({ x: c.start_day, label: c.name }));
     R.charts = [
-      chart('line', 'Регистрации по дням', 'подтверждение почты', fill(days, all(`SELECT substr(email_at,1,10) day, COUNT(*) n FROM users WHERE email <> '' AND substr(email_at,1,10) BETWEEN ? AND ? GROUP BY day`, P.from, P.to)), 'Всплеск на графике сверяйте с датой публикации или рекламы — иначе он ничего не объясняет.'),
-      chart('pie', 'Источники аудитории', 'состав регистраций за период', Object.entries(bySrc).map(([k, v]) => [k, v.reg])),
+      chart('line', 'Регистрации по дням', 'подтверждение почты · метки — старт кампаний', { points: fill(days, all(`SELECT substr(email_at,1,10) day, COUNT(*) n FROM users WHERE email <> '' AND substr(email_at,1,10) BETWEEN ? AND ? GROUP BY day`, P.from, P.to)), marks }, 'Всплеск сверяйте с меткой кампании — иначе он ничего не объясняет.'),
+      chart('pie', 'Источники аудитории', 'первый известный источник, регистрации за период', Object.entries(bySrc).map(([k, v]) => [k, v.reg])),
     ];
     R.tables = [
-      table('По источникам', ['Источник', 'Расходы', 'Регистрации', 'Активированы', 'D7', '4-я неделя', 'Стоимость регистрации', 'Стоимость активированного'],
-        Object.entries(bySrc).map(([k, v]) => [k, 'нет данных', v.reg, `${v.act} (${pct(v.act, v.reg) ?? 0}%)`, v.elig7 ? `${v.d7} из ${v.elig7}` : 'когорта не дозрела', v.elig4 ? `${v.w4} из ${v.elig4}` : 'когорта не дозрела', 'нет данных', 'нет данных']),
-        'Стоимость считается только когда расходы и пользователи относятся к одной кампании и одной когорте. Расходы на привлечение вносятся в «Экономике» с категорией «Привлечение».'),
-      table('Кампании и UTM', ['Кампания', 'Канал', 'Размещение', 'Обещание', 'Переходы', 'Регистрации'], [], 'UTM-метки с лендинга и код приглашения — разные вещи. Лендинг пока не передаёт UTM в приложение: неопределённый источник так и обозначается «Прямой / лендинг».'),
+      table('По источникам', ['Источник', 'Регистрации', 'Активированы', 'D7', '4-я неделя'],
+        Object.entries(bySrc).sort((a, b) => b[1].reg - a[1].reg).map(([k, v]) => [k, v.reg, `${v.act} (${pct(v.act, v.reg) ?? 0}%)`, v.e7 ? `${v.d7} из ${v.e7}` : 'когорта не дозрела', v.e4 ? `${v.w4} из ${v.e4}` : 'когорта не дозрела']),
+        'Источник — utm_source из ссылки, которой человек пришёл впервые; без UTM — приглашение или прямой заход.'),
+      table('Кампании', ['Кампания', 'UTM', 'Обещание', 'Расходы', 'Регистрации', 'Активированы', 'D7', '4-я неделя', 'Цена регистрации', 'Цена активированного', 'Цена удержанного (4-я нед.)'],
+        camps.map((x) => [x.c.name, [x.c.source, x.c.medium, x.c.campaign].filter(Boolean).join(' / '), x.c.promise || '—', Math.round(x.c.cost) || 0, x.people, x.a, x.e7 ? `${x.b7} из ${x.e7}` : '—', x.e4 ? `${x.b4} из ${x.e4}` : '—', x.cpa ?? '—', x.cpaAct ?? '—', x.cpaW4 ?? '—']),
+        'Стоимость удержанного считается только когда расходы и люди относятся к одной кампании и одной когорте. Кампании заводятся в «Кампании и UTM-ссылки».'),
     ];
-    R.how = 'Источник — код приглашения или прямой заход. Первый источник знакомства хранится отдельно от источника возвращения: переход из письма или пуша не стирает исходный канал. Активирован — первый результат работающей функции в первые сутки.';
+    R.how = 'Первый источник хранится отдельно от источника возвращения: переход из письма или пуша не стирает исходный канал. Активирован — первый результат работающей функции в первые сутки. Люди привязываются к кампании по совпадению utm_source и utm_campaign.';
   },
   funnel(R, { P }) {
     const c = (t) => one(`SELECT COUNT(DISTINCT user_id) c FROM events WHERE type = ? AND day BETWEEN ? AND ?`, t, P.from, P.to).c;
@@ -710,14 +727,26 @@ const builders = {
     R.how = 'Сообщения о качестве распределяются по рабочим категориям, чтобы контент-редактор видел, что править.';
   },
   tickets(R) {
-    R.kpis = [off('Открытых обращений', 'чат поддержки не запущен'), off('Ждут первого ответа', ''), off('Решено за период', '')];
-    R.tables = [table('Очередь', ['№', 'Когда', 'Тема', 'Функция', 'Статус', 'Приоритет', 'Первый ответ'], [], 'Поддержка не видит дневник, желания, благодарности, личные вопросы и настроение. Полная переписка — только внутри обращения, которое человек сам направил.')];
-    R.how = 'Статусы: новое, в работе, ждёт ответа пользователя, решено. Приоритет: обычный, высокий.';
+    const q = ticketQueue('');
+    const openN = q.filter((t) => t.status !== 'resolved').length, waiting = q.filter((t) => t.firstReplyMin === null && t.status !== 'resolved').length, unread = q.reduce((s, t) => s + t.unread, 0);
+    R.kpis = [kpi('Открытых обращений', openN, { unit: 'шт.', good: 'down' }), kpi('Ждут первого ответа', waiting, { unit: 'шт.', good: 'down' }), kpi('Непрочитанных сообщений', unread, { unit: 'шт.', good: 'down' }), kpi('Всего обращений', q.length, { unit: 'шт.' })];
+    R.queue = q; R.statuses = TICKET_STATUS;
+    R.notes = ['Поддержка не видит дневник, желания, благодарности, личные вопросы и настроение. Полная переписка — только внутри обращения, которое человек сам направил.'];
+    R.how = 'Статусы: новое → в работе → ждём ответа пользователя → решено. Первый ответ — цель 30 минут. Ответ поддержки сразу виден человеку в приложении, в разделе «Чат».';
   },
-  supportmetrics(R) {
-    R.kpis = [off('Медиана первого ответа', ''), off('В пределах SLA', ''), off('Время решения', ''), off('Повторные обращения', '')];
-    R.tables = [table('Темы обращений', ['Тема', 'За период'], ['Вход и код', 'Анкета и профиль', 'Расклады и ответы', 'Напоминания', 'Удаление данных', 'Прочее'].map((t) => [t, 'не запущено']))];
-    R.how = 'Все показатели появятся вместе с чатом поддержки. Проблемы с кодами уже видны в отчёте «Коды на почту».';
+  supportmetrics(R, { P, days }) {
+    const m = slaMetrics(P.from, P.to, P.prevFrom, P.prevTo), c = m.cur, pv = m.prev;
+    R.kpis = [
+      kpi('Открыто сейчас', m.open, { unit: 'шт.', sub: `ждут первого ответа — ${m.waitingFirst}`, good: 'down' }),
+      kpi('Первый ответ · медиана', c.medianFirst, { prev: pv.medianFirst, unit: 'мин', sub: `цель ≤ ${m.slaMin} мин`, good: 'down' }),
+      kpi('В пределах SLA', pct(c.withinSla, c.answered), { prev: pct(pv.withinSla, pv.answered), unit: '%', sub: `${c.withinSla} из ${c.answered} отвеченных` }),
+      kpi('Время решения · медиана', c.medianResolve, { prev: pv.medianResolve, unit: 'ч', sub: `${c.resolved} решено`, good: 'down' }),
+      kpi('Обращений за период', c.total, { prev: pv.total, unit: 'шт.' }),
+      kpi('Повторные обращения', c.repeat, { prev: pv.repeat, unit: 'чел.', sub: 'написали больше одного раза', good: 'down' }),
+    ];
+    R.charts = [chart('line', 'Обращения по дням', 'созданные', fill(days, c.byDay)), chart('hbars', 'Темы обращений', 'за период', c.topics)];
+    R.tables = [table('Темы', ['Тема', 'Обращений', 'Раньше'], c.topics.map(([t, n]) => [t, n, (pv.topics.find((x) => x[0] === t) || [0, 0])[1]])), table('FAQ и «С чего начать»', ['Показатель', 'Значение'], [['FAQ помог', 'не запущено'], ['Прошли «С чего начать»', 'нет данных — событие завершения не собирается']])];
+    R.how = `Первый ответ — от создания обращения до первого сообщения поддержки; SLA — доля ответов за ${m.slaMin} минут среди отвеченных. Время решения — до перевода в «Решено». Повторные — люди с двумя и более обращениями за период.`;
   },
   faq(R, { P }) {
     const tour = one("SELECT COUNT(DISTINCT user_id) c FROM events WHERE type = 'tour_view' AND day BETWEEN ? AND ?", P.from, P.to).c;
@@ -726,6 +755,10 @@ const builders = {
     R.how = 'Открытие — событие показа подсказки «С чего начать».';
   },
   saved(R) { R.how = 'Сохранённые отчёты живут в этом браузере вместе с фильтрами.'; },
+  campaigns(R) { R.how = 'Одна кампания — один набор UTM (source / medium / campaign, при желании content). Ссылка строится сама; люди, пришедшие по ней, привязываются к кампании при первом открытии приложения, и в «Привлечении» по ним считается цена регистрации, активированного и удержанного.'; },
+  materials(R) { R.how = 'Опубликованный «Вопрос дня» или «Аффирмация» с датой показа подменяет текст из файла в «Моём дне» у всех пользователей в этот день; без даты — действует каждый день, пока опубликован. Черновики и «на проверке» в приложение не попадают.'; },
+  media(R) { R.how = 'Файл хранится на сервере рядом с базой и отдаётся по ссылке /app/uploads/…; ссылку можно вставить в материал или отдать разработчику. До 5 МБ: PNG, JPG, WebP, GIF, SVG, PDF.'; },
+  backlog(R) { R.how = 'Задачи ставят продуктолог и админ; контент и поддержка видят только свои, меняют статус и видят, что уже готово. Статусы: новая → в работе → на проверке → готово.'; },
   access(R) { R.how = 'Два администратора равноправны и защищены: их нельзя удалить или понизить. Остальным сотрудникам можно назначить несколько ролей.'; },
 };
 

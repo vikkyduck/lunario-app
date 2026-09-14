@@ -199,6 +199,20 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
    не показываем платёжное: остаётся только работающее.
    Установка PWA внутри приложения тоже ни к чему. */
 
+/* ── чат с поддержкой ── */
+.dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:#f0d79a;box-shadow:0 0 0 3px rgba(11,10,20,.9)}
+.dot[hidden]{display:none}
+.sup-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sup-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
+.sup-item b{font-size:15px;display:block}.sup-item small{color:#8f87ad;font-size:12.5px}
+.sup-item .badge{flex:0 0 auto;font-size:12px;font-weight:700;color:#1c1430;background:#f0d79a;border-radius:999px;padding:2px 8px}
+.thread{display:flex;flex-direction:column;gap:8px;max-height:46dvh;overflow:auto;margin-top:12px;padding:12px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.thread .m{max-width:84%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.thread .m.user{align-self:flex-end;background:rgba(217,184,104,.18);border:1px solid rgba(217,184,104,.35)}
+.thread .m.support{align-self:flex-start;background:rgba(255,255,255,.08)}
+.thread .m small{display:block;color:#8f87ad;font-size:12px;margin-bottom:3px}
+.sup-status{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:#cdc6e2}
+
 /* ── приветствие ── */
 /* статичные экраны (приветствие, главная): страница ровно в высоту экрана, прокрутки нет — блоки ужимаются под высоту */
 body.fixed{height:100dvh;overflow:hidden}
@@ -450,7 +464,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button type="button" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b></button>
       <button type="button" class="stub" onclick="openStub('С чего начать')"><i class="ico flag"></i><b>С чего начать</b></button>
       <button type="button" class="stub" onclick="openStub('Вопросы и ответы')"><i class="ico question"></i><b>Вопросы и ответы</b></button>
-      <button type="button" class="stub" onclick="openStub('Чат')"><i class="ico chat"></i><b>Чат</b></button>
+      <button type="button" onclick="openWidget('support')" style="position:relative"><i class="ico chat"></i><b>Чат</b><span class="dot" id="h-supdot" hidden></span></button>
       <button type="button" class="stub" onclick="openStub('Карточки для соцсетей')"><i class="ico share"></i><b>Карточки для соцсетей</b></button>
     </div>
   </section>
@@ -633,6 +647,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </div>
   </div>
   <div class="wpane" id="w-mail"><div class="card" id="m-auth"></div></div>
+  <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
   <div class="wpane" id="w-stub"><p class="stubtext">Пока в разработке</p></div>
 </div>
 <div class="wg-bg" id="wg" onclick="closeWidget(event)">
@@ -1052,6 +1067,7 @@ const WIDGETS = {
   lunar:['Что вокруг','Лунный день'], hmood:['История','История настроений'], hwishes:['История','Мои желания'],
   hentries:['История','Мои вопросы и ответы'], hjournal:['История','Записи дневника'], week:['История','Итоги недели'],
   invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминание'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'],
+  support:['Поддержка','Чат с поддержкой'],
   stub:['','']
 };
 let wgOpen = null;
@@ -1070,6 +1086,7 @@ function openWidget(k, title){
   if (k==='invite') loadInvite();
   if (k==='remind') loadPush();
   if (k==='edit') fillEdit();
+  if (k==='support') supOpen();
   if (k==='mail') renderAuth();
   if (k==='year' || k==='birthnum') loadNumerology();
 }
@@ -1082,6 +1099,50 @@ function closeWidget(e){
 function openStub(title){ openWidget('stub', title); }
 function openLunar(){ go('around'); openWidget('lunar'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeWidget(); });
+
+/* ── чат с поддержкой: список обращений, новое обращение, переписка ── */
+let supTimer = null, supTicket = null;
+function supStop(){ clearTimeout(supTimer); supTimer = null; supTicket = null; }
+async function supOpen(){
+  supStop(); const box = $('sup-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
+  try{
+    const r = await api('/support/tickets');
+    box.innerHTML = `<p style="font-size:14.5px">Напишите нам — ответ появится здесь и на главной загорится точка у «Чата». Обычно отвечаем в течение получаса днём.</p>
+      <div class="card sec" style="margin-top:12px"><div class="field"><label>Тема</label><select id="sup-topic">${r.topics.map((t)=>`<option>${esc(t)}</option>`).join('')}</select></div>
+        <div class="field" style="margin-bottom:8px"><label>Сообщение</label><textarea id="sup-text" maxlength="2000" placeholder="Что случилось или что хотите спросить"></textarea></div>
+        <button class="btn" onclick="supCreate()">Отправить</button><p class="msg" id="sup-msg"></p></div>
+      ${r.items.length ? `<span class="eyebrow" style="margin-top:16px">Мои обращения</span><div class="sup-list">${r.items.map((t)=>`<button class="sup-item" type="button" onclick="supThread(${t.id})"><span><b>${esc(t.subject)}</b><small>${esc(t.topic)} · <span class="sup-status">${esc(t.statusName)}</span> · ${supWhen(t.last_at)}</small></span>${t.unread?`<span class="badge">${t.unread}</span>`:''}</button>`).join('')}</div>` : ''}`;
+    $('h-supdot').hidden = !r.items.some((t)=>t.unread);
+  }catch(e){ box.innerHTML = '<p class="msg err">Не получилось загрузить чат.</p>'; }
+}
+const supWhen = (t) => new Date(t).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+async function supCreate(){
+  const text = $('sup-text').value.trim(), msg = $('sup-msg'); msg.className='msg';
+  if(text.length<3){ msg.classList.add('err'); msg.textContent='Напишите хотя бы пару слов.'; return; }
+  try{ const r = await api('/support/tickets',{method:'POST',body:JSON.stringify({topic:$('sup-topic').value,text})});
+    if(!r.ok){ msg.classList.add('err'); msg.textContent = r.error==='too_many_open' ? 'У вас уже пять открытых обращений — дождитесь ответа.' : 'Не отправилось.'; return; }
+    hap([0,12]); supThread(r.id);
+  }catch(e){ msg.classList.add('err'); msg.textContent='Не отправилось.'; }
+}
+async function supThread(id){
+  supStop(); supTicket = id; const box = $('sup-box');
+  try{
+    const t = await api('/support/ticket?id='+id);
+    box.innerHTML = `<button class="back" onclick="supOpen()">← Все обращения</button>
+      <p style="font-size:15px;color:#ded8ee;margin-top:6px"><b>${esc(t.subject)}</b></p><p class="hint" style="margin-top:2px">${esc(t.topic)} · <span class="sup-status">${esc(t.statusName)}</span></p>
+      <div class="thread" id="sup-thread">${t.messages.map((m)=>`<div class="m ${m.who}"><small>${m.who==='support'?'поддержка':'вы'} · ${supWhen(m.ts)}</small>${esc(m.text)}</div>`).join('')}</div>
+      <div class="field" style="margin:12px 0 0"><textarea id="sup-reply" maxlength="2000" placeholder="${t.status==='resolved'?'Обращение закрыто — напишите, если вопрос остался':'Ваше сообщение'}"></textarea></div>
+      <button class="btn" style="margin-top:8px" onclick="supSend(${id})">Отправить</button><p class="msg" id="sup-msg2"></p>`;
+    const th = $('sup-thread'); th.scrollTop = th.scrollHeight;
+    $('h-supdot').hidden = true;
+    supTimer = setTimeout(()=>{ if(supTicket===id && wgOpen==='support') supThread(id); }, 15000);   /* пока чат открыт — обновляем раз в 15 секунд */
+  }catch(e){ box.innerHTML = '<p class="msg err">Не получилось открыть обращение.</p>'; }
+}
+async function supSend(id){
+  const text = $('sup-reply').value.trim(), msg = $('sup-msg2'); msg.className='msg'; if(!text) return;
+  try{ const r = await api('/support/ticket?id='+id,{method:'POST',body:JSON.stringify({text})}); if(!r.ok) throw new Error(r.error); hap([0,12]); supThread(id); }
+  catch(e){ msg.classList.add('err'); msg.textContent='Не отправилось.'; }
+}
 
 /* ── главная ── */
 const ordinal = (n) => n + '-й';
@@ -1703,6 +1764,12 @@ function startApp(){
     try{ if(/[?&]app=1/.test(location.search)) localStorage.setItem('lun_app','1'); }catch(e){}
     if(isStaff(r.user) && !inApp()){ location.replace('/app/cabinet'); return; }
     track('app_open');
+    try{
+      const qs = new URLSearchParams(location.search), utm = {};
+      for (const k of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) if (qs.get(k)) utm[k] = qs.get(k);
+      if (Object.keys(utm).length) { utm.ref = document.referrer.slice(0, 120); await api('/utm',{method:'POST',body:JSON.stringify(utm)}); if (!qs.get('ref')) history.replaceState(null,'',location.pathname + (qs.get('app') ? '?app=1' : '')); }
+    }catch(e){}
+    if (r.supportUnread) { const d = $('h-supdot'); if (d) d.hidden = false; }
     const ref = new URLSearchParams(location.search).get('ref');
     try{
       if (ref && /^[a-z0-9]{6,12}$/i.test(ref)) {
