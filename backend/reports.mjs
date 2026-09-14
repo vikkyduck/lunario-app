@@ -138,7 +138,7 @@ export const FEATURES = [
   ['invite_copy',  'Социальное',  'Позвать подругу',      'работает'],
   ['push_on',      'Аккаунт',     'Напоминание',          'работает'],
   ['installed',    'Аккаунт',     'Установка на телефон', 'работает'],
-  ['natal',        'Обо мне',     'Натальная карта',      'заглушка'],
+  ['natal_view',   'Обо мне',     'Натальная карта',      'работает'],
   ['tests',        'Обо мне',     'Самопознание · тест',  'заглушка'],
   ['forecast',     'Мой день',    'Прогноз и сферы',      'заглушка'],
   ['habits',       'Мой день',    'Привычки',             'заглушка'],
@@ -149,7 +149,7 @@ export const FEATURES = [
   ['report',       'История',     'Недельный ИИ-отчёт',   'заглушка'],
   ['chat',         'Свериться',   'ИИ-чат',               'заглушка'],
 ];
-const FUNC = ['card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'journal_add', 'wish_add', 'compat_calc', 'worry_pick', 'share_card'];
+const FUNC = ['card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'journal_add', 'wish_add', 'compat_calc', 'worry_pick', 'share_card', 'natal_view'];
 const ACTIVE = ['app_open', ...FUNC];
 const FNAME = Object.fromEntries(FEATURES.map((f) => [f[0], f[2]]));
 const EVENT_NAMES = {
@@ -157,7 +157,7 @@ const EVENT_NAMES = {
   worry_pick: 'Выбрал тему «Что беспокоит»', onboard_start: 'Начал анкету', onboard_done: 'Заполнил анкету', login_code_sent: 'Запросил код', login_done: 'Подтвердил почту',
   card_open: 'Открыл карту дня', mood_set: 'Отметил настроение', ask_yesno: 'Спросил «Да / нет»', ask_rune: 'Вытянул руну', ask_spread: 'Сделал расклад', spread_limit: 'Упёрся в лимит раскладов',
   journal_add: 'Сделал запись', wish_add: 'Добавил желание', compat_calc: 'Посчитал совместимость', share_card: 'Поделился карточкой', install_prompt: 'Увидел «Установить»', installed: 'Установил на телефон',
-  paywall_view: 'Увидел платное', paywall_click: 'Нажал на платное', invite_copy: 'Скопировал приглашение', invite_used: 'Пришёл по приглашению', push_on: 'Включил напоминание', push_off: 'Выключил напоминание', pay_start: 'Начал оплату', payment_success: 'Оплатил',
+  natal_view: 'Открыл натальную карту', paywall_view: 'Увидел платное', paywall_click: 'Нажал на платное', invite_copy: 'Скопировал приглашение', invite_used: 'Пришёл по приглашению', push_on: 'Включил напоминание', push_off: 'Выключил напоминание', pay_start: 'Начал оплату', payment_success: 'Оплатил',
 };
 
 const kpi = (title, value, o = {}) => ({ title, value, unit: o.unit || '', prev: o.prev ?? null, delta: o.delta === undefined ? delta(value, o.prev ?? null) : o.delta, sub: o.sub || '', state: o.state || (value === null ? 'nodata' : 'ok'), good: o.good || 'up' });

@@ -22,6 +22,7 @@ import { lunarDay, lunarPeriodText } from './lunar.mjs';
 import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
 import * as W from './workspace.mjs';
+import { natalChart } from './astro.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -55,7 +56,7 @@ const EVENT_TYPES = new Set([
   'card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'spread_limit',
   'journal_add', 'wish_add', 'compat_calc', 'share_card', 'install_prompt', 'installed',
   'paywall_view', 'paywall_click', 'invite_copy', 'invite_used', 'push_on', 'push_off', 'pay_start', 'payment_success',
-  'support_open', 'support_new', 'utm_seen',
+  'support_open', 'support_new', 'utm_seen', 'natal_view',
 ]);
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
@@ -731,6 +732,17 @@ const server = createServer(async (req, res) => {
           if (req.method === 'DELETE') return json(res, 200, costRemove(url.searchParams.get('id')));
         }
         return json(res, 404, { ok: false, error: 'not_found' });
+      }
+
+      /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
+      if (p === '/api/natal' && req.method === 'GET') {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
+        const time = /^\d{2}:\d{2}$/.test(u.birth_time || '') ? u.birth_time : '';
+        const tzOff = u.tz ? tzOffsetMinutes(u.tz, `${u.birth}T${time || '12:00'}:00`) : 0;
+        const chart = natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
+        chart.tz = u.tz || ''; chart.city = u.city || '';
+        db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'natal_view', time ? 'with_time' : 'no_time', ageBand(u.birth));
+        return json(res, 200, chart);
       }
 
       /* ── первый источник (UTM с лендинга или рекламы) — один раз ── */

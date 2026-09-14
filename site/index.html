@@ -199,6 +199,12 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
    не показываем платёжное: остаётся только работающее.
    Установка PWA внутри приложения тоже ни к чему. */
 
+/* ── натальная карта ── */
+.nt{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:8px}
+.nt th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#8f87ad;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
+.nt td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.nt td small{color:#8f87ad}
+
 /* ── чат с поддержкой ── */
 .dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:#f0d79a;box-shadow:0 0 0 3px rgba(11,10,20,.9)}
 .dot[hidden]{display:none}
@@ -506,7 +512,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <span class="eyebrow" id="m-sign" style="margin-top:6px"></span>
     <h1 style="margin-top:6px" id="m-name">Обо мне</h1>
     <div class="wids">
-      <button class="wid stub" type="button" onclick="openStub('Натальная карта')"><i class="ico orbit"></i><b>Натальная карта</b><span>Пока в разработке</span></button>
+      <button class="wid" type="button" onclick="openWidget('natal')"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button>
       <button class="wid stub" type="button" onclick="openStub('Тесты')"><i class="ico list"></i><b>Тесты</b><span>Пока в разработке</span></button>
       <button class="wid" type="button" onclick="openWidget('year')"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button>
       <button class="wid" type="button" onclick="openWidget('birthnum')"><i class="ico numerology"></i><b>Число рождения</b><span id="m-birthsub"></span></button>
@@ -647,6 +653,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </div>
   </div>
   <div class="wpane" id="w-mail"><div class="card" id="m-auth"></div></div>
+  <div class="wpane" id="w-natal"><div id="natal-box"><p class="hint">Считаем…</p></div></div>
   <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
   <div class="wpane" id="w-stub"><p class="stubtext">Пока в разработке</p></div>
 </div>
@@ -1067,7 +1074,7 @@ const WIDGETS = {
   lunar:['Что вокруг','Лунный день'], hmood:['История','История настроений'], hwishes:['История','Мои желания'],
   hentries:['История','Мои вопросы и ответы'], hjournal:['История','Записи дневника'], week:['История','Итоги недели'],
   invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминание'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'],
-  support:['Поддержка','Чат с поддержкой'],
+  support:['Поддержка','Чат с поддержкой'], natal:['Обо мне','Натальная карта'],
   stub:['','']
 };
 let wgOpen = null;
@@ -1087,6 +1094,7 @@ function openWidget(k, title){
   if (k==='remind') loadPush();
   if (k==='edit') fillEdit();
   if (k==='support') supOpen();
+  if (k==='natal') loadNatal();
   if (k==='mail') renderAuth();
   if (k==='year' || k==='birthnum') loadNumerology();
 }
@@ -1099,6 +1107,27 @@ function closeWidget(e){
 function openStub(title){ openWidget('stub', title); }
 function openLunar(){ go('around'); openWidget('lunar'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeWidget(); });
+
+/* ── натальная карта: расчёт на сервере, здесь только вывод ── */
+let natalCache = null;
+async function loadNatal(){
+  const box = $('natal-box');
+  try{
+    const c = natalCache || (natalCache = await api('/natal'));
+    const dms = (p) => `${p.symbol} ${p.deg}°${String(p.min).padStart(2,'0')}′`;
+    const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
+    const houses = c.houses ? `<h3 style="margin-top:16px">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.sign)}</small></td></tr>`).join('')}</tbody></table>`
+      : `<div class="card sec" style="margin-top:14px"><p style="font-size:14px">${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? 'Укажите город рождения в аккаунте — по нему считаются дома. ' : ''}<button class="btn ghost sm" style="margin-top:10px" onclick="closeWidget();go('account');openWidget('edit')">Дополнить анкету</button></p></div>`;
+    const aspects = c.aspects.length ? `<h3 style="margin-top:16px">Аспекты</h3><div class="hbars" style="margin-top:8px">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small style="color:#8f87ad">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
+    const sun = c.planets[0], moon = c.planets[1];
+    box.innerHTML = `<div class="card sec"><p class="eyebrow">Западная традиция · тропический зодиак${c.houses ? ' · ' + esc(c.houses.system) : ''}</p>
+        <p style="font-size:15px;color:#ded8ee;margin-top:8px">☉ Солнце в ${esc(sun.sign)} · ☽ Луна в ${esc(moon.sign)}${c.houses ? ` · Asc ${esc(c.houses.asc.sign)}` : ''}</p>
+        <p class="hint" style="margin-top:6px">${c.input.birth.split('-').reverse().join('.')}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''} · UTC ${c.input.utc}</p></div>
+      <h3 style="margin-top:16px">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
+      ${houses}${aspects}
+      <p class="hint" style="margin-top:14px">${esc(c.precision)} Трактовка карты появится позже — сейчас важно, что расчёт верный.</p>`;
+  }catch(e){ box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без неё карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
+}
 
 /* ── чат с поддержкой: список обращений, новое обращение, переписка ── */
 let supTimer = null, supTicket = null;
@@ -1730,7 +1759,7 @@ async function saveProfile(){
   try{
     const r = await api('/profile',{method:'POST',body:JSON.stringify({
       name:$('e-name').value.trim(), birth, birthTime:$('e-time').value, city:$('e-city').value.trim(), consent:true })});
-    S.user = r.user; S.day = r.day; S.num = null;
+    S.user = r.user; S.day = r.day; S.num = null; natalCache = null;
     msg.className='msg'; msg.textContent='';
     toast('Данные обновлены'); closeWidget();
     paintHome(); paintToday(); loadAccount();
