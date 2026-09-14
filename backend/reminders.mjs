@@ -18,7 +18,8 @@ export const FEATURES = {
   mood:       { title: 'Настроение дня',       hint: 'Вечером: как прошёл день',                  time: '21:00', freq: 'daily',  weekday: 7, url: '/app/?open=mood' },
   moodreport: { title: 'Отчёт по настроениям', hint: 'Раз в неделю: итог по отметкам',            time: '20:00', freq: 'weekly', weekday: 7, url: '/app/?open=moodreport' },
   habits:     { title: 'Дневник привычек',     hint: 'Вечером: отметить привычки',                time: '20:00', freq: 'daily',  weekday: 7, url: '/app/?open=habits' },
-  askesis:    { title: 'Аскеза',               hint: 'Утром: какой сегодня день аскезы',          time: '08:00', freq: 'daily',  weekday: 7, url: '/app/?open=askesis' },
+  askesis:    { title: 'Аскеза',               hint: 'Поддержка и сколько дней осталось',         time: '20:00', freq: 'daily',  weekday: 7, url: '/app/?open=askesis' },
+  gratitude:  { title: 'Дневник благодарности', hint: 'Вечером: кому и за что я благодарна сегодня', time: '21:30', freq: 'daily', weekday: 7, url: '/app/?open=gratitude' },
   lunar:      { title: 'Лунный день',          hint: 'Утром: лунный день и рекомендация',         time: '09:00', freq: 'daily',  weekday: 7, url: '/app/?open=lunar' },
   sky:        { title: 'На небе',              hint: 'Когда что-то происходит: полнолуние, затмение, ретроградный Меркурий', time: '10:00', freq: 'events', weekday: 7, url: '/app/?open=sky' },
 };
@@ -27,9 +28,9 @@ const MSK = 'Europe/Moscow';
 const todayMSK = () => new Date().toLocaleDateString('sv-SE', { timeZone: MSK });
 const validTz = (tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } };
 
-let db = null;
-export function initReminders(database) {
-  db = database;
+let db = null, hooks = {};
+export function initReminders(database, h = {}) {
+  db = database; hooks = h;   // habitList/askesisList из сервера — чтобы тексты считались одинаково
   db.exec(`
     CREATE TABLE IF NOT EXISTS reminders (
       user_id INTEGER NOT NULL, feature TEXT NOT NULL, enabled INTEGER DEFAULT 0,
@@ -115,19 +116,23 @@ export function notificationFor(feature, u) {
     return { title: 'Отчёт по настроениям за неделю', body: `Отмечено ${total} ${plural(total, 'день', 'дня', 'дней')}, чаще всего — ${MOOD_RU[top.mood] || top.mood}. Откройте, чтобы увидеть неделю целиком.`, url };
   }
   if (feature === 'habits') {
-    const habits = db.prepare('SELECT id FROM habits WHERE user_id = ? AND archived = 0').all(u.id);
-    if (!habits.length) return { title: 'Дневник привычек', body: 'Добавьте первую привычку — с одной маленькой начинается ритм.', url };
-    const done = db.prepare(`SELECT COUNT(*) c FROM habit_marks WHERE day = ? AND habit_id IN (${habits.map(() => '?').join(',')})`).get(d, ...habits.map((h) => h.id)).c;
-    const left = habits.length - done;
-    if (left <= 0) return null;
-    return { title: 'Привычки', body: `Осталось отметить: ${left} из ${habits.length}. Минута — и день закрыт ✦`, url };
+    const items = hooks.habitList ? hooks.habitList(u.id, d) : [];
+    if (!items.length) return { title: 'Дневник привычек', body: 'Добавьте первую привычку — с одной маленькой начинается ритм.', url };
+    const left = items.filter((h) => h.due && !h.today);
+    if (!left.length) return null;
+    return { title: 'Привычки на сегодня', body: `Осталось отметить: ${left.map((h) => h.title).join(', ')}. Минута — и день закрыт ✦`.slice(0, 220), url };
   }
   if (feature === 'askesis') {
-    const act = db.prepare("SELECT days, started FROM askesis WHERE user_id = ? AND status = 'active'").all(u.id)
-      .map((a) => ({ n: Math.floor((Date.parse(d) - Date.parse(a.started)) / 864e5) + 1, days: a.days })).filter((a) => a.n >= 1 && a.n <= a.days);
+    const act = hooks.askesisList ? hooks.askesisList(u.id, d).active : [];
     if (!act.length) return null;
-    const line = act.map((a) => `день ${a.n} из ${a.days}`).join(' · ');
-    return { title: act.length > 1 ? 'Аскезы' : 'Аскеза', body: `${line.charAt(0).toUpperCase()}${line.slice(1)} — отметьте, как прошёл день.`, url };
+    const a = act[0];
+    const leftText = a.left === 0 ? 'сегодня последний день' : `до конца осталось ${a.left} ${plural(a.left, 'день', 'дня', 'дней')}`;
+    const more = act.length > 1 ? ` Ещё ${act.length - 1} ${plural(act.length - 1, 'аскеза', 'аскезы', 'аскез')} — в приложении.` : '';
+    return { title: `Аскеза «${a.title}» · день ${a.done} из ${a.total}`, body: `${a.support} ${leftText.charAt(0).toUpperCase()}${leftText.slice(1)}.${more}`.slice(0, 220), url };
+  }
+  if (feature === 'gratitude') {
+    if (db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = 'gratitude'").get(u.id, d)) return null;
+    return { title: 'Кому и за что я благодарна сегодня?', body: 'Пара слов — и запись останется в дневнике.', url };
   }
   if (feature === 'lunar') {
     const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);

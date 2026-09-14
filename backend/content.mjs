@@ -289,6 +289,39 @@ const ASKESIS_FALLBACK = ['Без сахара', 'Без кофе после о�
   'Без покупок не по списку', 'Подъём до 7:00', '10 минут тишины каждый день', 'Прогулка каждый день', 'Без сериалов в будни', 'Без телефона за едой'];
 const HABITS_FALLBACK = ['Стакан воды утром', '10 минут прогулки', 'Три благодарности вечером', 'Лечь спать до 23:00', 'Час без телефона утром', 'Пять минут тишины', 'Витамины', 'Зарядка'];
 
+/* ── Круг эмоций Плутчика: ключ → название, семейство (лепесток), оттенок и цвет.
+   Восемь лепестков по три степени плюс восемь сочетаний между лепестками. Прежние пять
+   настроений остаются читаемыми в старых отметках. ── */
+const M = (key, label, family, tone) => ({ key, label, family, tone });
+export const MOODS = [
+  M('serenity', 'безмятежность', 'joy', '+'), M('joy', 'радость', 'joy', '+'), M('ecstasy', 'восторг', 'joy', '+'),
+  M('acceptance', 'принятие', 'trust', '+'), M('trust', 'доверие', 'trust', '+'), M('admiration', 'восхищение', 'trust', '+'),
+  M('apprehension', 'тревога', 'fear', '-'), M('fear', 'страх', 'fear', '-'), M('terror', 'ужас', 'fear', '-'),
+  M('distraction', 'возбуждение', 'surprise', '0'), M('surprise', 'удивление', 'surprise', '0'), M('amazement', 'изумление', 'surprise', '0'),
+  M('pensiveness', 'печаль', 'sadness', '-'), M('sadness', 'грусть', 'sadness', '-'), M('grief', 'горе', 'sadness', '-'),
+  M('boredom', 'скука', 'disgust', '-'), M('displeasure', 'неудовольствие', 'disgust', '-'), M('disgust', 'отвращение', 'disgust', '-'),
+  M('annoyance', 'досада', 'anger', '-'), M('anger', 'злость', 'anger', '-'), M('rage', 'гнев', 'anger', '-'),
+  M('interest', 'интерес', 'anticipation', '0'), M('anticipation', 'ожидание', 'anticipation', '0'), M('vigilance', 'настороженность', 'anticipation', '0'),
+  M('optimism', 'оптимизм', 'dyad', '+'), M('love', 'любовь', 'dyad', '+'), M('submission', 'покорность', 'dyad', '0'), M('awe', 'трепет', 'dyad', '0'),
+  M('disappointment', 'разочарование', 'dyad', '-'), M('remorse', 'раскаяние', 'dyad', '-'), M('contempt', 'презрение', 'dyad', '-'), M('aggressiveness', 'агрессия', 'dyad', '-'),
+];
+export const MOOD_FAMILIES = { joy: ['Радость', '#f2c94c'], trust: ['Доверие', '#9ccc3c'], fear: ['Страх', '#3aa35a'], surprise: ['Удивление', '#2aa7c9'],
+  sadness: ['Грусть', '#4c78c8'], disgust: ['Отвращение', '#8f5fb8'], anger: ['Злость', '#e0475c'], anticipation: ['Ожидание', '#f0932b'], dyad: ['На стыке', '#b9b2cf'] };
+/* прежние пять отметок — чтобы старая история читалась */
+export const LEGACY_MOODS = { joy: 'joy', calm: 'serenity', tired: 'pensiveness', anx: 'apprehension', sad: 'sadness' };
+const moodByKey = Object.fromEntries(MOODS.map((m) => [m.key, m]));
+export const moodInfo = (key) => moodByKey[LEGACY_MOODS[key] || key] || null;
+
+/* ── Установки дня: запасной набор на случай отсутствия файла ── */
+const SETS_FALLBACK = [
+  ['1', 'Ваш внутренний компас точен, {Имя}', 'Куда сегодня указывает мой внутренний компас — и что мешает пойти туда?'],
+  ['2', 'Вы делаете достаточно прямо сейчас, {Имя}', 'Что из сделанного сегодня я могу признать достаточным?'],
+  ['3', 'Ваш темп — самый правильный для вас, {Имя}', 'В каком темпе мне сегодня хорошо — и кто задаёт другой?'],
+  ['4', 'Прямо сейчас вокруг вас всё спокойно, {Имя}', 'Что вокруг меня прямо сейчас спокойно — назову пять вещей?'],
+  ['5', 'Ваши границы священны и неприкосновенны, {Имя}', 'Какую свою границу я сегодня обозначу яснее?'],
+  ['6', 'Всё правильно, и вы на своем истинном месте, {Имя}', 'Где моё истинное место — и я на нём?'],
+];
+
 /* ── Нумерология ── */
 const NUM_DESTINY_FALLBACK = {
   1: ['Число самостоятельных решений', 'Вам легче начать самой, чем ждать разрешения. Лучшие периоды — когда вы ведёте, а не догоняете.'],
@@ -442,6 +475,11 @@ function build() {
   r.ASKESIS_IDEAS = lines('аскезы.txt') || ASKESIS_FALLBACK;
   r.HABIT_IDEAS = lines('привычки.txt') || HABITS_FALLBACK;
 
+  /* Установки дня: номер | установка | вопрос. Каждому человеку — случайно и без повторов в течение года. */
+  r.SETS = rows('установки.txt', 3) || SETS_FALLBACK;
+  /* «Новое в приложении»: месяц | название | раздел:виджет | описание */
+  r.NEWS = (rows('новое.txt', 4) || []).map((c) => { const [view, widget] = c[2].split(':'); return { month: c[0], title: c[1], view: view.trim(), widget: (widget || '').trim(), text: c[3] }; });
+
   r.AFFIRMATIONS = lines('аффирмации.txt') || AFFIRMATIONS_FALLBACK;
   r.WISHES = lines('пожелания.txt') || WISHES_FALLBACK;
   r.DAY_QUESTIONS = lines('вопросы-дня.txt') || DAY_QUESTIONS_FALLBACK;
@@ -470,6 +508,8 @@ export const NUM_YEAR = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_YEAR
 export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) });
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
+export const SETS = new Proxy([], { get: (_, k) => Reflect.get(data.SETS, k) });
+export const NEWS = new Proxy([], { get: (_, k) => Reflect.get(data.NEWS, k) });
 export const ASKESIS_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.ASKESIS_IDEAS, k) });
 export const HABIT_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.HABIT_IDEAS, k) });
 
