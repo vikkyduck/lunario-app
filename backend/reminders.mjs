@@ -25,7 +25,6 @@ export const FEATURES = {
 };
 const FREQS = ['daily', 'weekdays', 'weekly', 'events'];
 const MSK = 'Europe/Moscow';
-const todayMSK = () => new Date().toLocaleDateString('sv-SE', { timeZone: MSK });
 const validTz = (tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } };
 
 let db = null, hooks = {};
@@ -44,6 +43,8 @@ export function initReminders(database, h = {}) {
     );
     CREATE TABLE IF NOT EXISTS push_shown (item_id INTEGER NOT NULL, endpoint TEXT NOT NULL, PRIMARY KEY (item_id, endpoint));
   `);
+  if (!db.prepare('PRAGMA table_info(push_queue)').all().some(c => c.name === 'endpoint'))
+    db.exec("ALTER TABLE push_queue ADD COLUMN endpoint TEXT NOT NULL DEFAULT ''");
   /* Раньше было одно напоминание — о карте дня в 9 утра для всех, кто подписался.
      Переносим его в новую систему один раз, чтобы у людей ничего не пропало. */
   if (!db.prepare('SELECT COUNT(*) c FROM reminders').get().c) {
@@ -106,15 +107,17 @@ const tpl = (key, vars) => {
   return { title: fill(title), body: fill(body) };
 };
 const MOOD_RU = { joy: 'радостно', calm: 'спокойно', tired: 'устало', anx: 'тревожно', sad: 'грустно' };
-export function notificationFor(feature, u) {
-  const d = todayMSK(), url = FEATURES[feature].url;
+export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK, eventsOnly = false) {
+  if (!FEATURES[feature]) return null;
+  // Practice records use the same Moscow day as server.mjs; delivery time is user-local.
+  const d = new Date(atMs).toLocaleDateString('sv-SE', { timeZone: MSK }), url = FEATURES[feature].url;
   if (feature === 'card') return { ...tpl('card'), url };
   if (feature === 'mood') {
     if (db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ?').get(u.id, d)) return null;
     return { ...tpl('mood'), url };
   }
   if (feature === 'moodreport') {
-    const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+    const since = new Date(Date.parse(d + 'T12:00:00Z') - 6 * 864e5).toISOString().slice(0, 10);
     const moods = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day >= ? GROUP BY mood ORDER BY c DESC').all(u.id, since);
     const total = moods.reduce((s, m) => s + m.c, 0);
     if (!total) return { ...tpl('moodreport-пусто'), url };
@@ -124,7 +127,10 @@ export function notificationFor(feature, u) {
   if (feature === 'habits') {
     const items = hooks.habitList ? hooks.habitList(u.id, d) : [];
     if (!items.length) return { ...tpl('habits-пусто'), url };
-    const left = items.filter((h) => h.due && !h.today && h.rule !== 'free');   /* свой ритм не подгоняем напоминаниями */
+    const left = items.filter((h) => h.due && !h.today && h.rule !== 'free');
+    // An unparsed rhythm has no due date. The user can still explicitly request a check-in.
+    if (!left.length && items.some(h => h.rule === 'free' && !h.today))
+      return { title: 'Дневник привычек', body: 'Загляните в привычки и отметьте то, что было сегодня', url };
     if (!left.length) return null;
     const t = tpl('habits', { 'список': left.map((h) => h.title).join(', '), 'осталось': left.length, 'всего': items.filter((h) => h.due).length });
     return { title: t.title, body: t.body.slice(0, 220), url };
@@ -135,14 +141,14 @@ export function notificationFor(feature, u) {
     return { ...tpl('gratitude'), url };
   }
   if (feature === 'lunar') {
-    const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);
+    const ld = lunarDay(atMs, u.lat ?? 55.7558, u.lon ?? 37.6173);
     if (!ld) return null;
     const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['Лунный день', ''];
     return { ...tpl('lunar', { n: ld.n, 'название': name, 'рекомендация': advice }), url };
   }
   if (feature === 'sky') {
-    const now = skyNow(Date.now(), u.tz || MSK);
-    if (!now.today.length) return null;
+    const now = skyNow(atMs, tz || MSK);
+    if (!now.today.length) return eventsOnly ? null : { title: 'На небе', body: `${now.moon.phase} ${now.moon.signIn}. ${now.retro.length ? now.retro.map(r => `${r.name} — ${r.adj}`).join(' · ') : 'Ретроградных планет сейчас нет'}`, url };
     const first = now.today[0];
     const t = tpl('sky', { 'события': now.today.map((e) => e.title).join(' · '), 'совет': first.note });
     return { title: t.title, body: t.body.slice(0, 220), url };
@@ -165,17 +171,39 @@ export function askesisNativePlan(userId, fromMs=Date.now()) {
   const r=listReminders(userId).find(r=>r.feature==='askesis');
   if(!r?.enabled) return {items:[]};
   const tz=r.tz||MSK;
-  const today=new Date(fromMs).toLocaleDateString('sv-SE',{timeZone:tz});
+  const today=new Date(fromMs).toLocaleDateString('sv-SE',{timeZone:MSK});
   const active=hooks.askesisList?hooks.askesisList(userId,today).active:[];
   const items=[];let cursor=fromMs;
   // iOS caps pending notifications. Refresh this rolling plan when the app opens.
   for(let i=0;i<14;i++) {
     const at=nextAt(r,cursor);if(!at)break;
     const day=new Date(at).toLocaleDateString('sv-SE',{timeZone:tz});
-    const notification=askesisNotification(active,day);if(!notification)break;
+    const notification=askesisNotification(active,new Date(at).toLocaleDateString('sv-SE',{timeZone:MSK}));if(!notification)break;
     items.push({date:day,...notification});cursor=at+1000;
   }
   return {items,tz,time:r.time};
+}
+
+export function previewNotification(u, feature) {
+  if (!FEATURES[feature]) return null;
+  return notificationFor(feature, u) || (feature === 'gratitude' ? {...tpl('gratitude'),url:FEATURES.gratitude.url} : null) || { title: FEATURES[feature].title, body: 'Пробное уведомление — всё готово к вашим напоминаниям', url: FEATURES[feature].url };
+}
+
+// Date-specific astronomical advice in the native shell. Seven notices per feature
+// leave room for askesis (14) and the five recurring routines within iOS's limit.
+export function skyNativePlan(u, feature, fromMs = Date.now()) {
+  if (!['lunar', 'sky'].includes(feature)) return { items: [] };
+  const r = listReminders(u.id).find(r => r.feature === feature), items = [];
+  if (!r?.enabled) return { items };
+  let cursor = fromMs;
+  for (let i = 0; i < 90 && items.length < 7; i++) {
+    const at = nextAt(r, cursor); if (!at) break;
+    const tz = r.tz || u.tz || MSK;
+    const n = notificationFor(feature, u, at, tz, r.freq === 'events');
+    if (n) items.push({ date: new Date(at).toLocaleDateString('sv-SE', {timeZone:tz}), ...n });
+    cursor = at + 1000;
+  }
+  return { items, tz: r.tz || u.tz || MSK, time: r.time };
 }
 
 /* ── планировщик: что подошло по времени — в очередь и в браузеры ── */
@@ -188,7 +216,7 @@ export async function runDue(keys, log = console.log, deliver = sendPush) {
     let n = null;
     if (!late && FEATURES[r.feature]) {
       const u = db.prepare('SELECT * FROM users WHERE id = ?').get(r.user_id);
-      try { n = u ? notificationFor(r.feature, u) : null; } catch (e) { log('не собралось:', r.feature, e.message); }
+      try { n = u ? notificationFor(r.feature, u, now, r.tz || u.tz || MSK, r.freq === 'events') : null; } catch (e) { log('не собралось:', r.feature, e.message); }
     }
     if (n) { if (!byUser.has(r.user_id)) byUser.set(r.user_id, []); byUser.get(r.user_id).push({ feature: r.feature, ...n }); }
     const next = nextAt(r, now);
@@ -214,20 +242,21 @@ export async function runDue(keys, log = console.log, deliver = sendPush) {
 /* Что показать по сигналу: свежие тексты, которые это устройство ещё не показывало. */
 export function pendingFor(userId, endpoint) {
   const since = new Date(Date.now() - 3 * 3600e3).toISOString();
-  const items = db.prepare('SELECT id, feature, title, body, url FROM push_queue WHERE user_id = ? AND ts >= ? ORDER BY id').all(userId, since)
+  const items = db.prepare("SELECT id, feature, title, body, url FROM push_queue WHERE user_id = ? AND ts >= ? AND (endpoint = '' OR endpoint = ?) ORDER BY id").all(userId, since, endpoint || '')
     .filter((it) => !endpoint || !db.prepare('SELECT 1 FROM push_shown WHERE item_id = ? AND endpoint = ?').get(it.id, endpoint));
   if (endpoint) for (const it of items) db.prepare('INSERT OR IGNORE INTO push_shown (item_id, endpoint) VALUES (?,?)').run(it.id, endpoint);
   return items;
 }
 
 /* Пробное уведомление прямо сейчас — чтобы человек увидел, как оно выглядит. */
-export async function sendNow(u, feature, keys) {
-  const n = FEATURES[feature] ? (notificationFor(feature, u) || { ...tpl('пробное'), url: FEATURES[feature].url }) : null;
+export async function sendNow(u, feature, keys, endpoint = '', deliver = sendPush) {
+  const n = previewNotification(u, feature);
   if (!n) return { ok: false, error: 'bad_feature' };
-  const subs = db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ?').all(u.id);
+  const subs = endpoint ? db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ? AND endpoint = ?').all(u.id, endpoint)
+    : db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ?').all(u.id);
   if (!subs.length) return { ok: false, error: 'no_push' };
-  db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url) VALUES (?,?,?,?,?,?)').run(u.id, new Date().toISOString(), feature, n.title, n.body, n.url);
+  db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url, endpoint) VALUES (?,?,?,?,?,?,?)').run(u.id, new Date().toISOString(), feature, n.title, n.body, n.url, endpoint);
   let sent = 0;
-  for (const s of subs) { try { if (await sendPush({ endpoint: s.endpoint }, keys)) sent++; else db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); } catch { /* почтовая служба не ответила */ } }
+  for (const s of subs) { try { if (await deliver({ endpoint: s.endpoint }, keys)) sent++; else db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); } catch { /* почтовая служба не ответила */ } }
   return { ok: sent > 0, sent, preview: n };
 }

@@ -16,6 +16,7 @@ export function initScheduledReminders(db, dataDir = DATA_DIR) {
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
+  db.exec('PRAGMA busy_timeout=5000');
   initScheduledReminders(db);
   const stat = await runDue(vapidKeys(DATA_DIR));
   if (stat.due) console.log(`Напоминания: подошло ${stat.due}, в очередь ${stat.queued}, отправлено ${stat.sent}, отписались ${stat.gone}, не дошло ${stat.failed}`);

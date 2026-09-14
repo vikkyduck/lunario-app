@@ -49,6 +49,7 @@ export async function sendPush(sub, keys, contact = 'mailto:hello@lunario.online
   const token = jwt(`${url.protocol}//${url.host}`, keys, contact);
   const res = await fetch(sub.endpoint, {
     method: 'POST',
+    signal: AbortSignal.timeout(15000),
     headers: {
       TTL: '86400',
       Authorization: `vapid t=${token}, k=${keys.publicKey}`,

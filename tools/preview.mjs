@@ -1,4 +1,4 @@
-/* Local, persistent demo. No production writes, SMTP, payments or push delivery.
+/* Local, persistent demo. No production writes, SMTP or payments. Push works after explicit opt-in.
    node tools/preview.mjs — http://localhost:5038/app/
    Personal demo data lives in .local-preview/data; it survives process restarts.
    Public illustrations are fetched read-only from the existing site. */
@@ -79,7 +79,7 @@ const server=createServer(async(req,res)=>{
       res.end(Buffer.from(await upstream.arrayBuffer()));return;
     }
     if(url.pathname.startsWith('/app/api/')) {proxy(req,res);return;}
-    if(url.pathname==='/sw.js'||url.pathname==='/app/sw.js'){res.writeHead(404);res.end();return;}
+    if(url.pathname==='/sw.js'){res.writeHead(404);res.end();return;}
     if(['/app/','/app/index.html'].includes(url.pathname)) {
       const html=readFileSync(join(repo,'site/index.html'),'utf8').replace('<title>','<title>Локальный просмотр · ')
         .replace('<body>','<body><div style="position:fixed;z-index:350;top:0;left:0;right:0;text-align:center;font:10px/16px system-ui;background:#201a35;color:#c9bedc;pointer-events:none">Демо-профиль · данные сохраняются только локально</div>');
@@ -97,6 +97,16 @@ const server=createServer(async(req,res)=>{
   }catch(e){console.error(e.message);res.writeHead(502);res.end('Local preview could not load this resource');}
 });
 server.listen(port,'127.0.0.1',()=>console.log(`Persistent local preview: http://localhost:${port}/app/`));
-function stop(){server.close();child.kill('SIGTERM');}
+// Local reminders use this preview's database and keys. No enabled reminders means no sends.
+let reminderWorker=null;
+function deliverLocalReminders(){
+  if(reminderWorker)return;
+  reminderWorker=spawn(process.execPath,[join(repo,'backend/send-daily.mjs')],{
+    env:{PATH:process.env.PATH,DATA_DIR:join(work,'data'),CONTENT_DIR:join(repo,'content')},stdio:['ignore','inherit','inherit']});
+  reminderWorker.on('exit',()=>{reminderWorker=null;});
+}
+const reminderTimer=setInterval(deliverLocalReminders,60000);
+function stop(){clearInterval(reminderTimer);reminderWorker?.kill('SIGTERM');server.close();child.kill('SIGTERM');}
+
 process.on('SIGTERM',stop);process.on('SIGINT',stop);
-child.on('exit',()=>server.close());
+child.on('exit',()=>{clearInterval(reminderTimer);reminderWorker?.kill('SIGTERM');server.close();});

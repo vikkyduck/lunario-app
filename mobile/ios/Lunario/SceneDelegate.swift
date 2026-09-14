@@ -9,6 +9,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: windowScene)
         window.backgroundColor = UIColor(red: 0x0b/255, green: 0x0a/255, blue: 0x14/255, alpha: 1)
+        if let response = connectionOptions.notificationResponse {
+            AppDelegate.pendingNotificationPath = response.notification.request.content.userInfo["url"] as? String ?? "/app/"
+        }
         window.rootViewController = ViewController()
         self.window = window
         window.makeKeyAndVisible()

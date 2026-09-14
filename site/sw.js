@@ -4,7 +4,7 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v8';
+const CACHE = 'lunario-app-v9';
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
 
@@ -15,7 +15,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((ks) => Promise.all(ks.filter((k) => k.startsWith('lunario-app-') && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -67,7 +67,7 @@ async function trim(c) {
 /* Сервер шлёт пустой сигнал «проснись» — через чужие почтовые службы не летит ни слова.
    По сигналу забираем тексты со своего сервера (по куке аккаунта) и показываем каждое:
    карта дня, настроение, привычки, аскеза, лунный день, небо. */
-const FALLBACK = { title: 'Лунарио', body: 'Ваша карта дня готова ✦', url: '/app/?open=card', feature: 'card' };
+const FALLBACK = { title: 'Лунарио', body: 'Ваше напоминание — загляните в приложение', url: '/app/', feature: 'reminder' };
 self.addEventListener('push', (e) => {
   e.waitUntil((async () => {
     let items = [];

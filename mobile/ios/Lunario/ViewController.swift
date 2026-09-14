@@ -34,8 +34,8 @@ class ViewController: UIViewController {
             // домены из WKAppBoundDomains: включает service worker — офлайн-оболочка работает
             config.limitsNavigationsToAppBoundDomains = true
         }
-        // 2 — версия моста: страница знает, что телефон умеет напоминания по функциям (schedule)
-        let boot = WKUserScript(source: "window.__LUN_IOS__ = 3;",
+        // 4 — разрешения, пробные уведомления и подтверждение расписаний
+        let boot = WKUserScript(source: "window.__LUN_IOS__ = 4;",
                                 injectionTime: .atDocumentStart, forMainFrameOnly: true)
         config.userContentController.addUserScript(boot)
         config.userContentController.add(bridge, name: "lunario")
@@ -83,7 +83,17 @@ class ViewController: UIViewController {
         }
         monitor.start(queue: DispatchQueue.global(qos: .utility))
 
+        NotificationCenter.default.addObserver(self, selector: #selector(openPendingNotification),
+                                               name: Notification.Name("LunarioOpenNotification"), object: nil)
         webView.load(URLRequest(url: Self.appURL))
+    }
+
+    @objc private func openPendingNotification() {
+        guard loadedOnce, let path = AppDelegate.pendingNotificationPath,
+              path.hasPrefix("/app/"), let url = URL(string: "https://lunario.online" + path),
+              url.host == Self.host else { return }
+        AppDelegate.pendingNotificationPath = nil
+        webView.load(URLRequest(url: url))
     }
 
     private func reload() {
@@ -133,6 +143,7 @@ extension ViewController: WKNavigationDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         loadedOnce = true
         offlineView.isHidden = true
+        openPendingNotification()
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

@@ -31,10 +31,48 @@ class NativeBridge: NSObject, WKScriptMessageHandler {
             reportReminderState()
         case "schedule":
             schedule(body)
+        case "notificationPermission":
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
+                self?.notificationReply(body, ok: granted, reason: granted ? "" : "denied")
+            }
+        case "notificationStatus":
+            UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+                let allowed = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+                self?.notificationReply(body, ok: allowed, reason: settings.authorizationStatus == .denied ? "denied" : "default")
+            }
+        case "notificationTest":
+            testNotification(body)
         case "scheduleStatus":
             reportSchedules(reason: "")
         default:
             break
+        }
+    }
+
+    private func notificationReply(_ message: [String: Any], ok: Bool, reason: String = "") {
+        guard let requestId = message["requestId"] as? String,
+              let data = try? JSONSerialization.data(withJSONObject: ["requestId": requestId, "ok": ok, "reason": reason]),
+              let json = String(data: data, encoding: .utf8) else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.webView?.evaluateJavaScript("window.__lunNotificationResult && window.__lunNotificationResult(\(json));", completionHandler: nil)
+        }
+    }
+
+    private func testNotification(_ message: [String: Any]) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { [weak self] settings in
+            guard let self = self else { return }
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else {
+                self.notificationReply(message, ok: false, reason: "denied"); return
+            }
+            let content = UNMutableNotificationContent()
+            content.title = message["title"] as? String ?? "Лунарио"
+            content.body = message["body"] as? String ?? "Пробное уведомление"
+            content.sound = .default
+            content.userInfo = ["url": message["url"] as? String ?? "/app/"]
+            let request = UNNotificationRequest(identifier: "lunario-test", content: content,
+                                                trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false))
+            center.add(request) { error in self.notificationReply(message, ok: error == nil, reason: error == nil ? "" : "failed") }
         }
     }
 
@@ -99,6 +137,7 @@ class NativeBridge: NSObject, WKScriptMessageHandler {
             let content = UNMutableNotificationContent()
             content.title = "Лунарио"
             content.body = "Ваша карта дня готова ✦"
+            content.userInfo = ["url": "/app/?open=card"]
             content.sound = .default
             var at = DateComponents()
             at.hour = 9
@@ -136,6 +175,7 @@ class NativeBridge: NSObject, WKScriptMessageHandler {
                 saved[id] = false
                 UserDefaults.standard.set(saved, forKey: self.schedulesKey)
                 self.reportSchedules(reason: "")
+                self.notificationReply(b, ok: true)
                 return
             }
             center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
@@ -143,11 +183,13 @@ class NativeBridge: NSObject, WKScriptMessageHandler {
                     saved[id] = false
                     UserDefaults.standard.set(saved, forKey: self.schedulesKey)
                     self.reportSchedules(reason: "denied")
+                    self.notificationReply(b, ok: false, reason: "denied")
                     return
                 }
                 let content = UNMutableNotificationContent()
                 content.title = b["title"] as? String ?? "Лунарио"
                 content.body = b["body"] as? String ?? ""
+                content.userInfo = ["url": b["url"] as? String ?? "/app/?open=\(id)"]
                 content.sound = .default
                 let hour = b["hour"] as? Int ?? 9, minute = b["minute"] as? Int ?? 0
                 var requests: [UNNotificationRequest] = []
@@ -163,6 +205,7 @@ class NativeBridge: NSObject, WKScriptMessageHandler {
                         datedContent.title = message["title"] as? String ?? content.title
                         datedContent.body = message["body"] as? String ?? content.body
                         datedContent.sound = .default
+                        datedContent.userInfo = ["url": message["url"] as? String ?? b["url"] as? String ?? "/app/?open=\(id)"]
                         requests.append(UNNotificationRequest(identifier: prefix + String(i), content: datedContent,
                                                               trigger: UNCalendarNotificationTrigger(dateMatching: c, repeats: false)))
                     }
@@ -184,20 +227,34 @@ class NativeBridge: NSObject, WKScriptMessageHandler {
                     }
                     if days.isEmpty {
                         var c = DateComponents(); c.hour = hour; c.minute = minute
+                        if let tz = b["tz"] as? String { c.timeZone = TimeZone(identifier: tz) }
                         requests.append(UNNotificationRequest(identifier: prefix + "d", content: content,
                                                               trigger: UNCalendarNotificationTrigger(dateMatching: c, repeats: true)))
                     } else {
                         for d in days {
                             var c = DateComponents(); c.weekday = d; c.hour = hour; c.minute = minute
+                            if let tz = b["tz"] as? String { c.timeZone = TimeZone(identifier: tz) }
                             requests.append(UNNotificationRequest(identifier: prefix + String(d), content: content,
                                                                   trigger: UNCalendarNotificationTrigger(dateMatching: c, repeats: true)))
                         }
                     }
                 }
-                for r in requests { center.add(r, withCompletionHandler: nil) }
-                saved[id] = true
-                UserDefaults.standard.set(saved, forKey: self.schedulesKey)
-                self.reportSchedules(reason: "")
+                let group = DispatchGroup(), lock = NSLock()
+                var failed = false
+                for request in requests {
+                    group.enter()
+                    center.add(request) { error in
+                        lock.lock(); if error != nil { failed = true }; lock.unlock()
+                        group.leave()
+                    }
+                }
+                group.notify(queue: .main) {
+                    var current = UserDefaults.standard.dictionary(forKey: self.schedulesKey) as? [String: Bool] ?? [:]
+                    current[id] = !failed
+                    UserDefaults.standard.set(current, forKey: self.schedulesKey)
+                    self.reportSchedules(reason: failed ? "failed" : "")
+                    self.notificationReply(b, ok: !failed, reason: failed ? "failed" : "")
+                }
             }
         }
     }

@@ -31,7 +31,7 @@ import { natalChart } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
-import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow, askesisNativePlan } from './reminders.mjs';
+import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow, askesisNativePlan, skyNativePlan, previewNotification } from './reminders.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -620,6 +620,7 @@ function touchStreak(u) {                       // серию продолжае
   return next;
 }
 const publicUser = (u) => ({
+  id: u.id,
   name: u.name, birth: u.birth, birthTime: u.birth_time, city: u.city,
   region: u.city_region || '', lat: u.lat ?? null, lon: u.lon ?? null, tz: u.tz || '',
   tzOffset: u.tz && u.birth ? tzOffsetMinutes(u.tz, `${u.birth}T${u.birth_time || '12:00'}:00`) : null,
@@ -1307,6 +1308,12 @@ const server = createServer(async (req, res) => {
       }
 
       /* ── напоминания по функциям ── */
+      if (p === '/api/reminders/preview' && req.method === 'GET') {
+        const item = previewNotification(u, url.searchParams.get('feature'));
+        return json(res, item ? 200 : 400, item ? { item } : { error: 'bad_feature' });
+      }
+      if (p === '/api/reminders/sky-plan' && req.method === 'GET')
+        return json(res, 200, skyNativePlan(u, url.searchParams.get('feature')));
       if (p === '/api/reminders/askesis-plan' && req.method === 'GET') return json(res, 200, askesisNativePlan(u.id));
       if (p === '/api/reminders' && req.method === 'GET')
         return json(res, 200, { items: listReminders(u.id), push: { on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id = ?').get(u.id), key: PUSH.publicKey } });
@@ -1320,7 +1327,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/reminders/test' && req.method === 'POST') {
         const b = await readBody(req);
         if (!allowRate(testRate, String(u.id), 3)) return json(res, 429, { ok: false, error: 'too_many' });
-        const r = await sendNow(u, String(b.feature || 'card'), PUSH);
+        const r = await sendNow(u, String(b.feature || 'card'), PUSH, clean(b.endpoint, 500));
         if (r.ok) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'reminder_test', String(b.feature || ''), ageBand(u.birth));
         return json(res, r.ok ? 200 : 400, r);
       }

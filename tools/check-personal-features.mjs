@@ -131,6 +131,7 @@ try {
   const long = (await owner.json('/habits','POST',{title:'Большой интервал',rule:'каждые 100 дней'})).items.find(h=>h.title==='Большой интервал');
   assert.equal(long.rule,'every:100');
   const qaDB = new DatabaseSync(join(fixture,'data/app.db'));
+  qaDB.exec('PRAGMA busy_timeout=5000');
   for (const milestone of [30,60,90,180,365]) {
     const h=(await owner.json('/habits','POST',{title:'Ежедневно '+milestone,rule:'каждый день'})).items.find(h=>h.title==='Ежедневно '+milestone);
     qaDB.prepare('UPDATE habits SET created_at=? WHERE id=?').run(new Date(Date.parse(day)-(milestone-1)*864e5).toISOString(),h.id);
@@ -178,9 +179,34 @@ try {
   const gratitude=(await owner.json('/journal?kind=gratitude')).items[0];
   assert.equal(gratitude.day,day);assert.equal(gratitude.text,'Маме за звонок');
   assert.equal(reminders.notificationFor('gratitude',person),null,'Do not remind after gratitude is recorded');
+  assert.equal(reminders.notificationFor('gratitude',person,Date.parse(day+'T20:59:00Z'),'Asia/Tokyo'),null,'Reminder suppression uses the same day as the diary');
   await owner.json('/journal','POST',{kind:'answer',title:me.day.question,text:'Сегодня я могу дать себе время'});
   assert.ok((await owner.json('/journal')).items.some(i=>i.kind==='answer' && i.title===me.day.question && i.day===day));
   assert.equal((await owner.json('/catalog')).moods.length,32);
+  // Every requested feature exposes a scheduled preference and a feature-specific preview.
+  for (const feature of ['mood','moodreport','habits','askesis','gratitude','lunar','sky']) {
+    const r=(await owner.json('/reminders','POST',{feature,enabled:true,time:'18:25',freq:'weekly',weekday:3,tz:'Asia/Tokyo'})).item;
+    assert.equal(r.time,'18:25');assert.equal(r.weekday,3);assert.equal(r.tz,'Asia/Tokyo');
+    assert.equal(new Date(r.nextAt).toLocaleString('sv-SE',{timeZone:r.tz}).slice(11,16),'18:25');
+    const preview=(await owner.json('/reminders/preview?feature='+feature)).item;
+    assert.ok(preview.title);assert.ok(preview.body);assert.equal(preview.url,'/app/?open='+feature);
+  }
+  assert.equal((await owner.raw('/reminders/preview?feature=invalid')).status,400);
+  for(const feature of ['lunar','sky']) {
+    const planned=await owner.json('/reminders/sky-plan?feature='+feature);
+    assert.equal(planned.items.length,7);
+    assert.ok(planned.items.every(n=>new Date(n.date+'T12:00:00Z').getUTCDay()===3 && n.body && n.url.endsWith(feature)));
+  }
+  const endpoint='https://push.invalid/current', otherEndpoint='https://push.invalid/other-device';
+  for(const ep of [endpoint,otherEndpoint])qaDB.prepare('INSERT INTO push_subs(endpoint,user_id,created_at) VALUES(?,?,?)').run(ep,person.id,new Date().toISOString());
+  let sentTo=[];
+  assert.equal((await reminders.sendNow(person,'moodreport',{},endpoint,async sub=>{sentTo.push(sub.endpoint);return true;})).ok,true);
+  assert.deepEqual(sentTo,[endpoint]);
+  assert.ok(reminders.pendingFor(person.id,endpoint).some(n=>n.feature==='moodreport'));
+  assert.ok(!reminders.pendingFor(person.id,otherEndpoint).some(n=>n.feature==='moodreport'));
+  assert.equal((await reminders.sendNow(person,'mood',{},'https://push.invalid/unknown',async()=>{throw Error('Must not send');})).error,'no_push');
+  qaDB.prepare('DELETE FROM push_subs WHERE user_id=?').run(person.id);
+  console.log('PASS: all seven feature schedules, timezone, native lunar/sky plans, feature previews, device-specific test delivery and queue isolation.');
   qaDB.close();
   console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, 30/60/90/180/365 daily-only awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
   if (process.argv.includes('--ui')) {
@@ -189,6 +215,8 @@ try {
     const browser = await chromium.launch({ headless: true,
       ...(process.env.LUNARIO_CHROME_PATH ? { executablePath: process.env.LUNARIO_CHROME_PATH } : {}) });
     try {
+      const {checkNotificationUI}=await import('./check-notifications.mjs');
+      await checkNotificationUI({browser,base,owner,other});
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
       const [name, value] = owner.cookie.split('=');
       await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, secure: false, sameSite: 'Lax' }]);
