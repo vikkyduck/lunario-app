@@ -676,7 +676,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="wid" type="button" onclick="openWidget('natal')"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button>
       <button class="wid stub" type="button" onclick="openStub('Тесты')"><i class="ico list"></i><b>Тесты</b><span>Пока в разработке</span></button>
       <button class="wid" type="button" onclick="openWidget('year')"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button>
-      <button class="wid" type="button" onclick="openWidget('birthnum')"><i class="ico numerology"></i><b>Число рождения</b><span id="m-birthsub"></span></button>
+      <button class="wid stub" type="button" onclick="openStub('Нумерология')"><i class="ico numerology"></i><b>Нумерология</b><span>В разработке</span></button>
       <button class="wid" type="button" onclick="openWidget('compat')"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></button>
     </div>
   </section>
@@ -1494,7 +1494,7 @@ function paintNum(n){
   $('w-year-box').innerHTML=n.year.info ? yearHtml(n.year) : item(n.year.n,'Личный год '+n.year.n,n.year.text,yearPeriod(n.year));
   if (n.year.info) preparePending();   /* открытка года собирается заранее, как и остальные */
   $('w-birth-box').innerHTML=item(n.destiny.n,n.destiny.title,n.destiny.text,n.destiny.formula);
-  $('m-yearsub').textContent=n.year.info ? `${n.year.n} · ${n.year.info.planet} · ${n.year.info.energy}` : String(n.year.n); $('m-birthsub').textContent=n.destiny.n+' · '+n.destiny.title;
+  $('m-yearsub').textContent=n.year.info ? `${n.year.n} · ${n.year.info.planet} · ${n.year.info.energy}` : String(n.year.n);
 }
 
 /* ── «Что вас сегодня беспокоит?»: вопрос раскрывается в три способа получить ответ ── */
