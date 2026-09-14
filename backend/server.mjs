@@ -2,7 +2,7 @@
    Слушает 127.0.0.1, за nginx. Своя папка и свой порт — не пересекается с лендингом.
    Аккаунт анонимный: httpOnly-cookie с токеном, e-mail можно привязать позже. */
 import { createServer } from 'node:http';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, createHash, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
@@ -10,10 +10,17 @@ import { DatabaseSync } from 'node:sqlite';
 import { vapidKeys } from './push.mjs';
 import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
 import * as C from './content.mjs';
+import { CONTENT_DIR } from './content.mjs';
+const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
+  const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
+  const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;
+  return { name, lines, size: text.length, mtime: statSync(join(CONTENT_DIR, name)).mtime.toISOString().slice(0, 16).replace('T', ' ') };
+});
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
 import { sendMail, mailReady, loginMail, verifySmtp } from './mailer.mjs';
 import { lunarDay, lunarPeriodText } from './lunar.mjs';
-import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, dashboard, report, blockAllowed, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
+import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
+import { initReports, overview, report, userCard, ROLE_MENUS, REPORT_META } from './reports.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -172,6 +179,7 @@ db.exec(`
 }
 
 initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
+initReports(db, DATA_DIR);
 
 /* ── утилиты ── */
 const MSK = 'Europe/Moscow';
@@ -592,19 +600,41 @@ const server = createServer(async (req, res) => {
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
       if (p.startsWith('/api/cabinet/')) {
         const roles = rolesFor(u.email);
-        if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive() });
+        if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive(), menus: ROLE_MENUS, reports: REPORT_META });
         if (!roles.length) return json(res, 403, { ok: false, error: 'no_access' });
         const admin = roles.includes('admin');
+        // роль проверяется на каждом запросе: скрытая кнопка — не защита
+        const allowed = (kind) => admin || roles.some((r) => (ROLE_MENUS[r] || []).includes(kind));
         if (p === '/api/cabinet/dashboard') {
-          const dash = dashboard(Object.fromEntries(url.searchParams));
-          dash.blocks = dash.blocks.filter((b) => blockAllowed(b.key, roles));
-          return json(res, 200, dash);
+          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
+          return json(res, 200, overview(Object.fromEntries(url.searchParams)));
         }
         if (p === '/api/cabinet/report') {
           const kind = url.searchParams.get('kind') || '';
-          if (!blockAllowed(kind, roles)) return json(res, 403, { ok: false, error: 'no_access' });
+          if (!allowed(kind)) return json(res, 403, { ok: false, error: 'no_access' });
           const r = report(kind, Object.fromEntries(url.searchParams));
-          return r ? json(res, 200, r) : json(res, 404, { ok: false, error: 'not_found' });
+          if (!r) return json(res, 404, { ok: false, error: 'not_found' });
+          if (kind === 'content') r.files = contentFiles();
+          return json(res, 200, r);
+        }
+        if (p === '/api/cabinet/user') {
+          if (!allowed('users')) return json(res, 403, { ok: false, error: 'no_access' });
+          const c = userCard(url.searchParams.get('id'));
+          return c ? json(res, 200, c) : json(res, 404, { ok: false, error: 'not_found' });
+        }
+        if (p === '/api/cabinet/content') {
+          if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+          const name = String(url.searchParams.get('file') || '');
+          if (!contentFiles().some((f) => f.name === name)) return json(res, 404, { ok: false, error: 'not_found' });
+          if (req.method === 'GET') return json(res, 200, { name, text: readFileSync(join(CONTENT_DIR, name), 'utf8') });
+          if (req.method === 'POST') {
+            const b = await readBody(req);
+            const text = String(b.text || '');
+            if (text.length > 200000) return json(res, 400, { ok: false, error: 'too_long' });
+            writeFileSync(join(CONTENT_DIR, name), text, 'utf8');   // папка под наблюдением — тексты перечитаются сами
+            console.log(`[контент] ${u.email} сохранил ${name} (${text.length} симв.)`);
+            return json(res, 200, { ok: true });
+          }
         }
         if (p === '/api/cabinet/staff') {
           if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });

@@ -11,90 +11,151 @@
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
-:root{--bg:#0b0a14;--text:#f5f2ea;--muted:#b9b2cf;--faint:#8f87ad;--line:rgba(245,242,234,.12);--gold:#d9b868;--gold-2:#f0d79a;--ok:#9fe6bd;--warn:#ffb3b3;
-  --glass:linear-gradient(135deg,rgba(245,242,234,.10) 0%,rgba(245,242,234,.04) 45%,rgba(245,242,234,.07) 100%),linear-gradient(rgba(20,17,38,.86),rgba(20,17,38,.86));
-  --shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 34px -14px rgba(0,0,0,.55);--sp:cubic-bezier(.2,.85,.3,1)}
+/* Тёмно-фиолетовый фон, яркий светлый текст, крупные кегли и никакого тонкого начертания — чтобы читалось и при астигматизме. */
+:root{--bg:#0b0a14;--text:#f7f4ee;--muted:#cfc8e4;--faint:#a49cc2;--line:rgba(245,242,234,.14);--gold:#e0c070;--gold-2:#f3dca0;--ok:#a8ecc6;--warn:#ffb8b8;--blue:#a9b8ff;
+  --card:linear-gradient(135deg,rgba(245,242,234,.09) 0%,rgba(245,242,234,.04) 45%,rgba(245,242,234,.06) 100%),linear-gradient(rgba(22,18,42,.9),rgba(22,18,42,.9));
+  --shadow:inset 0 1px 0 rgba(255,255,255,.14),0 12px 34px -14px rgba(0,0,0,.6);--sp:cubic-bezier(.2,.85,.3,1)}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg)}
-body{font-family:Onest,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);background:linear-gradient(180deg,#141126 0%,#0b0a14 70%);background-attachment:fixed;min-height:100dvh;font-size:15px;line-height:1.5}
+body{font-family:Onest,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);background:linear-gradient(180deg,#171330 0%,#0b0a14 70%);background-attachment:fixed;min-height:100dvh;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 a{color:var(--gold-2)}
-h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
-h1{font-size:28px;line-height:1.15}h2{font-size:20px}h3{font-size:16px}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.01em;color:#fff}
+h1{font-size:30px;line-height:1.15}h2{font-size:21px;line-height:1.25}h3{font-size:17px}
 p{margin:0;color:var(--muted)}
-.wordmark{font-family:Comfortaa,ui-rounded,Onest,sans-serif;font-weight:300;font-size:22px;color:var(--text);letter-spacing:.01em}
-.eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:var(--gold);display:block}
-.top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 15%;border-bottom:1px solid var(--line)}
-.top .who{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--muted);flex-wrap:wrap;justify-content:flex-end}
+.wordmark{font-family:Comfortaa,ui-rounded,Onest,sans-serif;font-weight:400;font-size:22px;color:var(--text);letter-spacing:.01em}
+.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:12.5px;font-weight:800;color:var(--gold);display:block}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 15%;border-bottom:1px solid var(--line)}
+.top .who{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--muted);flex-wrap:wrap;justify-content:flex-end}
 .wrap{padding:0 15% 60px}
-@media(max-width:900px){.top{padding:14px 18px}.wrap{padding:0 18px 48px}}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.06);color:var(--text);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
-.btn.gold{border:0;background:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);color:#1c1430;box-shadow:0 12px 34px rgba(217,184,104,.25)}
-.btn.sm{min-height:36px;padding:0 13px;font-size:13px}
+@media(max-width:1100px){.top{padding:14px 4%}.wrap{padding:0 4% 48px}}
+@media(max-width:700px){.top{padding:10px 14px}.wrap{padding:0 14px 40px}.wordmark{font-size:17px}.top .who{font-size:13px;gap:8px}.top .who .btn{min-height:32px;padding:0 10px;font-size:13px}h1{font-size:25px;overflow-wrap:anywhere}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.07);color:var(--text);font:inherit;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{border-color:rgba(224,192,112,.6)}
+.btn.gold{border:0;background:linear-gradient(135deg,#f3dca0 0%,#e0c070 55%,#bf9440 100%);color:#1c1430;box-shadow:0 12px 34px rgba(224,192,112,.25)}
+.btn.sm{min-height:36px;padding:0 13px;font-size:14px}
 .btn.warn{color:var(--warn)}
+.btn.on{background:rgba(224,192,112,.18);border-color:rgba(224,192,112,.6)}
 .btn[disabled]{opacity:.45}
-input,select{width:100%;min-height:46px;border-radius:14px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);padding:10px 14px;color:#fff;font:inherit;font-size:15px;outline:none}
-input:focus{border-color:#d9b868}
-.card{background:var(--glass);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}
+input,select,textarea{width:100%;min-height:46px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);padding:10px 14px;color:#fff;font:inherit;font-size:16px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#e0c070}
+select{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#cfc8e4 50%),linear-gradient(135deg,#cfc8e4 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:36px}
+select option{background:#1d1738;color:#fff}
+textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14.5px;line-height:1.55;resize:vertical}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:var(--shadow)}
 .view{display:none}.view.on{display:block}
-/* вход */
-.login{max-width:440px;margin:60px auto}
-.msg{font-size:14px;margin-top:10px;min-height:1px}.msg.err{color:var(--warn)}.msg.ok{color:var(--ok)}
-/* роли: статичный экран, квадраты с полями 15% на десктопе, по два в ряд на телефоне */
-.roles{min-height:calc(100dvh - 78px);display:flex;flex-direction:column;justify-content:center;padding:28px 0}
-.roles-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.role{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:26px;background:var(--glass);border:1px solid rgba(217,184,104,.36);box-shadow:var(--shadow),0 14px 36px -18px rgba(217,184,104,.45);color:var(--text);font:inherit;font-size:clamp(15px,1.6vw,22px);font-weight:650;cursor:pointer;text-decoration:none;transition:transform .16s var(--sp),border-color .2s}
-.role:hover{border-color:rgba(217,184,104,.7)}.role:active{transform:scale(.97)}
-.role small{font-size:12px;font-weight:500;color:var(--faint)}
-.role .ico{width:34px;height:34px;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
-.role.off{opacity:.28;pointer-events:none;border-color:var(--line);box-shadow:none}
-@media(max-width:900px){.roles-grid{grid-template-columns:1fr 1fr;gap:12px}.roles{min-height:calc(100dvh - 70px);padding:20px 0}.role{border-radius:20px}}
-/* дашборд */
-.sec{margin-top:40px}
-.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
-.periods{display:flex;gap:6px;flex-wrap:wrap}
-.periods button{min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
-.periods button.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55);color:var(--text)}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media(max-width:1200px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
-.block{display:flex;flex-direction:column;gap:6px;min-height:190px;padding:18px 18px 16px;border-radius:22px;background:var(--glass);border:1px solid var(--line);box-shadow:var(--shadow);color:inherit;font:inherit;text-align:left;cursor:pointer;transition:border-color .2s}
-.block:hover{border-color:rgba(217,184,104,.5)}
-.block.main{border-color:rgba(217,184,104,.5)}
-.block.alarm .val{color:var(--warn)}
-.block b{font-size:14.5px;line-height:1.3;color:var(--text)}
-.block .q{font-size:12.5px;line-height:1.4;color:var(--faint)}
-.block .val{font-size:34px;font-weight:650;line-height:1;color:var(--gold-2);margin-top:auto}
-.block .unit{font-size:12.5px;color:var(--muted)}
-.block .cmp{font-size:12.5px;color:var(--faint)}
-.up{color:var(--ok)}.down{color:var(--warn)}
-.block .sub{font-size:12.5px;color:var(--muted);line-height:1.35}
-.spark{height:34px;width:100%}
-/* отчёт */
-.report .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.big{font-size:52px;font-weight:650;line-height:1;color:var(--gold-2)}
-.bars{display:flex;align-items:flex-end;gap:3px;height:120px;margin-top:18px}
-.bars i{flex:1;background:linear-gradient(180deg,#f0d79a,#b98f3e);border-radius:4px 4px 0 0;min-height:2px;opacity:.85;position:relative}
-.bars i:hover{opacity:1}
-.bars i::after{content:attr(data-t);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap;opacity:0}
-.bars i:hover::after{opacity:1}
-table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
-th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:700}
-td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-td small{display:block;color:var(--faint);font-size:12.5px}
-.how{margin-top:18px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.04);border:1px dashed var(--line);font-size:13.5px;color:var(--muted)}
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
-.chip.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55);color:var(--text)}
-.chip input{width:auto;min-height:0;margin:0;accent-color:#d9b868}
-.lock{font-size:12px;color:var(--faint)}
-.back{display:inline-flex;align-items:center;gap:7px;font-size:14.5px;color:#f0d79a;background:none;border:0;padding:8px 0;cursor:pointer;font:inherit}
-.toast{position:fixed;left:50%;top:14px;transform:translate(-50%,-16px);z-index:60;background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;transition:.3s var(--sp);pointer-events:none}
-.toast.on{opacity:1;transform:translate(-50%,0)}
-.hint{font-size:13px;color:var(--faint);margin-top:8px}
+.login{max-width:460px;margin:60px auto}
+.msg{font-size:15px;margin-top:10px;min-height:1px}.msg.err{color:var(--warn)}.msg.ok{color:var(--ok)}
+.hint{font-size:14px;color:var(--faint);margin-top:8px;line-height:1.45}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.row>*{flex:1;min-width:160px}
-.row .fixed{flex:0 0 auto;min-width:0}
+.row>*{flex:1;min-width:160px}.row .fixed{flex:0 0 auto;min-width:0}
+.toast{position:fixed;left:50%;top:14px;transform:translate(-50%,-16px);z-index:60;background:rgba(29,23,56,.96);border:1px solid rgba(224,192,112,.45);padding:11px 18px;border-radius:999px;font-size:15px;opacity:0;transition:.3s var(--sp);pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.lock{font-size:13.5px;color:var(--faint)}
+/* ── роли: статичный экран, 6 квадратов на десктопе, 3 на планшете, 2 на телефоне ── */
+.roles{min-height:calc(100dvh - 136px);display:flex;flex-direction:column;justify-content:center;padding:24px 0}
+.roles-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.role{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:24px;background:var(--card);border:1px solid rgba(224,192,112,.38);box-shadow:var(--shadow),0 14px 36px -18px rgba(224,192,112,.45);color:var(--text);font:inherit;font-size:clamp(15px,1.25vw,19px);font-weight:700;cursor:pointer;text-decoration:none;text-align:center;padding:10px;transition:transform .16s var(--sp),border-color .2s}
+.role:hover{border-color:rgba(224,192,112,.75)}.role:active{transform:scale(.97)}
+.role small{font-size:13px;font-weight:500;color:var(--faint);line-height:1.3}
+.role .ico{width:34px;height:34px;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.role.off{opacity:.3;pointer-events:none;border-color:var(--line);box-shadow:none}
+@media(max-width:1100px){.roles-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.roles-grid{grid-template-columns:1fr 1fr;gap:12px}.roles{min-height:0;padding:20px 0}.role{border-radius:20px;font-size:16px}}
+/* ── кабинет: меню слева, отчёт справа ── */
+.cab{display:grid;grid-template-columns:240px minmax(0,1fr);gap:26px;padding-top:20px}
+.cab>*{min-width:0}
+#report{min-width:0}
+.menu{position:sticky;top:14px;align-self:start;display:flex;flex-direction:column;gap:4px}
+.menu a{display:block;padding:9px 12px;border-radius:12px;color:var(--muted);text-decoration:none;font-size:15px;font-weight:600;border:1px solid transparent}
+.menu a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.menu a.on{color:var(--text);background:rgba(224,192,112,.14);border-color:rgba(224,192,112,.5)}
+.menu .back{margin-bottom:8px}
+@media(max-width:1000px){.cab{grid-template-columns:1fr;gap:14px}.menu{position:static;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:6px;-webkit-overflow-scrolling:touch}.menu a{white-space:nowrap;padding:8px 12px;border:1px solid var(--line)}.menu .back{margin:0}}
+.back{display:inline-flex;align-items:center;gap:7px;font-size:15px;color:#f3dca0;background:none;border:0;padding:8px 0;cursor:pointer;font:inherit;font-weight:600}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.periods{display:flex;gap:6px;flex-wrap:wrap}
+.periods button{min-height:38px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--muted);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer}
+.periods button.on{background:rgba(224,192,112,.18);border-color:rgba(224,192,112,.6);color:var(--text)}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--faint);min-width:150px}
+.filters select,.filters input{min-height:38px;padding:6px 32px 6px 12px;font-size:14.5px;border-radius:10px}
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+@media(max-width:1300px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.kpis{gap:8px}.kpi{min-height:110px;padding:12px}.kpi .val{font-size:26px}}
+.kpi{display:flex;flex-direction:column;gap:5px;min-height:126px;padding:16px 16px 14px;border-radius:20px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.kpi b{font-size:15px;line-height:1.3;color:var(--text)}
+.kpi .val{font-size:34px;font-weight:750;line-height:1.05;color:var(--gold-2);margin-top:auto;font-variant-numeric:tabular-nums}
+.kpi .val .unit{font-size:14px;color:var(--muted);font-weight:600;margin-left:6px}
+.kpi .val.na{font-size:18px;color:var(--faint);font-weight:600}
+.kpi .cmp,.kpi .sub{font-size:13.5px;color:var(--faint);line-height:1.35}
+.up{color:var(--ok)}.down{color:var(--warn)}
+.state{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--faint)}
+.state.off{border-color:rgba(255,184,184,.4);color:var(--warn)}
+/* блоки сводки */
+.north{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:18px;padding:18px 22px;border-radius:22px;background:linear-gradient(135deg,rgba(224,192,112,.16),rgba(224,192,112,.05));border:1px solid rgba(224,192,112,.55);cursor:pointer;color:inherit;font:inherit;text-align:left;width:100%}
+.north>div:first-child{flex:0 0 auto}.north .val{font-size:44px;font-weight:800;color:var(--gold-2);line-height:1}
+.blocks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+@media(max-width:1300px){.blocks{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.blocks{grid-template-columns:1fr}}
+.block{display:flex;flex-direction:column;gap:6px;min-height:176px;padding:16px;border-radius:20px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);color:inherit;font:inherit;text-align:left;cursor:pointer;transition:border-color .2s}
+.block:hover{border-color:rgba(224,192,112,.6)}.block.main{border-color:rgba(224,192,112,.55)}.block.alarm .val{color:var(--warn)}
+.block b{font-size:15px;line-height:1.3}
+.block .val{font-size:32px;font-weight:750;line-height:1;color:var(--gold-2);margin-top:auto;font-variant-numeric:tabular-nums}
+.block .val .unit{font-size:13.5px;color:var(--muted);font-weight:600;margin-left:6px}
+.block .cmp,.block .sub{font-size:13.5px;color:var(--faint);line-height:1.35}
+.block .go{font-size:13px;color:var(--gold-2);font-weight:600}
+.spark{height:32px;width:100%}
+/* диаграммы */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+@media(max-width:900px){.charts{grid-template-columns:1fr}}
+.viz{min-width:0;overflow:hidden;padding:18px 18px 14px;border-radius:20px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);min-width:0}
+.viz h3{font-size:17px}.viz .sub{font-size:13.5px;color:var(--faint);margin-top:2px}
+.viz .insight{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:14px;color:var(--muted);line-height:1.45}
+.viz svg{width:100%;height:auto;display:block;margin-top:12px;overflow:visible}
+.viz svg text{font-family:inherit;font-size:15px;fill:#d9d3ea;font-weight:600}
+.legend{display:flex;flex-direction:column;gap:4px;font-size:14.5px;margin-top:10px}
+.legend div{display:flex;align-items:center;gap:8px}.legend i{width:12px;height:12px;border-radius:3px;flex:0 0 auto}.legend b{margin-left:auto;font-variant-numeric:tabular-nums}
+.pie{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center}
+@media(max-width:480px){.pie{grid-template-columns:1fr}.pie svg{max-width:170px;margin:0 auto}}
+.hbars{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.hbars .l{display:flex;justify-content:space-between;font-size:14.5px}.hbars .l b{font-variant-numeric:tabular-nums}
+.hbars .t{height:10px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden}.hbars .t i{display:block;height:100%;background:linear-gradient(90deg,#f3dca0,#bf9440);border-radius:6px}
+.funnel{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.funnel div{padding:9px 12px;border-radius:10px;background:linear-gradient(90deg,rgba(224,192,112,.4),rgba(224,192,112,.18));border:1px solid rgba(224,192,112,.35);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:36%}
+.funnel div b{font-variant-numeric:tabular-nums;margin-right:6px}
+.heat{display:grid;grid-template-columns:34px repeat(24,1fr);gap:2px;margin-top:12px;font-size:11px}
+.heat span{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:3px;background:rgba(224,192,112,var(--a,.04));color:transparent}
+.heat .lab{background:none;color:var(--faint);aspect-ratio:auto;justify-content:flex-start}
+.empty{padding:14px;font-size:14.5px;color:var(--faint)}
+/* таблицы */
+.tbl{margin-top:18px}
+.tbl h3{margin-bottom:2px}
+.tbl .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:15px;margin-top:6px}
+th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
+th{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;white-space:nowrap}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td small{display:block;color:var(--faint);font-size:13px}
+.note{margin-top:8px;font-size:14px;color:var(--muted);line-height:1.45}
+.how{margin-top:20px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.045);border:1px dashed var(--line);font-size:15px;color:var(--muted);line-height:1.5}
+.how b{color:var(--text)}
+.notice{margin-top:14px;padding:12px 16px;border-radius:14px;background:rgba(169,184,255,.09);border:1px solid rgba(169,184,255,.35);font-size:14.5px;color:var(--muted);line-height:1.5}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);font-size:14px;color:var(--muted);cursor:pointer;user-select:none}
+.chip.on{background:rgba(224,192,112,.18);border-color:rgba(224,192,112,.6);color:var(--text)}
+.chip input{width:auto;min-height:0;margin:0;accent-color:#e0c070}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid rgba(224,192,112,.4);font-size:13px;color:var(--text);margin:1px 2px 1px 0}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(11,10,20,.72);display:none;align-items:center;justify-content:center;padding:16px}
+.modal.on{display:flex}
+.modal .card{width:min(760px,100%);max-height:90dvh;overflow:auto;background:#1b1637}
+.files{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+@media(max-width:700px){.files{grid-template-columns:1fr}}
+.file{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line);cursor:pointer;color:inherit;font:inherit;text-align:left}
+.file:hover{border-color:rgba(224,192,112,.6)}
+.file small{color:var(--faint);font-size:13px}
 </style>
 </head>
 <body>
@@ -104,7 +165,6 @@ td small{display:block;color:var(--faint);font-size:12.5px}
 </header>
 
 <main class="wrap">
-  <!-- ВХОД -->
   <section class="view login" id="v-login">
     <span class="eyebrow">Вход в кабинет</span>
     <h1 style="margin-top:8px">По рабочей почте</h1>
@@ -112,66 +172,36 @@ td small{display:block;color:var(--faint);font-size:12.5px}
     <div class="card" style="margin-top:20px" id="l-box"></div>
   </section>
 
-  <!-- РОЛИ -->
   <section class="view" id="v-home">
     <div class="roles">
-      <div class="sec-head" style="margin-bottom:22px"><div><span class="eyebrow">Роли</span><h1 style="margin-top:6px" id="h-title">Кабинет</h1></div><p id="h-sub"></p></div>
+      <div class="head" style="margin-bottom:20px"><div><span class="eyebrow">Роли</span><h1 style="margin-top:6px" id="h-title">Кабинет</h1></div><p id="h-sub" style="max-width:520px"></p></div>
       <div class="roles-grid" id="roles"></div>
+      <p class="hint" style="margin-top:18px">Один аккаунт и один источник данных: приложение и кабинеты читают одни и те же таблицы. Человек с несколькими ролями переключается между кабинетами; администратор видит всё.</p>
     </div>
-
-    <section class="sec" id="s-staff" style="display:none">
-      <div class="sec-head"><div><span class="eyebrow">Доступы</span><h2 style="margin-top:6px">Кто и куда заходит</h2></div><span class="lock">Видят и меняют только админы</span></div>
-      <div class="card" style="overflow-x:auto">
-        <table id="staff-table"><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody></tbody></table>
-      </div>
-      <div class="card" style="margin-top:14px">
-        <h3>Добавить доступ</h3>
-        <div class="row" style="margin-top:12px">
-          <input id="st-name" placeholder="ФИО" maxlength="80">
-          <input id="st-email" type="email" placeholder="почта" maxlength="120">
-        </div>
-        <div class="chips" style="margin-top:12px" id="st-roles"></div>
-        <div class="row" style="margin-top:12px"><button class="btn gold fixed" onclick="staffSave()">Сохранить</button><span class="hint" id="st-msg"></span></div>
-      </div>
-    </section>
-
-    <section class="sec" id="s-dash">
-      <div class="sec-head">
-        <div><span class="eyebrow">Единый дашборд</span><h2 style="margin-top:6px" id="d-title">Восемь блоков</h2><p class="hint" id="d-period"></p></div>
-        <div class="periods" id="periods">
-          <button data-p="7d" class="on">7 дней</button><button data-p="30d">30 дней</button><button data-p="month">Этот месяц</button>
-        </div>
-      </div>
-      <div class="grid" id="blocks"></div>
-      <p class="hint" style="margin-top:12px">Главный ориентир на старте — постоянные: кто воспользовался работающими функциями хотя бы в 4 разных дня за неделю. Сравнение — с предыдущим сопоставимым периодом. Нажмите блок, чтобы увидеть, из чего он получился.</p>
-    </section>
   </section>
 
-  <!-- ОТЧЁТ -->
-  <section class="view report" id="v-report">
-    <button class="back" onclick="showHome()">← К дашборду</button>
-    <div class="head" style="margin-top:8px">
-      <div><span class="eyebrow" id="r-eb"></span><h1 style="margin-top:6px" id="r-title"></h1><p id="r-q" style="margin-top:6px"></p></div>
-      <div class="periods" id="r-periods"><button data-p="7d">7 дней</button><button data-p="30d">30 дней</button><button data-p="month">Этот месяц</button></div>
+  <section class="view" id="v-cab">
+    <div class="cab">
+      <nav class="menu" id="menu"></nav>
+      <div id="report"></div>
     </div>
-    <div class="card" style="margin-top:18px" id="r-body"></div>
   </section>
 </main>
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="card" id="modal-body"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const API = '/app/api';
-const ICON = '/app/assets/brand/icons/';
+const API = '/app/api', ICON = '/app/assets/brand/icons/';
 const ROLE_META = {
-  admin:     ['Админ', 'person', 'все кабинеты и доступы'],
-  marketing: ['Маркетолог', 'users', 'новые, аудитория, возврат'],
-  product:   ['Продуктолог', 'spark', 'активация, функции, привычка'],
-  content:   ['Контент', 'pen', 'что читают и повторяют'],
-  support:   ['Поддержка', 'chat', 'ошибки и обращения'],
-  user:      ['Пользователь', 'moon', 'приложение'],
+  admin:     ['Админ', 'person', 'сводка, система, доступы'],
+  marketing: ['Маркетолог', 'users', 'источники и аудитория'],
+  product:   ['Продуктолог', 'spark', 'поведение и экономика'],
+  content:   ['Контент', 'pen', 'материалы и качество'],
+  support:   ['Поддержка', 'chat', 'обращения и помощь'],
+  user:      ['Пользователь', 'moon', 'открыть приложение'],
 };
-const S = { me: null, period: '7d', dash: null, report: null, role: null };
+const S = { me: null, role: null, page: null, period: '30d', filters: {}, data: null };
 const api = async (path, opts) => {
   const r = await fetch(API + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
   const j = await r.json().catch(() => ({}));
@@ -179,17 +209,20 @@ const api = async (path, opts) => {
   return j;
 };
 const esc = (s) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
-function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2600); }
-function show(v) { document.querySelectorAll('.view').forEach((s) => s.classList.toggle('on', s.id === 'v-' + v)); window.scrollTo(0, 0); }
+const fmt = (n) => (n === null || n === undefined ? '—' : typeof n === 'number' ? n.toLocaleString('ru-RU') : String(n));
 const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-const fmtNum = (n) => (n === null || n === undefined ? '—' : typeof n === 'number' ? n.toLocaleString('ru-RU') : n);
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2800); }
+function show(v) { document.querySelectorAll('.view').forEach((s) => s.classList.toggle('on', s.id === 'v-' + v)); window.scrollTo(0, 0); }
+function openModal(html) { $('modal-body').innerHTML = html; $('modal').classList.add('on'); }
+function closeModal() { $('modal').classList.remove('on'); }
+const COLORS = ['#e0c070', '#a9b8ff', '#c9a4e8', '#8fd9b6', '#f0a3a3', '#f3dca0', '#7fb2e8', '#d4a373', '#b5b5b5'];
 
 /* ── вход ── */
 let loginEmail = '';
 function renderLogin(step) {
   const box = $('l-box');
   if (step === 'code') {
-    box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Код отправлен на <b>${esc(loginEmail)}</b></p>
+    box.innerHTML = `<p style="font-size:15px;color:#e8e2f5">Код отправлен на <b>${esc(loginEmail)}</b></p>
       <input id="l-code" inputmode="numeric" maxlength="6" placeholder="000000" style="margin-top:12px;letter-spacing:8px;text-align:center;font-size:22px">
       <button class="btn gold" style="width:100%;margin-top:12px" onclick="loginVerify()">Войти</button>
       <button class="btn sm" style="margin-top:8px" onclick="renderLogin('email')">Изменить адрес</button><p class="msg" id="l-msg"></p>`;
@@ -222,29 +255,248 @@ function renderRoles() {
   $('roles').innerHTML = Object.entries(ROLE_META).map(([k, [name, ico, sub]]) => {
     const has = mine.has(k);
     if (k === 'user') return `<a class="role${has ? '' : ' off'}" href="/app/?app=1"><i class="ico" style="--m:url(${ICON}${ico}.svg?v=2)"></i>${name}<small>${sub}</small></a>`;
-    return `<button class="role${has ? '' : ' off'}" type="button" onclick="openRole('${k}')"><i class="ico" style="--m:url(${ICON}${ico}.svg?v=2)"></i>${name}<small>${sub}</small></button>`;
+    return `<button class="role${has ? '' : ' off'}" type="button" onclick="openRole('${k}')"><i class="ico" style="--m:url(${ICON}${ico}.svg?v=2)"></i>${name}<small>${has ? sub : 'нет доступа'}</small></button>`;
   }).join('');
   $('who').innerHTML = `<span>${esc(me.name || '')}${me.name ? ' · ' : ''}${esc(me.email)}</span><a class="btn sm" href="/app/?app=1">В приложение</a><button class="btn sm" onclick="logout()">Выйти</button>`;
 }
-function openRole(k) {
-  S.role = k;
-  $('d-title').textContent = k === 'admin' ? 'Восемь блоков' : 'Кабинет: ' + ROLE_META[k][0];
-  renderBlocks();
-  $('s-dash').scrollIntoView({ behavior: 'smooth', block: 'start' });
+function openRole(k) { S.role = k; const menu = S.me.menus[k] || []; S.page = null; show('cab'); renderMenu(); openPage(menu[0]); history.replaceState(null, '', '#' + k); }
+function renderMenu() {
+  const menu = S.me.menus[S.role] || [];
+  $('menu').innerHTML = `<a class="back" href="#" onclick="showHome();return false">← Роли</a>` + menu.map((p) => `<a href="#${S.role}/${p}" class="${p === S.page ? 'on' : ''}" onclick="openPage('${p}');return false">${esc((S.me.reports[p] || [p])[0])}</a>`).join('');
 }
-const BLOCK_ROLES = { new_users: ['marketing', 'product'], activation: ['product', 'content'], active: ['marketing', 'product'], repeat: ['product', 'marketing', 'content'], retention: ['marketing', 'product'], features: ['product', 'content'], costs: ['admin'], problems: ['support', 'product'] };
+function showHome() { show('home'); history.replaceState(null, '', '#'); }
+
+/* ── страница отчёта ── */
+async function openPage(p) {
+  S.page = p; renderMenu(); history.replaceState(null, '', `#${S.role}/${p}`);
+  const box = $('report');
+  const meta = S.me.reports[p] || [p, ''];
+  box.innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">${esc(meta[0])}</h1><p style="margin-top:6px">${esc(meta[1])}</p></div></div><p class="empty">Считаем…</p>`;
+  window.scrollTo(0, 0);
+  try {
+    if (p === 'saved') return renderSaved();
+    if (p === 'access') return renderAccess();
+    const qs = new URLSearchParams({ period: S.period, ...S.filters });
+    const r = p === 'overview' ? await api('/cabinet/dashboard?' + qs) : await api(`/cabinet/report?kind=${p}&` + qs);
+    S.data = r;
+    if (p === 'overview') return renderOverview(r);
+    renderReport(r);
+  } catch (e) { box.innerHTML += `<p class="msg err">Не получилось загрузить: ${esc(e.code || e.message)}</p>`; }
+}
+const periodLabel = (P) => `${fmtDay(P.from)} — ${fmtDay(P.to)} · сравнение с ${fmtDay(P.prevFrom)} — ${fmtDay(P.prevTo)}`;
+function toolbar(r, withSave = true) {
+  const per = ['7d', '30d', '90d'].map((k) => `<button data-p="${k}" class="${S.period === k ? 'on' : ''}" onclick="setPeriod('${k}')">${k.replace('d', ' дней')}</button>`).join('');
+  const filters = (r.filters || []).map((f) => `<label>${esc(f.label)}<select onchange="setFilter('${f.key}',this.value)"><option value="">Все</option>${f.options.map(([v, t]) => `<option value="${esc(v)}" ${f.value === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`).join('');
+  const search = r.key === 'users' ? `<label>Поиск<input id="u-q" placeholder="имя, почта или id" value="${esc(S.filters.q || '')}" onkeydown="if(event.key==='Enter')setFilter('q',this.value)"></label>` : '';
+  return `<div class="tools"><div class="periods">${per}</div><div class="filters">${filters}${search}</div>${withSave ? `<span style="flex:1"></span><button class="btn sm" onclick="saveReport()">☆ Сохранить</button><button class="btn sm" onclick="exportCsv()">↓ CSV</button>` : ''}</div>
+    <p class="hint">${periodLabel(r.period)}${Object.keys(S.filters).filter((k) => S.filters[k]).length ? ' · фильтры: ' + Object.entries(S.filters).filter(([, v]) => v).map(([k, v]) => v).join(', ') : ''}</p>`;
+}
+function setPeriod(k) { S.period = k; openPage(S.page); }
+function setFilter(k, v) { S.filters[k] = v; openPage(S.page); }
+function head(r) { return `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">${esc(r.title)}</h1><p style="margin-top:6px">${esc(r.question)}</p></div></div>`; }
+
+function cmp(k) {
+  if (k.delta === null || k.delta === undefined) return k.prev === null || k.prev === undefined ? '' : `<span class="cmp">раньше — ${fmt(k.prev)}</span>`;
+  const good = k.good === 'down' ? k.delta < 0 : k.delta > 0, bad = k.good === 'down' ? k.delta > 0 : k.delta < 0;
+  const arrow = k.delta > 0 ? '▲' : k.delta < 0 ? '▼' : '=';
+  return `<span class="cmp"><span class="${good ? 'up' : bad ? 'down' : ''}">${arrow} ${Math.abs(k.delta)}%</span> · раньше — ${fmt(k.prev)}</span>`;
+}
+function kpiCard(k) {
+  const na = k.state === 'off' ? '<span class="state off">не запущено</span>' : k.state === 'nodata' || k.value === null ? '<span class="state">нет данных</span>' : '';
+  return `<div class="kpi"><b>${esc(k.title)}</b>${na ? `<span class="val na">${na}</span>` : `<span class="val">${fmt(k.value)}<span class="unit">${esc(k.unit)}</span></span>${cmp(k)}`}${k.sub ? `<span class="sub">${esc(k.sub)}</span>` : ''}</div>`;
+}
+function renderReport(r) {
+  let html = head(r) + toolbar(r);
+  if (r.kpis && r.kpis.length) html += `<div class="kpis">${r.kpis.map(kpiCard).join('')}</div>`;
+  if (r.notes && r.notes.length) html += r.notes.map((n) => `<div class="notice">${esc(n)}</div>`).join('');
+  if (r.key === 'economy') html += economyExtras(r);
+  if (r.charts && r.charts.length) html += `<div class="charts">${r.charts.map(vizCard).join('')}</div>`;
+  if (r.key === 'users') html += usersTable(r);
+  if (r.key === 'content') html += contentFiles(r);
+  for (const t of r.tables || []) html += tableCard(t, r.key);
+  if (r.how) html += `<div class="how"><b>Как считается.</b> ${esc(r.how)}</div>`;
+  $('report').innerHTML = html;
+}
+function renderOverview(r) {
+  const w = r.week;
+  let html = head(r) + toolbar(r, false);
+  html += `<button class="north" onclick="openPage('activity')"><div><span class="eyebrow">${esc(w.title)}</span><div class="val" style="margin-top:6px">${fmt(w.value)}</div></div><div style="max-width:520px"><p style="color:var(--text);font-weight:600">${esc(w.sub)}</p>${cmp({ delta: w.delta, prev: w.prev })}</div></button>`;
+  html += `<div class="blocks">${r.blocks.map((b) => `<button class="block${b.main ? ' main' : ''}${b.alarm ? ' alarm' : ''}" type="button" onclick="openPage('${b.to}')">
+    <b>${esc(b.title)}</b>${b.state === 'nodata' ? '<span class="val na"><span class="state">нет данных</span></span>' : `<span class="val">${fmt(b.value)}<span class="unit">${esc(b.unit)}</span></span>`}${cmp(b)}${b.sub ? `<span class="sub">${esc(b.sub)}</span>` : ''}${spark(b.series)}<span class="go">${esc((S.me.reports[b.to] || [b.to])[0])} →</span></button>`).join('')}</div>`;
+  html += `<div class="charts">${r.charts.map(vizCard).join('')}</div>`;
+  html += `<div class="how"><b>Как читать.</b> Сначала ключевой показатель и сравнение с предыдущим сопоставимым периодом, потом диаграмма — тренд, доли или связь, потом таблица с числителем, знаменателем и окном. Проценты без основания не читаются. «0», «нет данных» и «не запущено» — разные состояния.</div>`;
+  $('report').innerHTML = html;
+}
+function spark(series) {
+  if (!series || series.length < 2) return '';
+  const max = Math.max(1, ...series.map((s) => s.y)), w = 100, h = 32, step = w / (series.length - 1);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${series.map((s, i) => `${(i * step).toFixed(1)},${(h - (s.y / max) * (h - 4) - 2).toFixed(1)}`).join(' ')}" fill="none" stroke="#e0c070" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+}
+
+/* ── диаграммы: inline SVG, без библиотек ── */
+function vizCard(c) {
+  const body = { line: lineViz, bars: barsViz, hbars: hbarsViz, pie: pieViz, funnel: funnelViz, scatter: scatterViz, heat: heatViz }[c.type];
+  return `<section class="viz"><h3>${esc(c.title)}</h3><div class="sub">${esc(c.subtitle)}</div>${body ? body(c.data) : ''}${c.insight ? `<div class="insight">${esc(c.insight)}</div>` : ''}</section>`;
+}
+function lineViz(d) {
+  const pts = (d || []).filter((p) => p.y !== null && p.y !== undefined);
+  if (pts.length < 2) return '<p class="empty">Мало точек для линии' + (pts.length === 1 ? `: ${esc(d[0].x)} — ${fmt(d[0].y)}` : '') + '.</p>';
+  const W = 560, H = 190, L = 34, B = 26, T = 12, max = Math.max(1, ...pts.map((p) => p.y)), n = pts.length;
+  const X = (i) => L + (i / (n - 1)) * (W - L - 8), Y = (v) => T + (1 - v / max) * (H - T - B);
+  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ');
+  const area = path + ` L${X(n - 1).toFixed(1)},${(H - B).toFixed(1)} L${L},${(H - B).toFixed(1)} Z`;
+  const grid = [0, .5, 1].map((f) => `<line x1="${L}" x2="${W - 8}" y1="${Y(max * f).toFixed(1)}" y2="${Y(max * f).toFixed(1)}" stroke="rgba(255,255,255,.1)"/><text x="${L - 6}" y="${(Y(max * f) + 4).toFixed(1)}" text-anchor="end">${fmt(Math.round(max * f))}</text>`).join('');
+  const lab = [0, Math.floor((n - 1) / 2), n - 1].map((i) => `<text x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${esc(/^\d{4}-\d{2}-\d{2}$/.test(pts[i].x) ? fmtDay(pts[i].x) : pts[i].x)}</text>`).join('');
+  const dots = pts.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="${n > 40 ? 2 : 3.5}" fill="#f3dca0"><title>${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}">${grid}<path d="${area}" fill="rgba(224,192,112,.12)"/><path d="${path}" fill="none" stroke="#e0c070" stroke-width="2.2" stroke-linejoin="round"/>${dots}${lab}</svg>`;
+}
+function barsViz(rows) {
+  rows = (rows || []).filter((r) => typeof r[1] === 'number');
+  if (!rows.length) return '<p class="empty">Нет данных для выбранных условий.</p>';
+  const W = 560, H = 200, B = 30, T = 18, max = Math.max(1, ...rows.map((r) => r[1])), n = rows.length, bw = Math.min(46, (W - 10) / n - 6);
+  return `<svg viewBox="0 0 ${W} ${H}">${rows.map((r, i) => { const x = 5 + (i + .5) * ((W - 10) / n) - bw / 2, h = (r[1] / max) * (H - B - T), y = H - B - h; return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(2, h).toFixed(1)}" rx="5" fill="url(#g)"><title>${esc(r[0])}: ${fmt(r[1])}</title></rect><text x="${(x + bw / 2).toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle">${fmt(r[1])}</text>${n <= 12 || i % Math.ceil(n / 12) === 0 ? `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(String(r[0]).slice(0, 12))}</text>` : ''}`; }).join('')}<defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#f3dca0"/><stop offset="1" stop-color="#bf9440"/></linearGradient></defs></svg>`;
+}
+function hbarsViz(rows) {
+  rows = (rows || []).filter((r) => typeof r[1] === 'number');
+  if (!rows.length) return '<p class="empty">Нет данных для выбранных условий.</p>';
+  const max = Math.max(1, ...rows.map((r) => r[1]));
+  return `<div class="hbars">${rows.map((r) => `<div><div class="l"><span>${esc(r[0])}</span><b>${fmt(r[1])}</b></div><div class="t"><i style="width:${(r[1] / max * 100).toFixed(1)}%"></i></div></div>`).join('')}</div>`;
+}
+function pieViz(rows) {
+  rows = (rows || []).filter((r) => typeof r[1] === 'number' && r[1] > 0);
+  const total = rows.reduce((s, r) => s + r[1], 0);
+  if (!total) return '<p class="empty">Нет данных для выбранных условий.</p>';
+  let a = -Math.PI / 2; const R = 60, r0 = 36, cx = 75, cy = 75;
+  const arcs = rows.map((r, i) => { const ang = r[1] / total * Math.PI * 2, a2 = a + ang, big = ang > Math.PI ? 1 : 0;
+    const p = (rad, t) => [cx + rad * Math.cos(t), cy + rad * Math.sin(t)].map((v) => v.toFixed(2)).join(',');
+    const d = rows.length === 1 ? `M${cx + R},${cy} A${R},${R} 0 1 1 ${cx - R},${cy} A${R},${R} 0 1 1 ${cx + R},${cy} M${cx + r0},${cy} A${r0},${r0} 0 1 0 ${cx - r0},${cy} A${r0},${r0} 0 1 0 ${cx + r0},${cy}` : `M${p(R, a)} A${R},${R} 0 ${big} 1 ${p(R, a2)} L${p(r0, a2)} A${r0},${r0} 0 ${big} 0 ${p(r0, a)} Z`;
+    a = a2; return `<path d="${d}" fill="${COLORS[i % COLORS.length]}" fill-rule="evenodd"><title>${esc(r[0])}: ${fmt(r[1])}</title></path>`; }).join('');
+  return `<div class="pie"><svg viewBox="0 0 150 150" style="margin-top:0">${arcs}<text x="75" y="80" text-anchor="middle" style="font-size:18px;fill:#fff;font-weight:700">${fmt(total)}</text></svg><div class="legend">${rows.map((r, i) => `<div><i style="background:${COLORS[i % COLORS.length]}"></i>${esc(r[0])}<b>${fmt(r[1])} · ${(r[1] / total * 100).toFixed(1).replace('.', ',')}%</b></div>`).join('')}</div></div>`;
+}
+function funnelViz(rows) {
+  const nums = rows.filter((r) => typeof r[1] === 'number');
+  const max = Math.max(1, ...nums.map((r) => r[1]));
+  return `<div class="funnel">${rows.map((r, i) => typeof r[1] === 'number' ? `<div style="width:${Math.max(36, r[1] / max * 100).toFixed(1)}%"><b>${fmt(r[1])}</b>${esc(r[0])}${i && typeof rows[i - 1][1] === 'number' && rows[i - 1][1] ? ` <span style="color:var(--faint)">· ${(r[1] / rows[i - 1][1] * 100).toFixed(0)}% от предыдущего</span>` : ''}</div>` : `<div style="width:36%;opacity:.55"><b>${esc(r[1])}</b>${esc(r[0])}</div>`).join('')}</div>`;
+}
+function scatterViz(pts) {
+  pts = pts || [];
+  if (pts.length < 3) return `<p class="empty">Пока мало людей с 30 днями наблюдения${pts.length ? ` (${pts.length})` : ''}.</p>`;
+  const W = 560, H = 210, L = 34, B = 28, T = 10, mx = Math.max(1, ...pts.map((p) => p[0])), my = Math.max(1, ...pts.map((p) => p[1]));
+  const X = (v) => L + v / mx * (W - L - 10), Y = (v) => T + (1 - v / my) * (H - T - B);
+  const n = pts.length, sx = pts.reduce((s, p) => s + p[0], 0), sy = pts.reduce((s, p) => s + p[1], 0), sxx = pts.reduce((s, p) => s + p[0] * p[0], 0), sxy = pts.reduce((s, p) => s + p[0] * p[1], 0);
+  const k = (n * sxy - sx * sy) / Math.max(1e-9, n * sxx - sx * sx), b = (sy - k * sx) / n;
+  const line = `<line x1="${X(0)}" y1="${Y(Math.max(0, Math.min(my, b)))}" x2="${X(mx)}" y2="${Y(Math.max(0, Math.min(my, k * mx + b)))}" stroke="#a9b8ff" stroke-width="2" stroke-dasharray="6 4"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}"><line x1="${L}" x2="${W - 10}" y1="${H - B}" y2="${H - B}" stroke="rgba(255,255,255,.15)"/><line x1="${L}" x2="${L}" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,.15)"/>${pts.map((p) => `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="4" fill="rgba(224,192,112,.55)"><title>первая неделя: ${p[0]} дн. → за 30 дней: ${p[1]} дн.</title></circle>`).join('')}${line}<text x="${W - 10}" y="${H - 8}" text-anchor="end">дней с действиями в первую неделю →</text><text x="${L + 4}" y="${T + 10}">↑ дней за 30</text></svg>`;
+}
+function heatViz(d) {
+  if (!d || !d.cells) return '';
+  const max = Math.max(1, ...d.cells.flat());
+  return `<div class="heat"><span class="lab"></span>${d.cols.map((c) => `<span class="lab" style="justify-content:center">${c % 3 === 0 ? c : ''}</span>`).join('')}${d.rows.map((r, i) => `<span class="lab">${r}</span>` + d.cells[i].map((v, h) => `<span style="--a:${(0.06 + v / max * 0.9).toFixed(2)}" title="${r}, ${h}:00 — ${v}"></span>`).join('')).join('')}</div>`;
+}
+
+/* ── таблицы ── */
+function tableCard(t, kind) {
+  const isNum = (v) => typeof v === 'number';
+  const rows = t.rows || [];
+  let body;
+  if (kind === 'economy' && t.headers[t.headers.length - 1] === '') {
+    body = rows.map((r) => `<tr>${r.slice(0, -1).map((c) => `<td class="${isNum(c) ? 'num' : ''}">${fmt(c)}</td>`).join('')}<td class="num">${S.me.isAdmin ? `<button class="btn sm warn" onclick="costDel(${r[r.length - 1]})">Убрать</button>` : ''}</td></tr>`).join('');
+  } else body = rows.map((r) => `<tr>${r.map((c) => `<td class="${isNum(c) ? 'num' : ''}">${esc(fmt(c))}</td>`).join('')}</tr>`).join('');
+  return `<div class="tbl"><h3>${esc(t.title)}</h3><div class="scroll"><table><thead><tr>${t.headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body || `<tr><td colspan="${t.headers.length}" class="empty">Нет данных для выбранных условий.</td></tr>`}</tbody></table></div>${t.note ? `<p class="note">${esc(t.note)}</p>` : ''}</div>`;
+}
+function exportCsv() {
+  const r = S.data; if (!r) return;
+  const safe = (v) => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const lines = [];
+  for (const k of r.kpis || []) lines.push([k.title, k.state === 'off' ? 'не запущено' : k.value ?? 'нет данных', k.unit, k.prev ?? ''].map(safe).join(';'));
+  for (const t of r.tables || []) { lines.push(''); lines.push(safe(t.title)); lines.push(t.headers.map(safe).join(';')); for (const row of t.rows || []) lines.push(row.map(safe).join(';')); }
+  if (r.userList) { lines.push(''); lines.push(['id', 'почта', 'имя', 'регистрация', 'последний визит', 'источник', 'платформа', 'активных дней', 'серия', 'стадия', 'функции', 'пуш'].map(safe).join(';')); for (const u of r.userList) lines.push([u.id, u.email, u.name, u.reg, u.last, u.source, u.platform, u.days, u.streak, u.stage, u.feats.join(', '), u.push ? 'да' : 'нет'].map(safe).join(';')); }
+  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `lunario-${r.key}-${r.period.from}-${r.period.to}.csv`; a.click();
+}
+
+/* ── сохранённые отчёты (в этом браузере) ── */
+const savedKey = 'lun_cab_saved';
+const savedList = () => { try { return JSON.parse(localStorage.getItem(savedKey) || '[]'); } catch { return []; } };
+function saveReport() {
+  const list = savedList(); list.unshift({ role: S.role, page: S.page, period: S.period, filters: { ...S.filters }, ts: new Date().toISOString(), title: (S.me.reports[S.page] || [S.page])[0] });
+  try { localStorage.setItem(savedKey, JSON.stringify(list.slice(0, 50))); toast('Отчёт сохранён'); } catch { toast('Браузер не сохранил отчёт'); }
+}
+function renderSaved() {
+  const list = savedList();
+  $('report').innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">Сохранённые отчёты</h1><p style="margin-top:6px">Отчёты с фильтрами, сохранённые в этом браузере</p></div></div>` +
+    (list.length ? `<div class="tbl"><div class="scroll"><table><thead><tr><th>Отчёт</th><th>Кабинет</th><th>Период</th><th>Фильтры</th><th>Когда</th><th></th></tr></thead><tbody>${list.map((s, i) => `<tr><td>${esc(s.title)}</td><td>${esc((ROLE_META[s.role] || [s.role])[0])}</td><td>${esc(s.period.replace('d', ' дней'))}</td><td>${esc(Object.values(s.filters).filter(Boolean).join(', ') || '—')}</td><td>${new Date(s.ts).toLocaleString('ru-RU')}</td><td class="num"><button class="btn sm" onclick="openSaved(${i})">Открыть</button> <button class="btn sm warn" onclick="delSaved(${i})">Убрать</button></td></tr>`).join('')}</tbody></table></div></div>` : '<p class="empty" style="margin-top:14px">Сохранённых отчётов пока нет. Откройте отчёт, выберите фильтры и нажмите «☆ Сохранить».</p>');
+}
+function openSaved(i) { const s = savedList()[i]; if (!s) return; S.period = s.period; S.filters = { ...s.filters }; if (S.me.menus[s.role] && (S.me.roles.includes(s.role))) { S.role = s.role; } openPage(s.page); }
+function delSaved(i) { const l = savedList(); l.splice(i, 1); localStorage.setItem(savedKey, JSON.stringify(l)); renderSaved(); }
+
+/* ── пользователи ── */
+function usersTable(r) {
+  const list = r.userList || [];
+  return `<div class="tbl"><h3>Список · ${list.length}</h3><div class="scroll"><table><thead><tr><th>Пользователь</th><th>Регистрация</th><th>Последний визит</th><th>Активные дни / серия</th><th>Стадия</th><th>Источник · платформа</th><th>Функции</th><th>Пуш</th><th></th></tr></thead><tbody>${list.map((u) => `<tr><td>${esc(u.name) || '—'}<small>${esc(u.email)} · id ${u.id}${u.role ? ' · ' + u.role : ''}</small></td><td>${u.reg}</td><td>${u.last}</td><td class="num">${u.days} / ${u.streak}</td><td>${esc(u.stage)}</td><td>${esc(u.source)} · ${esc(u.platform)}</td><td>${u.feats.map((f) => `<span class="pill">${esc(f)}</span>`).join('') || '<span class="lock">нет</span>'}</td><td>${u.push ? 'вкл' : '—'}</td><td class="num"><button class="btn sm" onclick="userCard(${u.id})">Карточка</button></td></tr>`).join('') || '<tr><td colspan="9" class="empty">Никого не нашли.</td></tr>'}</tbody></table></div><p class="note">Показаны первые 500 строк; CSV содержит весь список. Личные тексты и индивидуальное настроение недоступны.</p></div>`;
+}
+async function userCard(id) {
+  openModal('<p class="empty">Загружаем…</p>');
+  try {
+    const c = await api('/cabinet/user?id=' + id);
+    const row = (k, v) => `<tr><td style="color:var(--faint);width:44%">${k}</td><td>${v}</td></tr>`;
+    openModal(`<div class="head"><div><span class="eyebrow">Карточка пользователя · id ${c.id}</span><h2 style="margin-top:6px">${esc(c.name) || '—'} <span style="color:var(--faint);font-weight:500">${esc(c.email)}</span></h2></div><button class="btn sm" onclick="closeModal()">Закрыть</button></div>
+      <table style="margin-top:12px"><tbody>${row('Регистрация · подтверждена', c.reg)}${row('Последняя авторизация', c.lastAuth)}${row('Последнее посещение', c.lastSeen)}${row('Последнее содержательное действие', c.lastAct)}${row('Активных дней · серия', `${c.days} · ${c.streak}`)}${row('Первая функция', esc(c.first))}${row('Источник · платформа · пояс', `${esc(c.source)} · ${esc(c.platform)} · ${esc(c.tz || '—')}`)}${row('Напоминание', c.push ? 'включено' : 'нет')}${row('Записей · дневник · желания · настроений', `${c.counts.entries} · ${c.counts.journal} · ${c.counts.wishes} · ${c.counts.moods}`)}${row('Обращения', esc(c.tickets))}${row('Расходы ИИ за месяц', esc(c.ai))}</tbody></table>
+      <h3 style="margin-top:18px">События по типам · без личных текстов</h3><table><thead><tr><th>Событие</th><th>Раз</th><th>Последний день</th></tr></thead><tbody>${c.byType.map((r) => `<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table>
+      <p class="note">Три разные даты: авторизация (ввод кода), посещение (открытие) и содержательное действие. Тексты записей в кабинете не показываются.</p>`);
+  } catch (e) { openModal(`<p class="msg err">Не получилось: ${esc(e.code || e.message)}</p>`); }
+}
+
+/* ── экономика: форма расхода и рост аудитории ── */
+function economyExtras(r) {
+  const per = (r.kpis.find((k) => k.title.startsWith('На 1 активного')) || {}).value;
+  const growth = `<div class="viz" style="margin-top:14px"><h3>Рост аудитории</h3><div class="sub">линейная модель по стоимости обслуживания одного активного за месяц</div>
+    <div class="row" style="margin-top:12px"><input type="range" min="1000" max="10000" step="1000" value="1000" style="min-height:0;padding:0" oninput="$('g-out').textContent=(+this.value).toLocaleString('ru-RU')+' человек → '+(${per === null ? 'null' : per}===null?'нет данных':((+this.value)*${per || 0}).toLocaleString('ru-RU')+' ₽/мес')"><b id="g-out" class="fixed" style="min-width:220px">1 000 человек → ${per === null || per === undefined ? 'нет данных' : (1000 * per).toLocaleString('ru-RU') + ' ₽/мес'}</b></div>
+    <p class="note">Тестовые аккаунты и разработка исключены. Без реальных тарифов — только текущее среднее.</p></div>`;
+  if (!S.me.isAdmin || !r.costForm) return growth;
+  return growth + `<div class="viz" style="margin-top:14px"><h3>Добавить расход · ${r.costForm.month}</h3>
+    <div class="row" style="margin-top:12px"><select id="c-kind">${r.costForm.kinds.map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}</select><input id="c-name" placeholder="например: сервер Timeweb"><input id="c-amount" type="number" inputmode="decimal" placeholder="сумма, ₽" style="max-width:160px"><button class="btn gold fixed" onclick="costAdd('${r.costForm.month}')">Добавить</button></div>
+    <p class="note">Расходы, которые не приходят автоматически, вносятся вручную с периодом и категорией. «Бюджет месяца» — отдельная строка для сравнения с прогнозом.</p></div>`;
+}
+async function costAdd(month) {
+  const r = await api('/cabinet/costs', { method: 'POST', body: JSON.stringify({ month, name: $('c-name').value.trim(), amount: +$('c-amount').value, kind: $('c-kind').value }) });
+  if (!r.ok) { toast('Проверьте название и сумму'); return; }
+  toast('Добавлено'); openPage('economy');
+}
+async function costDel(id) { if (!confirm('Убрать строку расходов?')) return; await api('/cabinet/costs?id=' + id, { method: 'DELETE' }); toast('Убрано'); openPage('economy'); }
+
+/* ── контент: файлы и правка ── */
+function contentFiles(r) {
+  const files = r.files || [];
+  return `<div class="notice">Тексты приложения — обычные файлы: одна строка — одна запись, поля через «|». Строки с решёткой # — заметки, приложение их не читает. Сохранение публикует сразу: статусов «черновик / на проверке / запланирован» пока нет.</div>
+    <div class="files">${files.map((f) => `<button class="file" onclick="editFile('${esc(f.name)}')"><span>${esc(f.name)}<br><small>${f.lines} записей · изменён ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
+}
+async function editFile(name) {
+  openModal('<p class="empty">Открываем…</p>');
+  try {
+    const f = await api('/cabinet/content?file=' + encodeURIComponent(name));
+    openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${esc(name)}</h2></div><div class="row"><button class="btn gold fixed" onclick="saveFile('${esc(name)}')">Сохранить и опубликовать</button><button class="btn sm fixed" onclick="closeModal()">Закрыть</button></div></div>
+      <textarea id="f-text" style="margin-top:12px" spellcheck="true">${esc(f.text)}</textarea><p class="note" id="f-msg">Формат описан в «ПРОЧТИ-МЕНЯ.txt». После сохранения приложение перечитает файл само.</p>`);
+  } catch (e) { openModal(`<p class="msg err">Не получилось открыть: ${esc(e.code || e.message)}</p>`); }
+}
+async function saveFile(name) {
+  const msg = $('f-msg');
+  try { await api('/cabinet/content?file=' + encodeURIComponent(name), { method: 'POST', body: JSON.stringify({ text: $('f-text').value }) }); toast('Сохранено — уже в приложении'); closeModal(); openPage('content'); }
+  catch (e) { msg.className = 'msg err'; msg.textContent = 'Не сохранилось: ' + (e.code || e.message); }
+}
 
 /* ── доступы ── */
-async function loadStaff() {
-  const r = await api('/cabinet/staff');
-  const rows = r.items.map((s) => `<tr>
-    <td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td>
-    <td><div class="chips">${s.roles.filter((x) => x !== 'user').map((x) => `<span class="chip on">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</div></td>
-    <td style="white-space:nowrap">${s.locked ? '<span class="lock">админ · права не меняются</span>' : `<button class="btn sm" onclick="staffEdit('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td>
-  </tr>`).join('');
-  $('staff-table').querySelector('tbody').innerHTML = rows;
-  S.staff = r.items;
-  $('st-roles').innerHTML = ['marketing', 'product', 'content', 'support'].map((k) => `<label class="chip"><input type="checkbox" value="${k}" onchange="this.parentNode.classList.toggle('on',this.checked)"> ${ROLE_META[k][0]}</label>`).join('');
+async function renderAccess() {
+  const box = $('report');
+  if (!S.me.isAdmin) { box.innerHTML += '<p class="msg err">Таблица доступов видна только админам.</p>'; return; }
+  const r = await api('/cabinet/staff'); S.staff = r.items;
+  box.innerHTML = `<div class="head"><div><span class="eyebrow">Админ · рабочий кабинет</span><h1 style="margin-top:6px">Управление доступами</h1><p style="margin-top:6px">Кто и куда заходит</p></div></div>
+    <div class="notice">Два администратора имеют одинаковые права. Их нельзя удалить или понизить. Любому другому участнику можно назначить несколько ролей — роль «Пользователь» есть у каждого.</div>
+    <div class="tbl"><div class="scroll" style="max-height:60dvh;overflow:auto"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${r.items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="white-space:nowrap">${s.locked ? '<span class="lock">защищённый админ</span>' : `<button class="btn sm" onclick="staffEdit('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td></tr>`).join('')}</tbody></table></div></div>
+    <div class="viz" style="margin-top:16px"><h3>Добавить или изменить доступ</h3>
+      <div class="row" style="margin-top:12px"><input id="st-name" placeholder="ФИО" maxlength="80"><input id="st-email" type="email" placeholder="почта" maxlength="120"></div>
+      <div class="chips" style="margin-top:12px" id="st-roles">${['marketing', 'product', 'content', 'support'].map((k) => `<label class="chip"><input type="checkbox" value="${k}" onchange="this.parentNode.classList.toggle('on',this.checked)"> ${ROLE_META[k][0]}</label>`).join('')}</div>
+      <div class="row" style="margin-top:12px"><button class="btn gold fixed" onclick="staffSave()">Сохранить доступы</button><span class="hint" id="st-msg"></span></div></div>`;
 }
 function staffEdit(email) {
   const s = S.staff.find((x) => x.email === email); if (!s) return;
@@ -253,103 +505,18 @@ function staffEdit(email) {
   $('st-email').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 async function staffSave() {
-  const roles = [...$('st-roles').querySelectorAll('input:checked')].map((i) => i.value);
-  const msg = $('st-msg');
+  const roles = [...$('st-roles').querySelectorAll('input:checked')].map((i) => i.value), msg = $('st-msg');
   try {
     const r = await api('/cabinet/staff', { method: 'POST', body: JSON.stringify({ name: $('st-name').value.trim(), email: $('st-email').value.trim(), roles }) });
-    if (!r.ok) { msg.textContent = r.error === 'admin_locked' ? 'Права админов не меняются.' : 'Проверьте почту.'; return; }
-    msg.textContent = 'Сохранено'; $('st-name').value = ''; $('st-email').value = '';
-    $('st-roles').querySelectorAll('input').forEach((i) => { i.checked = false; i.parentNode.classList.remove('on'); });
-    loadStaff();
+    if (!r.ok) { msg.textContent = r.error === 'admin_locked' ? 'Права защищённого администратора изменить нельзя.' : 'Проверьте почту.'; return; }
+    toast('Сохранено'); renderAccess();
   } catch (e) { msg.textContent = 'Не получилось сохранить.'; }
 }
 async function staffDel(email) {
   if (!confirm(`Убрать доступ у ${email}?`)) return;
   const r = await api('/cabinet/staff?email=' + encodeURIComponent(email), { method: 'DELETE' });
-  if (!r.ok) toast('Права админов не меняются'); else { toast('Доступ убран'); loadStaff(); }
+  if (!r.ok) toast('Права защищённого администратора изменить нельзя'); else { toast('Доступ убран'); renderAccess(); }
 }
-
-/* ── дашборд ── */
-async function loadDash() {
-  S.dash = await api('/cabinet/dashboard?period=' + S.period);
-  renderBlocks();
-}
-function periodLabel(P) { return `${fmtDay(P.from)} — ${fmtDay(P.to)} · сравнение с ${fmtDay(P.prevFrom)} — ${fmtDay(P.prevTo)}`; }
-function spark(series) {
-  if (!series || series.length < 2) return '';
-  const max = Math.max(1, ...series.map((s) => s.n)), w = 100, h = 34, step = w / (series.length - 1);
-  const pts = series.map((s, i) => `${(i * step).toFixed(1)},${(h - (s.n / max) * (h - 4) - 2).toFixed(1)}`).join(' ');
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#d9b868" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
-}
-function cmp(b) {
-  if (b.delta === null || b.delta === undefined) return `<span class="cmp">раньше — ${fmtNum(b.prev)}</span>`;
-  const cls = b.delta > 0 ? (b.key === 'problems' || b.key === 'costs' ? 'down' : 'up') : b.delta < 0 ? (b.key === 'problems' || b.key === 'costs' ? 'up' : 'down') : '';
-  const arrow = b.delta > 0 ? '▲' : b.delta < 0 ? '▼' : '=';
-  return `<span class="cmp"><span class="${cls}">${arrow} ${Math.abs(b.delta)}%</span> · раньше — ${fmtNum(b.prev)}</span>`;
-}
-function renderBlocks() {
-  const d = S.dash; if (!d) return;
-  $('d-period').textContent = periodLabel(d.period);
-  const role = S.role;
-  const blocks = d.blocks.filter((b) => !role || role === 'admin' || (BLOCK_ROLES[b.key] || []).includes(role));
-  $('blocks').innerHTML = blocks.map((b) => `<button class="block${b.main ? ' main' : ''}${b.alarm ? ' alarm' : ''}" type="button" onclick="openReport('${b.key}')">
-    <b>${esc(b.title)}</b><span class="q">${esc(b.question)}</span>
-    <span class="val">${fmtNum(b.value)}<span class="unit"> ${esc(b.unit)}</span></span>
-    ${cmp(b)}${b.sub ? `<span class="sub">${esc(b.sub)}</span>` : ''}${spark(b.series)}
-  </button>`).join('') || '<p class="hint">Для этой роли блоков нет.</p>';
-}
-document.querySelectorAll('#periods button, #r-periods button').forEach((btn) => btn.addEventListener('click', async () => {
-  S.period = btn.dataset.p;
-  document.querySelectorAll('#periods button, #r-periods button').forEach((b) => b.classList.toggle('on', b.dataset.p === S.period));
-  if ($('v-report').classList.contains('on')) await openReport(S.report); else await loadDash();
-}));
-
-/* ── отчёт ── */
-async function openReport(kind) {
-  S.report = kind;
-  const meta = (S.dash && S.dash.blocks.find((b) => b.key === kind)) || {};
-  $('r-eb').textContent = 'Отчёт'; $('r-title').textContent = meta.title || kind; $('r-q').textContent = meta.question || '';
-  document.querySelectorAll('#r-periods button').forEach((b) => b.classList.toggle('on', b.dataset.p === S.period));
-  show('report');
-  $('r-body').innerHTML = '<p class="hint">Считаем…</p>';
-  const r = await api(`/cabinet/report?kind=${kind}&period=${S.period}`);
-  const unit = meta.unit || '';
-  let html = `<div class="head"><div><div class="big">${fmtNum(r.value)}<span class="unit" style="font-size:16px;color:var(--muted)"> ${esc(unit)}</span></div>
-    <p class="hint">${periodLabel(r.period)} · раньше — ${fmtNum(r.prev)}</p></div></div>`;
-  if (r.series) {
-    const max = Math.max(1, ...r.series.map((s) => s.n));
-    html += `<div class="bars">${r.series.map((s) => `<i style="height:${Math.max(2, (s.n / max) * 100)}%" data-t="${fmtDay(s.day)}: ${s.n}"></i>`).join('')}</div>
-      <p class="hint" style="display:flex;justify-content:space-between"><span>${fmtDay(r.series[0].day)}</span><span>${fmtDay(r.series[r.series.length - 1].day)}</span></p>`;
-  }
-  if (kind === 'costs') html += costsForm(r);
-  if (r.rows && r.rows.length) {
-    const isUsers = kind === 'new_users';
-    html += `<table><thead><tr>${isUsers ? '<th>Когда</th><th>Кто</th><th>Город</th><th>Анкета</th>' : `<th>Показатель</th><th style="text-align:right">Сейчас</th>${r.rows[0].p !== undefined ? '<th style="text-align:right">Раньше</th>' : ''}${kind === 'costs' ? '<th></th>' : ''}`}</tr></thead><tbody>` +
-      r.rows.map((x) => isUsers
-        ? `<tr><td>${fmtDay(x.day)}</td><td>${esc(x.name) || '—'}<small>${esc(x.email)}</small></td><td>${esc(x.city) || '—'}</td><td>${x.onboarded ? 'заполнена' : 'нет'}</td></tr>`
-        : `<tr><td>${esc(x.name)}${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</td><td class="num">${fmtNum(x.n)}${kind === 'retention' && x.n !== null ? '%' : ''}</td>${x.p !== undefined ? `<td class="num" style="color:var(--faint)">${fmtNum(x.p)}${kind === 'retention' && x.p !== null ? '%' : ''}</td>` : ''}${kind === 'costs' ? `<td class="num"><button class="btn sm warn" onclick="costDel(${x.id})">Убрать</button></td>` : ''}</tr>`).join('') + '</tbody></table>';
-  } else if (!r.series) html += '<p class="hint" style="margin-top:14px">Пока пусто.</p>';
-  if (kind === 'problems' && r.errors && r.errors.length) {
-    html += `<h3 style="margin-top:22px">Последние сбои</h3><table><thead><tr><th>Когда</th><th>Где</th><th>Что</th></tr></thead><tbody>${r.errors.map((e) => `<tr><td>${new Date(e.ts).toLocaleString('ru-RU')}</td><td>${esc(e.path)}</td><td>${esc(e.message)}</td></tr>`).join('')}</tbody></table>`;
-  }
-  html += `<div class="how"><b>Как считается.</b> ${esc(r.how)}</div>`;
-  $('r-body').innerHTML = html;
-}
-function costsForm(r) {
-  if (!S.me.isAdmin) return '';
-  const m = r.detail.month;
-  return `<div class="card" style="margin-top:18px;background:rgba(255,255,255,.03)"><h3>Добавить строку расходов · ${m}</h3>
-    <div class="row" style="margin-top:12px"><input id="c-name" placeholder="например: сервер Timeweb"><input id="c-amount" type="number" inputmode="decimal" placeholder="сумма, ₽" style="max-width:160px">
-    <select id="c-kind" style="max-width:200px"><option value="fixed">постоянная</option><option value="variable">переменная</option><option value="budget">бюджет месяца</option></select>
-    <button class="btn gold fixed" onclick="costAdd('${m}')">Добавить</button></div></div>`;
-}
-async function costAdd(month) {
-  const r = await api('/cabinet/costs', { method: 'POST', body: JSON.stringify({ month, name: $('c-name').value.trim(), amount: +$('c-amount').value, kind: $('c-kind').value }) });
-  if (!r.ok) { toast('Проверьте название и сумму'); return; }
-  toast('Добавлено'); await loadDash(); openReport('costs');
-}
-async function costDel(id) { await api('/cabinet/costs?id=' + id, { method: 'DELETE' }); toast('Убрано'); await loadDash(); openReport('costs'); }
-function showHome() { show('home'); }
 
 /* ── старт ── */
 async function boot() {
@@ -360,14 +527,15 @@ async function boot() {
     show('login');
     $('who').innerHTML = me.email ? `<span>${esc(me.email)}</span><button class="btn sm" onclick="logout()">Выйти</button>` : '';
     $('l-box').innerHTML = me.email
-      ? `<p style="font-size:15px;color:#ded8ee">У почты <b>${esc(me.email)}</b> нет доступа к кабинетам.</p><p class="hint">Доступ выдаёт админ. Приложение открыто как обычно.</p><a class="btn gold" style="width:100%;margin-top:14px" href="/app/?app=1">В приложение</a>`
+      ? `<p style="font-size:15px;color:#e8e2f5">У почты <b>${esc(me.email)}</b> нет доступа к кабинетам.</p><p class="hint">Доступ выдаёт админ. Приложение открыто как обычно.</p><a class="btn gold" style="width:100%;margin-top:14px" href="/app/?app=1">В приложение</a>`
       : '';
     if (!me.email) renderLogin('email');
     return;
   }
-  renderRoles(); show('home');
-  if (me.isAdmin) { $('s-staff').style.display = ''; loadStaff(); }
-  await loadDash();
+  renderRoles();
+  const [role, page] = location.hash.replace('#', '').split('/');
+  if (role && me.roles.includes(role) && me.menus[role]) { S.role = role; show('cab'); renderMenu(); openPage(page && me.menus[role].includes(page) ? page : me.menus[role][0]); }
+  else show('home');
 }
 boot();
 </script>

@@ -10,7 +10,7 @@ import { readFileSync, existsSync, watch } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'content');
+export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'content');
 
 /* Читает файл как таблицу: строка = запись, поля разделены «|».
    Пустые строки и строки с # пропускаются — там заметки для человека. */
