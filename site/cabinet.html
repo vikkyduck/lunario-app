@@ -52,9 +52,9 @@ textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Menlo,monospac
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .lock{font-size:13.5px;color:var(--faint)}
 /* ── роли: статичный экран, 6 квадратов на десктопе, 3 на планшете, 2 на телефоне ── */
-.roles{padding:22px 0 0}
-.team{margin-top:22px}
-.team .scroll{max-height:calc(100dvh - 530px);min-height:180px;overflow:auto}
+.roles{padding:14px 0 0}
+.team{margin-top:14px}
+.team .scroll{max-height:calc(100dvh - 470px);min-height:180px;overflow:auto}
 @media(max-width:1100px){.team .scroll{max-height:none}}
 .roles-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
 .role{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:24px;background:var(--card);border:1px solid rgba(224,192,112,.38);box-shadow:var(--shadow),0 14px 36px -18px rgba(224,192,112,.45);color:var(--text);font:inherit;font-size:clamp(15px,1.25vw,19px);font-weight:700;cursor:pointer;text-decoration:none;text-align:center;padding:10px;transition:transform .16s var(--sp),border-color .2s}
@@ -63,7 +63,7 @@ textarea{min-height:360px;font-family:ui-monospace,SFMono-Regular,Menlo,monospac
 .role .ico{width:34px;height:34px;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .role.off{opacity:.3;pointer-events:none;border-color:var(--line);box-shadow:none}
 @media(max-width:1100px){.roles-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:700px){.roles-grid{grid-template-columns:1fr 1fr;gap:12px}.roles{padding:18px 0 0}.role{border-radius:20px;font-size:16px}}
+@media(max-width:700px){.roles-grid{grid-template-columns:1fr 1fr;gap:12px}.roles{padding:12px 0 0}.role{border-radius:20px;font-size:16px}}
 /* ── кабинет: меню слева, отчёт справа ── */
 .cab{display:grid;grid-template-columns:240px minmax(0,1fr);gap:26px;padding-top:20px}
 .cab>*{min-width:0}
@@ -177,7 +177,6 @@ td small{display:block;color:var(--faint);font-size:13px}
 
   <section class="view" id="v-home">
     <div class="roles">
-      <div class="head" style="margin-bottom:20px"><div><span class="eyebrow">Роли</span><h1 style="margin-top:6px" id="h-title">Кабинет</h1></div><p id="h-sub" style="max-width:520px"></p></div>
       <div class="roles-grid" id="roles"></div>
     </div>
     <section class="team" id="team"></section>
@@ -253,8 +252,6 @@ async function logout() { await api('/auth/logout', { method: 'POST' }).catch(()
 /* ── роли ── */
 function renderRoles() {
   const me = S.me, mine = new Set(me.roles);
-  $('h-title').textContent = me.isAdmin ? 'Кабинет админа' : 'Ваши кабинеты';
-  $('h-sub').textContent = me.isAdmin ? 'Все кабинеты, все метрики, управление доступами' : 'Открыты только те разделы, которые отметил админ';
   $('roles').innerHTML = Object.entries(ROLE_META).map(([k, [name, ico, sub]]) => {
     const has = mine.has(k);
     if (k === 'user') return `<a class="role${has ? '' : ' off'}" href="/app/?app=1"><i class="ico" style="--m:url(${ICON}${ico}.svg?v=2)"></i>${name}<small>${sub}</small></a>`;
@@ -274,8 +271,7 @@ async function renderTeam() {
   box.innerHTML = '<p class="empty">Загружаем доступы…</p>';
   const r = await api('/cabinet/staff'); S.staff = r.items;
   box.innerHTML = `<div class="head"><div><span class="eyebrow">Доступы команды</span><h2 style="margin-top:6px">Кто и куда заходит</h2></div><button class="btn gold sm" onclick="staffForm('')">+ Добавить участника</button></div>
-    <div class="tbl" style="margin-top:10px"><div class="scroll"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div>
-    <p class="note">Два администратора имеют одинаковые права: их нельзя удалить или понизить. Любому другому участнику можно назначить несколько ролей — роль «Пользователь» есть у каждого. Один аккаунт и один источник данных: приложение и кабинеты читают одни и те же таблицы.</p></div>`;
+    <div class="tbl" style="margin-top:10px"><div class="scroll"><table><thead><tr><th>ФИО</th><th>Почта</th><th>Роли</th><th></th></tr></thead><tbody>${staffRows(r.items)}</tbody></table></div></div>`;
 }
 function staffForm(email) {
   const s = (S.staff || []).find((x) => x.email === email);
