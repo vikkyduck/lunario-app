@@ -720,12 +720,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   const oWrap = hello && hello.closest('.o-wrap');
   function fitMoonToO() {
     if (!oWrap) return;
-    const h1 = oWrap.closest('.hero'), F = parseFloat(getComputedStyle(h1).fontSize);
+    const h1 = oWrap.closest('.hero'), cs = getComputedStyle(h1), F = parseFloat(cs.fontSize);
+    const LH = parseFloat(cs.lineHeight) || F;                         /* высота строки: от неё считается базовая линия */
     const c = document.createElement('canvas').getContext('2d'); c.font = `300 ${F}px Comfortaa, sans-serif`;
     const m = c.measureText('О');                                     /* заглавная: луна ростом с «Л» */
     const inkW = m.actualBoundingBoxLeft + m.actualBoundingBoxRight, inkH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
     const asc = m.fontBoundingBoxAscent || F * 0.89, desc = m.fontBoundingBoxDescent || F * 0.23;
-    const baseline = (F - (asc + desc)) / 2 + asc;                     /* line-height: 1 — строка ровно в кегль */
+    const baseline = (LH - (asc + desc)) / 2 + asc;
     const cx = -m.actualBoundingBoxLeft + inkW / 2, cy = baseline - m.actualBoundingBoxAscent + inkH / 2;
     const disc = inkH * 0.88;                                            /* диск чуть меньше просвета — обводка буквы остаётся видна */
     oWrap.style.setProperty('--mx', cx + 'px'); oWrap.style.setProperty('--my', cy + 'px'); oWrap.style.setProperty('--ms', (disc / 0.68) + 'px');
