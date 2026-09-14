@@ -1116,6 +1116,7 @@ async function loadNatal(){
     const c = natalCache || (natalCache = await api('/natal'));
     const dms = (p) => `${p.symbol} ${p.deg}°${String(p.min).padStart(2,'0')}′`;
     const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
+    const points = c.points && c.points.length ? `<h3 style="margin-top:16px">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
     const houses = c.houses ? `<h3 style="margin-top:16px">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.sign)}</small></td></tr>`).join('')}</tbody></table>`
       : `<div class="card sec" style="margin-top:14px"><p style="font-size:14px">${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? 'Укажите город рождения в аккаунте — по нему считаются дома. ' : ''}<button class="btn ghost sm" style="margin-top:10px" onclick="closeWidget();go('account');openWidget('edit')">Дополнить анкету</button></p></div>`;
     const aspects = c.aspects.length ? `<h3 style="margin-top:16px">Аспекты</h3><div class="hbars" style="margin-top:8px">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small style="color:#8f87ad">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
@@ -1124,7 +1125,7 @@ async function loadNatal(){
         <p style="font-size:15px;color:#ded8ee;margin-top:8px">☉ Солнце в ${esc(sun.sign)} · ☽ Луна в ${esc(moon.sign)}${c.houses ? ` · Asc ${esc(c.houses.asc.sign)}` : ''}</p>
         <p class="hint" style="margin-top:6px">${c.input.birth.split('-').reverse().join('.')}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''} · UTC ${c.input.utc}</p></div>
       <h3 style="margin-top:16px">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
-      ${houses}${aspects}
+      ${points}${houses}${aspects}
       <p class="hint" style="margin-top:14px">${esc(c.precision)} Трактовка карты появится позже — сейчас важно, что расчёт верный.</p>`;
   }catch(e){ box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без неё карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
 }

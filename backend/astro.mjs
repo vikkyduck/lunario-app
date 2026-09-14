@@ -1,8 +1,12 @@
 /* Эфемериды без зависимостей: западная тропическая астрология, дома Плацидуса.
-   Солнце и Луна — по Ж. Меёсу («Astronomical Algorithms», гл. 25 и 47), точность ~0.01°.
-   Планеты — по кеплеровым элементам JPL (Standish, 1800–2050), точность единицы угловых минут:
-   для знака и дома этого достаточно, для точных транзитов к минутам — нет.
-   Узел и Лилит — средние. Долготы — видимые, эклиптика даты (с нутацией и прецессией). */
+   Солнце и Луна — по Ж. Меёсу (гл. 25 и 47): сверено с JPL Horizons, расхождение ~1–2″.
+   Планеты и Хирон 1920–2080 — таблица видимых долгот из JPL Horizons (backend/ephem.bin,
+   шаг 1 день для внутренних и 4 дня для внешних, интерполяция кубиком) — точность ~1″.
+   Вне таблицы планеты считаются по кеплеровым элементам JPL (±1′), Хирон недоступен.
+   Узел — истинный (Меёс), Лилит — средний апогей, Селена — 7-летний цикл, Парс Фортуны — дневная/ночная формула. */
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
 const norm = (x) => ((x % 360) + 360) % 360;
@@ -88,7 +92,49 @@ function planetLongitude(name, T) {
   return { lon: norm(lonJ2000 + prec), lat, dist: Math.sqrt(x * x + y * y + z * z) };
 }
 const meanNode = (T) => norm(125.0445479 - 1934.1362891 * T + 0.0020754 * T * T + T ** 3 / 467441 - T ** 4 / 60616000);
-const meanLilith = (T) => norm(83.3532465 + 4069.0137287 * T - 0.0103200 * T * T - T ** 3 / 80053 + T ** 4 / 18999000);
+/* истинный узел: средний + периодические члены (Меёс, гл. 47) */
+function trueNode(T) {
+  const D = norm(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + T ** 3 / 545868), M = norm(357.5291092 + 35999.0502909 * T - 0.0001536 * T * T);
+  const Mp = norm(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + T ** 3 / 69699), F = norm(93.2720950 + 483202.0175233 * T - 0.0036539 * T * T - T ** 3 / 3526000);
+  return norm(meanNode(T) - 1.4979 * sin(2 * (D - F)) - 0.1500 * sin(M) - 0.1226 * sin(2 * D) + 0.1176 * sin(2 * F) - 0.0801 * sin(2 * (Mp - F)));
+}
+/* оскулирующий узел: по вектору момента импульса Луны r × v (так считает Swiss Ephemeris) */
+function osculatingNode(T) {
+  const dt = 1 / 24 / 36525;                                            // ± 1 час
+  const vec = (t) => { const m = moonPosition(t); const cb = cos(m.lat); return [m.dist * cb * cos(m.lon), m.dist * cb * sin(m.lon), m.dist * sin(m.lat)]; };
+  const r = vec(T), a = vec(T - dt), b = vec(T + dt), v = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const h = [r[1] * v[2] - r[2] * v[1], r[2] * v[0] - r[0] * v[2], r[0] * v[1] - r[1] * v[0]];
+  return norm(atan2(h[0], -h[1]));
+}
+/* средний апогей лунной орбиты = средний перигей + 180° */
+const meanLilith = (T) => norm(83.3532465 + 4069.0137287 * T - 0.0103200 * T * T - T ** 3 / 80053 + T ** 4 / 18999000 + 180);
+/* Селена (Белая Луна): равномерный цикл в 7 тропических лет; эпоха выверена по эталонной карте */
+const selena = (JD) => norm(153.0372 + (JD - 2445796.7056) * 360 / (7 * 365.2422));
+
+/* ── таблица JPL Horizons: видимые долготы планет и Хирона ── */
+let EPH = null;
+function ephem() {
+  if (EPH !== null) return EPH;
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const idx = JSON.parse(readFileSync(join(dir, 'ephem.json'), 'utf8'));
+    const buf = readFileSync(join(dir, 'ephem.bin'));
+    EPH = { idx, data: new Int32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4) };
+  } catch { EPH = false; }
+  return EPH;
+}
+function tableLon(name, JD) {
+  const e = ephem(); if (!e || !e.idx.bodies[name]) return null;
+  const b = e.idx.bodies[name];
+  const x = (JD - b.jd0) / b.step, i = Math.floor(x);
+  if (i < 1 || i + 2 >= b.n) return null;
+  const y = [-1, 0, 1, 2].map((k) => e.data[b.offset + i + k] / 10000);
+  for (let k = 1; k < 4; k++) { while (y[k] - y[k - 1] > 180) y[k] -= 360; while (y[k] - y[k - 1] < -180) y[k] += 360; }   // развернуть через 0°
+  const t = x - i;   // интерполяция Лагранжа по четырём точкам
+  const v = y[0] * (-t * (t - 1) * (t - 2) / 6) + y[1] * ((t + 1) * (t - 1) * (t - 2) / 2) + y[2] * (-(t + 1) * t * (t - 2) / 2) + y[3] * ((t + 1) * t * (t - 1) / 6);
+  return norm(v);
+}
+export const ephemRange = () => { const e = ephem(); return e ? { from: e.idx.start, to: '2080-01-01' } : null; };
 
 /* сидерическое время и дома */
 function gmst(JD) { const T = (JD - 2451545) / 36525; return norm(280.46061837 + 360.98564736629 * (JD - 2451545) + 0.000387933 * T * T - T ** 3 / 38710000); }
@@ -120,9 +166,9 @@ export const SIGNS = ['Овен', 'Телец', 'Близнецы', 'Рак', '�
 const SIGN_SYM = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 export const BODIES = [
   ['sun', 'Солнце', '☉'], ['moon', 'Луна', '☽'], ['mercury', 'Меркурий', '☿'], ['venus', 'Венера', '♀'], ['mars', 'Марс', '♂'],
-  ['jupiter', 'Юпитер', '♃'], ['saturn', 'Сатурн', '♄'], ['uranus', 'Уран', '♅'], ['neptune', 'Нептун', '♆'], ['pluto', 'Плутон', '♇'],
-  ['node', 'Северный узел', '☊'], ['lilith', 'Лилит', '⚸'],
+  ['jupiter', 'Юпитер', '♃'], ['saturn', 'Сатурн', '♄'], ['uranus', 'Уран', '♅'], ['neptune', 'Нептун', '♆'], ['pluto', 'Плутон', '♇'], ['chiron', 'Хирон', '⚷'],
 ];
+export const POINTS = [['lilith', 'Лилит', '⚸'], ['selena', 'Селена', '⚪'], ['node', 'Северный узел', '☊'], ['snode', 'Южный узел', '☋'], ['fortune', 'Парс Фортуны', '⊗'], ['vertex', 'Вертекс', 'Vx']];
 const ASPECTS = [['conjunction', 'Соединение', 0, 8, '☌'], ['opposition', 'Оппозиция', 180, 8, '☍'], ['trine', 'Тригон', 120, 7, '△'], ['square', 'Квадрат', 90, 7, '□'], ['sextile', 'Секстиль', 60, 5, '⚹']];
 
 function place(lon) {
@@ -131,14 +177,20 @@ function place(lon) {
 }
 function houseOf(lon, cusps) { for (let i = 0; i < 12; i++) { const a = cusps[i], b = cusps[(i + 1) % 12]; if (norm(lon - a) < norm(b - a)) return i + 1; } return 12; }
 
-function bodiesAt(T) {
+function bodiesAt(T, JD) {
   const { dpsi, eps } = nutation(T);
-  const out = {};
-  out.sun = { lon: sunLongitude(T), lat: 0 };
-  const m = moonPosition(T); out.moon = { lon: norm(m.lon + dpsi), lat: m.lat, dist: m.dist };
-  for (const k of ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto']) { const p = planetLongitude(k, T); out[k] = { lon: norm(p.lon + dpsi), lat: p.lat, dist: p.dist }; }
-  out.node = { lon: norm(meanNode(T) + dpsi), lat: 0 }; out.lilith = { lon: norm(meanLilith(T) + dpsi), lat: 0 };
-  return { bodies: out, eps, dpsi };
+  const out = {}, src = {};
+  out.sun = { lon: sunLongitude(T), lat: 0 }; src.sun = 'meeus';
+  const m = moonPosition(T); out.moon = { lon: norm(m.lon + dpsi), lat: m.lat, dist: m.dist }; src.moon = 'meeus';
+  for (const k of ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'chiron']) {
+    const t = tableLon(k, JD);
+    if (t !== null) { out[k] = { lon: t, lat: 0 }; src[k] = 'jpl'; continue; }
+    if (k === 'chiron') continue;                                       // вне таблицы Хирона нет
+    const p = planetLongitude(k, T); out[k] = { lon: norm(p.lon + dpsi), lat: p.lat, dist: p.dist }; src[k] = 'kepler';
+  }
+  out.node = { lon: norm(osculatingNode(T) + dpsi), lat: 0 }; out.snode = { lon: norm(out.node.lon + 180), lat: 0 };
+  out.lilith = { lon: norm(meanLilith(T) + dpsi), lat: 0 }; out.selena = { lon: selena(JD), lat: 0 };
+  return { bodies: out, eps, dpsi, src };
 }
 
 /* Натальная карта. birth: 'YYYY-MM-DD', time: 'HH:MM' | '', tzOffsetMin: смещение местного времени от UTC в минутах, lat/lon: градусы (восток и север положительные). */
@@ -150,8 +202,8 @@ export function natalChart({ birth, time, tzOffsetMin = 0, lat = null, lon = nul
   const JD = julianDay(Y, Mo, Da, utcHours);
   const JDE = JD + deltaT(Y + (Mo - 1) / 12) / 86400;
   const T = (JDE - 2451545) / 36525;
-  const { bodies, eps } = bodiesAt(T);
-  const later = bodiesAt(T + 0.5 / 36525).bodies;          // через 12 часов — для ретроградности
+  const { bodies, eps, src } = bodiesAt(T, JD);
+  const later = bodiesAt(T + 0.5 / 36525, JD + 0.5).bodies;   // через 12 часов — для ретроградности
   const hasPlace = lat !== null && lon !== null && Number.isFinite(lat) && Number.isFinite(lon);
   let houses = null;
   if (timeKnown && hasPlace) {
@@ -159,13 +211,26 @@ export function natalChart({ birth, time, tzOffsetMin = 0, lat = null, lon = nul
     const h = placidus(ramc, lat, eps);
     houses = { system: h.system, asc: place(h.asc), mc: place(h.mc), cusps: h.cusps.map((c, i) => ({ house: i + 1, ...place(c) })), ramc: Math.round(ramc * 100) / 100 };
   }
-  const planets = BODIES.map(([k, name, sym]) => {
+  const cuspLons = houses ? houses.cusps.map((c) => c.lon) : null;
+  const planets = BODIES.filter(([k]) => bodies[k]).map(([k, name, sym]) => {
     const b = bodies[k], p = place(b.lon);
-    const retro = ['sun', 'moon', 'node', 'lilith'].includes(k) ? false : norm(later[k].lon - b.lon + 180) - 180 < 0;
-    return { key: k, name, symbol: sym, ...p, lat: Math.round((b.lat || 0) * 100) / 100, retro, house: houses ? houseOf(b.lon, houses.cusps.map((c) => c.lon)) : null };
+    const retro = ['sun', 'moon'].includes(k) ? false : norm(later[k].lon - b.lon + 180) - 180 < 0;
+    return { key: k, name, symbol: sym, ...p, lat: Math.round((b.lat || 0) * 100) / 100, retro, house: cuspLons ? houseOf(b.lon, cuspLons) : null, source: src[k] };
+  });
+  /* точки: Парс Фортуны (день: Asc + Луна − Солнце; ночь: Asc + Солнце − Луна) и Вертекс — только при известных домах */
+  if (houses) {
+    const asc = houses.asc.lon, sunL = bodies.sun.lon, moonL = bodies.moon.lon;
+    const day = norm(sunL - asc) >= 180;                                  // Солнце над горизонтом — в домах 7–12
+    bodies.fortune = { lon: norm(day ? asc + moonL - sunL : asc + sunL - moonL), lat: 0, note: day ? 'дневная формула' : 'ночная формула' };
+    bodies.vertex = { lon: norm(atan2(cos(houses.ramc + 180), -(sin(houses.ramc + 180) * cos(eps) + tan(90 - lat) * sin(eps)))), lat: 0 };
+  }
+  const points = POINTS.filter(([k]) => bodies[k]).map(([k, name, sym]) => {
+    const b = bodies[k], p = place(b.lon);
+    const retro = k === 'node' || k === 'snode' ? norm(later.node.lon - bodies.node.lon + 180) - 180 < 0 : false;
+    return { key: k, name, symbol: sym, ...p, retro, note: b.note || '', house: cuspLons ? houseOf(b.lon, cuspLons) : null };
   });
   const aspects = [];
-  const main = planets.filter((p) => !['node', 'lilith'].includes(p.key));
+  const main = planets.filter((p) => p.key !== 'chiron');
   for (let i = 0; i < main.length; i++) for (let j = i + 1; j < main.length; j++) {
     const d = Math.abs(norm(main[i].lon - main[j].lon + 180) - 180);
     for (const [key, name, angle, orb, sym] of ASPECTS) {
@@ -177,11 +242,12 @@ export function natalChart({ birth, time, tzOffsetMin = 0, lat = null, lon = nul
   aspects.sort((x, y) => x.orb - y.orb);
   /* без времени рождения: Луна за сутки проходит ~13°, знак может отличаться */
   let moonUncertain = false;
-  if (!timeKnown) { const a = bodiesAt((julianDay(Y, Mo, Da, 0 - tzOffsetMin / 60) + deltaT(Y) / 86400 - 2451545) / 36525).bodies.moon.lon, b = bodiesAt((julianDay(Y, Mo, Da, 24 - tzOffsetMin / 60) + deltaT(Y) / 86400 - 2451545) / 36525).bodies.moon.lon; moonUncertain = Math.floor(a / 30) !== Math.floor(b / 30); }
+  if (!timeKnown) { const j0 = julianDay(Y, Mo, Da, 0 - tzOffsetMin / 60), j1 = j0 + 1; const a = bodiesAt((j0 + deltaT(Y) / 86400 - 2451545) / 36525, j0).bodies.moon.lon, b = bodiesAt((j1 + deltaT(Y) / 86400 - 2451545) / 36525, j1).bodies.moon.lon; moonUncertain = Math.floor(a / 30) !== Math.floor(b / 30); }
   return {
     input: { birth, time: timeKnown ? time : '', tzOffsetMin, lat, lon, jd: Math.round(JD * 100000) / 100000, utc: new Date((JD - 2440587.5) * 86400000).toISOString().slice(0, 16).replace('T', ' ') },
     zodiac: 'тропический (западный)', houseSystem: houses ? houses.system : null, obliquity: Math.round(eps * 10000) / 10000,
-    planets, houses, aspects, timeKnown, hasPlace, moonUncertain,
-    precision: 'Солнце и Луна — до сотых долей градуса; планеты — единицы угловых минут; узел и Лилит — средние. Для знака и дома этого достаточно.',
+    planets, points, houses, aspects, timeKnown, hasPlace, moonUncertain,
+    precision: src.mars === 'jpl' ? 'Планеты и Хирон — по эфемеридам JPL (точность около секунды дуги), Солнце и Луна — с той же точностью; узел истинный, Лилит — средний апогей, Селена — 7-летний цикл.'
+      : 'Дата вне таблицы JPL (1920–2080): планеты посчитаны по кеплеровым элементам с точностью около минуты дуги, Хирон недоступен.',
   };
 }
