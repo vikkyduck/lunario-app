@@ -45,10 +45,16 @@ export function findCities(q, limit = 8) {
 }
 
 export function cityByName(name) {
-  const n = norm(name);
-  const r = db.prepare(`SELECT name, region, country, lat, lon, tz, pop FROM cities
-    WHERE norm = ? ORDER BY pop DESC LIMIT 1`).get(n);
-  return r ? row(r) : null;
+  const raw = String(name || '');
+  // «Арсеньев, Приморский край» и «г. Арсеньев» — берём сам город; регион помогает выбрать из одноимённых
+  const [cityPart, regionPart = ''] = raw.split(',').map((x) => x.trim());
+  const n = norm(cityPart.replace(/^(г|гор|город|пос|с|д|ст)\.?\s+/i, ''));
+  if (!n) return null;
+  const rows = db.prepare(`SELECT name, region, country, lat, lon, tz, pop FROM cities WHERE norm = ? ORDER BY pop DESC LIMIT 20`).all(n);
+  if (!rows.length) return null;
+  const rg = norm(regionPart);
+  const r = (rg && rows.find((x) => norm(x.region).includes(rg) || norm(x.country).includes(rg))) || rows[0];
+  return row(r);
 }
 
 /* Смещение пояса на конкретный момент — с учётом исторических правил перевода часов */

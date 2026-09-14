@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomBytes, createHash, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
+import { randomBytes, randomInt, createHash, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { vapidKeys } from './push.mjs';
 import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
@@ -56,7 +56,7 @@ const EVENT_TYPES = new Set([
   'card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'spread_limit',
   'journal_add', 'wish_add', 'compat_calc', 'share_card', 'install_prompt', 'installed',
   'paywall_view', 'paywall_click', 'invite_copy', 'invite_used', 'push_on', 'push_off', 'pay_start', 'payment_success',
-  'support_open', 'support_new', 'utm_seen', 'natal_view',
+  'support_open', 'support_new', 'utm_seen', 'natal_view', 'card_download',
 ]);
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
@@ -144,6 +144,12 @@ db.exec(`
   if (!cols.includes('invited_by')) db.exec('ALTER TABLE users ADD COLUMN invited_by INTEGER');
   if (!cols.includes('bonus_until')) db.exec("ALTER TABLE users ADD COLUMN bonus_until TEXT DEFAULT ''");
   if (!cols.includes('plus_until')) db.exec("ALTER TABLE users ADD COLUMN plus_until TEXT DEFAULT ''");
+}
+
+/* История хранит не только текст, но и коды выпавших карт и рун — по ним расклад открывается заново */
+{
+  const cols = db.prepare('PRAGMA table_info(entries)').all().map((c) => c.name);
+  if (!cols.includes('data')) db.exec("ALTER TABLE entries ADD COLUMN data TEXT DEFAULT ''");
 }
 
 /* Координаты нужны натальной карте — добавляем к уже созданным базам */
@@ -428,11 +434,28 @@ function moonPhase(day) {                       // 0..1 доля цикла
 const MOON_NAMES = ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Старая Луна'];
 const moonName = (day) => MOON_NAMES[Math.floor(moonPhase(day) * 8) % 8];
 
+/* ── карты и руны: что уходит на экран (тексты экран берёт из каталога по коду) ── */
+const cardPublic = (a) => ({ slug: a.slug, name: a.name, keys: a.keys, question: a.question, today: a.today, image: a.image });
+const runePublic = (r) => ({ slug: r.slug, name: r.name, keyword: r.keyword, motto: r.motto, answer: r.answer, path: r.path, image: r.image });
+/* Случайные и без повторов внутри одного расклада — как из настоящей колоды или мешочка. */
+function drawDistinct(list, n) {
+  const idx = [...Array(list.length).keys()];
+  for (let i = idx.length - 1; i > 0; i--) { const j = randomInt(i + 1); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return idx.slice(0, Math.min(n, idx.length)).map((i) => list[i]);
+}
+const parseData = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
+/* Карта дня тянется один раз в день и живёт в истории; до открытия её нет. */
+function cardOfDay(u, day) {
+  const row = db.prepare("SELECT data FROM entries WHERE user_id=? AND day=? AND kind='card' ORDER BY id DESC LIMIT 1").get(u.id, day);
+  const slug = (parseData(row && row.data) || {}).card;
+  const a = slug ? C.ARCANA.find((c) => c.slug === slug) : null;
+  return a ? cardPublic(a) : null;
+}
+
 /* ── персональный день ── */
 function dayPack(u, day) {
   const seed = `${u.id}:${day}`;
   const sign = u.birth ? signOf(u.birth) : null;
-  const arc = C.ARCANA[hash32(seed + ':card') % C.ARCANA.length];
   const tone = C.DAY_TONES[hash32(seed + ':tone') % C.DAY_TONES.length];
   return {
     date: day,
@@ -440,7 +463,7 @@ function dayPack(u, day) {
     moonPhase: +moonPhase(day).toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
     // освещённость диска, а не доля цикла: при фазе 0.65 диск освещён на 79 %, не на 65
     moonPct: Math.round((1 - Math.cos(moonPhase(day) * 2 * Math.PI)) / 2 * 100),
-    card: { name: arc[0], meaning: arc[1], advice: arc[2] },
+    card: cardOfDay(u, day),
     sign: sign ? sign.name : '',
     forecast: sign
       ? { title: tone[0], text: `${tone[1]} ${sign.trait[0].toUpperCase()}${sign.trait.slice(1)} — сегодня это особенно заметно.`, bars: tone[2] }
@@ -535,7 +558,7 @@ function readBody(req, max = 32768) {
   });
 }
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
 function serveStatic(res, rel, cacheSec = 3600, headOnly = false) {
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const file = join(SITE_DIR, safe);
@@ -553,6 +576,13 @@ const server = createServer(async (req, res) => {
     if (p === '' ) p = '/';
 
     if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app' });
+
+    /* Каталог карт и рун: тексты, картинки, расклады. Личного здесь нет, поэтому кэшируется на 10 минут —
+       правки в content/ доедут до людей не позже. */
+    if (p === '/api/catalog' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
+      return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS }));
+    }
 
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.
        Закрыта паролем; личных текстов внутри нет — только счётчики. */
@@ -738,9 +768,15 @@ const server = createServer(async (req, res) => {
       if (p === '/api/natal' && req.method === 'GET') {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
         const time = /^\d{2}:\d{2}$/.test(u.birth_time || '') ? u.birth_time : '';
+        // анкета старше координат или город записан не как в базе — доопределяем по названию и запоминаем
+        if ((u.lat == null || !u.tz) && u.city) {
+          const geo = cityByName(u.city);
+          if (geo) { db.prepare('UPDATE users SET lat=?, lon=?, tz=?, city_region=? WHERE id=?').run(geo.lat, geo.lon, geo.tz, [geo.region, geo.country].filter(Boolean).join(', '), u.id); u.lat = geo.lat; u.lon = geo.lon; u.tz = geo.tz; }
+        }
         const tzOff = u.tz ? tzOffsetMinutes(u.tz, `${u.birth}T${time || '12:00'}:00`) : 0;
         const chart = natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
-        chart.tz = u.tz || ''; chart.city = u.city || '';
+        chart.tz = u.tz || ''; chart.city = u.city || ''; chart.cityFound = u.lat != null;
+        chart.tzNote = u.tz ? `${u.tz}, UTC${tzOff >= 0 ? '+' : '−'}${Math.abs(tzOff) / 60}` + (time ? '' : ' (полдень)') : 'пояс не определён — время взято как UTC';
         db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'natal_view', time ? 'with_time' : 'no_time', ageBand(u.birth));
         return json(res, 200, chart);
       }
@@ -886,25 +922,44 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true, user: publicUser(fresh), day: dayPack(fresh, d) });
       }
 
+      /* Карта дня: тянется случайно, один раз в день, и сразу ложится в историю. Повторное нажатие
+         возвращает ту же карту — колода на сегодня уже открыта. */
+      if (p === '/api/card' && req.method === 'POST') {
+        let card = cardOfDay(u, d);
+        if (!card) {
+          const a = drawDistinct([...C.ARCANA], 1)[0];
+          db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+            .run(u.id, nowISO(), d, 'card', '', a.name, a.keys, JSON.stringify({ card: a.slug }));
+          card = cardPublic(a);
+        }
+        return json(res, 200, { ok: true, card, streak: touchStreak(u) });
+      }
+
       if (p === '/api/ask' && req.method === 'POST') {
         const b = await readBody(req);
         const q = clean(b.question, 300);
         if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
         const kind = b.kind === 'rune' ? 'rune' : 'yesno';
         const topic = topicOf(q);
-        let title, body;
+        let title, body, extra = {}, stored = kind, data = '';
         if (kind === 'rune') {
-          const r = C.RUNES[hash32(q) % C.RUNES.length];
-          title = `${r[0]} — ${r[1]}`; body = r[3];
-          var extra = { path: r[2] };
+          /* руны выпадают случайно, без повторов внутри расклада; одна руна — kind «rune», расклад — «runes» */
+          const L = C.LAYOUTS.rune[b.layout] ? b.layout : 'one';
+          const pos = C.LAYOUTS.rune[L].pos;
+          const runes = drawDistinct([...C.RUNES], pos.length).map((r, i) => ({ pos: pos[i].name, ...runePublic(r) }));
+          title = runes.map((r) => r.name).join(' · ');
+          body = L === 'one' ? runes[0].answer : runes.map((r) => `${r.pos}: ${r.name} — ${r.answer}`).join(' ');
+          stored = L === 'one' ? 'rune' : 'runes';
+          data = JSON.stringify({ layout: L, runes: runes.map((r) => r.slug) });
+          extra = { layout: L, runes, path: runes[0].path };
         } else {
           const i = hash32(q) % 3;
           title = C.YN_VERDICTS[i]; body = C.YN_RIDERS[topic][i];
         }
-        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body) VALUES (?,?,?,?,?,?,?)')
-          .run(u.id, nowISO(), d, kind, seal(q), title, body);
+        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+          .run(u.id, nowISO(), d, stored, seal(q), title, body, data);
         const prev = db.prepare("SELECT title, day FROM entries WHERE user_id=? AND kind='yesno' AND day<? AND title<>? ORDER BY id DESC LIMIT 1").get(u.id, d, title);
-        return json(res, 200, { ok: true, kind, title, body, topic, ...(kind === 'rune' ? extra : {}), streak: touchStreak(u), memory: kind === 'yesno' && prev ? { title: prev.title, day: prev.day } : null });
+        return json(res, 200, { ok: true, kind, title, body, topic, ...extra, streak: touchStreak(u), memory: kind === 'yesno' && prev ? { title: prev.title, day: prev.day } : null });
       }
 
       if (p === '/api/spread' && req.method === 'POST') {
@@ -914,15 +969,15 @@ const server = createServer(async (req, res) => {
         const row = db.prepare('SELECT spreads FROM usage WHERE user_id=? AND day=?').get(u.id, d);
         const used = row ? row.spreads : 0;
         if (used >= 2) return json(res, 429, { ok: false, error: 'limit' });
-        const pos = ['Прошлое', 'Настоящее', 'Будущее'];
-        const cards = pos.map((label, i) => {
-          const a = C.ARCANA[hash32(`${u.id}:${q}:${i}`) % C.ARCANA.length];
-          return { pos: label, name: a[0], text: a[1] };
-        });
+        /* карты выпадают случайно и не повторяются внутри расклада; любой расклад — один разбор из дневного лимита */
+        const L = C.LAYOUTS.tarot[b.layout] ? b.layout : 'three';
+        const pos = C.LAYOUTS.tarot[L].pos;
+        const cards = drawDistinct([...C.ARCANA], pos.length).map((a, i) => ({ pos: pos[i].name, ...cardPublic(a) }));
         db.prepare('INSERT INTO usage (user_id, day, spreads) VALUES (?,?,1) ON CONFLICT(user_id, day) DO UPDATE SET spreads = spreads + 1').run(u.id, d);
-        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body) VALUES (?,?,?,?,?,?,?)')
-          .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.text}`).join(' '));
-        return json(res, 200, { ok: true, cards, left: Math.max(0, spreadLimit(u) - used - 1), streak: touchStreak(u) });
+        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+          .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.name} — ${c.keys}`).join(' '),
+               JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) }));
+        return json(res, 200, { ok: true, layout: L, cards, left: Math.max(0, spreadLimit(u) - used - 1), streak: touchStreak(u) });
       }
 
       if (p === '/api/ritual' && req.method === 'POST') return json(res, 200, { ok: true, streak: touchStreak(u) });
@@ -962,7 +1017,8 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/entries' && req.method === 'GET')
-        return json(res, 200, { items: db.prepare('SELECT day, kind, question, title FROM entries WHERE user_id=? ORDER BY id DESC LIMIT 100').all(u.id).map((r) => ({ ...r, question: open_(r.question) })) });
+        return json(res, 200, { items: db.prepare('SELECT id, day, kind, question, title, body, data FROM entries WHERE user_id=? ORDER BY id DESC LIMIT 100').all(u.id)
+          .map((r) => ({ ...r, question: open_(r.question), data: parseData(r.data) })) });
 
       /* Оплата: создаём заказ (подписка или консультация) и отправляем на страницу оплаты. */
       if (p === '/api/pay' && req.method === 'POST') {
@@ -1042,7 +1098,7 @@ const server = createServer(async (req, res) => {
         const days = db.prepare('SELECT COUNT(DISTINCT day) c FROM moods WHERE user_id=? AND day>=?').get(u.id, since).c;
         const total = moods.reduce((s, m) => s + m.c, 0);
         const MOOD_RU = { joy: 'радостно', calm: 'спокойно', tired: 'устало', anx: 'тревожно', sad: 'грустно' };
-        const KIND_RU = { yesno: 'вопросы «Да / Нет»', rune: 'руны', spread: 'расклады' };
+        const KIND_RU = { yesno: 'вопросы «Да / Нет»', rune: 'руны', runes: 'расклады рун', spread: 'расклады Таро', card: 'карты дня' };
         let summary = '';
         if (!total) summary = 'На этой неделе вы ещё не отмечали состояние. Одна отметка в день — и через неделю здесь появится картина.';
         else {

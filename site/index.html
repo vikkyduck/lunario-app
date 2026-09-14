@@ -349,6 +349,60 @@ body.wg-open{overflow:hidden}
   .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:88vh;border-radius:28px;
     background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
 }
+/* ── карта дня: иллюстрация аркана на лицевой стороне ── */
+.daycard{width:196px;height:368px}
+.dc-front{padding:0;overflow:hidden;border:1px solid rgba(217,184,104,.55)}
+.dc-front img{width:100%;height:100%;object-fit:cover;display:block;border-radius:22px}
+@media(min-width:900px){.daycard{width:224px;height:420px}}
+.kw{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:#cdc6e2;margin-top:7px;line-height:1.5}
+.today{color:#fff;font-size:15px;margin-bottom:8px}
+.card p+p{margin-top:10px}
+.card h3{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
+.card h3:first-child,.card p+h3:first-of-type{margin-top:0}
+.card>h3:first-child{margin-top:0}
+.ask-q{border-color:rgba(217,184,104,.4)}.ask-q p{color:#fff;font-size:16.5px;line-height:1.5}
+/* сворачиваемое «читать полностью» */
+.more{margin-top:12px}
+.morebtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:12px 0 2px;color:#f0d79a;font:inherit;font-size:14px;cursor:pointer}
+.morebtn svg{transition:transform .25s var(--sp)}
+.more.on .morebtn svg{transform:rotate(180deg)}
+.morebody{display:none;padding-top:8px}
+.more.on .morebody{display:block;animation:in .3s var(--sp)}
+/* действия под результатом: второстепенные, не спорят с основным */
+.resrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.resrow .btn.sm{min-height:40px;font-size:13.5px;padding:0 16px;color:#d3cde6;font-weight:600}
+/* руна: камень из книги */
+.stone{width:150px;height:150px;border-radius:26px;margin:4px auto 10px;display:block;box-shadow:0 18px 40px -16px rgba(0,0,0,.75)}
+/* схема расклада: где лежит какая карта или руна */
+.lay{display:grid;gap:12px;justify-content:center;margin:8px auto 16px;width:fit-content}
+.lay .c{position:relative;display:grid;place-items:center}
+.lay .c button{position:relative;background:none;border:0;padding:0;cursor:pointer;display:block}
+.lay .thumb{width:58px;height:109px;border-radius:8px;object-fit:cover;display:block;border:1px solid rgba(217,184,104,.35);box-shadow:0 8px 18px -8px rgba(0,0,0,.8)}
+.lay .num{position:absolute;top:-7px;left:-7px;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#1c1430;font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.lay .c.p2{z-index:2}.lay .c.p2 .thumb{transform:rotate(90deg);opacity:.94}.lay .c.p2 .num{top:auto;bottom:-7px;left:auto;right:-7px}
+.glyph{width:58px;height:58px;border-radius:14px;background:linear-gradient(150deg,#2a2150,#0b0a14);border:1px solid rgba(217,184,104,.4);display:grid;place-items:center}
+.glyph svg{width:34px;height:34px}
+/* позиции расклада */
+.pos{display:flex;gap:12px;align-items:flex-start;transition:border-color .4s}
+.pos.hl{border-color:rgba(217,184,104,.7)}
+.pos .thumb{width:64px;height:120px;border-radius:9px;object-fit:cover;flex:0 0 64px;border:1px solid rgba(217,184,104,.35)}
+.pos .glyph{flex:0 0 58px}
+.pos b{display:block;font-size:16px;color:var(--gold);font-weight:650}
+.pos .pn{display:block;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:#cdc6e2;font-weight:800;line-height:1.35}
+.pos .pn small{display:block;letter-spacing:0;text-transform:none;font-weight:400;color:#8f87ad;font-size:12.5px;margin-top:2px}
+.laydesc{font-size:13.5px;margin-top:10px;color:var(--muted)}.laydesc b{color:#fff;font-weight:600}
+/* история: запись раскрывается в тот же вид, что и свежий результат */
+.histhead{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.histhead>span{min-width:0}.histhead b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
+.histhead svg{flex:0 0 auto;color:#8f87ad;transition:transform .25s var(--sp)}
+.hist.on .histhead svg{transform:rotate(180deg);color:var(--gold)}
+.histbody{display:none;margin-top:12px}
+.hist.on .histbody{display:block;animation:in .3s var(--sp)}
+.hist .card{background:rgba(255,255,255,.04);box-shadow:none;padding:16px}
+/* открытка на iOS без системного меню: показываем картинку, её можно зажать */
+.pc-bg{position:fixed;inset:0;z-index:200;background:rgba(11,10,20,.94);display:none;padding:calc(20px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));overflow:auto}
+.pc-bg.on{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.pc-bg img{max-height:68vh;max-width:100%;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
 .ios-shell #t-install{display:none!important}
 </style>
 <script>
@@ -501,8 +555,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <h1 style="margin-top:6px">Свериться</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openAsk('yesno')"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ на конкретный вопрос, с пояснением</span></button>
-      <button class="wid" type="button" onclick="openAsk('rune')"><i class="ico rune"></i><b>Руна</b><span>24 руны старшего футарка</span></button>
-      <button class="wid" type="button" onclick="openAsk('spread')"><i class="ico tarot"></i><b>Три карты</b><span>Расклад прошлое — настоящее — будущее, два в день</span></button>
+      <button class="wid" type="button" onclick="openAsk('rune')"><i class="ico rune"></i><b>Руны</b><span>Одна руна, три руны, крест, четыре стихии</span></button>
+      <button class="wid" type="button" onclick="openAsk('spread')"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест — два расклада в день</span></button>
     </div>
   </section>
 
@@ -573,13 +627,10 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div class="daycard glow" id="t-card" onclick="flipCard()">
       <div class="dc-in">
         <div class="dc-f dc-back"><img src="/app/assets/brand/logo-mark.svg" width="88" height="88" alt="" style="filter:drop-shadow(0 6px 22px rgba(217,184,104,.35))"></div>
-        <div class="dc-f dc-front"><div><div class="serif" id="c-name" style="font-size:21px;color:var(--gold)"></div><p style="font-size:13.5px;margin-top:10px" id="c-mean"></p></div></div>
+        <div class="dc-f dc-front" id="c-face"></div>
       </div>
     </div>
-    <div id="t-after" style="display:none;margin-top:14px;text-align:center">
-      <p id="c-advice" style="color:#ded8ee"></p>
-      <button class="btn ghost sm" style="margin:12px auto 0" onclick="track('share_card');share()">Поделиться карточкой</button>
-    </div>
+    <div id="t-after" style="display:none;margin-top:16px"></div>
     <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
   </div>
   <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p style="font-size:14px;margin-top:14px;text-align:center" id="t-moodstat"></p></div>
@@ -609,6 +660,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   </div>
   <div class="wpane" id="w-ask">
     <div class="card">
+      <div id="a-layouts" style="display:none;margin-bottom:12px"></div>
       <div class="field"><label id="a-label">О чём спрашиваете</label><textarea id="a-q" placeholder="Стоит ли мне соглашаться на новую роль?" maxlength="300"></textarea></div>
       <button class="btn" style="margin-top:14px" id="a-go" disabled>Напишите вопрос</button>
       <p class="msg" id="a-msg"></p>
@@ -667,6 +719,11 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="pc-bg" id="pc" onclick="if(event.target===this)hidePostcard()">
+  <img id="pc-img" alt="Открытка">
+  <p style="text-align:center;font-size:14.5px;color:#ded8ee">Зажмите картинку и выберите «Сохранить в Фото»</p>
+  <button class="btn ghost sm" type="button" onclick="hidePostcard()">Закрыть</button>
+</div>
 
 <script>
 /* ── Луна с обложки: рисуется один раз с настоящей фазой на сегодня; дыхание и искры — в CSS ── */
@@ -1118,12 +1175,12 @@ async function loadNatal(){
     const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
     const points = c.points && c.points.length ? `<h3 style="margin-top:16px">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
     const houses = c.houses ? `<h3 style="margin-top:16px">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.sign)}</small></td></tr>`).join('')}</tbody></table>`
-      : `<div class="card sec" style="margin-top:14px"><p style="font-size:14px">${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? 'Укажите город рождения в аккаунте — по нему считаются дома. ' : ''}<button class="btn ghost sm" style="margin-top:10px" onclick="closeWidget();go('account');openWidget('edit')">Дополнить анкету</button></p></div>`;
+      : `<div class="card sec" style="margin-top:14px"><p style="font-size:14px">${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? (c.city ? `Город «${esc(c.city)}» не нашёлся в базе — откройте анкету и выберите его из подсказок, по нему считаются дома и часовой пояс. ` : 'Укажите город рождения в аккаунте — по нему считаются дома и часовой пояс. ') : ''}<button class="btn ghost sm" style="margin-top:10px" onclick="closeWidget();go('account');openWidget('edit')">Дополнить анкету</button></p></div>`;
     const aspects = c.aspects.length ? `<h3 style="margin-top:16px">Аспекты</h3><div class="hbars" style="margin-top:8px">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small style="color:#8f87ad">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
     const sun = c.planets[0], moon = c.planets[1];
     box.innerHTML = `<div class="card sec"><p class="eyebrow">Западная традиция · тропический зодиак${c.houses ? ' · ' + esc(c.houses.system) : ''}</p>
         <p style="font-size:15px;color:#ded8ee;margin-top:8px">☉ Солнце в ${esc(sun.sign)} · ☽ Луна в ${esc(moon.sign)}${c.houses ? ` · Asc ${esc(c.houses.asc.sign)}` : ''}</p>
-        <p class="hint" style="margin-top:6px">${c.input.birth.split('-').reverse().join('.')}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''} · UTC ${c.input.utc}</p></div>
+        <p class="hint" style="margin-top:6px">${c.input.birth.split('-').reverse().join('.')}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''}${c.hasPlace ? ` (${c.input.lat.toFixed(2)}°, ${c.input.lon.toFixed(2)}°)` : ''} · ${esc(c.tzNote || '')} · UTC ${c.input.utc}</p></div>
       <h3 style="margin-top:16px">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
       ${points}${houses}${aspects}
       <p class="hint" style="margin-top:14px">${esc(c.precision)} Трактовка карты появится позже — сейчас важно, что расчёт верный.</p>`;
@@ -1208,7 +1265,7 @@ const MOOD_LABEL = Object.fromEntries(MOODS.map(m=>[m[0],m[1].toLowerCase()]));
 function paintToday(){
   const d=S.day;
   renderHub();
-  $('c-name').textContent=d.card.name; $('c-mean').textContent=d.card.meaning; $('c-advice').textContent=d.card.advice;
+  paintCard();
   $('f-title').textContent=d.forecast.title; $('f-text').textContent=d.forecast.text;
   $('t-daysub').textContent=d.forecast.title;
   $('t-aff').textContent='«'+d.affirmation+'»'; $('t-q').textContent=d.question;
@@ -1237,25 +1294,6 @@ function paintMoodStat(stats){
   const parts=(stats||[]).filter(s=>s.c>0).map(s=>MOOD_LABEL[s.mood]+' — '+s.c);
   const t = parts.length?'В этом месяце: '+parts.join(' · ')+'.':'';
   $('t-moodstat').textContent=t; $('hm-stat').textContent=t||'Отмечайте настроение каждый день — в конце месяца здесь будет итог.'; $('hm-sub').textContent=t;
-}
-function paintCardTile(){ const e=$('t-cardsub'); if(e && S.day) e.textContent = S.flipped ? S.day.card.name : '22 аркана: смысл и что с ним делать сегодня'; }
-function flipCard(){ if(!S.flipped) openCard(); }
-$('t-open').onclick=openCard;
-function openCard(){
-  track('card_open');
-  if(S.flipped) return;
-  S.flipped=true; hap([0,12]);
-  $('t-card').classList.add('flip'); $('t-card').classList.remove('glow');
-  $('t-open').style.display='none'; paintCardTile();
-  setTimeout(()=>{ $('t-after').style.display='block'; $('t-after').classList.add('rise'); },500);
-  api('/ritual',{method:'POST'}).then(r=>bumpStreak(r.streak)).catch(()=>{});
-  try{ localStorage.setItem('lun_card_'+S.day.date,'1'); }catch(e){}
-}
-function share(){
-  const t=`${S.day.card.name} — карта дня в Лунарио.\n${S.day.card.meaning}\n${location.origin}/app/`;
-  if (IOS_SHELL && nativePost({ type:'share', text:t })) return;
-  if(navigator.share) navigator.share({title:'Лунарио',text:t}).catch(()=>{});
-  else { navigator.clipboard.writeText(t).catch(()=>{}); toast('Скопировано — можно отправить подруге'); }
 }
 async function loadNumerology(){
   if (S.num) { paintNum(S.num); return; }
@@ -1298,45 +1336,6 @@ async function worryAsk(i, mode, btn){
   catch (e) { out.innerHTML = `<p class="msg err">${askErrorText(e)}</p>`; }
 }
 
-/* ── свериться: каждый способ открывается своим пространством ── */
-const LABELS={yesno:'О чём спрашиваете',rune:'О чём спрашиваете руну',spread:'Ваш вопрос к картам'};
-const MODE_TITLE={yesno:'Да / Нет',rune:'Руна',spread:'Три карты'};
-function openAsk(m){ setMode(m); openWidget('ask', MODE_TITLE[m]); setTimeout(()=>$('a-q').focus(),350); }
-function setMode(m){
-  S.mode=m;
-  $('a-label').textContent=LABELS[m];
-  $('a-result').style.display='none'; $('a-msg').textContent='';
-  $('a-hint').textContent = m==='spread' && S.limits ? `Разбор расклада: осталось ${S.limits.spreadsLeft} из ${S.limits.spreadsTotal} на сегодня.` : 'Бесплатно и без ограничений.';
-  checkQ();
-}
-$('a-q').addEventListener('input',checkQ);
-function checkQ(){
-  const v=$('a-q').value.trim(), ok=v.length>=10&&/\s/.test(v);
-  $('a-go').disabled=!ok;
-  $('a-go').textContent=ok?(S.mode==='spread'?'Разложить карты':S.mode==='rune'?'Вытянуть руну':'Спросить карту'):(v.length?'Допишите вопрос':'Напишите вопрос');
-}
-async function runAsk(mode, q, out, hint){
-  if(mode==='spread'){
-    track('ask_spread');
-    const r=await api('/spread',{method:'POST',body:JSON.stringify({question:q})});
-    if(S.limits) S.limits.spreadsLeft=r.left; bumpStreak(r.streak);
-    out.innerHTML=`<p style="font-style:italic;text-align:center;font-size:14px">«${esc(q)}»</p>`+
-      r.cards.map((c,i)=>`<div class="card rise" style="--i:${i}"><span class="eyebrow" style="margin-bottom:5px">${c.pos} · ${c.name}</span><p>${c.text}</p></div>`).join('');
-    if(hint) hint.textContent=`Разбор расклада: осталось ${r.left} из 2 на сегодня.`;
-  } else {
-    track(mode==='rune'?'ask_rune':'ask_yesno');
-    const r=await api('/ask',{method:'POST',body:JSON.stringify({question:q,kind:mode})});
-    bumpStreak(r.streak);
-    const rune=r.kind==='rune';
-    out.innerHTML=`<div class="card rise" style="text-align:center">
-      <p style="font-style:italic;font-size:14px">«${esc(q)}»</p>
-      ${rune?`<svg width="66" height="84" viewBox="0 0 32 32" fill="none" style="margin:14px auto 6px;display:block"><path d="${r.path}" stroke="#e9c77e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
-      <div class="${rune?'serif':'big'}" style="${rune?'font-size:23px;color:var(--gold);margin-top:8px':''}">${r.title}</div>
-      <p style="margin-top:10px">${r.body}</p></div>`+
-      (r.memory?`<div class="card rise" style="--i:1;border-color:rgba(217,184,104,.35)"><span class="eyebrow" style="color:var(--gold);margin-bottom:6px">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b style="color:#fff">«${r.memory.title}»</b>, сегодня — <b style="color:#fff">«${r.title}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>`:'');
-  }
-  out.style.display='block'; hap([0,14,45,22]);
-}
 function askErrorText(e){
   if(e.code==='limit') track('spread_limit');
   return e.code==='limit' ? 'Разборы на сегодня закончились. Карта дня, «Да/Нет» и руны остаются без ограничений.'
@@ -1347,7 +1346,7 @@ $('a-go').onclick=async()=>{
   const q=$('a-q').value.trim(), msg=$('a-msg'); msg.className='msg'; msg.textContent='';
   $('a-go').disabled=true; $('a-go').textContent='Смотрим…';
   try{
-    await runAsk(S.mode,q,$('a-result'),$('a-hint'));
+    await runAsk(S.mode,q,$('a-result'),$('a-hint'),S.layout);
     $('a-result').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){ msg.classList.add('err'); msg.textContent=askErrorText(e); }
   checkQ();
@@ -1730,9 +1729,6 @@ function loadJournal(){
     $('m-journal').innerHTML=html; $('h-journal').innerHTML=html;
   }).catch(()=>{});
 }
-function loadEntries(){
-  api('/entries').then(r=>{ $('m-entries').innerHTML=r.items.map(i=>`<div class="item"><b>${i.question?esc(i.question):i.title}</b><small>${i.day.split('-').reverse().join('.')} · ${i.title}</small></div>`).join('')||'<div class="item"><p>Здесь появятся ваши вопросы и ответы на них. Видите их только вы.</p></div>'; }).catch(()=>{});
-}
 function renderWishes(r){
   const html=r.items.map(w=>`<div class="item row" style="gap:12px">
     <button onclick="toggleWish(${w.id})" style="width:28px;height:28px;min-height:28px;border-radius:50%;flex:0 0 28px;border:1.5px solid ${w.done?'transparent':'#d9b868'};background:${w.done?'var(--gold)':'transparent'};color:#1c1430;cursor:pointer;display:grid;place-items:center">${w.done?'✓':''}</button>
@@ -1782,10 +1778,392 @@ let deferred=null;
 window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); $('t-install').style.display='flex'; });
 async function installApp(){ if(!deferred) return; track('installed'); deferred.prompt(); await deferred.userChoice; deferred=null; $('t-install').style.display='none'; }
 
+/* ══════════ Карты Таро и руны: каталог, результаты, история, открытки ══════════ */
+/* Каталог: тексты и картинки карт и рун приходят одним запросом и дальше живут в памяти.
+   Ответы сервера несут только коды и названия — по кодам экран находит полные тексты. */
+let CAT = null, catPromise = null;
+function loadCatalog(){
+  if (CAT) return Promise.resolve(CAT);
+  if (catPromise) return catPromise;
+  catPromise = api('/catalog').then(c => {
+    CAT = { cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts };
+    return CAT;
+  }).catch(e => { catPromise = null; throw e; });
+  return catPromise;
+}
+const cardBy = (s) => (CAT && CAT.cards[s]) || null;
+const runeBy = (s) => (CAT && CAT.runes[s]) || null;
+const layoutOf = (kind, key) => (CAT && CAT.layouts[kind] && CAT.layouts[kind][key]) || null;
+const keysLine = (k) => String(k || '').replace(/\.\s*$/, '').split(/\.\s+/).join(' · ');
+const fmtDay = (d) => String(d || '').split('-').reverse().join('.');
+const paras = (arr) => (arr || []).map(t => `<p>${esc(t)}</p>`).join('');
+const glyphSvg = (path) => `<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="${esc(path || 'M16 5v22')}" stroke="#e9c77e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const CHEV = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+let moreSeq = 0;
+function moreBlock(html, label){
+  if (!html) return '';
+  const id = 'more' + (++moreSeq);
+  return `<div class="more" id="${id}"><button class="morebtn" type="button" onclick="toggleMore('${id}')"><span>${label || 'Читать полностью'}</span>${CHEV}</button><div class="morebody">${html}</div></div>`;
+}
+function toggleMore(id){ const el = $(id); if (!el) return; el.classList.toggle('on'); hap(9); }
+const CARD_SEC = { image: 'Образ', spread: 'В раскладе', state: 'Состояние человека', shadow: 'Теневая сторона', advice: 'Совет' };
+const RUNE_SEC = { meaning: 'Значение', advice: 'Совет', state: 'Состояние человека', interact: 'Во взаимодействии' };
+function sectionsHtml(obj, keys, titles){
+  const s = (obj && obj.sections) || {};
+  return keys.filter(k => s[k] && s[k].length).map(k => `<h3>${titles[k]}</h3>${paras(s[k])}`).join('');
+}
+
+/* Каждый показанный результат регистрируется: по номеру «Скачать» знает, из чего собирать открытку. */
+const RES = {}; let resSeq = 0, pendingRes = [];
+function regRes(p){ const id = 'res' + (++resSeq); RES[id] = p; pendingRes.push(id); return id; }
+function preparePending(){ const ids = pendingRes; pendingRes = []; ids.forEach(preparePostcard); }
+function actionsHtml(id, withShare){
+  return `<div class="resrow"><button class="btn ghost sm" type="button" onclick="savePostcard('${id}')">↓&nbsp; Скачать на телефон</button>${withShare ? `<button class="btn ghost sm" type="button" onclick="track('share_card');share()">Поделиться</button>` : ''}</div>`;
+}
+const qLine = (q) => q ? `<p style="font-style:italic;text-align:center;font-size:14px;margin-bottom:12px">«${esc(q)}»</p>` : '';
+
+/* ── карта дня: иллюстрация, ключи, образ, совет, вопрос себе; остальное — под «Читать полностью» ── */
+function cardDayHtml(c, day, compact){
+  const id = regRes({ type: 'card', card: c, day });
+  const s = c.sections || {};
+  return `<div style="text-align:center"><div class="serif" style="font-size:22px;color:var(--gold)">${esc(c.name)}</div>${c.keys ? `<div class="kw">${esc(keysLine(c.keys))}</div>` : ''}</div>
+    ${s.image && s.image.length ? `<div class="card" style="margin-top:14px">${paras(s.image)}</div>` : ''}
+    ${(c.today || (s.advice && s.advice.length)) ? `<div class="card"><h3>Совет</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : ''}${paras(s.advice)}</div>` : ''}
+    ${c.question ? `<div class="card ask-q"><h3>Вопрос себе</h3><p>${esc(c.question)}</p></div>` : ''}
+    ${moreBlock(sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC))}
+    ${actionsHtml(id, !compact)}`;
+}
+function paintCard(){
+  const pub = S.day && S.day.card;
+  const c = pub ? (cardBy(pub.slug) || pub) : null;
+  $('c-face').innerHTML = c ? `<img src="${esc(c.image)}?v=1" alt="${esc(c.name)}">` : '';
+  $('t-after').innerHTML = c ? cardDayHtml(c, S.day.date, false) : '';
+  paintCardTile();
+}
+function paintCardTile(){ const e = $('t-cardsub'); if (e && S.day) e.textContent = S.flipped && S.day.card ? S.day.card.name : '22 аркана: смысл и что с ним делать сегодня'; }
+function showFlipped(){
+  S.flipped = true;
+  $('t-card').classList.add('flip'); $('t-card').classList.remove('glow');
+  $('t-open').style.display = 'none'; paintCardTile();
+}
+function flipCard(){ if (!S.flipped) openCard(); }
+$('t-open').onclick = openCard;
+const preload = (src) => new Promise((res) => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = src; setTimeout(res, 2500); });
+/* Карта тянется на сервере случайно — один раз в день — и сразу попадает в историю. */
+async function openCard(){
+  if (S.flipped || S.opening) return;
+  S.opening = true; track('card_open'); $('t-open').disabled = true;
+  try{
+    const [r] = await Promise.all([api('/card', { method: 'POST' }), loadCatalog().catch(() => null)]);
+    S.day.card = r.card; bumpStreak(r.streak);
+    if (r.card && r.card.image) await preload(r.card.image + '?v=1');
+    paintCard(); hap([0, 12]);
+    showFlipped();
+    setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); }, 500);
+  }catch(e){ toast('Не получилось открыть карту — попробуйте ещё раз'); $('t-open').disabled = false; }
+  S.opening = false;
+}
+function share(){
+  const c = S.day && S.day.card; if (!c) return;
+  const t = `${c.name} — карта дня в Лунарио.\n${keysLine(c.keys)}\n${location.origin}/app/`;
+  if (IOS_SHELL && nativePost({ type: 'share', text: t })) return;
+  if (navigator.share) navigator.share({ title: 'Лунарио', text: t }).catch(() => {});
+  else { navigator.clipboard.writeText(t).catch(() => {}); toast('Скопировано — можно отправить подруге'); }
+}
+
+/* ── схема расклада: [колонка, строка] каждой позиции ── */
+const CELLS = {
+  three: [[1, 1], [2, 1], [3, 1]], fork: [[1, 1], [1, 2], [2, 2]],
+  cross: [[2, 2], [1, 2], [3, 2], [2, 1], [2, 3]], elements: [[2, 1], [1, 2], [3, 2], [2, 3]],
+  celtic: [[2, 2], [2, 2], [1, 2], [3, 2], [2, 1], [2, 3], [4, 4], [4, 3], [4, 2], [4, 1]],
+};
+function diagramHtml(kind, layout, items, rid){
+  const cells = CELLS[layout] || items.map((_, i) => [i + 1, 1]);
+  const cols = Math.max(...cells.map(c => c[0]));
+  const inner = (it) => kind === 'tarot' ? `<img class="thumb" src="${esc(it.image)}?v=1" alt="">` : `<span class="glyph">${glyphSvg(it.path)}</span>`;
+  return `<div class="lay" style="grid-template-columns:repeat(${cols},58px)">${items.map((it, i) => {
+    const [c, r] = cells[i] || [i + 1, 1];
+    const col = layout === 'fork' && i === 0 ? '1 / span 2' : c;
+    return `<div class="c${layout === 'celtic' && i === 1 ? ' p2' : ''}" style="grid-column:${col};grid-row:${r}"><button type="button" onclick="scrollToPos('${rid}',${i})" aria-label="Позиция ${i + 1}">${inner(it)}<span class="num">${i + 1}</span></button></div>`;
+  }).join('')}</div>`;
+}
+function scrollToPos(rid, i){ const el = $(rid + '-p' + i); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('hl'); setTimeout(() => el.classList.remove('hl'), 1400); }
+const posHead = (i, P) => `<span class="pn">${i + 1}. ${esc(P.name)}${P.hint ? `<small>${esc(P.hint)}</small>` : ''}</span>`;
+
+/* ── руны: одна руна и расклады ── */
+function runesHtml(p){
+  const L = layoutOf('rune', p.layout) || { title: 'Руны', pos: [] };
+  const runes = p.runes.map(s => runeBy(s) || (p.live || []).find(x => x.slug === s) || { slug: s, name: s, path: '', sections: {} });
+  const id = regRes({ type: p.layout === 'one' || runes.length === 1 ? 'rune' : 'runes', layout: p.layout, runes, q: p.q, day: p.day });
+  if (runes.length === 1) {
+    const r = runes[0];
+    return `<div class="card rise" style="text-align:center">${qLine(p.q)}
+        ${r.image ? `<img class="stone" src="${esc(r.image)}?v=1" alt="">` : `<div class="glyph" style="margin:4px auto 10px;width:90px;height:90px">${glyphSvg(r.path)}</div>`}
+        <div class="serif" style="font-size:23px;color:var(--gold)">${esc(r.name)}</div>
+        ${r.keyword ? `<div class="kw">${esc(r.keyword)}</div>` : ''}
+        ${r.motto ? `<p style="margin-top:8px;font-style:italic;color:#cdc6e2">${esc(r.motto)}</p>` : ''}
+        <p style="margin-top:12px;color:#fff;font-size:16px">${esc(r.answer || '')}</p>
+        <div style="text-align:left">${moreBlock(sectionsHtml(r, ['meaning', 'advice', 'state', 'interact'], RUNE_SEC))}</div>
+        ${actionsHtml(id)}</div>`;
+  }
+  return `<div class="card rise">${qLine(p.q)}<div style="text-align:center"><span class="eyebrow">${esc(L.title)}</span></div>
+      ${diagramHtml('rune', p.layout, runes, id)}
+      <div class="list">${runes.map((r, i) => { const P = L.pos[i] || { name: 'Позиция ' + (i + 1), hint: '' }; const s = r.sections || {};
+        return `<div class="card pos" id="${id}-p${i}"><span class="glyph">${glyphSvg(r.path)}</span><div class="grow">${posHead(i, P)}
+          <b style="margin-top:6px">${esc(r.name)}${r.keyword ? ` <span style="color:#cdc6e2;font-weight:400;font-size:13px">· ${esc(r.keyword)}</span>` : ''}</b>
+          <p style="font-size:14.5px;margin-top:6px;color:#ded8ee">${esc(r.answer || '')}</p>
+          ${moreBlock(sectionsHtml({ sections: { meaning: (s.meaning || []).slice(0, 1), advice: s.advice } }, ['meaning', 'advice'], RUNE_SEC), 'Подробнее')}
+        </div></div>`; }).join('')}</div>
+      ${actionsHtml(id)}</div>`;
+}
+
+/* ── Таро: расклады ── */
+function spreadHtml(p){
+  const L = layoutOf('tarot', p.layout) || { title: 'Расклад', pos: [] };
+  const cards = p.cards.map(s => cardBy(s) || (p.live || []).find(x => x.slug === s) || { slug: s, name: s, keys: '', image: '', sections: {} });
+  const id = regRes({ type: 'spread', layout: p.layout, cards, q: p.q, day: p.day });
+  return `<div class="card rise">${qLine(p.q)}<div style="text-align:center"><span class="eyebrow">${esc(L.title)}</span></div>
+      ${diagramHtml('tarot', p.layout, cards, id)}
+      <div class="list">${cards.map((c, i) => { const P = L.pos[i] || { name: 'Позиция ' + (i + 1), hint: '' }; const sp = (c.sections && c.sections.spread) || [];
+        return `<div class="card pos" id="${id}-p${i}">${c.image ? `<img class="thumb" src="${esc(c.image)}?v=1" alt="">` : ''}<div class="grow">${posHead(i, P)}
+          <b style="margin-top:6px">${esc(c.name)}</b>${c.keys ? `<div class="kw" style="margin-top:3px">${esc(keysLine(c.keys))}</div>` : ''}
+          ${sp[0] ? `<p style="font-size:14.5px;margin-top:8px">${esc(sp[0])}</p>` : ''}
+          ${moreBlock((sp.length > 1 ? paras(sp.slice(1)) : '') + sectionsHtml(c, ['advice'], CARD_SEC), 'Подробнее')}
+        </div></div>`; }).join('')}</div>
+      ${actionsHtml(id)}</div>`;
+}
+
+/* ── Да / Нет ── */
+function yesnoHtml(p){
+  const id = regRes({ type: 'yesno', title: p.title, body: p.body, q: p.q, day: p.day });
+  return `<div class="card rise" style="text-align:center">${qLine(p.q)}<div class="big">${esc(p.title)}</div><p style="margin-top:10px">${esc(p.body)}</p>${actionsHtml(id)}</div>` +
+    (p.memory ? `<div class="card rise" style="--i:1;border-color:rgba(217,184,104,.35)"><span class="eyebrow" style="color:var(--gold);margin-bottom:6px">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b style="color:#fff">«${esc(p.memory.title)}»</b>, сегодня — <b style="color:#fff">«${esc(p.title)}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>` : '');
+}
+
+/* ── свериться: способ и расклад ── */
+const LABELS = { yesno: 'О чём спрашиваете', rune: 'О чём спрашиваете руны', spread: 'Ваш вопрос к картам' };
+const MODE_TITLE = { yesno: 'Да / Нет', rune: 'Руны', spread: 'Таро' };
+const LAYOUT_ORDER = { rune: ['one', 'three', 'cross', 'elements'], spread: ['three', 'fork', 'celtic'] };
+function openAsk(m){ setMode(m); openWidget('ask', MODE_TITLE[m]); setTimeout(() => $('a-q').focus(), 350); }
+function setMode(m){
+  S.mode = m; S.layout = m === 'spread' ? 'three' : 'one';
+  $('a-label').textContent = LABELS[m];
+  $('a-result').style.display = 'none'; $('a-result').innerHTML = ''; $('a-msg').textContent = '';
+  paintHint(); renderLayouts(); loadCatalog().then(renderLayouts).catch(() => {});
+  checkQ();
+}
+function paintHint(){ $('a-hint').textContent = S.mode === 'spread' && S.limits ? `Разбор расклада: осталось ${S.limits.spreadsLeft} из ${S.limits.spreadsTotal} на сегодня.` : 'Бесплатно и без ограничений.'; }
+function renderLayouts(){
+  const box = $('a-layouts'), kind = S.mode === 'rune' ? 'rune' : S.mode === 'spread' ? 'tarot' : '';
+  if (!kind || !CAT) { box.style.display = 'none'; return; }
+  const L = CAT.layouts[kind][S.layout];
+  box.style.display = '';
+  box.innerHTML = `<div class="chips flow">${LAYOUT_ORDER[S.mode].map(k => `<button type="button" class="chip${S.layout === k ? ' on' : ''}" onclick="setLayout('${k}')">${esc(CAT.layouts[kind][k].title)}</button>`).join('')}</div>
+    <p class="laydesc"><b>${esc(L.sub)}</b> — ${esc(L.desc)}</p>`;
+}
+function setLayout(k){ S.layout = k; hap(9); renderLayouts(); checkQ(); }
+$('a-q').addEventListener('input', checkQ);
+function checkQ(){
+  const v = $('a-q').value.trim(), ok = v.length >= 10 && /\s/.test(v);
+  $('a-go').disabled = !ok;
+  $('a-go').textContent = ok ? (S.mode === 'spread' ? 'Разложить карты' : S.mode === 'rune' ? (S.layout === 'one' ? 'Вытянуть руну' : 'Разложить руны') : 'Спросить карту') : (v.length ? 'Допишите вопрос' : 'Напишите вопрос');
+}
+async function runAsk(mode, q, out, hint, layout){
+  await loadCatalog().catch(() => {});
+  if (mode === 'spread') {
+    const L = layout || 'three';
+    track('ask_spread', L);
+    const r = await api('/spread', { method: 'POST', body: JSON.stringify({ question: q, layout: L }) });
+    if (S.limits) S.limits.spreadsLeft = r.left; bumpStreak(r.streak);
+    out.innerHTML = spreadHtml({ q, layout: r.layout, cards: r.cards.map(c => c.slug), live: r.cards, day: S.day.date });
+    if (hint) hint.textContent = `Разбор расклада: осталось ${r.left} из ${S.limits ? S.limits.spreadsTotal : 2} на сегодня.`;
+  } else {
+    const L = mode === 'rune' ? (layout || 'one') : '';
+    track(mode === 'rune' ? 'ask_rune' : 'ask_yesno', L);
+    const r = await api('/ask', { method: 'POST', body: JSON.stringify({ question: q, kind: mode, layout: L }) });
+    bumpStreak(r.streak);
+    out.innerHTML = r.kind === 'rune' ? runesHtml({ q, layout: r.layout, runes: r.runes.map(x => x.slug), live: r.runes, day: S.day.date })
+      : yesnoHtml({ q, title: r.title, body: r.body, day: S.day.date, memory: r.memory });
+  }
+  out.style.display = 'block'; hap([0, 14, 45, 22]); preparePending();
+}
+
+/* ── история: записи раскрываются в тот же вид, что и свежий результат ── */
+const KIND_LABEL = { card: 'Карта дня', yesno: 'Да / Нет', rune: 'Руна', runes: 'Руны', spread: 'Таро' };
+function kindLabel(i){
+  const L = i.data && i.data.layout ? layoutOf(i.kind === 'spread' ? 'tarot' : 'rune', i.data.layout) : null;
+  return L && i.kind !== 'rune' ? `${KIND_LABEL[i.kind]} · ${L.title}` : (KIND_LABEL[i.kind] || i.kind);
+}
+function loadEntries(){
+  api('/entries').then(async (r) => {
+    S.entries = r.items; await loadCatalog().catch(() => {});
+    $('m-entries').innerHTML = r.items.map((i, n) => `<div class="item hist" id="he-${n}"><button class="histhead" type="button" onclick="toggleEntry(${n})"><span><b>${esc(i.question || i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question ? ' · ' + esc(i.title) : ''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
+      || '<div class="item"><p>Здесь появятся ваши карты дня, вопросы и расклады. Видите их только вы.</p></div>';
+  }).catch(() => {});
+}
+function toggleEntry(n){
+  const it = $('he-' + n), body = $('hb-' + n); if (!it) return;
+  const open = !it.classList.contains('on'); it.classList.toggle('on', open); hap(9);
+  if (open && !body.innerHTML) { body.innerHTML = entryHtml(S.entries[n]); preparePending(); }
+}
+function entryHtml(i){
+  const d = i.data || {};
+  if (i.kind === 'card' && d.card) return cardDayHtml(cardBy(d.card) || { name: i.title, keys: i.body, sections: {} }, i.day, true);
+  if (i.kind === 'yesno') return yesnoHtml({ q: i.question, title: i.title, body: i.body, day: i.day });
+  if ((i.kind === 'rune' || i.kind === 'runes') && d.runes) return runesHtml({ q: i.question, layout: d.layout || 'one', runes: d.runes, day: i.day });
+  if (i.kind === 'spread' && d.cards) return spreadHtml({ q: i.question, layout: d.layout || 'three', cards: d.cards, day: i.day });
+  return `<p style="font-size:14px">${esc(i.body || i.title)}</p>`;   /* записи, сделанные до появления кодов */
+}
+
+/* ══════════ Открытка 9:16: чистая картинка без интерфейса — на экран блокировки или подруге ══════════ */
+const PC_W = 1080, PC_H = 1920;
+const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const fontsReady = () => Promise.all(['300 40px Comfortaa', '600 56px Onest', '400 36px Onest', 'italic 400 28px Onest'].map(f => document.fonts.load(f))).catch(() => {});
+const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+function wrapLines(ctx, text, maxW){
+  const out = [];
+  for (const par of String(text || '').split('\n')) {
+    let line = '';
+    for (const w of par.split(' ')) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }
+    out.push(line);
+  }
+  return out;
+}
+function drawText(ctx, text, x, y, o){   /* возвращает y после последней строки */
+  const { size = 36, weight = 400, family = 'Onest', color = '#f5f2ea', maxW = 880, lh = 1.4, italic = false, spacing = 0, align = 'center' } = o || {};
+  ctx.font = `${italic ? 'italic ' : ''}${weight} ${size}px ${family}, sans-serif`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  try { ctx.letterSpacing = spacing + 'px'; } catch (e) {}
+  for (const l of wrapLines(ctx, text, maxW)) { ctx.fillText(l, x, y); y += size * lh; }
+  try { ctx.letterSpacing = '0px'; } catch (e) {}
+  return y;
+}
+function rrect(ctx, x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function pcBase(ctx){
+  const g = ctx.createLinearGradient(0, 0, 0, PC_H); g.addColorStop(0, '#171330'); g.addColorStop(0.55, '#0e0c1c'); g.addColorStop(1, '#0b0a14');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, PC_W, PC_H);
+  const o = ctx.createRadialGradient(540, 240, 20, 540, 240, 720); o.addColorStop(0, 'rgba(109,91,208,.36)'); o.addColorStop(1, 'rgba(109,91,208,0)');
+  ctx.fillStyle = o; ctx.fillRect(0, 0, PC_W, PC_H);
+  let x = 20260914; const rnd = () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
+  for (let i = 0; i < 150; i++) { const sx = rnd() * PC_W, sy = rnd() * PC_H, r = 0.6 + rnd() * 1.7; ctx.fillStyle = `rgba(245,242,234,${(0.12 + rnd() * 0.5).toFixed(2)})`; ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7); ctx.fill(); }
+}
+function pcFooter(ctx, day){   /* дата и тихая подпись — источник читается, но не кричит */
+  if (day) drawText(ctx, new Date(day + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }), 540, 1742, { size: 28, color: '#8f87ad' });
+  drawText(ctx, 'Лунарио', 540, 1830, { size: 40, weight: 300, family: 'Comfortaa', color: '#d9b868', spacing: 4 });
+}
+function pcGlyph(ctx, path, cx, cy, size, lw){   /* знак руны одной линией — те же координаты, что и на экране */
+  const k = size / 32;
+  ctx.save(); ctx.translate(cx - size / 2, cy - size / 2); ctx.scale(k, k);
+  ctx.strokeStyle = '#e9c77e'; ctx.lineWidth = lw / k; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.shadowColor = 'rgba(233,199,126,.55)'; ctx.shadowBlur = 26 / k;
+  ctx.stroke(new Path2D(path || 'M16 5v22')); ctx.restore();
+}
+async function pcImage(ctx, src, x, y, w, h, r){
+  try {
+    const im = await loadImg(src);
+    ctx.save(); ctx.shadowColor = 'rgba(217,184,104,.35)'; ctx.shadowBlur = 60; rrect(ctx, x, y, w, h, r); ctx.fillStyle = '#1d1738'; ctx.fill(); ctx.restore();
+    ctx.save(); rrect(ctx, x, y, w, h, r); ctx.clip(); ctx.drawImage(im, x, y, w, h); ctx.restore();
+    ctx.save(); rrect(ctx, x + 1, y + 1, w - 2, h - 2, r); ctx.strokeStyle = 'rgba(217,184,104,.5)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+  } catch (e) { rrect(ctx, x, y, w, h, r); ctx.fillStyle = '#1d1738'; ctx.fill(); }
+}
+function pcMoon(ctx, verdict, cx, cy, R){   /* один штрих: полная луна — «да», серп — «нет», половина — «позже» */
+  ctx.save(); ctx.strokeStyle = '#e9c77e'; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowColor = 'rgba(233,199,126,.5)'; ctx.shadowBlur = 30;
+  ctx.beginPath();
+  if (verdict === 'Нет') { ctx.arc(cx, cy, R, Math.PI * 0.55, Math.PI * 1.45); ctx.arc(cx + R * 0.62, cy, R * 0.98, Math.PI * 1.31, Math.PI * 0.69, true); ctx.closePath(); }
+  else if (verdict === 'Позже') { ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); }
+  else { ctx.arc(cx, cy, R, 0, Math.PI * 2); }
+  ctx.stroke(); ctx.restore();
+}
+async function drawPostcard(p){
+  const cv = document.createElement('canvas'); cv.width = PC_W; cv.height = PC_H; const ctx = cv.getContext('2d');
+  await fontsReady(); pcBase(ctx);
+  if (p.type === 'card') {
+    const c = p.card;
+    await pcImage(ctx, c.image + '?v=1', 180, 130, 720, 1350, 30);
+    const y = drawText(ctx, keysLine(c.keys) || c.name, 540, 1585, { size: 38, color: '#ded8ee', maxW: 900 });
+    if (c.question && y < 1660) drawText(ctx, c.question, 540, y + 10, { size: 26, italic: true, color: '#b9b2cf', maxW: 900, lh: 1.3 });
+  } else if (p.type === 'rune') {
+    const r = p.runes[0];
+    pcGlyph(ctx, r.path, 540, 520, 560, 40);
+    let y = drawText(ctx, r.name, 540, 960, { size: 66, weight: 600, color: '#e9c77e' });
+    if (r.keyword) y = drawText(ctx, r.keyword.toUpperCase(), 540, y + 4, { size: 26, color: '#b9b2cf', spacing: 6 });
+    y = drawText(ctx, r.answer || r.motto || '', 540, y + 64, { size: 38, color: '#f5f2ea', maxW: 860, lh: 1.42 });
+    if (p.q) drawText(ctx, '«' + p.q + '»', 540, Math.max(y + 54, 1440), { size: 28, italic: true, color: '#8f87ad', maxW: 860, lh: 1.35 });
+  } else if (p.type === 'yesno') {
+    pcMoon(ctx, p.title, 540, 470, 150);
+    let y = drawText(ctx, p.title, 540, 810, { size: 120, weight: 600, color: '#e9c77e' });
+    y = drawText(ctx, p.body || '', 540, y + 50, { size: 38, color: '#f5f2ea', maxW: 860, lh: 1.42 });
+    if (p.q) drawText(ctx, '«' + p.q + '»', 540, Math.max(y + 54, 1440), { size: 28, italic: true, color: '#8f87ad', maxW: 860, lh: 1.35 });
+  } else if (p.type === 'runes' || p.type === 'spread') {
+    const kind = p.type === 'spread' ? 'tarot' : 'rune';
+    const L = layoutOf(kind, p.layout) || { title: '', pos: [] };
+    drawText(ctx, L.title.toUpperCase(), 540, 150, { size: 30, color: '#d9b868', spacing: 6 });
+    if (p.q) drawText(ctx, '«' + p.q + '»', 540, 205, { size: 26, italic: true, color: '#8f87ad', maxW: 900, lh: 1.3 });
+    const items = kind === 'tarot' ? p.cards : p.runes;
+    const cells = CELLS[p.layout] || items.map((_, i) => [i + 1, 1]);
+    const cols = Math.max(...cells.map(c => c[0])), rows = Math.max(...cells.map(c => c[1]));
+    const cw = kind === 'tarot' ? (cols >= 4 ? 130 : 280) : 220, ch = kind === 'tarot' ? Math.round(cw * 15 / 8) : 220, gap = kind === 'tarot' ? 26 : 56, lab = cols >= 4 ? 78 : 66;
+    const totalW = cols * cw + (cols - 1) * gap, totalH = rows * (ch + lab) + (rows - 1) * gap;
+    const x0 = (PC_W - totalW) / 2, y0 = 300 + Math.max(0, (1400 - totalH) / 2);
+    const small = cols >= 4;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i], [c, r] = cells[i] || [i + 1, 1];
+      let x = x0 + (c - 1) * (cw + gap); const y = y0 + (r - 1) * (ch + lab + gap);
+      if (p.layout === 'fork' && i === 0) x = x0 + (totalW - cw) / 2;
+      const across = p.layout === 'celtic' && i === 1;
+      if (kind === 'tarot') {
+        if (across) { ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.rotate(Math.PI / 2); ctx.globalAlpha = .96; await pcImage(ctx, it.image + '?v=1', -cw / 2, -ch / 2, cw, ch, 12); ctx.restore(); }
+        else await pcImage(ctx, it.image + '?v=1', x, y, cw, ch, 14);
+      } else {
+        ctx.save(); rrect(ctx, x, y, cw, ch, 36); ctx.fillStyle = 'rgba(245,242,234,.06)'; ctx.fill(); ctx.strokeStyle = 'rgba(217,184,104,.4)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+        pcGlyph(ctx, it.path, x + cw / 2, y + ch / 2, 150, 12);
+      }
+      const P = L.pos[i] || {};
+      if (across) {   /* карта поперёк первой: подпись — в пустом углу схемы */
+        const lx = x0 + (3 * cw + 2 * gap) / 2, ly = y0 + 3 * (ch + lab + gap) + ch / 2 - 10;
+        const yy = drawText(ctx, '2 · ' + (P.name || '') + ' · поперёк первой', lx, ly, { size: 17, color: '#b9b2cf', maxW: 3 * cw + 2 * gap, lh: 1.15 });
+        drawText(ctx, it.name, lx, yy + 2, { size: 19, weight: 600, color: '#e9c77e', maxW: 3 * cw + 2 * gap, lh: 1.1 });
+        continue;
+      }
+      const yy = drawText(ctx, (i + 1) + ' · ' + (P.name || ''), x + cw / 2, y + ch + 28, { size: small ? 17 : 21, color: '#b9b2cf', maxW: cw + gap - 4, lh: 1.15 });
+      drawText(ctx, it.name, x + cw / 2, yy + 2, { size: small ? 18 : 23, weight: 600, color: '#e9c77e', maxW: cw + gap - 4, lh: 1.1 });
+    }
+  }
+  pcFooter(ctx, p.day);
+  return cv;
+}
+const toBlob = (cv) => new Promise((res) => cv.toBlob(res, 'image/png'));
+const blobToDataUrl = (b) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); });
+/* Открытка собирается заранее — чтобы по нажатию системное меню открылось сразу, без пауз. */
+function preparePostcard(id){
+  const p = RES[id]; if (!p || p.ready) return;
+  p.ready = drawPostcard(p).then(toBlob).then(b => (p.blob = b)).catch(() => null);
+}
+async function savePostcard(id){
+  const p = RES[id]; if (!p) return;
+  track('card_download', p.type);
+  if (!p.blob) { toast('Собираем открытку…'); preparePostcard(id); await p.ready; }
+  if (!p.blob) { toast('Не получилось собрать открытку'); return; }
+  const name = `lunario-${p.type}-${String(p.day || '').replace(/-/g, '')}.png`;
+  const file = new File([p.blob], name, { type: 'image/png' });
+  /* оболочка App Store: системное меню через мост — «Сохранить изображение», мессенджеры, AirDrop */
+  if (IOS_SHELL) { const du = await blobToDataUrl(p.blob); if (nativePost({ type: 'shareImage', png: du.split(',')[1], name })) return; }
+  /* телефон в браузере: меню «Сохранить изображение / Отправить», если система умеет делиться файлами */
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Лунарио' }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  /* Safari без меню: показываем картинку — её можно зажать и сохранить в Фото */
+  if (IS_IOS) { showPostcard(await blobToDataUrl(p.blob)); return; }
+  const url = URL.createObjectURL(p.blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000); toast('Открытка сохранена в загрузки');
+}
+function showPostcard(src){ $('pc-img').src = src; $('pc').classList.add('on'); }
+function hidePostcard(){ $('pc').classList.remove('on'); $('pc-img').removeAttribute('src'); }
+
 /* ── старт ── */
 function startApp(){
   paintHome(); paintToday(); go('home');
-  try{ if(localStorage.getItem('lun_card_'+S.day.date)){ S.flipped=true; $('t-card').classList.add('flip'); $('t-card').classList.remove('glow'); $('t-open').style.display='none'; $('t-after').style.display='block'; paintCardTile(); } }catch(e){}
+  if (S.day.card) { showFlipped(); $('t-after').style.display = 'block'; }   /* карта на сегодня уже открыта — она в истории */
+  loadCatalog().then(() => { if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); }).catch(() => {});
 }
 (async function(){
   try{
