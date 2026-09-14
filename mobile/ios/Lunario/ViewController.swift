@@ -35,7 +35,7 @@ class ViewController: UIViewController {
             config.limitsNavigationsToAppBoundDomains = true
         }
         // 2 — версия моста: страница знает, что телефон умеет напоминания по функциям (schedule)
-        let boot = WKUserScript(source: "window.__LUN_IOS__ = 2;",
+        let boot = WKUserScript(source: "window.__LUN_IOS__ = 3;",
                                 injectionTime: .atDocumentStart, forMainFrameOnly: true)
         config.userContentController.addUserScript(boot)
         config.userContentController.add(bridge, name: "lunario")

@@ -331,7 +331,7 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .mood-choice svg,.mood-choice .ico{width:28px;height:28px;flex:0 0 28px}
 .mood-choice.on{border-color:rgba(217,184,104,.62);background:rgba(217,184,104,.12)}
 .mood-details{animation:in .3s var(--sp)}
-/* «Что вас беспокоит?»: вопрос раскрывается в решения */
+/* «Что вас сегодня беспокоит??»: вопрос раскрывается в решения */
 .acc{display:grid;gap:8px}
 .acc-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-radius:18px;
   background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
@@ -626,6 +626,21 @@ body.inner .app-nav{display:grid}
   :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline)::after{display:none}
   :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood,.moonline):hover{transform:none}
 }
+
+#v-home .sqs{flex:0 0 auto;margin-top:22px;padding-top:0;align-content:start}
+#v-home .sq{min-height:112px;max-height:none;aspect-ratio:1/1;grid-column:auto;font-size:14px;padding:14px 8px;overflow-wrap:anywhere}
+#v-home .sq b{font-weight:600}
+#v-home h1{font-size:clamp(23px,6.4vw,32px);line-height:1.2;font-weight:600}
+#v-home .mini{margin-bottom:0}
+#v-home .mini button{min-height:82px;font-size:12px;padding:12px 6px}
+#v-home .moonline{margin-bottom:22px}
+.hb-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hb-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.hb-columns .hb-rule{margin:0;font-size:13px;font-weight:400;color:var(--muted)}
+.mfam{flex-wrap:wrap}.mfam .chips{min-width:180px}.mchip{min-height:40px}
+@media(max-width:370px){#v-home .sqs{grid-template-columns:repeat(2,1fr)}.hb-entry{grid-template-columns:1fr}}
+@media(min-width:760px){#v-home .sqs{grid-template-columns:repeat(3,1fr)}#v-home .sq{min-height:150px;aspect-ratio:auto;font-size:17px}#v-home .mini{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1180px){#v-home .sqs{grid-template-columns:repeat(6,1fr)}#v-home .mini{grid-template-columns:repeat(6,1fr)}}
 </style>
 <script>
 /* Оболочка для App Store объявляет о себе суффиксом в User-Agent и флагом,
@@ -726,23 +741,27 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <a class="cabs" id="h-cabs" href="/app/cabinet" onclick="openCabinet();return false" hidden aria-label="Вернуться в кабинеты">← Кабинеты</a>
       <button class="acct" id="h-acct" type="button" onclick="go('account')" aria-label="Аккаунт">✦<i class="news-dot" aria-label="Есть новое в приложении"></i></button>
     </div>
-    <button class="card day-focus" type="button" onclick="go('today')">
-      <span class="eyebrow">Ваш день</span><h2 style="margin-top:7px">Продолжить в своём темпе</h2>
-      <p id="h-progress" style="margin-top:9px">Карта дня готова · настроение можно отметить</p>
-      <span class="next">Продолжить мой день <b aria-hidden="true">→</b></span>
-    </button>
-    <p class="quick-title">Что хочется сделать сейчас</p>
-    <div class="quick-actions">
-      <button type="button" onclick="openWidget('mood')"><i class="ico smile"></i>Настроение</button>
-      <button type="button" onclick="openWidget('journal')"><i class="ico journal"></i>Записать мысль</button>
-      <button type="button" onclick="openWidget('worry')"><i class="ico question"></i>Разобрать вопрос</button>
+    <div class="sqs" aria-label="Разделы приложения">
+      <button class="sq" type="button" onclick="go('today')"><i class="ico moon"></i><b>Мой день</b></button>
+      <button class="sq" type="button" onclick="go('ask')"><i class="ico yes-no"></i><b>Свериться</b></button>
+      <button class="sq" type="button" onclick="go('about')"><i class="ico person"></i><b>Обо мне</b></button>
+      <button class="sq" type="button" onclick="go('around')"><i class="ico orbit"></i><b>Внешний фон</b></button>
+      <button class="sq" type="button" onclick="go('history')"><i class="ico journal"></i><b>Память</b></button>
+      <button class="sq" type="button" onclick="go('news')"><i class="ico star"></i><b>Новое в приложении</b></button>
+    </div>
+    <div class="mini" aria-label="Быстрый доступ">
+      <button type="button" onclick="openWidget('askesis')"><i class="ico flag"></i><b>Взять аскезу</b></button>
+      <button type="button" onclick="openWidget('habits')"><i class="ico check"></i><b>Дневник привычек</b></button>
+      <button type="button" onclick="openWidget('gratitude')"><i class="ico list"></i><b>Дневник благодарности</b></button>
+      <button type="button" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b></button>
+      <button type="button" onclick="openWidget('support')"><i class="ico chat"></i><b>Чат поддержки</b><span class="dot" id="h-supdot" hidden></span></button>
+      <button type="button" onclick="openWidget('invite')"><i class="ico person"></i><b>Позвать подругу</b></button>
     </div>
     <button class="moonline" type="button" onclick="go('around')">
       <canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas>
       <div class="grow"><p id="h-moon"></p><small id="h-lunar"></small></div>
-      <span style="color:var(--gold-2);font-size:13px">Луна и небо →</span>
+      <span style="color:var(--gold-2);font-size:13px">Внешний фон →</span>
     </button>
-    <div class="home-links"><button onclick="openWidget('week')">Итоги недели</button><button onclick="openWidget('wishes')">Мои желания</button><button onclick="openWidget('invite')">Позвать подругу</button></div>
   </section>
   <!-- МОЙ ДЕНЬ: ежедневные ритуалы -->
   <section class="view" id="v-today">
@@ -751,13 +770,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <h1 style="margin-top:6px">Мой день</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('card')"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button>
-      <button class="wid" type="button" onclick="openWidget('mood')"><i class="ico smile"></i><b>Настроение дня</b><span>Отмечаете смайликом, в конце месяца — итог</span></button>
-      <button class="wid" type="button" onclick="openWidget('worry')"><i class="ico question"></i><b>Разобрать вопрос</b><span>Назвать, что беспокоит, и посмотреть иначе</span></button>
-      <button class="wid" type="button" onclick="openWidget('day')"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">По вашему знаку — работа, отношения, здоровье, деньги</span></button>
+      <button class="wid" type="button" onclick="openWidget('mood')"><i class="ico smile"></i><b>Настроение дня</b><span>Круг эмоций Плутчика, своё слово и история настроений</span></button>
+      <button class="wid" type="button" onclick="openWidget('worry')"><i class="ico question"></i><b>Что вас сегодня беспокоит?</b><span>Назвать, что беспокоит, и посмотреть иначе</span></button>
+      <button class="wid" type="button" onclick="openWidget('day')"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Текст дня и пояснение, как он выбран</span></button>
       <button class="wid" type="button" onclick="openWidget('tone')"><i class="ico star"></i><b>Вопрос дня</b><span>К установке дня — ответ можно отправить в дневник</span></button>
-      <button class="wid" type="button" onclick="openWidget('askesis')"><i class="ico flag"></i><b>Взять аскезу</b><span>Обещание себе на срок: отметки по дням и напоминание</span></button>
+      <button class="wid" type="button" onclick="openWidget('askesis')"><i class="ico flag"></i><b>Взять аскезу</b><span>Отказ до своей даты, поддержка и заметки по желанию</span></button>
       <button class="wid" type="button" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b><span>Список того, что хочется, с напоминанием</span></button>
-      <button class="wid" type="button" onclick="openWidget('habits')"><i class="ico check"></i><b>Дневник привычек</b><span>Отмечайте каждый день — серия растёт</span></button>
+      <button class="wid" type="button" onclick="openWidget('habits')"><i class="ico check"></i><b>Дневник привычек</b><span>Свой ритм, отметки и награды за ежедневные привычки</span></button>
       <button class="wid" type="button" onclick="openWidget('gratitude')"><i class="ico list"></i><b>Дневник благодарности</b><span>Кому и за что я благодарна сегодня?</span></button>
     </div>
   </section>
@@ -782,6 +801,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('natal')"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button>
       <button class="wid" type="button" onclick="openWidget('year')"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button>
+      <button class="wid" type="button" onclick="openWidget('birthnum')"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button>
+      <button class="wid" type="button" onclick="openWidget('tests')"><i class="ico list"></i><b>Тесты</b><span>Материалы готовятся</span></button>
       <button class="wid" type="button" onclick="openWidget('compat')"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></button>
     </div>
     <p class="hint" style="margin-top:24px">Материалы Лунарио помогают посмотреть на ситуацию иначе и не заменяют медицинскую, психологическую или юридическую помощь.</p>
@@ -791,7 +812,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <section class="view" id="v-around">
     <button class="back" onclick="go('home')">← Назад</button>
     <span class="eyebrow" style="margin-top:6px">Лунный день и что происходит на небе</span>
-    <h1 style="margin-top:6px">Луна и небо</h1>
+    <h1 style="margin-top:6px">Внешний фон</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('lunar')"><i class="ico moon"></i><b id="ar-lunar">Лунный день</b><span id="ar-period"></span></button>
       <button class="wid" type="button" onclick="openWidget('sky')"><i class="ico star"></i><b>На небе</b><span>Фазы Луны, затмения, ретроградные планеты</span></button>
@@ -802,7 +823,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <section class="view" id="v-history">
     <button class="back" onclick="go('home')">← Назад</button>
     <span class="eyebrow" style="margin-top:6px">Дневник, желания, вопросы и итоги недели</span>
-    <h1 style="margin-top:6px">Дневник</h1>
+    <h1 style="margin-top:6px">Память</h1>
     <div class="wids">
       <button class="wid" type="button" onclick="openWidget('hmood')"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button>
       <button class="wid" type="button" onclick="openWidget('hwishes')"><i class="ico heart"></i><b>Мои желания</b><span>Все желания с отметкой об исполнении</span></button>
@@ -828,7 +849,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <p class="geo" id="m-geo" style="margin-top:8px"></p>
     <div class="card sec" id="ac-photo" style="margin-top:14px"></div>
     <div class="account-group"><span class="eyebrow">Мой профиль</span><div class="wids">
-      <button class="wid" type="button" onclick="go('about')"><i class="ico person"></i><b>Мой профиль</b><span>Натальная карта, личный год и совместимость</span></button>
+      <button class="wid" type="button" onclick="go('about')"><i class="ico person"></i><b>Обо мне</b><span>Натальная карта, личный год и нумерология</span></button>
       <button class="wid" type="button" onclick="openWidget('edit')"><i class="ico pen"></i><b>Изменить мои данные</b></button>
     </div></div>
     <div class="account-group"><span class="eyebrow">Приложение</span><div class="wids">
@@ -838,7 +859,11 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </div></div>
     <div class="account-group"><span class="eyebrow">Приватность</span><div class="wids">
       <button class="wid" type="button" onclick="openWidget('shelves')"><i class="ico list"></i><b>Мои данные</b><span>Что Лунарио знает о вас — три полки</span></button>
-      <button class="wid" type="button" onclick="openWidget('support')"><i class="ico chat"></i><b>Поддержка</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button>
+    </div></div>
+    <div class="account-group"><span class="eyebrow">Помощь</span><div class="wids">
+      <button class="wid" type="button" onclick="openWidget('support')"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span></button>
+      <button class="wid" type="button" onclick="openStub('С чего начать')"><i class="ico flag"></i><b>С чего начать</b><span>Материалы готовятся</span></button>
+      <button class="wid" type="button" onclick="openStub('Вопросы и ответы')"><i class="ico question"></i><b>Вопросы и ответы</b><span>Материалы готовятся</span></button>
     </div></div>
     <div class="rows danger-zone"><span class="eyebrow">Управление аккаунтом</span>
       <button class="rowbtn" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i>Установить на телефон</button>
@@ -850,10 +875,10 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 </div>
 
 <nav class="app-nav" aria-label="Основные разделы">
-  <button type="button" data-nav="home" onclick="go('home')"><i class="ico moon"></i>Сегодня</button>
+  <button type="button" data-nav="home" onclick="go('home')"><i class="ico moon"></i>Главная</button>
   <button type="button" data-nav="ask" onclick="go('ask')"><i class="ico yes-no"></i>Свериться</button>
-  <button type="button" data-nav="history" onclick="go('history')"><i class="ico journal"></i>Дневник</button>
-  <button type="button" data-nav="account" onclick="go('account')"><i class="ico person"></i>Я</button>
+  <button type="button" data-nav="history" onclick="go('history')"><i class="ico journal"></i>Память</button>
+  <button type="button" data-nav="account" onclick="go('account')"><i class="ico person"></i>Аккаунт</button>
 </nav>
 
 <!-- панели виджетов: openWidget() переносит нужную в обёртку и возвращает обратно -->
@@ -875,7 +900,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-askesis"><div id="as-box"></div></div>
   <div class="wpane" id="w-sky"><div id="sky-box"></div></div>
   <div class="wpane" id="w-worry"><div id="t-worry"></div></div>
-  <div class="wpane" id="w-day"><h2 id="f-title"></h2><p style="margin-top:9px" id="f-text"></p><div id="f-bars" style="margin-top:14px"></div></div>
+  <div class="wpane" id="w-day"><h2 id="f-title"></h2><p style="margin-top:9px" id="f-text"></p><details class="forecast-basis" style="margin-top:18px"><summary>На основе чего этот прогноз?</summary><p style="margin-top:10px">Текст выбирается из готового набора по дате и вашему аккаунту. Если указана дата рождения, добавляется характеристика знака зодиака. Положения планет и транзиты в этом прогнозе не рассчитываются.</p></details></div>
   <div class="wpane" id="w-tone"><div id="tone-box"></div></div>
   <div class="wpane" id="w-gratitude"><div id="gr-box"></div></div>
   <div class="wpane" id="w-journal">
@@ -905,6 +930,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div id="a-result" class="sec" style="display:none"></div>
   </div>
   <div class="wpane" id="w-year"><div class="list" id="w-year-box"></div></div>
+  <div class="wpane" id="w-tests"><p>Здесь появятся тесты, когда будут добавлены материалы</p></div>
   <div class="wpane" id="w-birthnum"><div class="list" id="w-birth-box"></div></div>
   <div class="wpane" id="w-compat">
     <div class="card">
@@ -1341,7 +1367,7 @@ function hap(p){
   if (IOS_SHELL && nativePost({ type:'haptic', kind: Array.isArray(p) ? 'success' : 'tap' })) return;
   try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){}
 }
-const esc = (s) => String(s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+const esc = (s) => String(s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ── навигация: главная и пространства; на телефоне — назад на главную, на широком — панель слева ── */
 const INNER_VIEWS=['home','today','ask','about','history','around','account','news'];
@@ -1381,14 +1407,14 @@ function openLogin(){
 
 /* ── виджеты: панель переезжает из хранилища в обёртку и обратно ── */
 const WIDGETS = {
-  card:['Ваш ритуал','Карта дня'], mood:['Мой день','Настроение дня'], worry:['Мой день','Разобрать вопрос'],
+  card:['Ваш ритуал','Карта дня'], mood:['Мой день','Настроение дня'], worry:['Мой день','Что вас сегодня беспокоит?'],
   day:['Мой день','Прогноз дня'], tone:['Мой день','Вопрос дня'],
-  journal:['Дневник','Новая запись'], wishes:['Мой день','Мои желания'], habits:['Мой день','Дневник привычек'], askesis:['Мой день','Взять аскезу'], sky:['Луна и небо','На небе'], gratitude:['Мой день','Дневник благодарности'],
-  ask:['Свериться',''], year:['Обо мне','Личный год'], birthnum:['Обо мне','Число рождения'], compat:['Обо мне','Совместимость'],
-  lunar:['Луна и небо','Лунный день'], hmood:['Дневник','История настроений'], hwishes:['Дневник','Мои желания'],
-  hentries:['Дневник','Мои вопросы и ответы'], week:['Дневник','Итоги недели'],
+  journal:['Память','Дневник'], wishes:['Мой день','Мои желания'], habits:['Мой день','Дневник привычек'], askesis:['Мой день','Взять аскезу'], sky:['Внешний фон','На небе'], gratitude:['Мой день','Дневник благодарности'],
+  ask:['Свериться',''], year:['Обо мне','Личный год'], birthnum:['Обо мне','Нумерология'], compat:['Обо мне','Совместимость'],
+  lunar:['Внешний фон','Лунный день'], hmood:['Память','История настроений'], hwishes:['Память','Мои желания'],
+  hentries:['Память','Мои вопросы и ответы'], week:['Память','Итоги недели'],
   invite:['Главная','Позвать подругу'], remind:['Аккаунт','Напоминание'], edit:['Аккаунт','Изменить мои данные'], mail:['Аккаунт','Вход по почте'], shelves:['Аккаунт','Мои данные'],
-  support:['Поддержка','Чат с поддержкой'], natal:['Обо мне','Натальная карта'],
+  support:['Аккаунт','Чат поддержки'], tests:['Обо мне','Тесты'], natal:['Обо мне','Натальная карта'],
   stub:['','']
 };
 let wgOpen = null;
@@ -1565,9 +1591,6 @@ function paintToday(){
   $('f-title').textContent=d.forecast.title; $('f-text').textContent=d.forecast.text;
   $('t-daysub').textContent=d.forecast.title;
   if (wgOpen === 'tone') paintTone();
-  $('f-bars').innerHTML=Object.entries({Работа:'work',Отношения:'love',Здоровье:'health',Финансы:'money'})
-    .map(([l,k])=>`<div class="barrow"><span class="l">${l}</span><div class="bar"><i data-w="${d.forecast.bars[k]}"></i></div><span class="v">${d.forecast.bars[k]}%</span></div>`).join('');
-  setTimeout(()=>document.querySelectorAll('#f-bars .bar i').forEach(b=>b.style.width=b.dataset.w+'%'),120);
   renderMoods(); paintCardTile(); paintLunar(); loadNumerology();
 }
 const plural=(n,a,b,c)=>{const m=n%100;if(m>=11&&m<=14)return c;const l=n%10;return l===1?a:l>=2&&l<=4?b:c;};
@@ -1577,7 +1600,7 @@ async function pickMood(id){
   try{
     const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id})});
     S.mood=r.mood; renderMoods(); bumpStreak(r.streak);
-    paintMoodStat(r.stats); paintMoodExtra();
+    paintMoodStat(r.stats); paintMoodExtra(); paintHome();
   }catch(e){ toast('Не удалось сохранить'); }
 }
 function paintMoodStat(stats){
@@ -2541,11 +2564,16 @@ async function nativeSchedule(f){
   /* у телефона нет подстановок — берём заголовок из текстов напоминаний, если он без {скобок}, иначе запасной */
   const rt = CAT && CAT.reminderTexts && CAT.reminderTexts[f], nt = NATIVE_TEXT_FALLBACK[f];
   const msg = { type: 'schedule', id: f, on: r.enabled, hour: hh, minute: mm, freq: r.freq, weekday: r.weekday, title: rt && !/[{}]/.test(rt[0]) ? rt[0] : nt[0], body: rt && !/[{}]/.test(rt[1]) ? rt[1] : nt[1] };
+  if (f === 'askesis' && IOS_BRIDGE >= 3 && r.enabled) {
+    try { const plan=await api('/reminders/askesis-plan'); msg.messages=plan.items; msg.tz=plan.tz||TZ; if(!plan.items.length)msg.on=false; } catch(e){return;}
+  }
   if (f === 'sky' && r.freq === 'events') {
     try { const sky = S.sky || (S.sky = await api('/sky')); msg.dates = [...new Set([...sky.today, ...sky.upcoming].map(e => new Date(e.at).toLocaleDateString('sv-SE')))].slice(0, 20); } catch (e) { /* без дат — телефон напомнит ежедневно */ }
   }
   nativePost(msg);
 }
+function refreshNativeAskesis(){ if(IOS_SHELL && IOS_BRIDGE>=3) loadReminders(true).then(()=>nativeSchedule('askesis')).catch(()=>{}); }
+document.addEventListener('visibilitychange',()=>{if(!document.hidden && S.user?.onboarded)refreshNativeAskesis();});
 window.__lunScheduleState = (states, reason) => {
   S.nativeStates = states || {};
   if (reason === 'denied') toast('Уведомления для Лунарио выключены — их можно разрешить в Настройках телефона');
@@ -2833,9 +2861,9 @@ async function drawPostcardExtra(ctx, p){
 }
 /* ══════════ Круг эмоций Плутчика: восемь лепестков по три оттенка и восемь сочетаний ══════════ */
 const MOOD_FALLBACK = [['serenity','безмятежность','joy'],['joy','радость','joy'],['ecstasy','восторг','joy'],['acceptance','принятие','trust'],['trust','доверие','trust'],['admiration','восхищение','trust'],
-  ['apprehension','тревога','fear'],['fear','страх','fear'],['terror','ужас','fear'],['distraction','возбуждение','surprise'],['surprise','удивление','surprise'],['amazement','изумление','surprise'],
-  ['pensiveness','печаль','sadness'],['sadness','грусть','sadness'],['grief','горе','sadness'],['boredom','скука','disgust'],['displeasure','неудовольствие','disgust'],['disgust','отвращение','disgust'],
-  ['annoyance','досада','anger'],['anger','злость','anger'],['rage','гнев','anger'],['interest','интерес','anticipation'],['anticipation','ожидание','anticipation'],['vigilance','настороженность','anticipation'],
+  ['apprehension','тревога','fear'],['fear','страх','fear'],['terror','ужас','fear'],['distraction','отвлечение','surprise'],['surprise','удивление','surprise'],['amazement','изумление','surprise'],
+  ['pensiveness','задумчивость','sadness'],['sadness','грусть','sadness'],['grief','горе','sadness'],['boredom','скука','disgust'],['disgust','отвращение','disgust'],['loathing','омерзение','disgust'],
+  ['annoyance','досада','anger'],['anger','злость','anger'],['rage','ярость','anger'],['interest','интерес','anticipation'],['anticipation','ожидание','anticipation'],['vigilance','настороженность','anticipation'],
   ['optimism','оптимизм','dyad'],['love','любовь','dyad'],['submission','покорность','dyad'],['awe','трепет','dyad'],['disappointment','разочарование','dyad'],['remorse','раскаяние','dyad'],['contempt','презрение','dyad'],['aggressiveness','агрессия','dyad']];
 const FAM_FALLBACK = { joy:['Радость','#f2c94c'], trust:['Доверие','#9ccc3c'], fear:['Страх','#3aa35a'], surprise:['Удивление','#2aa7c9'], sadness:['Грусть','#4c78c8'], disgust:['Отвращение','#8f5fb8'], anger:['Злость','#e0475c'], anticipation:['Ожидание','#f0932b'], dyad:['На стыке','#b9b2cf'] };
 const LEGACY_FALLBACK = { joy:'joy', calm:'serenity', tired:'pensiveness', anx:'apprehension', sad:'sadness' };
@@ -2847,26 +2875,19 @@ const moodList = () => (CAT && CAT.moods && CAT.moods.length ? CAT.moods : MOOD_
 const moodFams = () => (CAT && CAT.moodFamilies) || FAM_FALLBACK;
 /* своё слово: хранится как «own:слово» — на экране и в отчёте показывается как есть, без лепестка */
 const ownMood = (key) => typeof key === 'string' && key.startsWith('own:') ? key.slice(4) : '';
-function moodInfo(key){ if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = ((CAT && CAT.legacyMoods) || LEGACY_FALLBACK)[key] || key; return moodList().find(m => m.key === k) || null; }
+function moodInfo(key){ if(key==='displeasure') return {key,label:'неудовольствие',family:'disgust',tone:'-'}; if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = ((CAT && CAT.legacyMoods) || LEGACY_FALLBACK)[key] || key; return moodList().find(m => m.key === k) || null; }
 const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : String(k); } });
 const moodFace = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return 'anticipation'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
 const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || FAM_FALLBACK.dyad)[1]; };
 const moodSvg = (mood, size) => `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" style="color:${moodColor(mood)}"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/><path d="${MOUTH[moodFace(mood)]}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
-let moodDetails=false;
-function toggleMoodDetails(){ moodDetails=!moodDetails; renderMoods(); hap(9); }
 function renderMoods(){
-  const fams = moodFams(), list = moodList();
-  const chip = (m) => `<button type="button" class="chip mchip${S.mood === m.key ? ' on' : ''}" style="--c:${moodColor(m.key)}" onclick="pickMood('${m.key}')">${esc(m.label)}</button>`;
-  const cur = moodInfo(S.mood);
+  const fams = moodFams(), list = moodList(), cur = moodInfo(S.mood);
+  const chip = m => `<button type="button" class="chip mchip${S.mood === m.key ? ' on' : ''}" aria-pressed="${S.mood === m.key}" style="--c:${moodColor(m.key)}" onclick="pickMood('${m.key}')">${esc(m.label)}</button>`;
   $('t-moods').className = 'mfams';
-  const own = ownMood(S.mood);
-  const detailFamilies=cur&&cur.family!=='own'?[cur.family]:[];
-  const simple=[['joy','Хорошо'],['serenity','Спокойно'],['pensiveness','Устала'],['apprehension','Тревожно'],['grief','Тяжело']];
-  $('t-moods').innerHTML = `<p style="font-size:17px;color:#fff;margin-bottom:14px">Как вы сейчас?</p>`
-    + (cur ? `<div class="mpick">${moodSvg(S.mood, 40)}<div class="grow"><b style="display:block;font-size:15px;color:#fff">Сегодня — ${esc(cur.label)}</b><small style="color:#8f87ad;font-size:12.5px">Можно изменить отметку</small></div></div>` : '')
-    + `<div class="mood-simple">${simple.map(([key,label])=>`<button type="button" class="mood-choice${S.mood===key?' on':''}" onclick="pickMood('${key}')">${moodSvg(key,32)}<span>${label}</span></button>`).join('')}<button type="button" class="mood-choice" onclick="toggleMoodDetails()"><i class="ico pen"></i><span>Своё слово</span></button></div>`
-    + (cur ? `<button class="morebtn" type="button" onclick="toggleMoodDetails()"><span>${moodDetails?'Скрыть оттенки':'Хотите назвать точнее?'}</span>${CHEV}</button>` : '')
-    + (moodDetails ? `<div class="mood-details"><div class="mfam"><i class="fdot" style="background:#e9c77e"></i><span class="fname">Своё слово</span><div class="grow"><div class="row" style="gap:8px"><input id="mood-own" maxlength="24" placeholder="Например: собранно" value="${esc(own)}" onkeydown="if(event.key==='Enter')pickOwnMood()"><button class="btn sm" type="button" onclick="pickOwnMood()">✓</button></div></div></div>${detailFamilies.map((f)=>`<div class="mfam"><i class="fdot" style="background:${fams[f][1]}"></i><span class="fname">${esc(fams[f][0])}</span><div class="chips flow">${list.filter(m=>m.family===f).map(chip).join('')}</div></div>`).join('')}</div>` : '');
+  $('t-moods').innerHTML = `<p style="font-size:17px;color:#fff;margin-bottom:8px">Как вы сейчас?</p><p class="hint" style="margin-bottom:16px">8 основных эмоций, их интенсивность и сочетания — по кругу Плутчика</p>`
+    + (cur ? `<div class="mpick">${moodSvg(S.mood,40)}<div class="grow"><b>Сегодня — ${esc(cur.label)}</b><small>Можно изменить отметку</small></div></div>` : '')
+    + Object.keys(fams).filter(f=>list.some(m=>m.family===f)).map(f=>`<div class="mfam"><i class="fdot" style="background:${fams[f][1]}"></i><span class="fname">${esc(fams[f][0])}</span><div class="chips flow">${list.filter(m=>m.family===f).map(chip).join('')}</div></div>`).join('')
+    + `<div class="mfam"><span class="fname">Своё слово</span><div class="grow"><div class="row" style="gap:8px"><input id="mood-own" aria-label="Своё настроение" maxlength="24" placeholder="Например: собранно" value="${esc(ownMood(S.mood))}" onkeydown="if(event.key==='Enter')pickOwnMood()"><button class="btn sm" type="button" onclick="pickOwnMood()" aria-label="Сохранить своё настроение">✓</button></div></div></div>`;
 }
 /* смайлик настроения на открытке — лепесток даёт рот и цвет */
 function pcSmiley(ctx, mood, cx, cy, size){
@@ -2879,18 +2900,18 @@ function pcSmiley(ctx, mood, cx, cy, size){
 }
 
 /* ══════════ «Что вас сегодня беспокоит?»: свой запрос или плашка, потом — как получить ответ ══════════ */
-const WORRY_TOPICS = [['Отношения','Что происходит в отношениях?'],['Работа и деньги','Что беспокоит в работе или деньгах?'],['Решение','Какое решение не даёт покоя?'],['Тревога','О чём сейчас больше всего тревожно?'],['Отношение к себе','Что хочется понять о себе?'],['Другое','Что сейчас не даёт покоя?']];
+const WORRY_QUESTIONS = ['Как перестать бояться идти своим путём?', 'Что мне сейчас важно в отношениях?', 'Как сделать следующий шаг в работе?', 'Как поддержать себя в трудный день?', 'Какое решение мне подходит?'];
 const HUB_OPTS = [['rune', 'rune', 'Руна', 'one'], ['runes3', 'rune', 'Три руны', 'three'], ['spread', 'tarot', 'Три карты', 'three'], ['fork', 'tarot', 'Выбор', 'fork']];
 function renderHub(){
   const w = $('t-worry'); if (!w) return;
   if (!CAT) loadCatalog().then(() => { if (wgOpen === 'worry' && !($('hub-q') && $('hub-q').value)) renderHub(); }).catch(() => {});
-  w.innerHTML = `<div class="card hubq"><div class="chips flow" id="hub-chips">${WORRY_TOPICS.map(([t,p]) => `<button type="button" class="chip" data-prompt="${esc(p)}" onclick="hubTopic(this)">${esc(t)}</button>`).join('')}</div>
-      <div class="field" style="margin:14px 0 10px"><label>Что именно сейчас не даёт покоя?</label><textarea id="hub-q" maxlength="300" placeholder="Выберите направление или напишите своими словами…" oninput="hubCheck()"></textarea></div>
+  w.innerHTML = `<div class="card hubq"><div class="field" style="margin:14px 0 10px"><label>Что именно сейчас не даёт покоя?</label><textarea id="hub-q" maxlength="300" placeholder="Напишите свой вопрос или выберите плашку и уточните её…" oninput="hubCheck()"></textarea></div>
+      <div class="chips flow" id="hub-chips">${((CAT && CAT.worries) || WORRY_QUESTIONS).map(p => `<button type="button" class="chip" data-prompt="${esc(p)}" onclick="hubTopic(this)">${esc(p)}</button>`).join('')}</div>
       <div id="hub-opts" style="display:none;margin-top:14px"><span class="eyebrow" style="margin-bottom:8px">Как получить ответ</span>
         <div class="chips flow">${HUB_OPTS.map(([k, ic, l]) => `<button type="button" class="chip" onclick="hubAsk('${k}',this)"><i class="ico ${ic}" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"></i>${l}</button>`).join('')}</div></div>
     </div><div id="hub-res" style="display:none;margin-top:12px"></div>`;
 }
-function hubTopic(btn){ const q=$('hub-q'); q.placeholder=btn.dataset.prompt; document.querySelectorAll('#hub-chips .chip').forEach(c=>c.classList.toggle('on',c===btn)); hap(9); q.focus(); }
+function hubTopic(btn){ const q=$('hub-q'); q.value=btn.dataset.prompt; hubCheck(); document.querySelectorAll('#hub-chips .chip').forEach(c=>c.classList.toggle('on',c===btn)); hap(9); q.focus(); }
 function hubCheck(){ const v = $('hub-q').value.trim(); $('hub-opts').style.display = v.length >= 10 && /\s/.test(v) ? '' : 'none'; }
 async function hubAsk(kind, btn){
   const q = $('hub-q').value.trim(), out = $('hub-res');
@@ -2906,9 +2927,7 @@ async function hubAsk(kind, btn){
 /* ══════════ Вопрос дня: к установке на главной; ответ уходит в дневник ══════════ */
 function paintTone(){
   const d = S.day, st = d.set; if (!$('tone-box')) return;
-  $('tone-box').innerHTML = `${st ? `<span class="eyebrow">Установка дня</span><p class="serif w-big" style="margin-top:8px;font-size:21px">${esc(st.text)}</p>` : ''}
-    <div style="height:1px;background:var(--line);margin:22px 0"></div>
-    <span class="eyebrow" style="margin-bottom:8px">Вопрос дня</span>
+  $('tone-box').innerHTML = `${st ? `<p class="hint" style="margin-bottom:18px">${esc(st.text)}</p>` : ''}
     <p style="color:#fff;font-size:18px;line-height:1.45">${esc(d.question)}</p>
     <div class="card" style="margin-top:14px"><div class="field" style="margin-bottom:0"><label>Мой ответ · видите только вы</label><textarea id="tone-a" maxlength="2000" placeholder="Пара строк — как есть…"></textarea></div>
       <button class="btn ghost sm" style="width:100%;margin-top:10px" onclick="saveAnswer()">Отправить в дневник</button></div>`;
@@ -2920,7 +2939,7 @@ async function saveAnswer(){
 }
 
 /* ══════════ Дневник благодарности ══════════ */
-const gratQ = () => (CAT && CAT.reminderTexts && CAT.reminderTexts.gratitude && CAT.reminderTexts.gratitude[0]) || 'Кому и за что я благодарна сегодня?';
+const gratQ = () => 'Кому и за что я благодарна сегодня?';
 async function loadGratitude(){
   const box = $('gr-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
   await loadCatalog().catch(() => {});
@@ -2965,7 +2984,7 @@ function paintHabits(){
       <div class="list" style="margin-top:10px">${due.map(h => `<div class="item hb${h.today ? ' on' : ''}" style="padding:10px 12px"><button type="button" class="hb-check" onclick="habitMark(${h.id})" aria-label="Отметить">${h.today ? '✓' : ''}</button><div class="grow"><b style="margin:0">${esc(h.title)}</b><small>${esc(h.ruleText || h.ruleLabel)}${h.streak && h.rule !== 'free' ? ` · серия ${h.streak}` : ''}</small></div></div>`).join('')}</div>` : '<p style="font-size:14px;margin-top:6px">На сегодня ничего не запланировано — отдыхайте.</p>'}</div>` : '<p style="font-size:14.5px;text-align:center">Привычка — то, что нужно встроить в каждый день, как чистить зубы. Запишите, что прививаете, и как часто.</p>'}
     ${HB.length ? `<span class="eyebrow" style="margin-top:18px">Мои привычки</span><div class="list" style="margin-top:8px">${HB.map(h => `<div class="item hb${h.today ? ' on' : ''}${hbEditing === h.id ? ' editing' : ''}">
         <button type="button" class="hb-check" onclick="habitMark(${h.id})" aria-label="Отметить сегодня">${h.today ? '✓' : ''}</button>
-        <div class="grow"><b>${esc(h.title)}<span class="hb-rule">${esc(h.ruleText || h.ruleLabel)}</span>${h.awards.length ? `<span class="hb-badge">${awardIcon(h.awards[h.awards.length - 1], 16)} ${h.awards[h.awards.length - 1]}</span>` : ''}</b>
+        <div class="grow"><b class="hb-columns"><span>${esc(h.title)}</span><span class="hb-rule">${esc(h.ruleText || h.ruleLabel)}</span>${h.awards.length ? `<span class="hb-badge">${awardIcon(h.awards[h.awards.length - 1], 16)} ${h.awards[h.awards.length - 1]}</span>` : ''}</b>
           <small>${h.rule === 'free' ? `отмечено ${h.total} ${plural(h.total, 'раз', 'раза', 'раз')} · ритм ваш, отмечайте когда нужно` : h.streak ? `серия · ${h.streak} ${h.daily ? plural(h.streak, 'день', 'дня', 'дней') : h.rule === 'monthly' || h.rule.startsWith('mtimes:') ? plural(h.streak, 'месяц', 'месяца', 'месяцев') : h.rule.startsWith('every:') ? plural(h.streak, 'раз', 'раза', 'раз') : plural(h.streak, 'неделя', 'недели', 'недель')}` : 'серия ещё не началась'}${h.daily && h.next ? ` · до награды ${h.next - h.streak} ${plural(h.next - h.streak, 'день', 'дня', 'дней')}` : ''}</small>
           <div class="hd-row">${h.week.map(w => `<button type="button" class="hd${w.done ? ' on' : ''}${w.day === today ? ' today' : ''}" style="${w.due ? '' : 'opacity:.35'}" onclick="habitMark(${h.id},'${w.day}')" aria-label="${fmtDay(w.day)}"><span>${WD_SHORT[wdIdx(w.day)]}</span></button>`).join('')}</div>
           <div class="hb-edit"><div class="field" style="margin-bottom:8px"><label>Название</label><input id="hb-t-${h.id}" value="${esc(h.title)}" maxlength="80"></div>
@@ -2973,9 +2992,9 @@ function paintHabits(){
             <div class="ask-two"><button class="btn sm" style="width:100%" onclick="habitSave(${h.id})">Сохранить</button><button class="btn ghost sm" style="width:100%" onclick="hbEditing=null;paintHabits()">Отмена</button></div></div>
         </div>
         <button type="button" class="hb-x" onclick="hbEditing===${h.id}?habitRemove(${h.id}):(hbEditing=${h.id},paintHabits())" aria-label="Изменить">${hbEditing === h.id ? '×' : '✎'}</button></div>`).join('')}</div>` : ''}
-    <div class="card" style="margin-top:12px"><span class="eyebrow">Новая привычка</span>
+    <div class="card" style="margin-top:12px"><span class="eyebrow">Новая привычка</span><div class="hb-entry">
       <div class="field" style="margin:10px 0 8px"><label>Что прививаю</label><input id="hb-new" placeholder="Например: 10 000 шагов" maxlength="80" list="hb-ideas"></div>
-      <div class="field" style="margin-bottom:8px"><label>Как часто — своими словами</label><input id="hb-rule" placeholder="каждый день, каждые 3 дня, пн и чт, 2 раза в неделю…" maxlength="60" list="rule-ideas"></div>
+      <div class="field" style="margin-bottom:8px"><label>Как часто — своими словами</label><input id="hb-rule" placeholder="каждый день, каждые 3 дня, пн и чт, 2 раза в неделю…" maxlength="60" list="rule-ideas"></div></div>
       <div class="chips flow" style="margin-bottom:10px">${RULE_CHIPS.map(t => `<button type="button" class="chip" onclick="$('hb-rule').value=this.textContent">${t}</button>`).join('')}</div>
       <button class="btn ghost sm" style="width:100%" onclick="habitAdd()">Добавить</button>
       <datalist id="hb-ideas">${ideas.map(t => `<option value="${esc(t)}">`).join('')}</datalist><datalist id="rule-ideas">${RULE_CHIPS.map(t => `<option value="${t}">`).join('')}</datalist>
@@ -3036,7 +3055,7 @@ async function loadAskesis(){
   loadReminders().then(() => paintRem('askesis')).catch(() => {});
 }
 function paintAskesis(){
-  const box = $('as-box'), ideas = (CAT && CAT.askesisIdeas) || [], today = S.day.date;
+  const box = $('as-box'), today = S.day.date;
   const active = AS.active.map(a => {
     const id = regRes({ type: 'askesis', a, day: today });
     return `<div class="card">
@@ -3057,27 +3076,20 @@ function paintAskesis(){
   box.innerHTML = `${active}
     ${canNew ? `<div class="card"${AS.active.length ? ' style="margin-top:12px"' : ''}><span class="eyebrow">${AS.active.length ? 'Ещё одна аскеза' : 'Взять аскезу'}</span>
       <p style="font-size:14px;margin-top:6px">Отказ или ограничение до дня, который вы выберете сами. Например: «без шоппинга до конца года». Мы будем поддерживать и считать дни.</p>
-      <div class="chips flow" style="margin-top:10px">${ideas.map(t => `<button type="button" class="chip${f.title === t ? ' on' : ''}" onclick="askPick(this.textContent)">${esc(t)}</button>`).join('')}</div>
       <div class="field" style="margin:12px 0 10px"><label>От чего отказываюсь или что ограничиваю</label><input id="as-title" maxlength="80" placeholder="Например: без шоппинга" value="${esc(f.title)}" oninput="askForm.new=Object.assign(askForm.new||{},{title:this.value})"></div>
       <div class="field" style="margin-bottom:10px"><label>До какого дня</label><input id="as-until" type="date" min="${today}" value="${esc(f.until)}" onchange="askForm.new=Object.assign(askForm.new||{},{until:this.value})"></div>
-      <div class="chips flow">${[['неделя', 7], ['две недели', 14], ['месяц', 30], ['40 дней', 40], ['до конца года', 0]].map(([l, n]) => `<button type="button" class="chip" onclick="askQuick(${n})">${l}</button>`).join('')}</div>
+
       <button class="btn" style="margin-top:14px" onclick="askStart()">Взять аскезу</button>
     </div>` : ''}
     <div class="card" style="margin-top:12px">${remBox('askesis')}</div>
-    ${AS.past.length ? `<span class="eyebrow" style="margin-top:18px">Прошлые</span><div class="list" style="margin-top:8px">${AS.past.map(a => `<div class="item"><b>${esc(a.title)}</b><small>${fmtDay(a.started)} — ${fmtDay(a.finished || a.until)} · ${a.status === 'done' ? 'пройдена до конца ✦' : 'завершена досрочно'}${a.notes.length ? ` · заметок: ${a.notes.length}` : ''}</small></div>`).join('')}</div>` : ''}`;
+    ${AS.past.length ? `<span class="eyebrow" style="margin-top:18px">Прошлые</span><div class="list" style="margin-top:8px">${AS.past.map(a => `<div class="item"><b>${esc(a.title)}</b><small>${fmtDay(a.started)} — ${fmtDay(a.finished || a.until)} · ${a.status === 'done' ? 'пройдена до конца ✦' : 'завершена досрочно'}${a.notes.length ? ` · заметок: ${a.notes.length}` : ''}</small>${a.notes.length ? moreBlock(a.notes.map(n=>`<p><small>${fmtDay(n.day)}</small><br>${esc(n.text)}</p>`).join(''),'Мои наблюдения') : ''}</div>`).join('')}</div>` : ''}`;
   paintRem('askesis'); preparePending();
-}
-function askPick(t){ askForm.new = Object.assign(askForm.new || {}, { title: t }); hap(9); paintAskesis(); }
-function askQuick(n){
-  const t = new Date(S.day.date + 'T12:00:00'); let until;
-  if (n === 0) until = `${t.getFullYear()}-12-31`; else { t.setDate(t.getDate() + n); until = t.toISOString().slice(0, 10); }
-  askForm.new = Object.assign(askForm.new || {}, { until }); $('as-until').value = until; hap(9);
 }
 async function askStart(){
   const title = ($('as-title').value || '').trim(), until = $('as-until').value;
   if (title.length < 2) { toast('Назовите аскезу'); return; }
   if (!until) { toast('Выберите, до какого дня'); return; }
-  try { AS = await api('/askesis', { method: 'POST', body: JSON.stringify({ title, until }) }); askForm.new = null; track('askesis_start'); hap([0, 14, 45, 22]); toast('Аскеза взята — мы рядом ✦'); paintAskesis(); }
+  try { AS = await api('/askesis', { method: 'POST', body: JSON.stringify({ title, until }) }); askForm.new = null; track('askesis_start'); hap([0, 14, 45, 22]); toast('Аскеза взята — мы рядом ✦'); paintAskesis(); refreshNativeAskesis(); }
   catch (e) { toast(e.code === 'bad_until' ? 'Дата должна быть не раньше сегодня' : e.code === 'too_many' ? 'Пять аскез сразу — уже много' : 'Не получилось'); }
 }
 async function askNote(id){
@@ -3087,11 +3099,11 @@ async function askNote(id){
 }
 async function askMove(id, cur){
   const until = prompt('До какого дня? Формат ГГГГ-ММ-ДД', cur); if (!until) return;
-  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, until }) }); paintAskesis(); } catch (e) { toast(e.code === 'bad_until' ? 'Дата должна быть не раньше сегодня' : 'Не получилось'); }
+  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, until }) }); paintAskesis(); refreshNativeAskesis(); } catch (e) { toast(e.code === 'bad_until' ? 'Дата должна быть не раньше сегодня' : 'Не получилось'); }
 }
 async function askStop(id){
   if (!confirm('Завершить аскезу досрочно? Она останется в прошлых.')) return;
-  try { AS = await api('/askesis?id=' + id, { method: 'DELETE' }); paintAskesis(); } catch (e) { toast('Не получилось'); }
+  try { AS = await api('/askesis?id=' + id, { method: 'DELETE' }); paintAskesis(); refreshNativeAskesis(); } catch (e) { toast('Не получилось'); }
 }
 
 /* ══════════ Желания с фото для визуализации ══════════ */
@@ -3149,28 +3161,39 @@ async function setPhoto(){
 async function removePhoto(){ try { const r = await api('/photo', { method: 'DELETE' }); S.user = Object.assign(S.user, r.user); paintAvatar(); } catch (e) { toast('Не получилось'); } }
 
 /* ══════════ Новое в приложении: плитки ведут в сами разделы, дублировать нечего ══════════ */
+const APP_RELEASES = [{month:'2026-09', keys:['askesis','habits','gratitude','mood','worry','tone','wishes','account','around','birthnum','support']}];
+function featureRoot(key){
+  if(key==='account') return document.querySelector('.app-nav [data-nav="account"]');
+  const selector = ['account','around'].includes(key) ? `button[onclick="go('${key}')"]` : `button[onclick="openWidget('${key}')"]`;
+  return [...document.querySelectorAll(selector)].find(el=>el.closest('.view') && el.closest('.view').id!=='v-news' && (el.classList.contains('wid') || el.classList.contains('sq'))) || document.querySelector(selector);
+}
 async function paintNews(){
   const box = $('news-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
-  try { await loadCatalog(); } catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; return; }
-  const all = CAT.news || [], month = S.day.date.slice(0, 7);
-  let items = all.filter(n => n.month === month);
-  if (!items.length && all.length) { const last = all.map(n => n.month).sort().pop(); items = all.filter(n => n.month === last); }
-  const m = items.length ? items[0].month : month;
-  $('news-sub').textContent = monthName(m).replace(/^./, c => c.toUpperCase());
-  const released = items.length ? items.map(n => `<button class="wid" type="button" onclick="openNews('${esc(n.view)}','${esc(n.widget)}')"><i class="ico spark"></i><b>${esc(n.title)}</b><span>${esc(n.text)}</span></button>`).join('')
-    : '<p class="hint">В этом месяце новинок ещё не было.</p>';
-  box.innerHTML = released + `<div class="item" style="grid-column:1/-1;margin-top:8px"><small>Скоро</small><b style="margin-top:4px">Тесты и нумерология</b><p style="font-size:13.5px">Появятся здесь, когда будут готовы.</p></div>`;
-  track('news_view');
+  try { await loadCatalog(); } catch(e) {}
+  const month = S.day.date.slice(0,7);
+  $('news-sub').textContent = monthName(month).replace(/^./,c=>c.toUpperCase());
+  const keys = new Set(APP_RELEASES.filter(n=>n.month===month).flatMap(n=>n.keys));
+  for(const n of (CAT?.news || []).filter(n=>n.month===month)) keys.add(n.widget || n.view);
+  box.replaceChildren();
+  for(const key of keys){
+    const root = featureRoot(key); if(!root) continue;
+    const tile = root.cloneNode(true); tile.className='wid'; tile.removeAttribute('id'); tile.removeAttribute('onclick'); tile.removeAttribute('style');
+    tile.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+    tile.onclick=()=>{const current=featureRoot(key); if(!current)return; go(current.closest('.view')?.id.slice(2)||'home'); current.click();};
+    box.appendChild(tile);
+  }
+  if(!box.children.length) box.innerHTML='<p class="hint">В этом месяце новинок ещё не было</p>';
+  try{localStorage.setItem('lun_news_seen',month);}catch(e){} paintAvatar(); track('news_view');
 }
-function openNews(view, widget){ go(view); if (widget) setTimeout(() => openWidget(widget), 50); }
+function openNews(view, widget){ go(view); if(widget) openWidget(widget); }
 
 /* ── старт ── */
 const OPEN_MAP = { card: ['today', 'card'], mood: ['today', 'mood'], habits: ['today', 'habits'], askesis: ['today', 'askesis'], journal: ['history', 'journal'], gratitude: ['today', 'gratitude'], news: ['news', ''], tone: ['today', 'tone'],
   lunar: ['around', 'lunar'], sky: ['around', 'sky'], moodreport: ['history', 'hmood'], remind: ['account', 'remind'] };
 function startApp(){
-  paintHome(); paintToday(); go('home');
+  paintHome(); paintToday(); go('home'); refreshNativeAskesis();
   if (S.day.card) { showFlipped(); $('t-after').style.display = 'block'; }   /* карта на сегодня уже открыта — она в истории */
-  loadCatalog().then(() => { if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); }).catch(() => {});
+  loadCatalog().then(() => { renderMoods(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); }).catch(() => {});
   /* из уведомления приходят сразу в нужный раздел */
   try {
     const open = new URLSearchParams(location.search).get('open');

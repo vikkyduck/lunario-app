@@ -129,15 +129,7 @@ export function notificationFor(feature, u) {
     const t = tpl('habits', { 'список': left.map((h) => h.title).join(', '), 'осталось': left.length, 'всего': items.filter((h) => h.due).length });
     return { title: t.title, body: t.body.slice(0, 220), url };
   }
-  if (feature === 'askesis') {
-    const act = hooks.askesisList ? hooks.askesisList(u.id, d).active : [];
-    if (!act.length) return null;
-    const a = act[0];
-    const leftText = a.left === 0 ? 'Сегодня последний день' : `До конца осталось ${a.left} ${plural(a.left, 'день', 'дня', 'дней')}`;
-    const more = act.length > 1 ? ` Ещё ${act.length - 1} ${plural(act.length - 1, 'аскеза', 'аскезы', 'аскез')} — в приложении.` : '';
-    const t = tpl('askesis', { 'название': a.title, 'день': a.done, 'всего': a.total, 'осталось': leftText, 'поддержка': a.support });
-    return { title: t.title, body: (t.body + more).slice(0, 220), url };
-  }
+  if (feature === 'askesis') return askesisNotification(hooks.askesisList ? hooks.askesisList(u.id, d).active : [], d);
   if (feature === 'gratitude') {
     if (db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = 'gratitude'").get(u.id, d)) return null;
     return { ...tpl('gratitude'), url };
@@ -158,8 +150,36 @@ export function notificationFor(feature, u) {
   return null;
 }
 
+// The date-specific text is shared by web push and the iOS local schedule.
+export function askesisNotification(items, day) {
+  const act=items.filter(a=>a.started<=day && a.until>=day); if(!act.length) return null;
+  const a=act[0], left=Math.round((Date.parse(a.until)-Date.parse(day))/864e5);
+  const done=Math.round((Date.parse(day)-Date.parse(a.started))/864e5)+1;
+  const support=C.ASKESIS_SUPPORT[(a.id+Number(day.slice(-2)))%Math.max(1,C.ASKESIS_SUPPORT.length)] || '';
+  const leftText=left===0?'Сегодня последний день':`До конца осталось ${left} ${plural(left,'день','дня','дней')}`;
+  const more=act.length>1?` Ещё ${act.length-1} ${plural(act.length-1,'аскеза','аскезы','аскез')} — в приложении.`:'';
+  const t=tpl('askesis',{'название':a.title,'день':done,'всего':a.total,'осталось':leftText,'поддержка':support});
+  return {title:t.title,body:(t.body+more).slice(0,220),url:FEATURES.askesis.url};
+}
+export function askesisNativePlan(userId, fromMs=Date.now()) {
+  const r=listReminders(userId).find(r=>r.feature==='askesis');
+  if(!r?.enabled) return {items:[]};
+  const tz=r.tz||MSK;
+  const today=new Date(fromMs).toLocaleDateString('sv-SE',{timeZone:tz});
+  const active=hooks.askesisList?hooks.askesisList(userId,today).active:[];
+  const items=[];let cursor=fromMs;
+  // iOS caps pending notifications. Refresh this rolling plan when the app opens.
+  for(let i=0;i<14;i++) {
+    const at=nextAt(r,cursor);if(!at)break;
+    const day=new Date(at).toLocaleDateString('sv-SE',{timeZone:tz});
+    const notification=askesisNotification(active,day);if(!notification)break;
+    items.push({date:day,...notification});cursor=at+1000;
+  }
+  return {items,tz,time:r.time};
+}
+
 /* ── планировщик: что подошло по времени — в очередь и в браузеры ── */
-export async function runDue(keys, log = console.log) {
+export async function runDue(keys, log = console.log, deliver = sendPush) {
   const now = Date.now(), nowISO = new Date(now).toISOString();
   const due = db.prepare("SELECT * FROM reminders WHERE enabled = 1 AND next_at <> '' AND next_at <= ?").all(nowISO);
   const byUser = new Map();
@@ -181,7 +201,7 @@ export async function runDue(keys, log = console.log) {
     for (const it of items) { db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url) VALUES (?,?,?,?,?,?)').run(uid, nowISO, it.feature, it.title, it.body, it.url); stat.queued++; }
     for (const s of subs) {
       try {
-        if (await sendPush({ endpoint: s.endpoint }, keys)) stat.sent++;
+        if (await deliver({ endpoint: s.endpoint }, keys)) stat.sent++;
         else { db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); stat.gone++; }
       } catch (e) { stat.failed++; log('не ушло:', e.message); }
     }

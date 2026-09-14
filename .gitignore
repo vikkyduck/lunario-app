@@ -19,6 +19,7 @@ lunario-mobile.zip
 # системный мусор
 .DS_Store
 node_modules/
+.local-preview/
 
 # артефакты Xcode
 mobile/ios/**/xcuserdata/

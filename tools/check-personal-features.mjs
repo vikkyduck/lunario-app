@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, cp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -121,6 +121,68 @@ try {
   const edited = (await owner.json('/habits', 'PATCH', { id: habit.id, title: 'Тест: прогулка вечером', rule: 'каждый день' })).items.find(x => x.id === habit.id);
   assert.equal(edited.title, 'Тест: прогулка вечером'); assert.equal(edited.today, true);
   console.log('PASS: profile photo, wish photo and completion, habit history, askesis dates and notes, diary, mood survive a real server restart. Account isolation verified.');
+  // Practices and reminders use the same persisted data as the visible cards.
+  const longDate = new Date(Date.parse(day) + 1500 * 864e5).toISOString().slice(0,10);
+  const longAskesis = (await owner.json('/askesis','POST',{title:'Без шоппинга, мой срок',until:longDate})).active.find(a=>a.until===longDate);
+  assert.ok(longAskesis); assert.equal(longAskesis.notes.length,0);
+  assert.equal((await owner.raw('/askesis','POST',{title:'Недействительная дата',until:'2099-02-31'})).status,400);
+  const free = (await owner.json('/habits','POST',{title:'Мой ритуал',rule:'когда хочется'})).items.find(h=>h.title==='Мой ритуал');
+  assert.equal(free.rule,'free'); assert.equal(free.ruleText,'когда хочется');
+  const long = (await owner.json('/habits','POST',{title:'Большой интервал',rule:'каждые 100 дней'})).items.find(h=>h.title==='Большой интервал');
+  assert.equal(long.rule,'every:100');
+  const qaDB = new DatabaseSync(join(fixture,'data/app.db'));
+  for (const milestone of [30,60,90,180,365]) {
+    const h=(await owner.json('/habits','POST',{title:'Ежедневно '+milestone,rule:'каждый день'})).items.find(h=>h.title==='Ежедневно '+milestone);
+    qaDB.prepare('UPDATE habits SET created_at=? WHERE id=?').run(new Date(Date.parse(day)-(milestone-1)*864e5).toISOString(),h.id);
+    const add=qaDB.prepare('INSERT INTO habit_marks(habit_id,day) VALUES(?,?)');
+    for(let i=1;i<milestone;i++)add.run(h.id,new Date(Date.parse(day)-i*864e5).toISOString().slice(0,10));
+    const result=await owner.json('/habits','PATCH',{id:h.id});
+    assert.equal(result.award?.days,milestone);
+    await owner.json('/habits','PATCH',{id:h.id});
+    assert.equal((await owner.json('/habits','PATCH',{id:h.id})).award,null,'A milestone is awarded once');
+  }
+  const weekly=(await owner.json('/habits','POST',{title:'Еженедельно',rule:'раз в неделю'})).items.find(h=>h.title==='Еженедельно');
+  for(let i=1;i<365;i++)qaDB.prepare('INSERT INTO habit_marks(habit_id,day) VALUES(?,?)').run(weekly.id,new Date(Date.parse(day)-i*864e5).toISOString().slice(0,10));
+  assert.equal((await owner.json('/habits','PATCH',{id:weekly.id})).award,null,'Non-daily habits get no daily milestone');
+  const schedule=(await owner.json('/reminders','POST',{feature:'askesis',enabled:true,freq:'weekly',weekday:5,time:'20:40',tz:'Europe/Moscow'})).item;
+  assert.equal(schedule.freq,'weekly'); assert.equal(schedule.time,'20:40'); assert.equal(schedule.weekday,5); assert.ok(schedule.nextAt);
+  const reminders=await import(pathToFileURL(join(fixture,'backend/reminders.mjs')));
+  const asc=await owner.json('/askesis');
+  const worker=await import(pathToFileURL(join(fixture,'backend/send-daily.mjs')));
+  worker.initScheduledReminders(qaDB,join(fixture,'data'));
+  const person=qaDB.prepare('SELECT id,name FROM users WHERE name=?').get('Проверка сохранения');
+  const plan=await owner.json('/reminders/askesis-plan');
+  assert.equal(plan.items.length,14);
+  assert.ok(plan.items.every(item=>new Date(item.date+'T12:00:00Z').getUTCDay()===5));
+  assert.equal(Date.parse(plan.items[1].date)-Date.parse(plan.items[0].date),7*864e5);
+  assert.ok(plan.items[0].body.includes(String(Math.round((Date.parse(longDate)-Date.parse(plan.items[0].date))/864e5))));
+  assert.ok((await owner.json('/askesis')).active.some(a=>a.id===askesis.id),'Building a future plan must not finish current askeses');
+  assert.equal((await other.json('/reminders/askesis-plan')).items.length,0);
+  const push=reminders.notificationFor('askesis',person);
+  assert.ok(push.body.includes(String(asc.active[0].left))); assert.ok(push.body.includes(asc.active[0].support));
+  await owner.json('/habits','POST',{title:'10 000 шагов',rule:'каждый день'});
+  await owner.json('/reminders','POST',{feature:'habits',enabled:true,time:'20:40'});
+  qaDB.prepare('INSERT INTO push_subs(endpoint,user_id,created_at) VALUES(?,?,?)').run('https://push.invalid/synthetic',person.id,new Date().toISOString());
+  qaDB.prepare("UPDATE reminders SET next_at=? WHERE user_id=? AND feature IN ('askesis','habits')").run(new Date(Date.now()-1000).toISOString(),person.id);
+  let deliveries=0;
+  const delivery=await reminders.runDue({},()=>{},async()=>{deliveries++;return true;});
+  assert.equal(deliveries,1);assert.equal(delivery.queued,2);
+  const queued=qaDB.prepare('SELECT feature,title,body FROM push_queue WHERE user_id=?').all(person.id);
+  assert.ok(queued.some(n=>n.feature==='askesis' && n.title.includes('Без шоппинга, мой срок') && n.body.includes(String(longAskesis.left))));
+  assert.ok(queued.some(n=>n.feature==='habits' && n.body.includes('10 000 шагов')));
+  assert.ok(queued.every(n=>!n.body.includes('enc1:')));
+  qaDB.prepare('DELETE FROM push_subs WHERE endpoint=?').run('https://push.invalid/synthetic');
+  console.log('PASS: actual background-worker initialization queues correct askesis countdown/support and due habits; transport mocked, no notifications sent.');
+  assert.equal(reminders.notificationFor('gratitude',person).title,'Кому и за что я благодарна сегодня?');
+  await owner.json('/journal','POST',{kind:'gratitude',title:'Кому и за что я благодарна сегодня?',text:'Маме за звонок'});
+  const gratitude=(await owner.json('/journal?kind=gratitude')).items[0];
+  assert.equal(gratitude.day,day);assert.equal(gratitude.text,'Маме за звонок');
+  assert.equal(reminders.notificationFor('gratitude',person),null,'Do not remind after gratitude is recorded');
+  await owner.json('/journal','POST',{kind:'answer',title:me.day.question,text:'Сегодня я могу дать себе время'});
+  assert.ok((await owner.json('/journal')).items.some(i=>i.kind==='answer' && i.title===me.day.question && i.day===day));
+  assert.equal((await owner.json('/catalog')).moods.length,32);
+  qaDB.close();
+  console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, 30/60/90/180/365 daily-only awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
   if (process.argv.includes('--ui')) {
     // Optional Playwright checks use the same real backend and isolated database.
     const { chromium } = createRequire(import.meta.url)('playwright');
@@ -164,7 +226,7 @@ try {
       await (await wishChooser).setFiles({ name: 'test-wish.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
       await page.waitForFunction(() => document.querySelector('#m-wishes .wphoto')?.naturalWidth > 0 && document.querySelectorAll('#m-wishes .wphoto').length === 2);
       await page.locator('.wg-x').click();
-      await page.locator('.day-focus').click();
+      await page.locator('#v-home .sqs').getByRole('button', {name:'Мой день',exact:true}).click();
       await page.getByRole('button', { name: /^Дневник привычек/ }).click();
       await page.getByText('Тест: прогулка вечером', { exact: true }).first().waitFor();
       await page.locator('.wg-x').click();
@@ -174,6 +236,64 @@ try {
       await page.reload(); await page.waitForSelector('#v-home.on');
       await page.getByRole('button', { name: 'Мои желания', exact: true }).click();
       await page.waitForFunction(() => document.querySelectorAll('#m-wishes .wphoto').length === 2);
+      await page.locator('.wg-x').click();
+      assert.deepEqual(await page.locator('#v-home .sq b').allTextContents(), ['Мой день','Свериться','Обо мне','Внешний фон','Память','Новое в приложении']);
+      await page.locator('#v-home .sqs').getByRole('button',{name:'Мой день',exact:true}).click();
+      await page.locator('#v-today').getByRole('button',{name:/^Настроение дня/}).click();
+      assert.equal(await page.locator('#t-moods .mchip').count(),32);
+      await page.locator('#t-moods .mchip').filter({hasText:/^восхищение$/}).click();
+      await page.waitForFunction(()=>document.querySelector('#t-moods .mpick').textContent.includes('восхищение'));
+      await page.locator('.wg-x').click();
+      await page.locator('#v-today').getByRole('button',{name:/^Что вас сегодня беспокоит/}).click();
+      const question=await page.locator('#hub-chips .chip').first().innerText();
+      await page.locator('#hub-chips .chip').first().click();
+      assert.equal(await page.locator('#hub-q').inputValue(),question);
+      await page.locator('#hub-q').fill(question+' Это касается моей работы.');
+      assert.equal(await page.locator('#hub-opts .chip').count(),4);
+      assert.ok(!(await page.locator('#hub-opts').innerText()).includes('Да / Нет'));
+      await page.locator('.wg-x').click();
+      await page.locator('#v-today').getByRole('button',{name:/^Вопрос дня/}).click();
+      await page.locator('#tone-a').fill('Ответ из интерфейса');
+      await page.getByRole('button',{name:'Отправить в дневник',exact:true}).click();
+      await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('Записано в дневник'));
+      await page.locator('.wg-x').click();
+      await page.locator('.app-nav [data-nav=history]').click();
+      assert.equal(await page.locator('#v-history h1').innerText(),'Память');
+      await page.locator('#v-history').getByRole('button',{name:/^Дневник/}).click();
+      await page.getByText('Ответ из интерфейса',{exact:true}).waitFor();
+      await page.locator('.wg-x').click();
+      await page.locator('.app-nav [data-nav=home]').click();
+      await page.locator('#v-home .sq').filter({hasText:'Новое в приложении'}).click();
+      await page.locator('#news-box .wid').first().waitFor();
+      // A root card edit is immediately reflected in News, with the same action.
+      await page.evaluate(()=>{document.querySelector('#v-today button[onclick="openWidget(\'askesis\')"] b').textContent='Взять аскезу · проверка';return paintNews();});
+      await page.locator('#news-box').getByRole('button',{name:/^Взять аскезу · проверка/}).click();
+      await page.locator('#as-box').getByText('Тест: без вечернего скроллинга',{exact:true}).waitFor();
+      await page.locator('.wg-x').click();
+      for(const [width,height] of [[390,844],[320,568],[844,390],[1440,900]]) {
+        await page.setViewportSize({width,height});
+        await page.locator('.app-nav [data-nav=home]').click();
+        assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow');
+        for(const button of await page.locator('#v-home .sq').all()) {
+          await button.scrollIntoViewIfNeeded(); assert.ok(await button.isVisible());
+          const size=await button.boundingBox();assert.ok(size.height>=100);
+        }
+      }
+      // Every surviving feature card opens the actual widget pane.
+      for(const [view,key] of [['today','card'],['today','mood'],['today','worry'],['today','day'],['today','tone'],['today','askesis'],['today','wishes'],['today','habits'],['today','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','tests'],['about','compat'],['around','lunar'],['around','sky'],['history','hmood'],['history','hwishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','shelves'],['account','support']]) {
+        await page.evaluate(v=>go(v),view);
+        await page.locator(`#v-${view} button[onclick="openWidget('${key}')"]`).click();
+        await page.waitForFunction(k=>document.querySelector('#wg-body #w-'+k)!==null,key);
+        await page.locator('.wg-x').click();
+      }
+      await page.evaluate(()=>go('account'));
+      for(const title of ['С чего начать','Вопросы и ответы']) {
+        await page.locator('#v-account').getByRole('button',{name:new RegExp('^'+title)}).click();
+        assert.equal(await page.locator('#wg-title').innerText(),title);await page.locator('.wg-x').click();
+      }
+      await page.evaluate(()=>go('ask'));
+      assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Да / Нет','Руны','Таро']);
+      console.log('PASS: all six home sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');
       assert.deepEqual(errors, []);
       console.log('PASS: existing profile/wish photo uploads and reloads, habit/askesis navigation, saved notes, failed-request draft protection and visible feedback in the mobile UI.');
     } finally { await browser.close(); }

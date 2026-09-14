@@ -9,6 +9,7 @@
 import { readFileSync, existsSync, watch } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import bundledSets from './daily-sets.json' with { type: 'json' };
 
 export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'content');
 /* Картинки лежат рядом с текстами, в папке картинки/: по-русски для владельца, по-английски в адресе.
@@ -308,10 +309,10 @@ const MOODS_FALLBACK = [
   M('serenity', 'безмятежность', 'joy', '+'), M('joy', 'радость', 'joy', '+'), M('ecstasy', 'восторг', 'joy', '+'),
   M('acceptance', 'принятие', 'trust', '+'), M('trust', 'доверие', 'trust', '+'), M('admiration', 'восхищение', 'trust', '+'),
   M('apprehension', 'тревога', 'fear', '-'), M('fear', 'страх', 'fear', '-'), M('terror', 'ужас', 'fear', '-'),
-  M('distraction', 'возбуждение', 'surprise', '0'), M('surprise', 'удивление', 'surprise', '0'), M('amazement', 'изумление', 'surprise', '0'),
-  M('pensiveness', 'печаль', 'sadness', '-'), M('sadness', 'грусть', 'sadness', '-'), M('grief', 'горе', 'sadness', '-'),
-  M('boredom', 'скука', 'disgust', '-'), M('displeasure', 'неудовольствие', 'disgust', '-'), M('disgust', 'отвращение', 'disgust', '-'),
-  M('annoyance', 'досада', 'anger', '-'), M('anger', 'злость', 'anger', '-'), M('rage', 'гнев', 'anger', '-'),
+  M('distraction', 'отвлечение', 'surprise', '0'), M('surprise', 'удивление', 'surprise', '0'), M('amazement', 'изумление', 'surprise', '0'),
+  M('pensiveness', 'задумчивость', 'sadness', '-'), M('sadness', 'грусть', 'sadness', '-'), M('grief', 'горе', 'sadness', '-'),
+  M('boredom', 'скука', 'disgust', '-'), M('disgust', 'отвращение', 'disgust', '-'), M('loathing', 'омерзение', 'disgust', '-'),
+  M('annoyance', 'досада', 'anger', '-'), M('anger', 'злость', 'anger', '-'), M('rage', 'ярость', 'anger', '-'),
   M('interest', 'интерес', 'anticipation', '0'), M('anticipation', 'ожидание', 'anticipation', '0'), M('vigilance', 'настороженность', 'anticipation', '0'),
   M('optimism', 'оптимизм', 'dyad', '+'), M('love', 'любовь', 'dyad', '+'), M('submission', 'покорность', 'dyad', '0'), M('awe', 'трепет', 'dyad', '0'),
   M('disappointment', 'разочарование', 'dyad', '-'), M('remorse', 'раскаяние', 'dyad', '-'), M('contempt', 'презрение', 'dyad', '-'), M('aggressiveness', 'агрессия', 'dyad', '-'),
@@ -512,7 +513,10 @@ function build() {
   r.HABIT_IDEAS = lines('привычки.txt') || HABITS_FALLBACK;
 
   /* Установки дня: номер | установка | вопрос. Каждому человеку — случайно и без повторов в течение года. */
-  r.SETS = rows('установки.txt', 3) || SETS_FALLBACK;
+  r.LEGACY_SETS = rows('установки.txt', 3) || SETS_FALLBACK;
+  // Partial/older content files must not shrink the complete 365-phrase collection.
+  const customSets = rows('установки.txt', 3) || [];
+  r.SETS = [...new Map([...bundledSets.sets, ...customSets].map(s => [s[1].trim().replace(/\s+/g, ' '), s])).values()];
   /* «Новое в приложении»: месяц | название | раздел:виджет | описание */
   r.NEWS = (rows('новое.txt', 4) || []).map((c) => { const [view, widget] = c[2].split(':'); return { month: c[0], title: c[1], view: view.trim(), widget: (widget || '').trim(), text: c[3] }; });
 
@@ -520,12 +524,14 @@ function build() {
   const em = rows('эмоции.txt', 4);
   const fams = em ? em.filter((c) => c[0] === 'лепесток') : [];
   const moods = em ? em.filter((c) => c[0] !== 'лепесток').map((c) => M(c[0], c[1], c[2], c[3])) : [];
-  r.MOODS = moods.length >= 8 ? moods : MOODS_FALLBACK;
+  r.MOODS = [...new Map([...MOODS_FALLBACK, ...moods.filter(m=>m.key!=='displeasure')].map(m => [m.key, m])).values()];
   r.MOOD_FAMILIES = fams.length >= 8 ? Object.fromEntries(fams.map((c) => [c[1], [c[2], c[3]]])) : MOOD_FAMILIES_FALLBACK;
   r.MOOD_BY_KEY = Object.fromEntries(r.MOODS.map((m) => [m.key, m]));
+  r.MOOD_BY_KEY.displeasure = M('displeasure', 'неудовольствие', 'disgust', '-');
   /* Тексты напоминаний, поддержка аскезы, награды за привычки, плашки-запросы */
   const rt = rows('напоминания.txt', 3);
   r.REMINDER_TEXTS = Object.assign({}, REMINDER_TEXTS_FALLBACK, rt ? Object.fromEntries(rt.map((c) => [c[0], [c[1], c[2]]])) : {});
+  r.REMINDER_TEXTS.gratitude[0] = 'Кому и за что я благодарна сегодня?';
   r.ASKESIS_SUPPORT = lines('поддержка-аскезы.txt') || ASKESIS_SUPPORT_FALLBACK;
   const aw = rows('награды.txt', 3);
   r.AWARDS = aw ? aw.map((c) => [num(c[0], 0), c[1], c[2]]).filter((a) => a[0] > 0) : AWARDS_FALLBACK;
@@ -571,6 +577,7 @@ export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, 
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
 export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
 export const lunarRef = () => data.LUNAR_REF;
+export const LEGACY_SETS = new Proxy([], { get: (_, k) => Reflect.get(data.LEGACY_SETS, k) });
 export const SETS = new Proxy([], { get: (_, k) => Reflect.get(data.SETS, k) });
 export const MOODS = new Proxy([], { get: (_, k) => Reflect.get(data.MOODS, k) });
 export const MOOD_FAMILIES = new Proxy({}, { get: (_, k) => Reflect.get(data.MOOD_FAMILIES, k), ownKeys: () => Reflect.ownKeys(data.MOOD_FAMILIES), getOwnPropertyDescriptor: (_, k) => ({ value: data.MOOD_FAMILIES[k], enumerable: true, configurable: true }) });

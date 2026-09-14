@@ -5,14 +5,17 @@ import { createServer } from 'node:http';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, normalize, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomBytes, randomInt, createHash, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
+import { randomBytes, randomInt, createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { vapidKeys } from './push.mjs';
 import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
 import * as C from './content.mjs';
+import { initDailySets, dailySet } from './daily-sets.mjs';
+import { privateText } from './private-text.mjs';
+import { createPractices, parseRule, habitStreak, HABIT_MILESTONES } from './practices.mjs';
 import { CONTENT_DIR, IMAGE_DIRS } from './content.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
-const catalogVersion = () => { try { return String(Math.floor(Math.max(...readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).map((f) => statSync(join(CONTENT_DIR, f)).mtimeMs)) / 1000)); } catch { return '1'; } };
+const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
   const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
   const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;
@@ -28,7 +31,7 @@ import { natalChart } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
-import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow } from './reminders.mjs';
+import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow, askesisNativePlan } from './reminders.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -70,6 +73,7 @@ const EVENT_TYPES = new Set([
   'gratitude_add', 'answer_add', 'news_view', 'wish_photo', 'photo_set',
 ]);
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+const {seal, open:open_} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
 db.exec(`
@@ -250,6 +254,7 @@ function wipePersonal(userId) {
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email <> \'\'');
 }
 
+const {habitList, askesisList} = createPractices(db, open_);
 initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
 initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
 initReports(db, DATA_DIR);
@@ -293,35 +298,6 @@ async function notifyStaffAccess(email, roleKeys) {
 /* Ключ создаётся сам при первом запуске и лежит рядом с базой, доступный только root.
    Файл базы без этого файла бесполезен. Терять ключ нельзя — записи станут нечитаемыми,
    поэтому он попадает в резервную копию вместе с базой. */
-const SECRET = (process.env.APP_SECRET || '').trim() || (() => {
-  const keyFile = join(DATA_DIR, 'secret.key');
-  if (existsSync(keyFile)) return readFileSync(keyFile, 'utf8').trim();
-  const fresh = randomBytes(32).toString('base64');
-  writeFileSync(keyFile, fresh, { mode: 0o600 });
-  console.log('Создан ключ шифрования записей: data/secret.key — храните его вместе с базой');
-  return fresh;
-})();
-const KEY = scryptSync(SECRET, 'lunario-notes', 32);
-const ENC_MARK = 'enc1:';
-
-function seal(text) {
-  const s = String(text ?? '');
-  if (!s) return s;
-  const iv = randomBytes(12);
-  const c = createCipheriv('aes-256-gcm', KEY, iv);
-  const body = Buffer.concat([c.update(s, 'utf8'), c.final()]);
-  return ENC_MARK + Buffer.concat([iv, c.getAuthTag(), body]).toString('base64');
-}
-function open_(text) {
-  const s = String(text ?? '');
-  if (!s.startsWith(ENC_MARK)) return s;              // старая запись без шифрования
-  try {
-    const raw = Buffer.from(s.slice(ENC_MARK.length), 'base64');
-    const d = createDecipheriv('aes-256-gcm', KEY, raw.subarray(0, 12));
-    d.setAuthTag(raw.subarray(12, 28));
-    return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString('utf8');
-  } catch { return ''; }
-}
 console.log('Личные записи шифруются перед записью в базу');
 
 /* Подарок за приглашение действует неделю и удваивает число подробных разборов. */
@@ -530,26 +506,13 @@ function cardOfDay(u, day) {
 }
 
 /* Установка дня: случайная, без повторов в течение года у каждого человека. Выпавшая запоминается в daily_sets. */
-function setOfDay(u, day) {
-  const n = C.SETS.length; if (!n) return null;
-  let row = db.prepare('SELECT idx FROM daily_sets WHERE user_id = ? AND day = ?').get(u.id, day);
-  if (!row) {
-    const since = new Date(Date.parse(day) - 365 * 864e5).toISOString().slice(0, 10);
-    const used = new Set(db.prepare('SELECT idx FROM daily_sets WHERE user_id = ? AND day >= ?').all(u.id, since).map((r) => r.idx));
-    let pool = [...Array(n).keys()].filter((i) => !used.has(i));
-    if (!pool.length) pool = [...Array(n).keys()];
-    row = { idx: pool[randomInt(pool.length)] };
-    db.prepare('INSERT OR IGNORE INTO daily_sets (user_id, day, idx) VALUES (?,?,?)').run(u.id, day, row.idx);
-  }
-  const st = C.SETS[row.idx] || C.SETS[0];
-  const name = String(u.name || '').trim();
-  const text = name ? st[1].replace('{Имя}', name) : st[1].replace(/,?\s*\{Имя\}/, '');
-  return { n: Number(st[0]) || row.idx + 1, text, question: st[2] };
-}
+initDailySets(db, C.LEGACY_SETS);
+const setOfDay = (u, day) => dailySet(db, u, day, C.SETS);
 
 /* ── персональный день ── */
 function dayPack(u, day) {
   const seed = `${u.id}:${day}`;
+  const set = setOfDay(u, day);
   const sign = u.birth ? signOf(u.birth) : null;
   const tone = C.DAY_TONES[hash32(seed + ':tone') % C.DAY_TONES.length];
   return {
@@ -564,8 +527,8 @@ function dayPack(u, day) {
       ? { title: tone[0], text: `${tone[1]} ${sign.trait[0].toUpperCase()}${sign.trait.slice(1)} — сегодня это особенно заметно.`, bars: tone[2] }
       : { title: tone[0], text: tone[1], bars: tone[2] },
     affirmation: (W.materialForDay('affirmation', day) || {}).text || C.AFFIRMATIONS[hash32(seed + ':aff') % C.AFFIRMATIONS.length],
-    set: setOfDay(u, day),                            /* установка на главной и вопрос дня к ней */
-    question: (setOfDay(u, day) || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
+    set,                            /* установка на главной и вопрос дня к ней */
+    question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     wish: C.WISHES[hash32(seed + ':wish') % C.WISHES.length],
     lunar: lunarPack(u),
   };
@@ -608,129 +571,8 @@ function weekSummary(u) {
 /* ── Привычки: регулярность задаёт человек словами, мы её понимаем ──
    daily — каждый день; weekdays — по будням; weekend — по выходным; alt — через день;
    days:1,3,5 — в выбранные дни недели (1 — понедельник); weekly — раз в неделю; times:N — N раз в неделю;
-   monthly — раз в месяц. Непонятную формулировку считаем ежедневной. */
-const HABIT_MILESTONES = [30, 60, 90, 180, 365];
-const WD_RULES = [[1, /(^|[^а-я])(пн|понедельн)/], [2, /(^|[^а-я])(вт([^а-я]|$)|вторн)/], [3, /(^|[^а-я])(ср([^а-я]|$)|сред)/], [4, /(^|[^а-я])(чт|четверг)/],
-  [5, /(^|[^а-я])(пт|пятниц)/], [6, /(^|[^а-я])(сб|суббот)/], [7, /(^|[^а-я])(вс([^а-я]|$)|воскрес)/]];
-const WORD_NUM = { один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10, пару: 2, пара: 2 };
-const numIn = (t, re) => { const m = re.exec(t); if (!m) return null; const v = m[1]; return /^\d+$/.test(v) ? Number(v) : WORD_NUM[v] || null; };
-function parseRule(text) {
-  const t = String(text || '').toLowerCase().replace(/ё/g, 'е').replace(/[.,!]+/g, ' ').replace(/\s+/g, ' ').trim();
-  if (!t || /кажд(ый|ого|ое|ую) ?(день|дня|утро|вечер|ночь|сутки)|ежеднев|daily|всегда|постоянно|утром|вечером|перед сном|на ночь|за завтраком|раз в день|в день/.test(t)) return 'daily';
-  if (/будн|рабоч/.test(t)) return 'weekdays';
-  if (/выходн/.test(t)) return 'weekend';
-  if (/через ?день|день через день/.test(t)) return 'alt';
-  const everyDays = numIn(t, /кажд(?:ые|ый|ую)?\s+([а-я\d]+)\s*(?:дн|день|сут)/) ?? numIn(t, /раз\s+в\s+([а-я\d]+)\s*(?:дн|сут)/) ?? numIn(t, /через\s+([а-я\d]+)\s*(?:дн|сут)/);
-  if (everyDays && everyDays >= 2) return 'every:' + Math.min(60, everyDays);
-  const everyWeeks = numIn(t, /кажд(?:ые|ую)?\s+([а-я\d]+)\s*недел/) ?? numIn(t, /раз\s+в\s+([а-я\d]+)\s*недел/);
-  if (everyWeeks && everyWeeks >= 2) return 'every:' + Math.min(60, everyWeeks * 7);
-  const days = WD_RULES.filter(([, re]) => re.test(t)).map(([n]) => n);
-  if (days.length) return 'days:' + days.join(',');
-  const times = numIn(t, /([а-я\d]+)\s*раз/);
-  if (/недел/.test(t)) return times && times > 1 ? 'times:' + Math.min(6, times) : 'weekly';
-  if (/месяц|ежемес/.test(t)) return times && times > 1 ? 'mtimes:' + Math.min(20, times) : 'monthly';
-  if (/год|ежегод/.test(t)) return 'free';
-  return 'free';   /* непонятный ритм не подгоняем под ежедневный — привычка ждёт отметки, когда нужно человеку */
-}
-const RULE_LABEL = (rule) => rule === 'daily' ? 'каждый день' : rule === 'weekdays' ? 'по будням' : rule === 'weekend' ? 'по выходным' : rule === 'alt' ? 'через день'
-  : rule === 'weekly' ? 'раз в неделю' : rule === 'monthly' ? 'раз в месяц' : rule === 'free' ? 'в своём ритме' : rule.startsWith('times:') ? `${rule.slice(6)} раза в неделю`
-  : rule.startsWith('mtimes:') ? `${rule.slice(7)} раза в месяц` : rule.startsWith('every:') ? `каждые ${rule.slice(6)} дн.`
-  : rule.startsWith('days:') ? rule.slice(5).split(',').map((n) => ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'][Number(n)]).join(', ') : rule;
-const wdOf = (day) => ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;     // 1 — понедельник … 7 — воскресенье
-/* Ритм привычек перечитывается из слов человека при каждом запуске: парсер умнеет — старые записи подтягиваются */
-for (const h of db.prepare("SELECT id, rule, rule_text FROM habits WHERE rule_text <> ''").all()) { const r = parseRule(h.rule_text); if (r !== h.rule) db.prepare('UPDATE habits SET rule = ? WHERE id = ?').run(r, h.id); }
-const addDays = (day, n) => new Date(Date.parse(day) + n * 864e5).toISOString().slice(0, 10);
-const weekStart = (day) => addDays(day, 1 - wdOf(day));
-/* нужно ли делать привычку в этот день; для недельных и месячных — «ещё не сделана в этом периоде» */
-function habitDue(h, day, marks) {
-  const r = h.rule || 'daily', wd = wdOf(day);
-  if (r === 'daily') return true;
-  if (r === 'weekdays') return wd <= 5;
-  if (r === 'weekend') return wd >= 6;
-  if (r === 'alt') return Math.round((Date.parse(day) - Date.parse(h.created_at.slice(0, 10))) / 864e5) % 2 === 0;
-  if (r.startsWith('days:')) return r.slice(5).split(',').map(Number).includes(wd);
-  if (r === 'free') return true;
-  if (r.startsWith('every:')) {   /* каждые N дней: отсчёт от первой отметки, до неё — от дня добавления */
-    const n = Math.max(2, Number(r.slice(6))), first = [...marks].sort()[0] || h.created_at.slice(0, 10);
-    const diff = Math.round((Date.parse(day) - Date.parse(first)) / 864e5);
-    return diff >= 0 && diff % n === 0 || marks.has(day);
-  }
-  if (r.startsWith('mtimes:')) { const need = Number(r.slice(7)), m = day.slice(0, 7); return [...marks].filter((x) => x.startsWith(m) && x !== day).length < need || marks.has(day); }
-  if (r === 'weekly' || r.startsWith('times:')) {
-    const need = r === 'weekly' ? 1 : Number(r.slice(6)), ws = weekStart(day);
-    let done = 0; for (let i = 0; i < 7; i++) if (marks.has(addDays(ws, i))) done++;
-    return done < need || marks.has(day);
-  }
-  if (r === 'monthly') { const m = day.slice(0, 7); return ![...marks].some((x) => x.startsWith(m) && x !== day); }
-  return true;
-}
-/* серия: сколько подряд «нужных» дней (для недельных — недель, для месячных — месяцев) отмечено к сегодняшнему дню */
-function habitStreak(h, d, marks) {
-  const r = h.rule || 'daily';
-  if (r === 'free') return marks.size;                       /* свой ритм: считаем отметки, а не пропуски */
-  if (r.startsWith('every:')) {                              /* каждые N дней: подряд закрытые «нужные» дни */
-    const n = Math.max(2, Number(r.slice(6))), first = [...marks].sort()[0]; if (!first) return 0;
-    let c = 0, cur = first; const last = marks.has(d) ? d : addDays(d, -1);
-    while (cur <= last) { if (marks.has(cur)) c++; else if (cur < addDays(last, -(n - 1))) c = 0; cur = addDays(cur, n); }
-    return c;
-  }
-  if (r.startsWith('mtimes:')) {
-    const need = Number(r.slice(7)); let n = 0; const cnt = (m) => [...marks].filter((x) => x.startsWith(m)).length;
-    let [y, m] = d.split('-').map(Number); if (cnt(d.slice(0, 7)) >= need) n++;
-    for (let k = 1; k < 120; k++) { m--; if (m === 0) { m = 12; y--; } if (cnt(`${y}-${String(m).padStart(2, '0')}`) >= need) n++; else break; }
-    return n;
-  }
-  if (r === 'weekly' || r.startsWith('times:')) {
-    const need = r === 'weekly' ? 1 : Number(r.slice(6)); let n = 0; const ws = weekStart(d);
-    const count = (start) => { let c = 0; for (let i = 0; i < 7; i++) if (marks.has(addDays(start, i))) c++; return c; };
-    if (count(ws) >= need) n++;   // текущая неделя — если уже закрыта
-    for (let k = 1; k < 200; k++) { if (count(addDays(ws, -7 * k)) >= need) n++; else break; }
-    return n;
-  }
-  if (r === 'monthly') {
-    let n = 0; const months = new Set([...marks].map((x) => x.slice(0, 7)));
-    let [y, m] = d.split('-').map(Number); if (months.has(d.slice(0, 7))) n++;
-    for (let k = 1; k < 120; k++) { m--; if (m === 0) { m = 12; y--; } if (months.has(`${y}-${String(m).padStart(2, '0')}`)) n++; else break; }
-    return n;
-  }
-  let n = 0, cur = marks.has(d) ? d : addDays(d, -1);      // сегодня ещё не отмечено — считаем до вчера
-  const born = h.created_at.slice(0, 10);
-  for (let k = 0; k < 4000 && cur >= born; k++) {
-    if (habitDue(h, cur, marks)) { if (marks.has(cur)) n++; else break; }
-    cur = addDays(cur, -1);
-  }
-  return n;
-}
-/* Привычки: что делать сегодня, отметки за 7 дней, серия и награды за 30/60/90/180/365 дней подряд (только ежедневные) */
-function habitList(userId, d) {
-  const week = []; for (let i = 6; i >= 0; i--) week.push(addDays(d, -i));
-  return db.prepare('SELECT id, title, created_at, rule, rule_text FROM habits WHERE user_id = ? AND archived = 0 ORDER BY id').all(userId).map((h) => {
-    const marks = new Set(db.prepare('SELECT day FROM habit_marks WHERE habit_id = ?').all(h.id).map((m) => m.day));
-    const rule = h.rule || 'daily', streak = habitStreak(h, d, marks);
-    const awards = db.prepare('SELECT days FROM habit_awards WHERE habit_id = ? ORDER BY days').all(h.id).map((a) => a.days);
-    return { id: h.id, title: open_(h.title), since: h.created_at.slice(0, 10), rule, ruleText: h.rule_text || '', ruleLabel: RULE_LABEL(rule), daily: rule === 'daily',
-      due: habitDue(h, d, marks), today: marks.has(d), streak, total: marks.size, awards,
-      next: rule === 'daily' ? HABIT_MILESTONES.find((m) => m > streak) || null : null,
-      week: week.map((day) => ({ day, done: marks.has(day), due: habitDue(h, day, marks) })) };
-  });
-}
-/* Аскезы: отказ или ограничение до выбранной даты. Истёкшие закрываются сами; заметки-наблюдения — по желанию. */
-function askesisList(userId, d) {
-  for (const a of db.prepare("SELECT id, until FROM askesis WHERE user_id = ? AND status = 'active'").all(userId))
-    if (a.until && a.until < d) db.prepare("UPDATE askesis SET status = 'done', finished_at = ? WHERE id = ?").run(a.until, a.id);
-  const shape = (a) => {
-    const notes = db.prepare('SELECT day, note FROM askesis_days WHERE askesis_id = ? ORDER BY day').all(a.id).map((m) => ({ day: m.day, text: open_(m.note) })).filter((m) => m.text);
-    const until = a.until || addDays(a.started, (a.days || 1) - 1);
-    const total = Math.max(1, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1);
-    const done = Math.min(total, Math.max(0, Math.round((Date.parse(d < until ? d : until) - Date.parse(a.started)) / 864e5) + 1));
-    return { id: a.id, title: open_(a.title), started: a.started, until, total, done, left: Math.max(0, Math.round((Date.parse(until) - Date.parse(d)) / 864e5)),
-      status: a.status, finished: a.finished_at, notes, today: notes.find((n) => n.day === d) || null, support: C.ASKESIS_SUPPORT[(a.id + Number(d.slice(-2))) % Math.max(1, C.ASKESIS_SUPPORT.length)] || '' };
-  };
-  return {
-    active: db.prepare("SELECT * FROM askesis WHERE user_id = ? AND status = 'active' ORDER BY id DESC").all(userId).map(shape),
-    past: db.prepare("SELECT * FROM askesis WHERE user_id = ? AND status <> 'active' ORDER BY id DESC LIMIT 12").all(userId).map(shape),
-  };
-}
+   monthly — раз в месяц. Непонятную формулировку сохраняем как свободный ритм. */
+const validEndDate = (value, today) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value && value >= today;
 
 /* ── пользователь ── */
 function parseCookies(req) {
@@ -1465,6 +1307,7 @@ const server = createServer(async (req, res) => {
       }
 
       /* ── напоминания по функциям ── */
+      if (p === '/api/reminders/askesis-plan' && req.method === 'GET') return json(res, 200, askesisNativePlan(u.id));
       if (p === '/api/reminders' && req.method === 'GET')
         return json(res, 200, { items: listReminders(u.id), push: { on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id = ?').get(u.id), key: PUSH.publicKey } });
       if (p === '/api/reminders' && req.method === 'POST') {
@@ -1534,7 +1377,7 @@ const server = createServer(async (req, res) => {
           const b = await readBody(req);
           const title = clean(b.title, 80), until = String(b.until || '');
           if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || until < d || Date.parse(until) - Date.parse(d) > 3 * 366 * 864e5) return json(res, 400, { ok: false, error: 'bad_until' });
+          if (!validEndDate(until, d)) return json(res, 400, { ok: false, error: 'bad_until' });
           if (db.prepare("SELECT COUNT(*) c FROM askesis WHERE user_id = ? AND status = 'active'").get(u.id).c >= 5) return json(res, 400, { ok: false, error: 'too_many' });
           const days = Math.round((Date.parse(until) - Date.parse(d)) / 864e5) + 1;
           db.prepare('INSERT INTO askesis (user_id, title, days, started, until) VALUES (?,?,?,?,?)').run(u.id, seal(title), days, d, until);
@@ -1545,7 +1388,7 @@ const server = createServer(async (req, res) => {
           if (!a) return json(res, 404, { ok: false, error: 'not_found' });
           if (b.until !== undefined) {                                   // передвинуть дату
             const until = String(b.until || '');
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || until < d) return json(res, 400, { ok: false, error: 'bad_until' });
+            if (!validEndDate(until, d)) return json(res, 400, { ok: false, error: 'bad_until' });
             db.prepare('UPDATE askesis SET until = ?, days = ? WHERE id = ?').run(until, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1, a.id);
           } else {                                                       // заметка-наблюдение за сегодня
             const note = clean(b.note, 500);

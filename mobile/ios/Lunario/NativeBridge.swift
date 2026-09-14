@@ -151,7 +151,22 @@ class NativeBridge: NSObject, WKScriptMessageHandler {
                 content.sound = .default
                 let hour = b["hour"] as? Int ?? 9, minute = b["minute"] as? Int ?? 0
                 var requests: [UNNotificationRequest] = []
-                if let dates = b["dates"] as? [String], !dates.isEmpty {
+                if let messages = b["messages"] as? [[String: Any]] {
+                    for (i, message) in messages.prefix(14).enumerated() {
+                        guard let date = message["date"] as? String else { continue }
+                        let parts = date.split(separator: "-").compactMap { Int($0) }
+                        guard parts.count == 3 else { continue }
+                        var c = DateComponents()
+                        c.year = parts[0]; c.month = parts[1]; c.day = parts[2]; c.hour = hour; c.minute = minute
+                        if let tz = b["tz"] as? String { c.timeZone = TimeZone(identifier: tz) }
+                        let datedContent = UNMutableNotificationContent()
+                        datedContent.title = message["title"] as? String ?? content.title
+                        datedContent.body = message["body"] as? String ?? content.body
+                        datedContent.sound = .default
+                        requests.append(UNNotificationRequest(identifier: prefix + String(i), content: datedContent,
+                                                              trigger: UNCalendarNotificationTrigger(dateMatching: c, repeats: false)))
+                    }
+                } else if let dates = b["dates"] as? [String], !dates.isEmpty {
                     for (i, d) in dates.prefix(20).enumerated() {
                         let parts = d.split(separator: "-").compactMap { Int($0) }
                         guard parts.count == 3 else { continue }

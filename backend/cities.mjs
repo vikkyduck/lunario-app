@@ -5,7 +5,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const db = new DatabaseSync(join(__dirname, 'cities.db'), { readOnly: true });
+const db = new DatabaseSync(process.env.CITIES_DB || join(__dirname, 'cities.db'), { readOnly: true });
 
 const norm = (s) => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[^0-9a-zа-я\s-]/gi, '').trim();
 const HI = '￿';
