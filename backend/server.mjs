@@ -12,6 +12,7 @@ import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } 
 import * as C from './content.mjs';
 import { personalExport } from './personal-export.mjs';
 import { preferences, validPreferences, timeline } from './experience.mjs';
+import { entryPage } from './entries.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak, HABIT_MILESTONES } from './practices.mjs';
@@ -1236,8 +1237,7 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/entries' && req.method === 'GET')
-        return json(res, 200, { items: db.prepare('SELECT id, day, kind, question, title, body, data FROM entries WHERE user_id=? AND (?=0 OR id=?) ORDER BY id DESC LIMIT 100').all(u.id,Number(url.searchParams.get('id'))||0,Number(url.searchParams.get('id'))||0)
-          .map((r) => ({ ...r, question: open_(r.question), data: parseData(r.data) })) });
+        return json(res, 200, entryPage(db,u.id,url.searchParams,open_));
 
       /* Оплата: создаём заказ (подписка или консультация) и отправляем на страницу оплаты. */
       if (p === '/api/pay' && req.method === 'POST') {

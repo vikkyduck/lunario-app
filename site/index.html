@@ -804,8 +804,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=29">
-<link rel="stylesheet" href="/app/moon-glass.css?v=29">
+<link rel="stylesheet" href="/app/experience.css?v=30">
+<link rel="stylesheet" href="/app/moon-glass.css?v=30">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -949,7 +949,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="wid" type="button" onclick="openWidget('appearance')"><i class="ico moon"></i><b>Оформление</b><span>Светлая и тёмная темы</span></button>
       <button class="wid" type="button" onclick="openWidget('appinfo')"><i class="ico moon"></i><b>О приложении</b></button>
       <button class="wid" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i><b>Установить на телефон</b></button></div></section>
-    <section class="account-group"><h2>Приватность</h2><div class="wids compact-links"><button class="wid" data-feature="shelves" type="button" aria-label="Мои данные" onclick="openWidget('shelves')"><i class="ico list"></i><b>Мои данные</b><span>Что Лунарио знает о вас — три полки</span></button><button class="wid" type="button" onclick="exportPersonalData()"><i class="ico list"></i><b>Скачать мои данные</b><span>Профиль, фотографии, записи и история практик</span></button></div></section>
+    <section class="account-group"><h2>Приватность</h2><div class="wids compact-links"><button class="wid" data-feature="shelves" type="button" aria-label="Мои данные" onclick="openWidget('shelves')"><i class="ico list"></i><b>Мои данные</b><span>Что Лунарио знает о вас</span></button><button class="wid" type="button" onclick="exportPersonalData()"><i class="ico list"></i><b>Скачать мои данные</b><span>Профиль, фотографии, записи и история практик</span></button></div></section>
     <section class="account-group"><h2>Помощь</h2><div class="wids compact-links"><button class="wid" data-feature="support" type="button" aria-label="Чат поддержки" onclick="openWidget('support')"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button class="wid" type="button" aria-label="Позвать подругу" data-feature="invite" onclick="openWidget('invite')"><i class="ico person"></i><b>Позвать подругу</b></button></div>
       <details class="upcoming"><summary>Материалы готовятся</summary><button class="text-action secondary" onclick="openStub('С чего начать')">С чего начать</button><button class="text-action secondary" onclick="openStub('Вопросы и ответы')">Вопросы и ответы</button></details></section>
     <div class="rows danger-zone"><span class="eyebrow">Управление аккаунтом</span>
@@ -1031,7 +1031,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-lunar"><div id="ln-box"></div></div>
   <div class="wpane" id="w-hmood"><div id="mr-box"></div></div>
   <div class="wpane" id="w-hwishes"><div class="list" id="h-wishes"></div></div>
-  <div class="wpane" id="w-hentries"><div class="list" id="m-entries"></div></div>
+  <div class="wpane" id="w-hentries"><div class="segmented entries-tabs" role="tablist" aria-label="История вопросов и карт"><button type="button" role="tab" aria-selected="true" onclick="filterEntries('questions')">Вопросы и ответы</button><button type="button" role="tab" aria-selected="false" onclick="filterEntries('card')">Карты дня</button><button type="button" role="tab" aria-selected="false" onclick="filterEntries('')">Все</button></div><div class="list" id="m-entries" aria-live="polite"></div><button class="btn ghost" id="entries-more" type="button" onclick="loadEntries(true)" hidden>Показать ещё</button></div>
   <div class="wpane" id="w-week"><div class="card"><p style="font-size:16px;color:#ded8ee" id="w-summary"></p><div id="w-detail"></div></div></div>
   <div class="wpane" id="w-invite"><div class="card"><p style="font-size:14px">Отправьте ссылку — и на неделю у вас обеих будет вдвое больше подробных разборов.</p><div id="inv-box" style="margin-top:12px"></div></div></div>
   <div class="wpane" id="w-remind"><div id="rem-all"></div></div>
@@ -1247,9 +1247,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=29"></script>
+<script type="module" src="/app/sky.js?v=30"></script>
 
-<script src="/app/experience.js?v=29"></script>
+<script src="/app/experience.js?v=30"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1444,9 +1444,9 @@ function focusSelectedTab(label){document.querySelector('.segmented[aria-label="
 
 /* ── натальная карта: расчёт на сервере, здесь только вывод ── */
 let natalCache = null;
-/* ── «Мои данные»: три полки досье — то же, что видят разборы и гороскопы ── */
+/* ── «Мои данные»: профиль, практики и история ── */
 async function loadShelves(){
-  const box = $('sh-box'); box.innerHTML = '<div class="item"><p>Собираем полки…</p></div>';
+  const box = $('sh-box'); box.innerHTML = '<div class="item"><p>Загружаем данные…</p></div>';
   try {
     const s = await api('/shelves');
     const a = s.about, dy = s.day, h = s.history;
@@ -1473,8 +1473,8 @@ async function loadShelves(){
       + row('Последние', h.recent.slice(0, 6).map((r) => `<small>${fd(r.day).slice(0, 5)} · ${esc(r.kindRu)}</small> ${r.question ? esc(r.question) + ' → ' : ''}${esc(r.answer)}`).join('<br>'));
     const shelf = (t, sub, body, i) => `<div class="item rise" style="--i:${i}"><b>${t}</b><small>${sub}</small><div class="sh-rows">${body || '<p>Пока пусто.</p>'}</div></div>`;
     box.innerHTML = shelf('Обо мне', 'анкета и то, что из неё считается', about, 0) + shelf('Мой день', `сегодня, ${fd(dy.date)}, и последняя неделя`, day, 1) + shelf('Истории', 'к чему вы возвращаетесь и что вам отвечали', hist, 2)
-      + `<p style="font-size:12.5px;color:#8f87ad;margin-top:4px">Эти три полки — основа персональных разборов и гороскопов: они видят только то, что здесь. Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? new Date(s.updated).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
-  } catch (e) { box.innerHTML = `<div class="item"><p>${e.code === 'no_birth' ? 'Заполните анкету — тогда появятся полки.' : 'Не получилось собрать полки, попробуйте позже.'}</p></div>`; }
+      + `<p style="font-size:12.5px;color:#8f87ad;margin-top:4px">Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? new Date(s.updated).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
+  } catch (e) { box.innerHTML = `<div class="item"><p>${e.code === 'no_birth' ? 'Заполните профиль — здесь появятся ваши данные.' : 'Не получилось загрузить данные, попробуйте позже.'}</p></div>`; }
 }
 async function loadNatal(){
   const box = $('natal-box');
@@ -1583,7 +1583,7 @@ function paintHome(){
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   try{ const dot=document.querySelector('.news-dot'); if(dot) dot.hidden=localStorage.getItem('lun_news_seen')===d.date.slice(0,7); }catch(e){}
-  $('h-wish').textContent = d.set ? (u.name && u.name!=='Гость' ? d.set.text : d.set.statement || d.set.text) : '';
+  $('h-wish').textContent = d.set?.text || '';
   document.querySelectorAll('[data-status=mood]').forEach(el=>el.textContent=S.mood?'Сегодня — '+MOOD_LABEL[S.mood]:'Как вы сейчас?');
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
@@ -2183,7 +2183,8 @@ function cardDayHtml(c, day, compact){
   const s = c.sections || {};
   return `<div style="text-align:center"><div class="serif" style="font-size:22px;color:var(--gold)">${esc(c.name)}</div>${c.keys ? `<div class="kw">${esc(keysLine(c.keys))}</div>` : ''}</div>
     ${(c.today || (s.advice && s.advice.length)) ? `<div class="card" style="margin-top:14px"><h3>Сегодня</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : paras((s.advice||[]).slice(0,1))}</div>` : ''}
-    ${moreBlock((s.image && s.image.length ? `<h3>Образ карты</h3>${paras(s.image)}` : '') + sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC) + ((c.today || (s.advice||[]).length>1)?'<h3>Совет карты</h3>'+paras(c.today?s.advice:(s.advice||[]).slice(1)):'') + (c.question ? `<h3>Вопрос себе</h3><p>${esc(c.question)}</p>` : ''), 'Прочитать подробнее')}
+    ${c.question ? `<section class="card-question"><h3>Вопрос себе</h3><p>${esc(c.question)}</p></section>` : ''}
+    ${moreBlock((s.image && s.image.length ? `<h3>Образ карты</h3>${paras(s.image)}` : '') + sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC) + ((c.today || (s.advice||[]).length>1)?'<h3>Совет карты</h3>'+paras(c.today?s.advice:(s.advice||[]).slice(1)):'') , 'Прочитать подробнее')}
     ${actionsHtml(id, !compact)}`;
 }
 function paintCard(){
@@ -2340,16 +2341,30 @@ function kindLabel(i){
   const L = i.data && i.data.layout ? layoutOf(i.kind === 'spread' ? 'tarot' : 'rune', i.data.layout) : null;
   return L && i.kind !== 'rune' ? `${KIND_LABEL[i.kind]} · ${L.title}` : (KIND_LABEL[i.kind] || i.kind);
 }
-function loadEntries(){
-  api('/entries').then(async (r) => {
-    S.entries = r.items; await loadCatalog().catch(() => {});
-    $('m-entries').innerHTML = r.items.map((i, n) => `<div class="item hist" id="he-${n}"><button class="histhead" type="button" onclick="toggleEntry(${n})"><span><b>${esc(i.question || i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question && i.title.length <= 48 ? ' · ' + esc(i.title) : ''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
-      || '<div class="item"><p>Здесь появятся ваши карты дня, вопросы и расклады. Видите их только вы.</p></div>';
-  }).catch(() => {});
+const entriesView={kind:'questions',next:null,request:0};
+function filterEntries(kind){entriesView.kind=kind;loadEntries();}
+async function loadEntries(more=false){
+  const request=++entriesView.request,box=$('m-entries');
+  document.querySelectorAll('.entries-tabs button').forEach((button,index)=>button.setAttribute('aria-selected',['questions','card',''][index]===entriesView.kind));
+  $('entries-more').hidden=true;
+  if(!more)box.innerHTML='<p class="hint" role="status">Загружаем историю…</p>';
+  try{
+    const query=new URLSearchParams({kind:entriesView.kind});
+    if(more&&entriesView.next)query.set('before',entriesView.next);
+    const r=await api('/entries?'+query);await loadCatalog().catch(()=>{});
+    if(request!==entriesView.request)return;
+    S.entries=more?[...(S.entries||[]),...r.items]:r.items;entriesView.next=r.next??null;
+    box.innerHTML=S.entries.map((i,n)=>`<div class="item hist" id="he-${n}"><button class="histhead" type="button" aria-expanded="false" aria-controls="hb-${n}" onclick="toggleEntry(${n})"><span><b>${esc(i.question||i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question&&i.title.length<=48?' · '+esc(i.title):''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
+      || `<p class="hint">${entriesView.kind==='questions'?'Здесь появятся ваши вопросы и ответы. Карты дня доступны в соседней вкладке.':entriesView.kind==='card'?'Вы ещё не открывали карту дня.':'Записей пока нет.'}</p>`;
+    $('entries-more').hidden=entriesView.next===null;
+  }catch{
+    if(request!==entriesView.request)return;
+    box.innerHTML='<p class="msg err">История не загрузилась. <button type="button" class="text-action" onclick="loadEntries()">Повторить</button></p>';
+  }
 }
 function toggleEntry(n){
   const it = $('he-' + n), body = $('hb-' + n); if (!it) return;
-  const open = !it.classList.contains('on'); it.classList.toggle('on', open); hap(9);
+  const open = !it.classList.contains('on'); it.classList.toggle('on', open); it.querySelector('.histhead').setAttribute('aria-expanded',open); hap(9);
   if (open && !body.innerHTML) { body.innerHTML = entryHtml(S.entries[n]); preparePending(); }
 }
 function entryHtml(i){
@@ -3083,11 +3098,24 @@ const HUB_OPTS=[['rune','rune','Руна','one'],['runes3','rune','Три рун
 const hubDraft={text:'',topic:null,kind:'rune'};
 function renderHub(){
   const w=$('t-worry');if(!w)return;
-  w.innerHTML=`<div class="card hubq"><p>С чего начнём?</p><div class="chips flow" id="hub-chips">${HUB_TOPICS.map(([label],i)=>`<button type="button" class="chip${hubDraft.topic===i?' on':''}" aria-pressed="${hubDraft.topic===i}" onclick="hubTopic(${i})">${label}</button>`).join('')}</div>
+  w.innerHTML=`<div class="card hubq"><p>Темы</p><div class="chips flow" id="hub-chips">${HUB_TOPICS.map(([label],i)=>`<button type="button" class="chip${hubDraft.topic===i?' on':''}" aria-pressed="${hubDraft.topic===i}" onclick="hubTopic(${i})">${label}</button>`).join('')}</div>
     <div class="field"><label for="hub-q">Что именно сейчас не даёт покоя?</label><textarea id="hub-q" maxlength="300" placeholder="Опишите своими словами…" oninput="hubDraft.text=this.value;hubCheck()">${esc(hubDraft.text)}</textarea></div>
+    <section class="hub-questions"><h3>Вопросы</h3><div class="chips flow" id="hub-questions"></div></section>
     <div id="hub-opts" hidden><span class="eyebrow">Как получить ответ</span><div class="chips flow">${HUB_OPTS.map(([key,ic,label])=>`<button type="button" class="chip${hubDraft.kind===key?' on':''}" aria-pressed="${hubDraft.kind===key}" onclick="hubMethod('${key}')">${label}</button>`).join('')}</div>
     <button type="button" class="btn" id="hub-go" onclick="hubAsk()">Получить ответ</button></div></div><div id="hub-res" hidden></div>`;
-  hubCheck();
+  hubCheck();loadHubQuestions();
+}
+function loadHubQuestions(){
+  if(CAT){renderHubQuestions();return;}
+  $('hub-questions').innerHTML='<p class="hint">Загружаем вопросы…</p>';
+  loadCatalog().then(renderHubQuestions).catch(()=>{const box=$('hub-questions');if(box)box.innerHTML='<button type="button" class="text-action" onclick="loadHubQuestions()">Загрузить вопросы</button>';});
+}
+function renderHubQuestions(){
+  const box=$('hub-questions');if(!box)return;
+  box.innerHTML=(CAT?.worries||[]).map(text=>`<button type="button" class="chip" onclick="hubPick(this)">${esc(text)}</button>`).join('');
+}
+function hubPick(button){
+  hubDraft.text=button.textContent;$('hub-q').value=hubDraft.text;hubCheck();growTextarea($('hub-q'));$('hub-q').focus();
 }
 function hubTopic(index){
   const previous=HUB_TOPICS[hubDraft.topic]?.[1];
