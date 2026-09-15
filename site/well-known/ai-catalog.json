@@ -3,28 +3,28 @@
   "host": { "name": "Лунарио", "url": "https://lunario.online", "description": "Пространство, где можно услышать себя: карта дня, ответ на вопрос, лунный день, дневник и настроение. Русскоязычное бесплатное веб-приложение." },
   "entries": [
     {
-      "id": "urn:air:lunario.online:docs:llms",
+      "identifier": "urn:air:lunario.online:docs:llms",
       "displayName": "Описание Лунарио для агентов",
       "type": "text/markdown",
       "url": "https://lunario.online/app/llms.txt",
       "representativeQueries": ["что такое Лунарио", "что умеет приложение Лунарио", "какие открытые данные есть у Лунарио"]
     },
     {
-      "id": "urn:air:lunario.online:api:lunar-days",
+      "identifier": "urn:air:lunario.online:api:lunar-days",
       "displayName": "30 лунных дней: названия, рекомендации, главы справочника",
       "type": "application/json",
       "url": "https://lunario.online/app/api/lunar-days",
       "representativeQueries": ["какой сегодня лунный день и что он значит", "рекомендация на 12 лунный день", "что говорит лунный календарь про стрижку"]
     },
     {
-      "id": "urn:air:lunario.online:api:catalog",
+      "identifier": "urn:air:lunario.online:api:catalog",
       "displayName": "Каталог карт Таро, рун и раскладов Лунарио",
       "type": "application/json",
       "url": "https://lunario.online/app/api/catalog",
       "representativeQueries": ["значение карты Шут в Лунарио", "какие расклады рун есть в приложении", "что значит руна Беркана"]
     },
     {
-      "id": "urn:air:lunario.online:api:health",
+      "identifier": "urn:air:lunario.online:api:health",
       "displayName": "Состояние сервиса",
       "type": "application/json",
       "url": "https://lunario.online/app/api/health",
