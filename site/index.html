@@ -3210,7 +3210,7 @@ function paintTone(){
   $('tone-box').innerHTML=`${st?`<p class="hint" style="margin-bottom:18px">${esc(st.statement||st.text)}</p>`:''}
     <p class="practice-question">${esc(d.question)}</p>
     ${toneSaved?`<div class="saved-state" role="status">Сохранено в дневнике · ${fmtDay(toneSaved.day)}</div><p class="entry-text">${esc(toneSaved.text)}</p>`:''}
-    <div class="card practice-card"><div class="field"><label for="tone-a">Мой ответ · видите только вы</label><textarea id="tone-a" maxlength="2000" placeholder="Пара строк — как есть…" oninput="toneDraft=this.value">${esc(toneDraft)}</textarea></div>
+    <div class="card practice-card"><div class="field"><textarea id="tone-a" aria-label="Ответ на вопрос дня" maxlength="2000" placeholder="Пара строк — как есть…" oninput="toneDraft=this.value">${esc(toneDraft)}</textarea></div>
     <button id="tone-save" type="button" class="btn sm" onclick="saveAnswer()" ${toneSaving?'disabled':''}>${toneSaving?'Сохраняем…':'Отправить в дневник'}</button></div>`;
 }
 async function saveAnswer(){
