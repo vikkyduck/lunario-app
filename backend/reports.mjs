@@ -48,8 +48,8 @@ export const OVERVIEW_BLOCKS = ['new_users', 'activation', 'active', 'repeat', '
 export const ROLE_MENUS = {
   admin:     ['overview', 'users', 'lifecycle', 'economy', 'ai', 'backlog', 'system', 'data', 'events', 'access', 'saved'],
   marketing: ['acquisition', 'campaigns', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'topics', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
-  product:   ['activity', 'retention', 'activation', 'features', 'topics', 'placeholders', 'rituals', 'cohorts', 'notifications', 'ai', 'backlog', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
-  content:   ['materials', 'media', 'content', 'backlog', 'quality', 'concerns', 'rituals', 'placeholders', 'feedback', 'faq', 'saved'],
+  product:   ['activity', 'retention', 'activation', 'features', 'topics', 'rituals', 'cohorts', 'notifications', 'ai', 'backlog', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
+  content:   ['materials', 'media', 'content', 'backlog', 'quality', 'concerns', 'rituals', 'feedback', 'faq', 'saved'],
   support:   ['tickets', 'supportmetrics', 'backlog', 'faq', 'users', 'delivery', 'saved'],
 };
 export const REPORT_META = {
@@ -71,7 +71,6 @@ export const REPORT_META = {
   cohorts:       ['Сравнение когорт', 'Как отличаются группы по неделе, источнику и первой функции'],
   activation:    ['Первый результат', 'Доходит ли новичок до результата за 24 часа'],
   features:      ['Использование функций', 'Что пробуют, что используют повторно, что не замечают'],
-  placeholders:  ['Интерес к будущим функциям', 'Что нажимают из ещё не сделанного'],
   topics:        ['Темы чтения', 'Какие темы лунного дня выбирают и как это связано с возвращением'],
   rituals:       ['Ритуалы и постоянство', 'Какие ежедневные действия входят в привычку'],
   notifications: ['Пуши и ежедневные письма', 'Включают ли напоминания и возвращаются ли после них'],
@@ -163,7 +162,7 @@ const EVENT_NAMES = {
   worry_pick: 'Выбрал тему «Что беспокоит»', onboard_start: 'Начал анкету', onboard_done: 'Заполнил анкету', login_code_sent: 'Запросил код', login_done: 'Подтвердил почту',
   card_open: 'Открыл карту дня', mood_set: 'Отметил настроение', ask_yesno: 'Спросил «Да / нет»', ask_rune: 'Вытянул руну', ask_spread: 'Сделал расклад', spread_limit: 'Упёрся в лимит раскладов',
   journal_add: 'Сделал запись', wish_add: 'Добавил желание', compat_calc: 'Посчитал совместимость', share_card: 'Поделился карточкой', install_prompt: 'Увидел «Установить»', installed: 'Установил на телефон',
-  natal_view: 'Открыл натальную карту', paywall_view: 'Увидел платное', paywall_click: 'Нажал на платное', invite_copy: 'Скопировал приглашение', invite_used: 'Пришёл по приглашению', push_on: 'Включил напоминание', push_off: 'Выключил напоминание', pay_start: 'Начал оплату', payment_success: 'Оплатил',
+  natal_view: 'Открыл натальную карту', invite_copy: 'Скопировал приглашение', invite_used: 'Пришёл по приглашению', push_on: 'Включил напоминание', push_off: 'Выключил напоминание',
   reminder_on: 'Включил напоминание функции', reminder_off: 'Выключил напоминание функции', reminder_test: 'Прислал пробное напоминание', card_download: 'Скачал открытку',
   support_open: 'Открыл поддержку', support_new: 'Написал в поддержку', gratitude_add: 'Записал благодарность', answer_add: 'Ответил на вопрос дня', news_view: 'Открыл «Новое в приложении»', wish_photo: 'Добавил фото к желанию', photo_set: 'Поставил фото аккаунта',
   topics_set: 'Выбрал темы чтения', topics_all: 'Переключил «показать всё»', lunar_expand: 'Развернул раздел лунного дня', habit_award: 'Получил награду за привычку', utm_seen: 'Пришёл по ссылке кампании',
@@ -632,18 +631,6 @@ const builders = {
     ];
     R.notes.push('Ряд тем появляется со второго открытия лунного дня; до этого человек видит набор по умолчанию.');
     R.how = 'Выбор тем хранится в настройках человека (ключи тем, без текстов). Разворачивание скрытых разделов и смена выбора — события lunar_expand и topics_set. Личный год темами пока не режется.';
-  },
-  placeholders(R, { P }) {
-    const pv = all("SELECT detail, COUNT(*) n, COUNT(DISTINCT user_id) p FROM events WHERE type = 'paywall_view' AND day BETWEEN ? AND ? GROUP BY detail", P.from, P.to);
-    const pc = all("SELECT detail, COUNT(*) n, COUNT(DISTINCT user_id) p FROM events WHERE type = 'paywall_click' AND day BETWEEN ? AND ? GROUP BY detail", P.from, P.to);
-    const rep = all("SELECT detail, COUNT(*) p FROM (SELECT detail, user_id, COUNT(DISTINCT day) d FROM events WHERE type = 'paywall_click' AND day BETWEEN ? AND ? GROUP BY detail, user_id HAVING d >= 2) GROUP BY detail", P.from, P.to);
-    const interest = all('SELECT feature, COUNT(*) n, SUM(notify) notify FROM interest WHERE substr(ts,1,10) BETWEEN ? AND ? GROUP BY feature', P.from, P.to);
-    const keys = [...new Set([...pv.map((r) => r.detail), ...pc.map((r) => r.detail), ...interest.map((r) => r.feature)])];
-    const g = (arr, k, f = 'n') => (arr.find((r) => (r.detail ?? r.feature) === k) || {})[f] || 0;
-    R.kpis = [kpi('Увидели вход в «скоро»', pv.reduce((s, r) => s + r.p, 0), { unit: 'чел.' }), kpi('Нажали', pc.reduce((s, r) => s + r.p, 0), { unit: 'чел.' }), kpi('Оставили «сообщите, когда появится»', interest.reduce((s, r) => s + r.notify, 0), { unit: 'чел.' }), kpi('Вернулись к заглушке', rep.reduce((s, r) => s + r.p, 0), { unit: 'чел.', sub: 'нажали в разные дни' })];
-    R.charts = [chart('hbars', 'Интерес по функциям', 'уникальных нажавших', keys.map((k) => [k || '—', g(pc, k, 'p')]).sort((a, b) => b[1] - a[1]))];
-    R.tables = [table('Будущие функции', ['Функция', 'Увидели вход', 'Нажали (уник.)', 'Нажатий', 'Вернулись повторно', 'Записали интерес', 'Просили сообщить'], keys.map((k) => [k || '—', g(pv, k, 'p'), g(pc, k, 'p'), g(pc, k), g(rep, k, 'p'), g(interest, k), g(interest, k, 'notify')]), 'Нажатие на заглушку — интерес, а не использование: оно не входит в активацию и активную аудиторию. «Что сделали после» появится, когда событие получит источник перехода.')];
-    R.how = 'Считаются показы и нажатия на «скоро»/платное и записи интереса с ценой. Эти данные помогают выбирать очерёдность разработки, но не означают, что функцию попробовали.';
   },
   rituals(R, { P, days }) {
     const c = (sql, ...a) => one(sql, ...a).c;

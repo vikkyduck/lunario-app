@@ -9,7 +9,6 @@
 import { readFileSync, existsSync, watch } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import bundledSets from './daily-sets.json' with { type: 'json' };
 
 export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'content');
 /* Картинки лежат рядом с текстами, в папке картинки/: по-русски для владельца, по-английски в адресе.
@@ -534,10 +533,10 @@ function build() {
   r.HABIT_IDEAS = lines('привычки.txt') || HABITS_FALLBACK;
 
   /* Установки дня: номер | установка | вопрос. Каждому человеку — случайно и без повторов в течение года. */
-  r.LEGACY_SETS = rows('установки.txt', 3) || SETS_FALLBACK;
-  // Partial/older content files must not shrink the complete 365-phrase collection.
-  const customSets = rows('установки.txt', 3) || [];
-  r.SETS = [...new Map([...bundledSets.sets, ...customSets].map(s => [s[1].trim().replace(/\s+/g, ' '), s])).values()];
+  const setRows = rows('установки.txt', 3) || SETS_FALLBACK;
+  r.LEGACY_SETS = setRows;
+  r.SETS = [...new Map(setRows.map((s) => [s[1].trim().replace(/\s+/g, ' '), s])).values()];   // без повторов фразы
+  if (r.SETS.length < 365) console.warn(`Тексты: установок дня ${r.SETS.length} — меньше 365, повторы у людей начнутся раньше года`);
   /* «Новое в приложении»: месяц | название | раздел:виджет | описание */
   r.NEWS = (rows('новое.txt', 4) || []).map((c) => { const [view, widget] = c[2].split(':'); return { month: c[0], title: c[1], view: view.trim(), widget: (widget || '').trim(), text: c[3] }; });
 

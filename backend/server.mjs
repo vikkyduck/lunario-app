@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt, createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { vapidKeys } from './push.mjs';
-import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
 import * as C from './content.mjs';
 import { personalExport } from './personal-export.mjs';
 import { preferences, validPreferences, timeline } from './experience.mjs';
@@ -48,29 +47,12 @@ const Backup = createBackup({ dataDir: DATA_DIR, contentDir: CONTENT_DIR, backup
 const CONSENT_VERSION = '2026-08-23';
 const PUSH = vapidKeys(DATA_DIR);
 const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replace(/\/+$/, '');
-/* Цена-гипотеза для замера спроса. Меняется одной строкой (или SUB_PRICE в .env),
-   когда партнёр принесёт медиаплан. Денег не берём — только считаем намерение. */
-const SUB_PRICE = process.env.SUB_PRICE || '490 ₽ / месяц';
-/* Продамус: адрес платёжной формы и секретный ключ (Настройки → Секретный ключ).
-   Пока ключа нет — оплата не предлагается, работает прежний замер интереса. */
-const PAY_FORM = (process.env.PRODAMUS_FORM || 'utkina.payform.ru').trim();
-const PAY_SECRET = (process.env.PRODAMUS_SECRET || '').trim();
-const PAY_AMOUNT = (process.env.SUB_AMOUNT || '490.00').trim();   // число для платёжки
-/* Что можно оплатить. Цены-гипотезы для замера спроса — меняются через .env.
-   subscription/unlimited включают Лунарио+; expert — разовая услуга (эксперт свяжется). */
-const PAY_ITEMS = {
-  subscription: { name: 'Лунарио+ — доступ на месяц', amount: () => PAY_AMOUNT, grants: 'plus' },
-  unlimited:    { name: 'Лунарио+ — доступ на месяц', amount: () => PAY_AMOUNT, grants: 'plus' },
-  expert:       { name: 'Консультация с экспертом', amount: () => (process.env.EXPERT_AMOUNT || '2500.00').trim(), grants: 'expert' },
-};
-const payReady = () => !!PAY_SECRET;
-if (!PAY_SECRET) console.log('Оплата не настроена: задайте PRODAMUS_SECRET в .env (backend/set-pay.sh)');
 /* Что разрешено писать в аналитику. Текстов вопросов в списке нет намеренно. */
 const EVENT_TYPES = new Set([
   'app_open', 'intro_view', 'tour_view', 'login_open', 'worry_pick', 'onboard_start', 'onboard_done', 'login_code_sent', 'login_done',
   'card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'spread_limit',
   'journal_add', 'wish_add', 'compat_calc', 'share_card', 'install_prompt', 'installed',
-  'paywall_view', 'paywall_click', 'invite_copy', 'invite_used', 'push_on', 'push_off', 'pay_start', 'payment_success',
+  'invite_copy', 'invite_used', 'push_on', 'push_off',
   'support_open', 'support_new', 'utm_seen', 'natal_view', 'card_download',
   'reminder_on', 'reminder_off', 'reminder_test', 'habit_add', 'habit_mark', 'habit_award', 'askesis_start', 'askesis_mark', 'sky_view', 'lunar_view', 'moodreport_view',
   'gratitude_add', 'answer_add', 'news_view', 'wish_photo', 'photo_set', 'topics_set', 'topics_all', 'lunar_expand',
@@ -148,27 +130,12 @@ db.exec(`
     age_band TEXT DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_events_day ON events (day, type);
-  /* Платежи: заказ создаётся у нас, подтверждение приходит вебхуком Продамуса. */
-  CREATE TABLE IF NOT EXISTS payments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts TEXT NOT NULL, user_id INTEGER NOT NULL,
-    feature TEXT NOT NULL, amount TEXT NOT NULL,
-    status TEXT DEFAULT 'created',          -- created | paid
-    paid_ts TEXT DEFAULT '', payment_type TEXT DEFAULT '',
-    demo INTEGER DEFAULT 0
-  );
   /* Кому слать напоминание про карту дня. */
   CREATE TABLE IF NOT EXISTS push_subs (
     endpoint TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
     created_at TEXT NOT NULL, last_ok TEXT DEFAULT ''
   );
   /* Интерес к тому, чего ещё нет: подписка, эксперт, безлимит, артефакты. */
-  CREATE TABLE IF NOT EXISTS interest (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts TEXT NOT NULL, user_id INTEGER NOT NULL,
-    feature TEXT NOT NULL, price TEXT DEFAULT '',
-    notify INTEGER DEFAULT 0, email TEXT DEFAULT ''
-  );
 `);
 
 const wishList = (userId) => db.prepare("SELECT id, text, done, ts, photo <> '' AS hasPhoto, photo_ts FROM wishes WHERE user_id=? ORDER BY done, id DESC").all(userId)
@@ -201,7 +168,6 @@ function wipePersonal(userId) {
   if (!cols.includes('ref_code')) db.exec("ALTER TABLE users ADD COLUMN ref_code TEXT DEFAULT ''");
   if (!cols.includes('invited_by')) db.exec('ALTER TABLE users ADD COLUMN invited_by INTEGER');
   if (!cols.includes('bonus_until')) db.exec("ALTER TABLE users ADD COLUMN bonus_until TEXT DEFAULT ''");
-  if (!cols.includes('plus_until')) db.exec("ALTER TABLE users ADD COLUMN plus_until TEXT DEFAULT ''");
 }
 
 /* Дневник: вид записи (благодарность, ответ на вопрос дня) и заголовок; аскеза — до даты, а не на число дней;
@@ -308,8 +274,7 @@ console.log('Личные записи шифруются перед запис�
 
 /* Подарок за приглашение действует неделю и удваивает число подробных разборов. */
 const hasBonus = (u) => !!u.bonus_until && u.bonus_until >= today();
-const hasPlus = (u) => !!u.plus_until && u.plus_until >= today();
-const spreadLimit = (u) => (hasPlus(u) ? 999 : hasBonus(u) ? 4 : 2);
+const spreadLimit = (u) => (hasBonus(u) ? 4 : 2);
 
 /* Личные таблицы человека: их чистит «Очистить историю», при удалении аккаунта к ним добавляются сессии и подписки */
 const PERSONAL_TABLES = ['entries', 'moods', 'journal', 'wishes', 'usage', 'shelves'];
@@ -329,97 +294,6 @@ function ageBand(birth) {
 }
 
 /* Страница сводки: цифры словами, чтобы не читать выгрузку данных. */
-function statsPage() {
-  const s = statsPack();
-  const esc = (x) => String(x).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-  const rows = (arr, a, b) => arr.length
-    ? arr.map((r) => `<tr><td>${esc(r[a])}</td><td class="n">${esc(r[b])}</td></tr>`).join('')
-    : '<tr><td colspan="2" class="empty">Пока пусто</td></tr>';
-  const returning = s.returning.map((r) => `<tr><td>${r.days} ${r.days === 1 ? 'день' : r.days < 5 ? 'дня' : 'дней'}</td><td class="n">${r.people}</td></tr>`).join('') || '<tr><td colspan="2" class="empty">Пока пусто</td></tr>';
-  const interest = s.interest.length
-    ? s.interest.map((i) => {
-        const RU = { subscription: 'Лунарио+ (подписка)', expert: 'разговор с экспертом', unlimited: 'безлимит разборов', artifacts: 'артефакты', spreads: 'расклады на выбор', courses: 'курсы и круги', constellation: 'своё созвездие' };
-        return `<tr><td>${RU[i.feature] || esc(i.feature)}</td><td class="n">${i.clicks}</td><td class="n">${i.people}</td><td class="n">${i.want_notice || 0}</td></tr>`;
-      }).join('')
-    : '<tr><td colspan="4" class="empty">Никто пока не нажимал</td></tr>';
-  return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Лунарио — сводка</title>
-<style>
-  body{margin:0;background:#0b0a14;color:#f5f2ea;font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:28px 18px 60px}
-  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
-  h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0}
-  h2{font-size:19px;margin:0 0 12px;font-weight:600;color:#f0d79a}
-  .muted{color:#b9b2cf;font-size:14px}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .card{background:#1d1738;border:1px solid rgba(245,242,234,.10);border-radius:14px;padding:16px 18px}
-  .card b{display:block;font-size:28px;font-weight:600;color:#d9b868}
-  .card span{font-size:13px;color:#b9b2cf}
-  table{width:100%;border-collapse:collapse;background:#1d1738;border:1px solid rgba(245,242,234,.10);border-radius:14px;overflow:hidden}
-  td,th{padding:10px 14px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);font-size:14.5px}
-  th{color:#b9b2cf;font-weight:500;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em}
-  tr:last-child td{border-bottom:0}
-  .n{text-align:right;font-variant-numeric:tabular-nums}
-  .empty{color:#8f87ad;text-align:center}
-</style></head><body><div class="wrap">
-  <div>
-    <h1>Лунарио — что происходит</h1>
-    <p class="muted">Данные на ${esc(s.today)}. Текстов вопросов здесь нет: только счётчики.</p>
-  </div>
-  <div class="cards">
-    <div class="card"><b>${s.people['всего']}</b><span>человек всего</span></div>
-    <div class="card"><b>${s.people['заполнили_профиль']}</b><span>заполнили профиль</span></div>
-    <div class="card"><b>${s.people['оставили_почту']}</b><span>оставили почту</span></div>
-  </div>
-  <div><h2>Что нажимают</h2><table><tr><th>Действие</th><th class="n">Раз</th></tr>${rows(s.events_by_type, 'type', 'n')}</table></div>
-  <div><h2>Сколько дней возвращались</h2><table><tr><th>Заходили</th><th class="n">Человек</th></tr>${returning}</table></div>
-  <div><h2>Возраст</h2><table><tr><th>Когорта</th><th class="n">Человек</th></tr>${rows(s.cohorts, 'age_band', 'people')}</table></div>
-  <div>
-    <h2>За что готовы платить</h2>
-    <table><tr><th>Что</th><th class="n">Кликов</th><th class="n">Людей</th><th class="n">Ждут письма</th></tr>${interest}</table>
-    <p class="muted" style="margin-top:8px">Цена на экране: ${esc(s.price_shown)}</p>
-  </div>
-  <div><h2>По дням</h2><table><tr><th>День</th><th class="n">Действий</th></tr>${rows(s.events_by_day, 'day', 'n')}</table></div>
-</div></body></html>`;
-}
-
-/* Доступ к сводке — по паролю из .env (как в админке лендинга). */
-function statsAuthed(req, res) {
-  const user = (process.env.STATS_USER || '').trim(), pass = (process.env.STATS_PASS || '').trim();
-  if (!user || !pass) {
-    res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Сводка не настроена: задайте STATS_USER и STATS_PASS в /opt/lunario-app/.env');
-    return false;
-  }
-  const head = String(req.headers.authorization || '');
-  if (head.startsWith('Basic ')) {
-    const [u2, p2] = Buffer.from(head.slice(6), 'base64').toString('utf8').split(':');
-    if (u2 === user && p2 === pass) return true;
-  }
-  res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Lunario"', 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('Нужен пароль');
-  return false;
-}
-
-/* Сводка: сколько людей, что нажимают, кто возвращается, за что готовы платить. */
-function statsPack() {
-  const q = (sql, ...args) => db.prepare(sql).all(...args);
-  const one = (sql, ...args) => db.prepare(sql).get(...args);
-  const day = today();
-  const users = one('SELECT COUNT(*) c FROM users').c;
-  const onboarded = one('SELECT COUNT(*) c FROM users WHERE onboarded = 1').c;
-  const withEmail = one("SELECT COUNT(*) c FROM users WHERE email <> ''").c;
-  return {
-    today: day,
-    people: { всего: users, заполнили_профиль: onboarded, оставили_почту: withEmail },
-    events_by_day: q("SELECT day, COUNT(*) n FROM events WHERE day >= date('now','-14 days') GROUP BY day ORDER BY day DESC"),
-    events_by_type: q("SELECT type, COUNT(*) n, COUNT(DISTINCT user_id) people FROM events GROUP BY type ORDER BY n DESC"),
-    cohorts: q("SELECT age_band, COUNT(DISTINCT user_id) people FROM events WHERE age_band <> '' GROUP BY age_band ORDER BY age_band"),
-    returning: q("SELECT days, COUNT(*) people FROM (SELECT user_id, COUNT(DISTINCT day) days FROM events GROUP BY user_id) GROUP BY days ORDER BY days"),
-    interest: q('SELECT feature, COUNT(*) clicks, COUNT(DISTINCT user_id) people, SUM(notify) want_notice FROM interest GROUP BY feature ORDER BY clicks DESC'),
-    price_shown: SUB_PRICE,
-  };
-}
 
 function hash32(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
@@ -671,7 +545,7 @@ const natalOf = (u) => {
   const tzOff = u.tz ? tzOffsetMinutes(u.tz, `${u.birth}T${time || '12:00'}:00`) : 0;
   return natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
 };
-const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, hasPlus, cardOfDay, dayPack, habitList, askesisList, natal: natalOf, MOOD_RU, nowISO });
+const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalOf, MOOD_RU, nowISO });
 /* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку */
 const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/ritual', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data', '/api/preferences']);
 /* У тех, кто пришёл раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
@@ -711,67 +585,7 @@ const server = createServer(async (req, res) => {
 
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.
        Закрыта паролем; личных текстов внутри нет — только счётчики. */
-    if (p === '/api/stats') {
-      if (!statsAuthed(req, res)) return;
-      return json(res, 200, statsPack());
-    }
 
-    /* Та же сводка, но читаемая человеком. */
-    if (p === '/stats' || p === '/stats/') {
-      if (!statsAuthed(req, res)) return;
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-      return res.end(statsPage());
-    }
-
-    /* Подтверждение оплаты от Продамуса. Без куки — источник проверяется подписью. */
-    if (p === '/api/pay/webhook' && req.method === 'POST') {
-      if (!payReady()) { res.writeHead(503); return res.end('not configured'); }
-      const raw = await readRaw(req);
-      const data = payParse(raw);
-      const signHeader = req.headers['sign'] || req.headers['Sign'];
-      console.log(`[вебхук] пришёл: order_id=${data.order_id||'?'} status=${data.payment_status||'?'} demo=${data.demo_mode||'0'} подпись=${signHeader?'есть':'нет'}`);
-
-      /* Продамус проверяет адрес пробным запросом перед сохранением: в нём нет
-         нашего номера заказа. Отвечаем «принято», иначе адрес не сохранится.
-         Ничего при этом не активируем — деньги двигают только подписанные уведомления. */
-      if (!/^lun-\d+$/.test(String(data.order_id || ''))) {
-        console.log('[вебхук] пробный запрос — отвечаем принято');
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        return res.end('success');
-      }
-      if (!payVerify(data, PAY_SECRET, signHeader)) {
-        console.error('[оплата] подпись уведомления не сошлась, order_id:', data.order_id);
-        res.writeHead(400); return res.end('bad sign');
-      }
-      const orderId = String(data.order_id || '');
-      const m = orderId.match(/^lun-(\d+)$/);
-      const status = String(data.payment_status || '');
-      if (m && status === 'success') {
-        const pay = db.prepare('SELECT * FROM payments WHERE id = ?').get(Number(m[1]));
-        if (pay && pay.status !== 'paid') {
-          const isDemo = String(data.demo_mode || '') === '1' || String(data.payment_type || '').includes('demo');
-          db.prepare("UPDATE payments SET status='paid', paid_ts=?, payment_type=?, demo=? WHERE id=?")
-            .run(nowISO(), clean(String(data.payment_type || ''), 60), isDemo ? 1 : 0, pay.id);
-          const u2 = db.prepare('SELECT * FROM users WHERE id = ?').get(pay.user_id);
-          if (u2) {
-            const grants = (PAY_ITEMS[pay.feature] || {}).grants;
-            if (grants === 'plus') {
-              /* Лунарио+ на 30 дней; повторная оплата продлевает от конца текущего срока */
-              const from = hasPlus(u2) ? new Date(u2.plus_until + 'T00:00:00Z') : new Date();
-              const until = new Date(from.getTime() + 30 * 864e5).toISOString().slice(0, 10);
-              db.prepare('UPDATE users SET plus_until=? WHERE id=?').run(until, u2.id);
-              console.log(`[оплата] заказ ${orderId} оплачен${isDemo ? ' (демо)' : ''}, Лунарио+ до ${until} у пользователя ${u2.id}`);
-            } else {
-              /* Разовая услуга (консультация): доступ не выдаём, эксперт свяжется вручную. */
-              console.log(`[оплата] заказ ${orderId} (${pay.feature}) оплачен${isDemo ? ' (демо)' : ''}, пользователь ${u2.id}`);
-            }
-            track(u2, 'payment_success', pay.feature + (isDemo ? ':demo' : ''));
-          }
-        }
-      }
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
-      return res.end('success');
-    }
 
     /* ── API ── */
     if (p.startsWith('/api/')) {
@@ -1029,17 +843,6 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true });
       }
 
-      /* «Хочу», когда откроется: замер спроса на то, чего ещё нет. */
-      if (p === '/api/interest' && req.method === 'POST') {
-        const b = await readBody(req);
-        const feature = clean(b.feature, 40);
-        if (!['subscription', 'expert', 'unlimited', 'artifacts', 'spreads', 'courses', 'constellation'].includes(feature)) return json(res, 400, { ok: false });
-        const notify = b.notify === true;
-        db.prepare('INSERT INTO interest (ts, user_id, feature, price, notify, email) VALUES (?,?,?,?,?,?)')
-          .run(nowISO(), u.id, feature, feature === 'subscription' ? SUB_PRICE : '', notify ? 1 : 0, notify ? (u.email || '') : '');
-        track(u, 'paywall_click', feature);
-        return json(res, 200, { ok: true, notify: notify && !!u.email });
-      }
 
       if (p === '/api/me' && req.method === 'GET') {
         const used = db.prepare('SELECT spreads FROM usage WHERE user_id = ? AND day = ?').get(u.id, d);
@@ -1048,11 +851,6 @@ const server = createServer(async (req, res) => {
           mood: (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d) || {}).mood || null,
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
           limits: { spreadsLeft: Math.max(0, spreadLimit(u) - (used ? used.spreads : 0)), spreadsTotal: spreadLimit(u) },
-          price: SUB_PRICE,
-          prices: { subscription: SUB_PRICE, unlimited: SUB_PRICE, expert: (process.env.EXPERT_PRICE || '2500 ₽ / консультация') },
-          payReady: payReady(),
-          plusUntil: u.plus_until || '',
-          plusActive: hasPlus(u),
           mailReady: mailLive(),
           supportUnread: W.userUnread(u.id),
           counts: {
@@ -1242,28 +1040,6 @@ const server = createServer(async (req, res) => {
       if (p === '/api/entries' && req.method === 'GET')
         return json(res, 200, entryPage(db,u.id,url.searchParams,open_));
 
-      /* Оплата: создаём заказ (подписка или консультация) и отправляем на страницу оплаты. */
-      if (p === '/api/pay' && req.method === 'POST') {
-        if (!payReady()) return json(res, 503, { ok: false, error: 'pay_off' });
-        const b = await readBody(req);
-        const feature = ['subscription', 'unlimited', 'expert'].includes(b.feature) ? b.feature : 'subscription';
-        const item = PAY_ITEMS[feature];
-        const amount = item.amount();
-        const ins = db.prepare('INSERT INTO payments (ts, user_id, feature, amount) VALUES (?,?,?,?)')
-          .run(nowISO(), u.id, feature, amount);
-        const orderId = `lun-${ins.lastInsertRowid}`;
-        const params = {
-          do: 'pay',
-          order_id: orderId,
-          products: [{ name: item.name, price: amount, quantity: '1' }],
-          urlSuccess: `${PUBLIC_BASE}/app/?paid=ok`,
-          urlReturn: `${PUBLIC_BASE}/app/?paid=no`,
-          urlNotification: `${PUBLIC_BASE}/app/api/pay/webhook`,
-          ...(u.email ? { customer_email: u.email } : {}),
-        };
-        track(u, 'pay_start', feature);
-        return json(res, 200, { ok: true, url: payLink(PAY_FORM, params, PAY_SECRET) });
-      }
 
       /* Напоминание утром: браузер даёт адрес своей ячейки, мы его храним. */
       if (p === '/api/push' && req.method === 'GET')
@@ -1485,7 +1261,6 @@ const server = createServer(async (req, res) => {
         for (const t of [...PERSONAL_TABLES, 'sessions', 'push_subs']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
         wipePersonal(u.id); clearReminders(u.id);
         // замер интереса остаётся (обезличенный факт клика), но почта и просьба «сообщите» уходят вместе с аккаунтом
-        db.prepare("UPDATE interest SET email = '', notify = 0 WHERE user_id = ?").run(u.id);
         db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
         res.setHeader('Set-Cookie', `lunario_app=; Path=${BASE}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
         return json(res, 200, { ok: true });

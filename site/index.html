@@ -1434,7 +1434,7 @@ async function loadShelves(){
       + row('Число судьбы', a.destiny ? `${a.destiny.n} · ${esc(a.destiny.title)}` : '')
       + row('Личный год', a.year ? `${a.year.n}${a.year.energy ? ' · ' + esc(a.year.energy) : ''}<small> с ${fmtDay(a.year.from)} по ${fmtDay(dayBefore(a.year.to))}</small>` : '')
       + row('Натальная карта', a.natal && a.natal.sun ? `☉ ${a.natal.sun}${a.natal.moon ? ` · ☽ ${a.natal.moon}` : ''}${a.natal.asc ? ` · Asc ${a.natal.asc}` : ''}` : '')
-      + row('В Лунарио', `с ${fmtDay(a.since)}${a.streak ? ` · серия ${a.streak}` : ''}${a.plus ? ' · Плюс' : ''}`) + row('Почта', esc(a.email));
+      + row('В Лунарио', `с ${fmtDay(a.since)}${a.streak ? ` · серия ${a.streak}` : ''}`) + row('Почта', esc(a.email));
     const wk = dy.week.filter((w) => w.moodRu).map((w) => `${fmtDay(w.day).slice(0, 5)} — ${w.moodRu}`).join(', ');
     const day = row('Настроение', esc(dy.moodRu)) + row('Карта дня', dy.card ? esc(dy.card.name) : '')
       + row('Луна', `${esc(dy.moon || '')}${dy.lunar ? ` · ${dy.lunar.n}-й лунный день` : ''}`) + row('Неделя', esc(wk))

@@ -40,7 +40,7 @@ read -r -p "3/3 Подпись отправителя [Лунарио <hello@lun
 SMTP_FROM=${SMTP_FROM:-"Лунарио <hello@lunario.online>"}
 
 umask 077
-# меняем только свои ключи — PRODAMUS_*, STATS_*, ADMIN_EMAILS и прочее в .env остаются (как в set-pay.sh / set-stats.sh)
+# меняем только свои ключи — остальное в .env (например ADMIN_EMAILS) остаётся
 touch "$ENV"
 grep -v '^SMTP_HOST=\|^SMTP_PORT=\|^SMTP_USER=\|^SMTP_PASS=\|^SMTP_FROM=' "$ENV" > "$ENV.tmp" || true
 {

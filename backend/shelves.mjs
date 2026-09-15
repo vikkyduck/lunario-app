@@ -30,7 +30,7 @@ const plural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : n %
 
 /* deps — то, что уже есть в server.mjs: база, шифрование, тексты и расчёты. Модуль ничего не дублирует. */
 export function createShelves(deps) {
-  const { db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, hasPlus, cardOfDay, dayPack, habitList, askesisList, natal, MOOD_RU, nowISO } = deps;
+  const { db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal, MOOD_RU, nowISO } = deps;
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS shelves (
@@ -57,7 +57,7 @@ export function createShelves(deps) {
       sign: sign ? { name: sign.name, element: ELEMENT[sign.name] || '', trait: sign.trait } : null,
       destiny: null, year: null, natal: null,
       since: (u.created_at || '').slice(0, 10), lastSeen: (u.last_seen || '').slice(0, 10), streak: u.streak || 0,
-      plus: hasPlus(u), plusUntil: u.plus_until || '', invited: !!u.invited_by,
+      invited: !!u.invited_by,
       interests: readingInterests(u),   // темы чтения, которые человек выбрал сам — явный сигнал интересов
     };
     if (birthOk) {
@@ -183,7 +183,7 @@ export function createShelves(deps) {
     if (a.year) L.push(`Личный год ${a.year.n}${a.year.planet ? ` (${a.year.planet} · ${a.year.energy})` : ''}, с ${fmt(a.year.from)} по ${fmt(dayShift(a.year.to, -1))}. ${a.year.text}${a.year.next ? ` Следующий, год ${a.year.next.n}, начнётся ${fmt(a.year.next.from)}.` : ''}`);
     if (a.natal && (a.natal.sun || a.natal.moon)) L.push(`Натальная карта: Солнце ${a.natal.sun ? inSignPhrase(a.natal.sun) : 'в —'}${a.natal.moon ? `, Луна ${inSignPhrase(a.natal.moon)}${a.natal.moonUncertain ? ' (знак зависит от времени рождения)' : ''}` : ''}${a.natal.asc ? `, Асцендент ${inSignPhrase(a.natal.asc)}` : ''}${a.natal.timeKnown ? '' : '; время рождения не указано, дома не считаются'}.`);
     if (a.interests && a.interests.length) L.push(`Интересы (выбранные темы чтения): ${a.interests.join(', ')}.`);
-    L.push(`В Лунарио с ${fmt(a.since)}${a.streak ? `, серия ${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')} подряд` : ''}${a.plus ? ', подписка Плюс' : ''}.`);
+    L.push(`В Лунарио с ${fmt(a.since)}${a.streak ? `, серия ${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')} подряд` : ''}.`);
 
     L.push('', `МОЙ ДЕНЬ (${fmt(dy.date)})`);
     const now = [];

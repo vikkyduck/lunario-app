@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { initDailySets, dailySet } from '../backend/daily-sets.mjs';
-import source from '../backend/daily-sets.json' with {type:'json'};
+process.env.CONTENT_DIR ||= new URL('../content', import.meta.url).pathname;
+const C = await import('../backend/content.mjs');
+const source = { sets: [...C.SETS] };   // единственный источник — content/установки.txt
 
 const db=new DatabaseSync(':memory:'); initDailySets(db);
 assert.equal(source.sets.length,365);
