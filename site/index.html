@@ -804,8 +804,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=36">
-<link rel="stylesheet" href="/app/moon-glass.css?v=36">
+<link rel="stylesheet" href="/app/experience.css?v=37">
+<link rel="stylesheet" href="/app/moon-glass.css?v=37">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -990,7 +990,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-askesis"><div id="as-box"></div></div>
   <div class="wpane" id="w-sky"><div id="sky-box"></div></div>
   <div class="wpane" id="w-worry"><div id="t-worry"></div></div>
-  <div class="wpane" id="w-day"><h2 id="f-title"></h2><p style="margin-top:9px" id="f-text"></p><div id="forecast-note" class="material-note"></div></div>
+  <div class="wpane" id="w-day"><h2 id="f-title"></h2><p style="margin-top:9px" id="f-text"></p><div id="f-bars" class="forecast-bars" aria-label="Сферы прогноза дня"></div><div id="forecast-note" class="material-note"></div></div>
   <div class="wpane" id="w-tone"><div id="tone-box"></div></div>
   <div class="wpane" id="w-gratitude"><div id="gr-box"></div></div>
   <div class="wpane" id="w-journal">
@@ -1258,9 +1258,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=36"></script>
+<script type="module" src="/app/sky.js?v=37"></script>
 
-<script src="/app/experience.js?v=36"></script>
+<script src="/app/experience.js?v=37"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1648,6 +1648,11 @@ function paintToday(){
   renderHub();
   paintCard();
   $('f-title').textContent=d.forecast.title; $('f-text').textContent=d.forecast.text;
+  $('f-bars').innerHTML=Object.entries({Работа:'work',Отношения:'love',Здоровье:'health',Финансы:'money'}).map(([label,key])=>{
+    const raw=d.forecast.bars?.[key];if(typeof raw!=='number'||!Number.isFinite(raw))return '';
+    const value=Math.max(0,Math.min(100,Math.round(raw)));
+    return `<div class="barrow"><span class="l">${label}</span><div class="bar" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><i style="width:${value}%"></i></div><span class="v">${value}%</span></div>`;
+  }).join('');
   $('t-daysub').textContent=d.forecast.title;
   if (wgOpen === 'tone') paintTone();
   renderMoods(); paintCardTile(); paintLunar(); loadNumerology();
@@ -1760,6 +1765,10 @@ function renderAuth(){
     return;
   }
   if (!S.mailReady) {
+    if(S.localPreview){
+      box.innerHTML='<p>Вход по почте доступен на сайте Лунарио.</p><p style="margin-top:12px">Это локальный просмотр: письма с кодом здесь не отправляются. Записи демо остаются здесь и не переносятся в аккаунт на сайте.</p><a class="btn auth-submit" href="https://lunario.online/app/" target="_blank" rel="noopener">Открыть сайт для входа ↗</a>';
+      return;
+    }
     box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Вход по почте скоро появится</p>
       <p style="font-size:13.5px;margin-top:7px">Пока записи хранятся на этом устройстве. Не удаляйте приложение — иначе история потеряется.</p>`;
     return;
@@ -3224,6 +3233,14 @@ function habitTab(view){habitView=view;hbEditing=null;paintHabits();focusSelecte
 function habitEdit(id){habitView='all';habitFormOpen=false;hbEditing=id;paintHabits();$('hb-t-'+id)?.focus();}
 function habitNew(){habitFormOpen=!habitFormOpen;if(habitFormOpen)hbEditing=null;paintHabits();if(habitFormOpen)$('hb-new')?.focus();}
 function habitCancelEdit(id){delete habitEditDrafts[id];hbEditing=null;paintHabits();}
+function habitProgress(h){
+  if(h.rule==='free')return `Отмечено ${h.total} ${plural(h.total,'раз','раза','раз')}`;
+  if(!h.streak)return 'Пока нет серии';
+  const unit=h.rule==='monthly'||h.rule.startsWith('mtimes:')?['месяц','месяца','месяцев']
+    :h.rule==='weekly'||h.rule.startsWith('times:')?['неделя','недели','недель']
+    :h.rule==='daily'?['день','дня','дней']:['выполнение','выполнения','выполнений'];
+  return `${h.streak} ${plural(h.streak,...unit)} подряд`;
+}
 function paintHabits(){
   const box=$('hb-box'),today=S.day.date,due=HB.filter(h=>h.due),done=due.filter(h=>h.today).length;
   const id=HB.length?regRes({type:'habits',items:HB,day:today}):'';
@@ -3231,9 +3248,9 @@ function paintHabits(){
   const row=h=>`<div class="item hb${h.today?' on':''}${hbEditing===h.id?' editing':''}" data-habit="${h.id}">
     <button type="button" class="hb-check" aria-label="${h.today?'Снять отметку':'Отметить'}: ${esc(h.title)}" aria-pressed="${h.today}" onclick="habitMark(${h.id})" ${habitBusy.has(h.id)?'disabled':''}>${h.today?'✓':''}</button>
     <div class="grow"><b class="hb-columns"><span>${esc(h.title)}</span><span class="hb-rule">${esc(h.ruleText||h.ruleLabel)}</span></b>
-      ${h.daily && h.streak?`<small>${h.streak} ${plural(h.streak,'день','дня','дней')} подряд</small>`:''}
+      <small class="habit-progress">${habitProgress(h)}</small>
       ${h.awards.length?`<span class="hb-badge">${awardIcon(h.awards.at(-1),16)} ${h.awards.at(-1)} дней</span>`:''}
-      ${habitView==='all'?`<div class="hd-row">${h.week.map(w=>`<button type="button" class="hd${w.done?' on':''}${w.day===today?' today':''}" onclick="habitMark(${h.id},'${w.day}')" aria-label="${fmtDay(w.day)}: ${w.done?'отмечено':'не отмечено'}" aria-pressed="${w.done}"><span>${WD_SHORT[wdIdx(w.day)]}</span></button>`).join('')}</div>`:''}
+      ${habitView==='all'?`<div class="hd-row">${h.week.map(w=>`<button type="button" class="hd${w.done?' on':''}${w.due?' planned':' rest'}${w.day===today?' today':''}" data-due="${w.due}" onclick="habitMark(${h.id},'${w.day}')" aria-label="${fmtDay(w.day)}: ${w.done?'отмечено':w.due?'запланировано, не отмечено':'свободный день'}" title="${w.due?'Запланировано':'Свободный день'}" aria-pressed="${w.done}"><span>${WD_SHORT[wdIdx(w.day)]}</span></button>`).join('')}</div>`:''}
       ${hbEditing===h.id?`<div class="hb-edit"><div class="field"><label for="hb-t-${h.id}">Название</label><input id="hb-t-${h.id}" value="${esc(habitEditDrafts[h.id]?.title??h.title)}" maxlength="80" oninput="habitEditDrafts[${h.id}]=Object.assign(habitEditDrafts[${h.id}]||{},{title:this.value})"></div>
         <div class="field"><label for="hb-r-${h.id}">Регулярность — своими словами</label><input id="hb-r-${h.id}" value="${esc(habitEditDrafts[h.id]?.rule??(h.ruleText||h.ruleLabel))}" maxlength="60" list="rule-ideas" oninput="habitEditDrafts[${h.id}]=Object.assign(habitEditDrafts[${h.id}]||{},{rule:this.value})"></div>
         <button type="button" class="btn sm" onclick="habitSave(${h.id})">Сохранить</button><div class="utility-actions"><button type="button" class="text-action secondary" onclick="habitCancelEdit(${h.id})">Отмена</button><button type="button" class="text-action secondary" onclick="habitRemove(${h.id})">Убрать привычку</button></div></div>`:''}
@@ -3242,10 +3259,11 @@ function paintHabits(){
     <div id="habit-list" role="tabpanel" aria-label="${habitView==='today'?'Сегодня':'Все привычки'}">
       <p class="practice-progress" role="status">${!HB.length?'Добавьте первую привычку':habitView==='all'?'Мои привычки':!due.length?'На сегодня ничего не запланировано':done===due.length?'Всё на сегодня отмечено ✓':'Отмечено '+done+' из '+due.length}</p>
       <div class="list">${items.map(row).join('')}</div>
+      ${habitView==='all'&&items.some(h=>h.week.some(w=>!w.due))?'<p class="hint habit-calendar-key">Пунктир — свободный день. При необходимости его тоже можно отметить</p>':''}
     </div>
     ${HB.length?`<button type="button" class="text-action add-action" aria-expanded="${formOpen}" aria-controls="hb-new-form" onclick="habitNew()">${formOpen?'Закрыть добавление':'+ Добавить привычку'}</button>`:''}
     <div id="hb-new-form" class="card practice-card" ${formOpen?'':'hidden'}><h3>Новая привычка</h3><div class="hb-entry">
-      <div class="field"><label for="hb-new">Что прививаю</label><input id="hb-new" placeholder="Например: 10 000 шагов" maxlength="80" value="${esc(habitDraft.title)}" oninput="habitDraft.title=this.value"></div>
+      <div class="field"><label for="hb-new">Что прививаю</label><input id="hb-new" placeholder="Например: 10 000 шагов" maxlength="80" value="${esc(habitDraft.title)}" list="hb-ideas" oninput="habitDraft.title=this.value"><datalist id="hb-ideas">${(CAT?.habitIdeas||[]).map(t=>`<option value="${esc(t)}"></option>`).join('')}</datalist></div>
       <div class="field"><label for="hb-rule">Как часто — своими словами</label><input id="hb-rule" placeholder="Каждый день, каждые 3 дня…" maxlength="60" value="${esc(habitDraft.rule)}" oninput="habitDraft.rule=this.value" list="rule-ideas"></div></div>
       <div class="chips flow">${RULE_CHIPS.map(t=>`<button type="button" class="chip" onclick="habitDraft.rule=this.textContent;$('hb-rule').value=habitDraft.rule">${t}</button>`).join('')}</div><datalist id="rule-ideas">${RULE_CHIPS.map(t=>`<option value="${t}">`).join('')}</datalist>
       <p class="hint">Можно указать свой ритм. Если он не распознан, отмечайте привычку в удобные вам дни</p><button type="button" class="btn sm" onclick="habitAdd()">Добавить</button></div>
@@ -3339,12 +3357,23 @@ function paintAskesis(){
   }).join('');
   const f=askForm.new||{title:'',until:''};
   const form=`<p>Отказ или ограничение до дня, который вы выберете сами.</p>
+    ${(CAT?.askesisIdeas||[]).length?`<details class="practice-ideas"><summary>Примеры аскез</summary><div class="chips flow">${CAT.askesisIdeas.map(t=>`<button type="button" class="chip" onclick="askPick(this.textContent)">${esc(t)}</button>`).join('')}</div></details>`:''}
     <div class="field"><label for="as-title">От чего отказываюсь или что ограничиваю</label><input id="as-title" maxlength="80" placeholder="Например: без шоппинга" value="${esc(f.title)}" oninput="askForm.new=Object.assign(askForm.new||{},{title:this.value})"></div>
     <div class="field"><label for="as-until">До какого дня</label><input id="as-until" type="date" min="${today}" value="${esc(f.until)}" onchange="askForm.new=Object.assign(askForm.new||{},{until:this.value})"></div>
+    <div class="chips flow ask-quick-dates" aria-label="Быстрый выбор срока">${[['Неделя',7],['2 недели',14],['Месяц',30],['40 дней',40],['До конца года',0]].map(([label,n])=>`<button type="button" class="chip" onclick="askQuick(${n})">${label}</button>`).join('')}</div>
     <button type="button" class="btn" onclick="askStart()">Взять аскезу</button>`;
   box.innerHTML=active+(AS.active.length<5?(AS.active.length?`<details class="practice-create" ${askForm.open?'open':''} ontoggle="askPanelToggle(this,'new')"><summary onclick="toggleAskPanel(event,this,'new')">Добавить аскезу</summary><div class="card practice-card">${form}</div></details>`:`<div class="card practice-card">${form}</div>`):'')+
     (AS.past.length?`<span class="eyebrow" style="margin-top:24px">Прошлые</span><div class="list">${AS.past.map(a=>`<div class="item"><b>${esc(a.title)}</b><small>${fmtDay(a.started)} — ${fmtDay(a.finished||a.until)} · ${a.status==='done'?'пройдена до конца':'завершена досрочно'}</small>${a.notes.length?moreBlock(a.notes.map(n=>`<p><small>${fmtDay(n.day)}</small><br>${esc(n.text)}</p>`).join(''),'Мои наблюдения'):''}</div>`).join('')}</div>`:'');
   askesisHomeStatus(AS);paintRem('askesis');preparePending();
+}
+function askPick(text){
+  $('as-title').value=text;askForm.new=Object.assign(askForm.new||{},{title:text});
+  $('as-title').focus();hap(9);
+}
+function askQuick(days){
+  // The end date is inclusive: a week begun today ends on its seventh day.
+  const until=days?new Date(Date.parse(S.day.date+'T12:00:00Z')+(days-1)*864e5).toISOString().slice(0,10):S.day.date.slice(0,4)+'-12-31';
+  $('as-until').value=until;askForm.new=Object.assign(askForm.new||{},{until});hap(9);
 }
 async function askStart(){
   const title = ($('as-title').value || '').trim(), until = $('as-until').value;
@@ -3432,8 +3461,11 @@ async function removePhoto(){ try { const r = await api('/photo', { method: 'DEL
 /* ══════════ Новое в приложении: плитки ведут в сами разделы, дублировать нечего ══════════ */
 const APP_RELEASES = [{month:'2026-09', keys:['askesis','habits','gratitude','mood','worry','tone','wishes','account','around','birthnum','support']}];
 function featureRoot(key){
-  if(key==='account')return document.querySelector('.app-nav [data-nav="account"]');
-  return document.querySelector('[data-feature="'+key+'"]')||document.querySelector('button[onclick="openWidget(\''+key+'\')"]');
+  if(!/^[a-z][a-z0-9-]*$/.test(key||''))return null;
+  if(key==='hwishes')key='wishes';
+  return document.querySelector('[data-feature="'+key+'"]')
+    ||document.querySelector('.app-nav [data-nav="'+(Object.hasOwn(VIEW_ALIASES,key)?VIEW_ALIASES[key]:key)+'"]')
+    ||document.querySelector('button[onclick="openWidget(\''+key+'\')"]');
 }
 async function paintNews(){
   const box = $('news-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
@@ -3446,10 +3478,15 @@ async function paintNews(){
   for(const key of keys){
     const root = featureRoot(key); if(!root) continue;
     const tile = key==='around'?document.querySelector('[data-feature="lunar"]').cloneNode(true):root.cloneNode(true); tile.className='wid'; tile.removeAttribute('id'); tile.removeAttribute('onclick'); tile.removeAttribute('style');
+    if(root.dataset.nav){
+      tile.replaceChildren();const icon=root.querySelector('.ico');if(icon)tile.appendChild(icon.cloneNode(true));
+      const title=document.createElement('b');title.textContent=root.textContent.trim();tile.appendChild(title);
+      const caption=$('v-'+root.dataset.nav)?.querySelector('.eyebrow');if(caption){const sub=document.createElement('span');sub.textContent=caption.textContent;tile.appendChild(sub);}
+    }
     tile.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
     tile.querySelectorAll('canvas').forEach(el=>{const icon=document.createElement('i');icon.className='ico moon';el.replaceWith(icon);});
-    tile.removeAttribute('data-feature');
-    tile.onclick=()=>{const current=featureRoot(key);if(!current)return;go(current.closest('.view')?.id.slice(2)||'home');if(key==='around')current.scrollIntoView({behavior:'smooth',block:'start'});else current.click();};
+    tile.removeAttribute('data-feature');tile.removeAttribute('data-nav');tile.removeAttribute('aria-current');tile.dataset.newsTarget=key;
+    tile.onclick=()=>{const current=featureRoot(key);if(!current)return;if(current.dataset.nav){current.click();return;}go(current.closest('.view')?.id.slice(2)||'home');if(key==='around')current.scrollIntoView({behavior:'smooth',block:'start'});else current.click();};
     box.appendChild(tile);
   }
   if(!box.children.length) box.innerHTML='<p class="hint">В этом месяце новинок ещё не было</p>';
@@ -3476,7 +3513,7 @@ function startApp(){
   if('serviceWorker' in navigator) ensurePushWorker().catch(()=>{});
   try{
     const r = await api('/me');
-    S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=!!r.mailReady; S.catalogV=r.catalogV||1;initExperience(r.preferences);
+    S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;initExperience(r.preferences);
     try{ if(/[?&]app=1/.test(location.search)) localStorage.setItem('lun_app','1'); }catch(e){}
     if(isStaff(r.user) && !inApp()){ location.replace('/app/cabinet'); return; }
     track('app_open');

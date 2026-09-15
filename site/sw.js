@@ -4,9 +4,9 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v36';
+const CACHE = 'lunario-app-v37';
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
-const SHELL = ['/app/', '/app/experience.css?v=36', '/app/moon-glass.css?v=36', '/app/experience.js?v=36', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=36', '/app/sky-model.js?v=36', '/app/constellations.js?v=36', '/app/assets/moon-hero.png'];
+const SHELL = ['/app/', '/app/experience.css?v=37', '/app/moon-glass.css?v=37', '/app/experience.js?v=37', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=37', '/app/sky-model.js?v=37', '/app/constellations.js?v=37', '/app/assets/moon-hero.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

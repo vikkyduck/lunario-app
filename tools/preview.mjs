@@ -3,7 +3,7 @@
    Personal demo data lives in .local-preview/data; it survives process restarts.
    Public illustrations are fetched read-only from the existing site. */
 import { createServer, request } from 'node:http';
-import { readFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -13,13 +13,14 @@ import { setTimeout as delay } from 'node:timers/promises';
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const work = join(repo, '.local-preview'); mkdirSync(work, {recursive:true});
 mkdirSync(join(work,'data'), {recursive:true});
-const citiesPath = join(work, 'cities.db');
-if (!existsSync(citiesPath)) {
-  const cities = new DatabaseSync(citiesPath);
-  cities.exec(`CREATE TABLE cities(name TEXT,region TEXT,country TEXT,lat REAL,lon REAL,tz TEXT,pop INTEGER,norm TEXT,w2 TEXT,alt TEXT);
-    INSERT INTO cities VALUES('Москва','Москва','Россия',55.7558,37.6173,'Europe/Moscow',13000000,'москва','','moscow');`);
-  cities.close();
-}
+// Use the same public reference database as production, not a one-city demo fixture.
+const citiesPath = process.env.PREVIEW_CITIES_DB || join(repo, 'backend/cities.db');
+if (!existsSync(citiesPath)) throw new Error('Нужен полный справочник backend/cities.db. Подготовка описана в README, раздел «Локальный просмотр».');
+const cityReference = new DatabaseSync(citiesPath, {readOnly:true});
+const cityCount = cityReference.prepare('SELECT COUNT(*) AS n FROM cities').get().n;
+cityReference.close();
+if(cityCount<2) throw new Error('Справочник городов содержит только демо-запись. Подключите полный backend/cities.db.');
+console.log(`Справочник городов: ${cityCount} населённых пунктов`);
 const port = Number(process.env.PREVIEW_PORT || 5038), apiPort = port + 1;
 const apiBase = `http://127.0.0.1:${apiPort}`;
 const child = spawn(process.execPath, [join(repo,'backend/server.mjs')], {
@@ -44,8 +45,28 @@ function proxy(req,res) {
 }
 const publicCache=new Map();
 async function publicJson(path) {
-  if(!publicCache.has(path)) publicCache.set(path,fetch('https://lunario.online'+path,{signal:AbortSignal.timeout(15000)}).then(r=>{if(!r.ok)throw new Error('Public content unavailable');return r.json();}).catch(e=>{publicCache.delete(path);throw e;}));
-  return publicCache.get(path);
+  let cached=publicCache.get(path);
+  const file=join(work,path.endsWith('catalog')?'public-catalog.json':'public-lunar-days.json');
+  if(!cached){
+    cached={value:null,promise:null,until:0};
+    try{cached.value=JSON.parse(readFileSync(file,'utf8'));}catch{}
+    publicCache.set(path,cached);
+  }
+  if(cached.value&&cached.until>Date.now())return cached.value;
+  if(!cached.promise){
+    cached.until=Date.now()+30000;
+    cached.promise=fetch('https://lunario.online'+path,{signal:AbortSignal.timeout(15000)})
+      .then(r=>{if(!r.ok)throw new Error('Public content unavailable');return r.json();})
+      .then(value=>{
+        cached.value=value;
+        try{writeFileSync(file+'.tmp',JSON.stringify(value));renameSync(file+'.tmp',file);}catch(e){console.warn('Public catalogue cache:',e.message);}
+        return value;
+      }).catch(e=>{console.warn('Public catalogue refresh:',e.message);if(cached.value)return cached.value;throw e;})
+      .finally(()=>{cached.promise=null;});
+  }
+  // Keep the last public reference copy visible while refreshing. Personal data is never cached here.
+  if(cached.value){cached.promise.catch(()=>{});return cached.value;}
+  return cached.promise;
 }
 const server=createServer(async(req,res)=>{
   const url=new URL(req.url,`http://localhost:${port}`);
@@ -56,7 +77,7 @@ const server=createServer(async(req,res)=>{
       let body=local;
       try {
         const published=await publicJson(url.pathname);
-        body=url.pathname.endsWith('lunar-days')?published:{...local,cards:published.cards,runes:published.runes,layouts:published.layouts,lunarDays:published.lunarDays};
+        body=url.pathname.endsWith('lunar-days')?published:{...local,cards:published.cards,runes:published.runes,layouts:published.layouts,lunarDays:published.lunarDays,news:published.news,habitIdeas:published.habitIdeas,askesisIdeas:published.askesisIdeas};
       }catch{}
       res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(body));return;
     }
@@ -70,6 +91,7 @@ const server=createServer(async(req,res)=>{
         if(!profile.ok) throw new Error('Demo profile could not be initialized');
         body=await(await fetch(apiBase+req.url,{headers:{cookie}})).json();
       }
+      body.localPreview=true;
       if(cookies.length)res.setHeader('Set-Cookie',cookies.map(c=>c.replace(/; Secure/gi,'')));
       res.writeHead(r.status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));return;
     }

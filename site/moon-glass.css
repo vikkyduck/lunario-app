@@ -354,3 +354,18 @@ body.inner .entries-tabs{margin:0 0 24px;display:flex;flex-wrap:wrap;gap:6px;bac
 body.inner .entries-tabs button{flex:1 1 auto;min-height:48px;white-space:normal;padding:10px 14px;border:1px solid var(--line)}
 body.inner .entries-tabs [aria-selected=true]{background:var(--selected);border-color:var(--gold);color:var(--gold-2)}
 body.inner #entries-more{margin-top:24px;width:100%}
+
+/* Restored shortcuts and progress use the same materials in both themes. */
+body.inner .forecast-bars{display:grid;gap:12px;margin:28px 0}
+body.inner .forecast-bars .barrow{margin:0;gap:12px}
+body.inner .forecast-bars .l{flex:0 0 100px;color:var(--text);font-size:16px}
+body.inner .forecast-bars .v{flex:0 0 42px;color:var(--text);font-size:16px;font-weight:600}
+body.inner .practice-ideas{margin:18px 0}
+body.inner .practice-ideas summary{min-height:44px;padding:10px 0;cursor:pointer;font-size:17px;font-weight:600;color:var(--gold-2)}
+body.inner .practice-ideas .chips{margin:12px 0}
+body.inner .ask-quick-dates{margin:0 0 24px}
+body.inner .hd::before{border-color:var(--control-border)}
+body.inner .hd.planned:not(.on)::before{background:var(--selected)}
+body.inner .hd.rest:not(.on)::before{border-style:dashed;opacity:.5;box-shadow:none}
+body.inner .hd.on::before{background:var(--gold);border-color:var(--gold)}
+body.inner .habit-calendar-key{font-size:15px!important;color:var(--muted);margin:14px 0}
