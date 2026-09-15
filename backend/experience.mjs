@@ -1,10 +1,13 @@
-export const DEFAULT_PREFERENCES = {theme:'dark', ritual:['card','mood','gratitude']};
+export const DEFAULT_PREFERENCES = {theme:'dark', ritual:['card','mood','gratitude'], topics:[], topicsAll:false, lunarViews:0};
 const practices = new Set(['card','mood','habits','gratitude','tone','journal']);
 export function preferences(raw) {
   try { return {...DEFAULT_PREFERENCES, ...JSON.parse(raw || '{}')}; }
   catch { return {...DEFAULT_PREFERENCES}; }
 }
+const topicKey = (k) => typeof k === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(k);
 export function validPreferences(value) {
+  if (value && value.topics !== undefined && !(Array.isArray(value.topics) && value.topics.length <= 12 && value.topics.every(topicKey))) return false;
+  if (value && value.topicsAll !== undefined && typeof value.topicsAll !== 'boolean') return false;
   return value && ['system','light','dark'].includes(value.theme) && Array.isArray(value.ritual)
     && value.ritual.length >= 2 && value.ritual.length <= 3
     && new Set(value.ritual).size === value.ritual.length && value.ritual.every(k=>practices.has(k));

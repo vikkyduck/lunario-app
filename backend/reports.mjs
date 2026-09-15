@@ -6,6 +6,7 @@
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
 import { campaignList, campaignUsers, slaMetrics, ticketQueue, TICKET_STATUS } from './workspace.mjs';
+import * as C from './content.mjs';
 
 let db, DATA_DIR = '';
 export function initReports(database, dataDir) {
@@ -45,8 +46,8 @@ export const DEFAULT_PERIODS = [7, 30, 90];
 export const OVERVIEW_BLOCKS = ['new_users', 'activation', 'active', 'repeat', 'retention', 'features', 'costs', 'problems'];
 export const ROLE_MENUS = {
   admin:     ['overview', 'users', 'lifecycle', 'economy', 'ai', 'backlog', 'system', 'data', 'events', 'access', 'saved'],
-  marketing: ['acquisition', 'campaigns', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
-  product:   ['activity', 'retention', 'activation', 'features', 'placeholders', 'rituals', 'cohorts', 'notifications', 'ai', 'backlog', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
+  marketing: ['acquisition', 'campaigns', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'topics', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
+  product:   ['activity', 'retention', 'activation', 'features', 'topics', 'placeholders', 'rituals', 'cohorts', 'notifications', 'ai', 'backlog', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
   content:   ['materials', 'media', 'content', 'backlog', 'quality', 'concerns', 'rituals', 'placeholders', 'feedback', 'faq', 'saved'],
   support:   ['tickets', 'supportmetrics', 'backlog', 'faq', 'users', 'delivery', 'saved'],
 };
@@ -70,6 +71,7 @@ export const REPORT_META = {
   activation:    ['Первый результат', 'Доходит ли новичок до результата за 24 часа'],
   features:      ['Использование функций', 'Что пробуют, что используют повторно, что не замечают'],
   placeholders:  ['Интерес к будущим функциям', 'Что нажимают из ещё не сделанного'],
+  topics:        ['Темы чтения', 'Какие темы лунного дня выбирают и как это связано с возвращением'],
   rituals:       ['Ритуалы и постоянство', 'Какие ежедневные действия входят в привычку'],
   notifications: ['Пуши и ежедневные письма', 'Включают ли напоминания и возвращаются ли после них'],
   ai:            ['ИИ: провайдеры и расходы', 'Ключи GPT, Gemini, Алисы и ГигаЧата; токены и стоимость результата'],
@@ -599,6 +601,35 @@ const builders = {
       f.items.map((i) => [i.section, i.name, i.status, 'нет данных', 'нет данных', 'нет данных', i.status === 'работает' ? i.events : '—', 'нет данных', i.people, i.events, i.reused, i.share ?? '—', (pm[i.key] || {}).people ?? 0]),
       'Один человек может сделать 20 раскладов — это 1 уникальный и 20 действий. Показ входа, переход, начало и открытие результата — этапы, которые пока не размечены событиями; собирается только факт результата.')];
     R.how = 'Уникальных — люди с событием функции за период. Повторно — событие в 2+ разных днях. Доля — от активных с содержательным действием за период. Заглушки исключены из активации и активной аудитории.';
+  },
+  topics(R, { P }) {
+    const META = new Set(['symbol', 'advice', 'live']);
+    const labels = Object.fromEntries([...C.READING_TOPICS].map((t) => [t.key, t.label]));
+    const users = all("SELECT id, preferences FROM users WHERE onboarded = 1 AND preferences <> ''").map((r) => { try { const pr = JSON.parse(r.preferences); return { id: r.id, topics: (pr.topics || []).filter((k) => labels[k]), all: !!pr.topicsAll, views: pr.lunarViews || 0 }; } catch { return null; } }).filter(Boolean);
+    const onboarded = one('SELECT COUNT(*) c FROM users WHERE onboarded = 1').c;
+    const chose = users.filter((x) => x.topics.length), allOn = users.filter((x) => x.all);
+    const count = {}; for (const x of chose) for (const k of x.topics) count[k] = (count[k] || 0) + 1;
+    const expand = Object.fromEntries(all("SELECT detail, COUNT(*) n FROM events WHERE type = 'lunar_expand' AND day BETWEEN ? AND ? GROUP BY detail", P.from, P.to).map((r) => [r.detail, r.n]));
+    const setEv = one("SELECT COUNT(*) n, COUNT(DISTINCT user_id) p FROM events WHERE type = 'topics_set' AND day BETWEEN ? AND ?", P.from, P.to);
+    const views = Object.fromEntries(all("SELECT user_id, COUNT(DISTINCT day) d FROM events WHERE type = 'lunar_view' AND day BETWEEN ? AND ? GROUP BY user_id", P.from, P.to).map((r) => [r.user_id, r.d]));
+    const back = (ids) => { const n = ids.filter((id) => (views[id] || 0) >= 2).length; return ids.length >= 10 ? `${pct(n, ids.length)}% (${n} из ${ids.length})` : ids.length ? 'меньше 10 человек — скрыто' : '—'; };
+    const withT = chose.map((x) => x.id), without = users.filter((x) => !x.topics.length).map((x) => x.id);
+    const avg = chose.length ? Math.round((chose.reduce((s, x) => s + x.topics.length, 0) / chose.length) * 10) / 10 : null;
+    R.kpis = [
+      kpi('Выбрали темы', onboarded ? pct(chose.length, onboarded) : null, { unit: '% с анкетой', sub: `${chose.length} чел. · остальные читают набор по умолчанию` }),
+      kpi('Тем в выборе', avg, { unit: 'в среднем', sub: avg === null ? 'пока никто не выбирал' : 'у тех, кто выбирал' }),
+      kpi('«Показывать всё»', chose.length + allOn.length ? pct(allOn.length, users.length || 1) : null, { unit: '% настроивших', sub: `${allOn.length} чел. читают все разделы` }),
+      kpi('Меняли выбор за период', setEv.p, { unit: 'чел.', sub: `${setEv.n} изменений` }),
+    ];
+    const keys = Object.keys(labels).filter((k) => !META.has(k));
+    R.charts = [chart('hbars', 'Какие темы выбирают', 'людей с темой в выборе', keys.map((k) => [labels[k], count[k] || 0]).sort((a, b) => b[1] - a[1]), 'Темы, которые никто не выбирает и не разворачивает за 30 дней, — кандидаты на сокращение.')];
+    R.tables = [
+      table('Темы', ['Тема', 'В выборе (чел.)', 'Разворачивали скрытой (раз)', 'Разворачивали, но не выбрали'], keys.map((k) => [labels[k], count[k] || 0, expand[k] || 0, expand[k] && !count[k] ? 'да — кандидат в набор по умолчанию' : '']), 'Разворот — открытие скрытого раздела по «Показать всё» или по его заголовку.'),
+      table('Возвращение к лунному дню', ['Группа', 'Открывали лунный день в 2+ разных дня за период'], [['Выбрали темы', back(withT)], ['Набор по умолчанию', back(without)]], 'Связь, не причина: те, кто настраивает чтение, могли быть вовлечены и до этого.'),
+      table('Сравнение с вопросами', ['Показатель', 'Значение'], [['Совпадение выбранных тем с темами вопросов «Свериться»', 'нет данных — тема вопроса в событие не пишется']], ''),
+    ];
+    R.notes.push('Ряд тем появляется со второго открытия лунного дня; до этого человек видит набор по умолчанию.');
+    R.how = 'Выбор тем хранится в настройках человека (ключи тем, без текстов). Разворачивание скрытых разделов и смена выбора — события lunar_expand и topics_set. Личный год темами пока не режется.';
   },
   placeholders(R, { P }) {
     const pv = all("SELECT detail, COUNT(*) n, COUNT(DISTINCT user_id) p FROM events WHERE type = 'paywall_view' AND day BETWEEN ? AND ? GROUP BY detail", P.from, P.to);

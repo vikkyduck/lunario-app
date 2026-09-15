@@ -101,6 +101,18 @@ export const clearReminders = (userId) => { db.prepare('DELETE FROM reminders WH
 /* ── текст уведомления по функции; null — сегодня напоминать не о чем ── */
 const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 /* Текст из content/напоминания.txt с подстановками {…}; лишние подстановки убираются */
+const META_TOPICS = new Set(['symbol', 'advice', 'live']);
+const firstSentence = (s) => { const m = String(s || '').match(/^.+?[.!?…](\s|$)/); return (m ? m[0] : String(s || '')).trim(); };
+/* Темы чтения человека: если выбрана ровно одна содержательная тема и у дня есть такой раздел — {title, text} */
+export function lunarTopicLine(u, n) {
+  let topics = [];
+  try { topics = JSON.parse(u.preferences || '{}').topics || []; } catch { topics = []; }
+  const content = topics.filter((k) => !META_TOPICS.has(k));
+  if (content.length !== 1) return null;
+  const day = C.LUNAR_INFO.find((d) => d.n === n), sec = day && (day.sections || []).find((s) => s.key === content[0]);
+  const para = sec && sec.blocks.find((b) => b.t === 'p');
+  return para ? { title: sec.title, text: firstSentence(para.text) } : null;
+}
 const tpl = (key, vars) => {
   const [title, body] = C.REMINDER_TEXTS[key] || ['Лунарио', ''];
   const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : '')).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
@@ -144,6 +156,9 @@ export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK,
     const ld = lunarDay(atMs, u.lat ?? 55.7558, u.lon ?? 37.6173);
     if (!ld) return null;
     const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['Лунный день', ''];
+    /* Одна выбранная содержательная тема (не символ/рекомендация/«как прожить») — в тело идёт её первая фраза */
+    const topicLine = lunarTopicLine(u, ld.n);
+    if (topicLine) return { ...tpl('lunar-тема', { n: ld.n, 'название': name, 'тема': topicLine.title, 'текст': topicLine.text }), url };
     return { ...tpl('lunar', { n: ld.n, 'название': name, 'рекомендация': advice }), url };
   }
   if (feature === 'sky') {

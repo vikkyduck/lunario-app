@@ -101,7 +101,11 @@ try {
 
   const prefs={theme:'dark',ritual:['tone','journal']};
   await owner.json('/preferences','POST',prefs);
-  assert.deepEqual((await owner.json('/me')).preferences,prefs);
+  const pr1=(await owner.json("/me")).preferences;assert.deepEqual({theme:pr1.theme,ritual:pr1.ritual},prefs);
+  assert.deepEqual(pr1.topics,[]);assert.equal(pr1.topicsAll,false);   // темы чтения: пусто = набор по умолчанию
+  await owner.json('/preferences','POST',{...prefs,topics:['love','nope','love'],topicsAll:true,lunarViews:50});
+  const pr2=(await owner.json("/me")).preferences;assert.deepEqual(pr2.topics,["love"]);assert.equal(pr2.topicsAll,true);assert.equal(pr2.lunarViews,0);   // неизвестные ключи отбрасываются, счётчик ведёт сервер
+  await owner.json('/preferences','POST',{...prefs,topics:[],topicsAll:false});
   assert.equal((await other.json('/preferences')).preferences.theme,'dark');
   for(const ritual of [[],['tone'],['tone','tone'],['tone','unknown'],['card','mood','tone','journal']])assert.equal((await owner.raw('/preferences','POST',{theme:'dark',ritual})).status,400);
   const wishesBefore=(await owner.json('/wishes')).items.length;
@@ -122,7 +126,7 @@ try {
   await stop(); await start();
   const me = await owner.json('/me');
   assert.equal(me.user.name, 'Проверка сохранения'); assert.equal(me.user.photo, true);
-  assert.equal(me.mood, 'joy');assert.deepEqual(me.preferences,prefs);assert.deepEqual((await owner.json('/data/export')).preferences,prefs);
+  assert.equal(me.mood, 'joy');const core=(x)=>({theme:x.theme,ritual:x.ritual});assert.deepEqual(core(me.preferences),prefs);assert.deepEqual(core((await owner.json('/data/export')).preferences),prefs);
   const savedWish = (await owner.json('/wishes')).items.find(x => x.id === wish.id);
   assert.equal(savedWish.text, 'Тест: поездка к морю'); assert.equal(savedWish.done, 1); assert.equal(savedWish.photo, true);
   for (const path of ['/photo', `/wishes/photo?id=${wish.id}`]) {

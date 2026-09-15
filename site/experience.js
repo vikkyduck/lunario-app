@@ -1,5 +1,5 @@
 /* Reading, persistent preferences and full practice pages share the existing data and widgets. */
-const XP={prefs:{theme:'dark',ritual:['card','mood','gratitude']},scroll:{},page:null,returnView:'home',returnFocus:null,ritualDraft:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
+const XP={prefs:{theme:'dark',ritual:['card','mood','gratitude'],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,ritualDraft:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
 const FULL_PRACTICES=new Set(['journal','habits','askesis']);
 const RITUALS={card:['Карта дня','Открыть карту дня'],mood:['Настроение дня','Отметить настроение'],habits:['Дневник привычек','Отметить привычки'],gratitude:['Дневник благодарности','Записать благодарность'],tone:['Вопрос дня','Ответить на вопрос дня'],journal:['Дневник','Записать мысль']};
 function activeView(){return document.querySelector('.view.on')?.id.slice(2)||'home';}

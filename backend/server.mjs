@@ -73,7 +73,7 @@ const EVENT_TYPES = new Set([
   'paywall_view', 'paywall_click', 'invite_copy', 'invite_used', 'push_on', 'push_off', 'pay_start', 'payment_success',
   'support_open', 'support_new', 'utm_seen', 'natal_view', 'card_download',
   'reminder_on', 'reminder_off', 'reminder_test', 'habit_add', 'habit_mark', 'habit_award', 'askesis_start', 'askesis_mark', 'sky_view', 'lunar_view', 'moodreport_view',
-  'gratitude_add', 'answer_add', 'news_view', 'wish_photo', 'photo_set',
+  'gratitude_add', 'answer_add', 'news_view', 'wish_photo', 'photo_set', 'topics_set', 'topics_all', 'lunar_expand',
 ]);
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 const {seal, open:open_} = privateText(DATA_DIR);
@@ -673,7 +673,7 @@ const natalOf = (u) => {
 };
 const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, hasPlus, cardOfDay, dayPack, habitList, askesisList, natal: natalOf, MOOD_RU, nowISO });
 /* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку */
-const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/ritual', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data']);
+const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/ritual', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data', '/api/preferences']);
 /* У тех, кто пришёл раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
 setTimeout(() => {
   const ids = db.prepare('SELECT id FROM users WHERE onboarded = 1 AND id NOT IN (SELECT user_id FROM shelves)').all().map((r) => r.id);
@@ -706,7 +706,7 @@ const server = createServer(async (req, res) => {
        экран «Лунный день» забирает это один раз, когда его открыли. */
     if (p === '/api/lunar-days' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
-      return res.end(JSON.stringify({ days: [...C.LUNAR_INFO], reference: C.lunarRef() }));
+      return res.end(JSON.stringify({ days: [...C.LUNAR_INFO], reference: C.lunarRef(), topics: [...C.READING_TOPICS].map(({ key, label, def }) => ({ key, label, def })) }));
     }
 
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.
@@ -1025,6 +1025,9 @@ const server = createServer(async (req, res) => {
         if (!EVENT_TYPES.has(type)) return json(res, 400, { ok: false });
         db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
           .run(nowISO(), d, u.id, type, clean(b.d, 60), ageBand(u.birth));
+        if (type === 'lunar_view') {   /* сколько раз открывал лунный день: ряд тем появляется со второго открытия */
+          const pr = preferences(u.preferences); if ((pr.lunarViews || 0) < 99) db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify({ ...pr, lunarViews: (pr.lunarViews || 0) + 1 }), u.id);
+        }
         return json(res, 200, { ok: true });
       }
 
@@ -1068,7 +1071,10 @@ const server = createServer(async (req, res) => {
         if (req.method === 'POST') {
           const b = await readBody(req);
           if (!validPreferences(b)) return json(res,400,{error:'bad_preferences'});
-          const value = {theme:b.theme,ritual:b.ritual};
+          const prev = preferences(u.preferences), known = new Set([...C.READING_TOPICS].map((t) => t.key));
+          const topics = b.topics ? [...new Set(b.topics.filter((k) => known.has(k)))] : (prev.topics || []);
+          /* lunarViews — служебный счётчик, его ведёт сервер по событию lunar_view; с клиента не принимается */
+          const value = {theme:b.theme,ritual:b.ritual,topics,topicsAll:b.topicsAll !== undefined ? !!b.topicsAll : !!prev.topicsAll,lunarViews:prev.lunarViews||0};
           db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify(value),u.id);
           return json(res,200,{preferences:value});
         }

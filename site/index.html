@@ -433,6 +433,19 @@ body.inner .app-nav{display:grid}
 .card>h3:first-child{margin-top:0}
 .ask-q{border-color:rgba(217,184,104,.4)}.ask-q p{color:#fff;font-size:16.5px;line-height:1.5}
 /* сворачиваемое «читать полностью» */
+.ln-topics{margin:10px 0 4px}
+.ln-topics .chip{font-size:13.5px;padding:9px 13px}
+.ln-topics .chip.meta{opacity:.85}
+.ln-all{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:13.5px;color:#8f87ad}
+.ln-all button{background:none;border:0;padding:6px 0;color:#f0d79a;font:inherit;font-size:13.5px;cursor:pointer;min-height:36px}
+.ln-sec{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
+.ln-hidden{margin-top:6px}
+.ln-hidden details{border-top:1px solid var(--line)}
+.ln-hidden summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:11px 0;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#8f87ad;font-weight:800}
+.ln-hidden summary::-webkit-details-marker{display:none}
+.ln-hidden summary::after{content:'+';margin-left:auto;color:#f0d79a;font-size:16px;letter-spacing:0}
+.ln-hidden details[open] summary::after{content:'–'}
+.ln-hidden details[open] summary{color:var(--gold)}
 .more{margin-top:12px}
 .morebtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:12px 0 2px;color:#f0d79a;font:inherit;font-size:14px;cursor:pointer}
 .morebtn svg{transition:transform .25s var(--sp)}
@@ -947,6 +960,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <section class="account-group"><h2>Приложение</h2><div class="wids compact-links"><button class="wid" data-feature="remind" type="button" aria-label="Уведомления" onclick="openWidget('remind')"><i class="ico bell"></i><b>Уведомления</b><span>Включить, выбрать время и регулярность</span></button><button class="wid" data-feature="mail" type="button" aria-label="Вход по почте" onclick="openWidget('mail')"><i class="ico mail"></i><b>Вход по почте</b><span>Сохранённые записи доступны на других устройствах</span></button><button class="wid" type="button" aria-label="Новое в приложении" data-feature="news" onclick="go('news')"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
       <button class="wid sky-location-control" type="button" onclick="window.LunarioSky?.locate(true)"><i class="ico orbit"></i><b>Небо над вами</b><span data-sky-place>Москва · определить моё местоположение</span></button>
       <button class="wid" type="button" onclick="openWidget('appearance')"><i class="ico moon"></i><b>Оформление</b><span>Светлая и тёмная темы</span></button>
+      <button class="wid" data-feature="topics" type="button" onclick="openWidget('topics')"><i class="ico list"></i><b>Темы чтения</b><span>Какие разделы лунного дня показывать</span></button>
       <button class="wid" type="button" onclick="openWidget('appinfo')"><i class="ico moon"></i><b>О приложении</b></button>
       <button class="wid" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i><b>Установить на телефон</b></button></div></section>
     <section class="account-group"><h2>Приватность</h2><div class="wids compact-links"><button class="wid" data-feature="shelves" type="button" aria-label="Мои данные" onclick="openWidget('shelves')"><i class="ico list"></i><b>Мои данные</b><span>Что Лунарио знает о вас</span></button><button class="wid" type="button" onclick="exportPersonalData()"><i class="ico list"></i><b>Скачать мои данные</b><span>Профиль, фотографии, записи и история практик</span></button></div></section>
@@ -971,6 +985,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 <div id="wg-store" style="display:none">
   <div class="wpane" id="w-ritual"><div id="ritual-box"></div></div>
   <div class="wpane" id="w-appearance"><div id="appearance-box"></div></div>
+  <div class="wpane" id="w-topics"><div id="topics-box"></div></div>
   <div class="wpane" id="w-practiceSettings"><div id="practice-settings-box"></div></div>
   <div class="wpane" id="w-askDate"><div class="field"><label for="ask-date">До какого дня</label><input id="ask-date" type="date" aria-describedby="ask-date-msg"></div><button class="btn" id="ask-date-save" type="button" onclick="saveAskDate()">Сохранить дату</button><p class="msg" id="ask-date-msg" role="status"></p></div>
   <div class="wpane" id="w-timelineEntry"><div id="timeline-entry-box"></div></div>
@@ -1378,7 +1393,7 @@ const WIDGETS = {
   invite:['Я','Позвать подругу'], remind:['Я','Уведомления'], edit:['Я','Изменить мои данные'], mail:['Я','Вход по почте'], shelves:['Я','Мои данные'],
   support:['Я','Чат поддержки'], tests:['Я','Тесты'], natal:['Я','Натальная карта'],
   ritual:['Сегодня','Мой ритуал'],appearance:['Я','Оформление'],practiceSettings:['','Уведомления'],askDate:['Взять аскезу','Передвинуть дату'],timelineEntry:['Дневник','Запись'],
-  appinfo:['Я','О приложении'], terms:['Я','Условия использования'],stub:['','']
+  appinfo:['Я','О приложении'], terms:['Я','Условия использования'],topics:['Я','Темы чтения'],stub:['','']
 };
 const WIDGET_REMINDERS={card:'card',mood:'mood',hmood:'moodreport',habits:'habits',askesis:'askesis',gratitude:'gratitude',lunar:'lunar',sky:'sky'};
 let wgOpen = null, wgFocus = null;
@@ -1401,6 +1416,7 @@ function openWidget(k, title){
 function loadWidgetContent(k){
   if(k==='ritual')paintRitual();
   if(k==='appearance')paintAppearance();
+  if(k==='topics')paintTopics();
   if (k==='journal'){loadJournal();prepareDictation();requestAnimationFrame(()=>growTextarea($('j-text')));}
   if (k==='wishes' || k==='hwishes') api('/wishes').then(renderWishes).catch(()=>{});
   if (k==='hentries') loadEntries();
@@ -2827,7 +2843,7 @@ function loadLunarDays(){
   if (LUN) return Promise.resolve(LUN);
   if (lunPromise) return lunPromise;
   lunPromise = api('/lunar-days?v=' + encodeURIComponent(S.catalogV || 1))
-    .then(r => (LUN = { days: r.days || [], reference: r.reference || null }))
+    .then(r => (LUN = { days: r.days || [], reference: r.reference || null, topics: r.topics || [] }))
     .catch(e => { lunPromise = null; throw e; });
   return lunPromise;
 }
@@ -2845,18 +2861,64 @@ function paintLunarWidget(){
     <div id="ln-art"><p class="hint">Загружаем главу справочника…</p></div>${actionsHtml(id,true)}
     <details class="lunar-period"><summary>Период и место расчёта</summary><p>${esc(l.period)}</p><p>По месту рождения из профиля: ${esc(S.user.city||'Москва')}. Часовой пояс: ${esc(S.user.tz||'Europe/Moscow')}</p></details>
     <details class="lunar-library"><summary>Все 30 лунных дней</summary><div id="ln-days"></div><div id="ln-preview"></div><div id="ln-ref"></div></details>`;
-  loadReminders().then(()=>paintRem('lunar')).catch(()=>{});preparePending();track('lunar_view');
-  loadLunarDays().then(()=>{const d=LUN.days.find(d=>d.n===l.n);$('ln-art').innerHTML=d?lunarDayHtml(d,l.n,true):'';showLunarDay(l.n);$('ln-ref').innerHTML=lunarRefHtml(LUN.reference);}).catch(()=>{if($('ln-art'))$('ln-art').innerHTML='<p class="hint">Справочник не загрузился. Откройте лунный день ещё раз</p>';});
+  XP.lunarSeenAtOpen=(XP.prefs.lunarViews||0)>=1;   /* ряд тем — со второго открытия: смотрим счётчик до того, как засчитать это открытие */
+  loadReminders().then(()=>paintRem('lunar')).catch(()=>{});preparePending();track('lunar_view','topics:'+(topicsAll()?'all':((XP.prefs.topics||[]).length||'default')));XP.prefs.lunarViews=(XP.prefs.lunarViews||0)+1;
+  loadLunarDays().then(()=>{paintLunarArticle();$('ln-ref').innerHTML=lunarRefHtml(LUN.reference);}).catch(()=>{if($('ln-art'))$('ln-art').innerHTML='<p class="hint">Справочник не загрузился. Откройте лунный день ещё раз</p>';});
+}
+/* ── Темы чтения: человек выбирает разделы, остальное — под заголовками-свёртками. Ряд тем появляется со второго открытия. ── */
+const META_TOPICS=new Set(['symbol','advice','live']);
+function topicList(){return (LUN&&LUN.topics)||[];}
+function topicsChosen(){const t=XP.prefs.topics||[];return t.length?t:topicList().filter(x=>x.def).map(x=>x.key);}
+function topicsAll(){return !!XP.prefs.topicsAll;}
+function topicsRowVisible(){return !!XP.lunarSeenAtOpen||!!XP.topicsShown;}
+function topicsRowHtml(){
+  const chosen=new Set(topicsChosen()),all=topicsAll();
+  return `<div class="chips flow ln-topics" role="group" aria-label="Темы чтения">${topicList().map(t=>`<button type="button" class="chip${chosen.has(t.key)?' on':''}${META_TOPICS.has(t.key)?' meta':''}" aria-pressed="${chosen.has(t.key)}" onclick="toggleTopic('${t.key}')">${esc(t.label)}</button>`).join('')}</div>
+    <div class="ln-all"><span>${all?'Показаны все разделы':'Показаны выбранные темы'}</span><button type="button" onclick="setTopicsAll(${all?'false':'true'})">${all?'Только выбранное':'Показать всё'}</button></div>`;
+}
+async function toggleTopic(key){
+  const cur=new Set(topicsChosen());if(cur.has(key))cur.delete(key);else cur.add(key);
+  const topics=topicList().map(t=>t.key).filter(k=>cur.has(k));
+  try{await savePreferences({...XP.prefs,topics});track('topics_set',topics.join(','));hap(9);}
+  catch{toast('Не удалось сохранить выбор. Попробуйте ещё раз');return;}
+  paintLunarArticle();if($('topics-box'))paintTopics();
+}
+async function setTopicsAll(on){
+  try{await savePreferences({...XP.prefs,topicsAll:!!on});track('topics_all',on?'on':'off');}
+  catch{toast('Не удалось сохранить. Попробуйте ещё раз');return;}
+  XP.topicsShown=true;paintLunarArticle();if($('topics-box'))paintTopics();
+}
+function paintLunarArticle(){
+  const l=S.day&&S.day.lunar,d=LUN&&LUN.days.find(x=>x.n===l.n);if(!l||!$('ln-art'))return;
+  $('ln-art').innerHTML=(topicsRowVisible()?topicsRowHtml():'')+(d?lunarDayHtml(d,l.n,true):'');
+  const adv=document.querySelector('#ln-box .practice-card');if(adv)adv.style.display=(topicsAll()||topicsChosen().includes('advice'))?'':'none';
+  showLunarDay(l.n);preparePending();
+}
+function trackExpand(el,key){if(el.open)track('lunar_expand',key);}
+/* Открытка: одна выбранная содержательная тема — её заголовок и первая фраза вместо общей рекомендации */
+function lunarTopicLine(n){
+  const content=topicsChosen().filter(k=>!META_TOPICS.has(k));if(content.length!==1||!LUN)return '';
+  const d=LUN.days.find(x=>x.n===n),s=d&&(d.sections||[]).find(x=>x.key===content[0]),para=s&&s.blocks.find(b=>b.t==='p');
+  if(!para)return '';const m=String(para.text).match(/^.+?[.!?…](\s|$)/);return s.title+': '+(m?m[0]:para.text).trim();
+}
+/* Виджет «Темы чтения» в «Я» */
+function paintTopics(){
+  const box=$('topics-box');if(!box)return;
+  if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не удалось загрузить темы. Откройте ещё раз</p>';});return;}
+  box.innerHTML=`<p class="hint">Лунный день показывается выбранными разделами, остальные свёрнуты под заголовками. Выбор действует на экране, в напоминании и на открытке.</p>${topicsRowHtml()}`;
 }
 /* Глава дня: иллюстрация, номер и тема, вступление сразу, разделы с подзаголовками — под «Читать полностью». */
 function lunarDayHtml(d, today, primary=false){
-  const cut = d.blocks.findIndex(b => b.t === 'h');
-  const intro = cut < 0 ? d.blocks : d.blocks.slice(0, cut), rest = cut < 0 ? [] : d.blocks.slice(cut);
+  const secs = d.sections && d.sections.length ? d.sections : [{ key: 'symbol', title: '', blocks: d.blocks }];
+  const all = topicsAll(), chosen = new Set(topicsChosen());
+  const shown = secs.filter(s => all || chosen.has(s.key)), hidden = secs.filter(s => !all && !chosen.has(s.key));
+  const secHtml = (s) => (s.title ? `<h3 class="ln-sec">${esc(s.title)}</h3>` : '') + blocksHtml(s.blocks);
+  const hiddenHtml = hidden.length ? `<div class="ln-hidden">${hidden.map(s => `<details ontoggle="trackExpand(this,'${s.key}')"><summary>${esc(s.title || 'Символ и тема')}</summary>${blocksHtml(s.blocks)}</details>`).join('')}</div>` : '';
   return `<div class="item rise yr-art">
     <img class="yr-img" src="${d.image}?v=1" width="1080" height="1080" alt="${d.n} лунный день · ${esc(d.symbol || d.theme)}">
     ${primary?'':`<p class="ln-eb">${d.n} лунный день${d.n===today?' · сегодня':''}</p>`}
     ${primary && d.theme===S.day.lunar.title?'':`<p class="ln-title">${esc(d.theme)}</p>`}
-    ${primary?moreBlock(blocksHtml(d.blocks),'О дне подробнее'):blocksHtml(intro)+moreBlock(blocksHtml(rest))}
+    ${shown.map(secHtml).join('')}${hiddenHtml}
   </div>`;
 }
 /* Полоска всех 30 дней — как оглавление справочника: любой день можно прочитать заранее. */
@@ -3026,14 +3088,16 @@ async function drawPostcardExtra(ctx, p){
       let y = drawText(ctx, `${l.n}-Й ЛУННЫЙ ДЕНЬ`, 540, 1225, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
       if (l.title) y = drawText(ctx, l.title, 540, y + 22, { size: 50, weight: 600, color: '#e9c77e', maxW: 940, lh: 1.2 });
       if (l.theme) y = drawText(ctx, l.theme, 540, y + 6, { size: 28, italic: true, color: '#ded8ee', maxW: 900, lh: 1.3 });
-      if (l.advice) y = drawText(ctx, l.advice, 540, y + 40, { size: 32, color: '#f5f2ea', maxW: 880, lh: 1.4 });
+      const adv = lunarTopicLine(l.n) || l.advice;
+      if (adv) y = drawText(ctx, adv, 540, y + 40, { size: 32, color: '#f5f2ea', maxW: 880, lh: 1.4 });
       drawText(ctx, l.period, 540, y + 30, { size: 25, color: '#8f87ad', maxW: 900 });
       return true;
     }
     ctx.save(); ctx.shadowColor = 'rgba(233,199,126,.45)'; ctx.shadowBlur = 60; drawText(ctx, String(l.n), 540, 560, { size: 300, weight: 600, color: '#e9c77e' }); ctx.restore();
     let y = drawText(ctx, `${ordinal(l.n)} лунный день`, 540, 660, { size: 40, color: '#f5f2ea' });
     if (l.title) y = drawText(ctx, l.title, 540, y + 30, { size: 50, weight: 600, color: '#e9c77e', maxW: 900 });
-    if (l.advice) y = drawText(ctx, l.advice, 540, y + 60, { size: 38, color: '#f5f2ea', maxW: 860, lh: 1.42 });
+    const adv2 = lunarTopicLine(l.n) || l.advice;
+    if (adv2) y = drawText(ctx, adv2, 540, y + 60, { size: 38, color: '#f5f2ea', maxW: 860, lh: 1.42 });
     drawText(ctx, l.period, 540, Math.max(y + 60, 1440), { size: 26, color: '#8f87ad', maxW: 900 });
     return true;
   }

@@ -45,6 +45,10 @@ export function createShelves(deps) {
   const userById = db.prepare('SELECT * FROM users WHERE id = ?');
 
   /* ── «Обо мне»: анкета и всё, что из неё считается ── */
+  const readingInterests = (u) => {
+    let topics = []; try { topics = JSON.parse(u.preferences || '{}').topics || []; } catch { topics = []; }
+    return topics.filter((k) => !['symbol', 'advice', 'live'].includes(k)).map((k) => { const t = [...C.READING_TOPICS].find((x) => x.key === k); return t ? t.label : ''; }).filter(Boolean);
+  };
   function buildAbout(u, d) {
     const birthOk = /^\d{4}-\d{2}-\d{2}$/.test(u.birth || '');
     const sign = birthOk ? signOf(u.birth) : null;
@@ -55,6 +59,7 @@ export function createShelves(deps) {
       destiny: null, year: null, natal: null,
       since: (u.created_at || '').slice(0, 10), lastSeen: (u.last_seen || '').slice(0, 10), streak: u.streak || 0,
       plus: hasPlus(u), plusUntil: u.plus_until || '', invited: !!u.invited_by,
+      interests: readingInterests(u),   // темы чтения, которые человек выбрал сам — явный сигнал интересов
     };
     if (birthOk) {
       const dn = destinyNum(u.birth), py = personalYearAt(u.birth, d), info = C.YEARS[py.n] || null;
@@ -178,6 +183,7 @@ export function createShelves(deps) {
     if (a.destiny) L.push(`Число судьбы ${a.destiny.n} — ${a.destiny.title}. ${a.destiny.text}`);
     if (a.year) L.push(`Личный год ${a.year.n}${a.year.planet ? ` (${a.year.planet} · ${a.year.energy})` : ''}, с ${fmt(a.year.from)} по ${fmt(dayShift(a.year.to, -1))}. ${a.year.text}${a.year.next ? ` Следующий, год ${a.year.next.n}, начнётся ${fmt(a.year.next.from)}.` : ''}`);
     if (a.natal && (a.natal.sun || a.natal.moon)) L.push(`Натальная карта: Солнце в ${inSign(a.natal.sun) || '—'}${a.natal.moon ? `, Луна в ${inSign(a.natal.moon)}${a.natal.moonUncertain ? ' (знак зависит от времени рождения)' : ''}` : ''}${a.natal.asc ? `, Асцендент в ${inSign(a.natal.asc)}` : ''}${a.natal.timeKnown ? '' : '; время рождения не указано, дома не считаются'}.`);
+    if (a.interests && a.interests.length) L.push(`Интересы (выбранные темы чтения): ${a.interests.join(', ')}.`);
     L.push(`В Лунарио с ${fmt(a.since)}${a.streak ? `, серия ${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')} подряд` : ''}${a.plus ? ', подписка Плюс' : ''}.`);
 
     L.push('', `МОЙ ДЕНЬ (${fmt(dy.date)})`);

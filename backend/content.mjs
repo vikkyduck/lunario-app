@@ -289,6 +289,37 @@ const LUNAR_DAYS_FALLBACK = [
   ['День гидры', 'Самый тёмный день месяца: не начинайте, не спорьте, не поддавайтесь унынию. Проведите его тихо.'],
   ['День лебедя', 'Итог месяца: простите, поблагодарите, отпустите. Завтра — новое начало.'],
 ];
+/* Темы чтения: ключ | заголовок раздела в статье | по умолчанию. Заголовки разделов лунных дней — служебные:
+   по ним код узнаёт тему; сравнение после нормализации (регистр, ё/е, пробелы). symbol и advice — не разделы,
+   а вступление статьи и поле «рекомендация». */
+const READING_TOPICS_FALLBACK = [
+  ['symbol', '', 'Символ и тема', true], ['advice', '', 'Рекомендация', true], ['live', 'Как прожить тему дня', '', true],
+  ['work', 'Работа и деньги', '', false], ['love', 'Любовь и отношения', '', false], ['home', 'Дом и самочувствие', '', false],
+  ['dreams', 'Сны и рожденные в этот день', '', false], ['hair', 'Стрижка окрашивание и прическа', '', false], ['garden', 'Сад и растения', '', false],
+];
+const normTitle = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();
+const readingTopicsFrom = (rowsIn) => {
+  const src = rowsIn && rowsIn.length >= 3 ? rowsIn.map((c) => [c[0], /^\(/.test(c[1]) ? '' : c[1], c[2] || '', /^(да|yes|1)$/i.test(c[3] || '')]) : READING_TOPICS_FALLBACK;
+  return src.filter((t) => /^[a-z][a-z0-9-]{1,19}$/.test(t[0])).map(([key, title, label, def]) => ({ key, title, label: label || title, def: !!def, norm: normTitle(title) }));
+};
+const unknownTopics = new Set();
+/* Статья → разделы с ключами: вступление (до первого «##») — symbol, каждый подзаголовок — тема по ключу;
+   незнакомый заголовок получает ключ «x-N», показывается только в режиме «всё» и один раз пишется в журнал. */
+const splitSections = (blocks, topics, where) => {
+  const out = []; let cur = { key: 'symbol', title: '', blocks: [] }; let x = 0;
+  for (const b of blocks) {
+    if (b.t === 'h') {
+      if (cur.blocks.length || cur.key !== 'symbol') out.push(cur);
+      const n = normTitle(b.text), t = topics.find((tp) => tp.title && tp.norm === n);
+      if (!t && !unknownTopics.has(n)) { unknownTopics.add(n); console.warn(`Темы чтения: в ${where} раздел «${b.text}» не описан в темы.txt — виден только в режиме «всё»`); }
+      cur = { key: t ? t.key : `x-${++x}`, title: b.text, blocks: [] };
+      continue;
+    }
+    cur.blocks.push(b);
+  }
+  if (cur.blocks.length || cur.key !== 'symbol') out.push(cur);
+  return out;
+};
 /* День из статьи: короткие поля — на экран, в напоминание и на открытку; описание — блоками как в файле. */
 const lunarFromArticle = (e) => {
   const f = e.fields;
@@ -330,7 +361,7 @@ const REMINDER_TEXTS_FALLBACK = {
   'moodreport-пусто': ['Отчёт по настроениям', 'На этой неделе отметок не было. Начните с сегодняшней — и через неделю будет картина.'],
   habits: ['Привычки на сегодня', 'Осталось отметить: {список}. Минута — и день закрыт ✦'], 'habits-пусто': ['Дневник привычек', 'Добавьте первую привычку — с одной маленькой начинается ритм.'],
   askesis: ['Аскеза «{название}» · день {день} из {всего}', '{поддержка} {осталось}.'], gratitude: ['Кому и за что я благодарна сегодня?', 'Пара слов — и запись останется в дневнике.'],
-  lunar: ['{n}-й лунный день · {название}', '{рекомендация}'], sky: ['На небе сегодня', '{события}. {совет}'], 'пробное': ['Лунарио', 'Сегодня напоминать не о чем — но напоминания работают ✦'],
+  lunar: ['{n}-й лунный день · {название}', '{рекомендация}'], 'lunar-тема': ['{n}-й лунный день · {название}', '{тема}: {текст}'], sky: ['На небе сегодня', '{события}. {совет}'], 'пробное': ['Лунарио', 'Сегодня напоминать не о чем — но напоминания работают ✦'],
 };
 const ASKESIS_SUPPORT_FALLBACK = ['Вы держитесь — и это уже меняет привычный ход дня.', 'Каждый день без этого — день с собой. Так держать.', 'Отказ — это не лишение, а место для нового.',
   'Вы уже дальше, чем были вчера. Спокойно и по-своему.', 'Обещание себе — самое честное из обещаний. Вы его держите.', 'Не идеально, а по-настоящему. Этого достаточно.',
@@ -506,7 +537,8 @@ function build() {
     const a = ldInfo.find((x) => x.n === i + 1); if (a) return [a.name || d[0], a.advice || d[1]];
     const row = ld && ld.find((c) => Number(c[0]) === i + 1); return row ? [row[1], row[2]] : d;
   });
-  r.LUNAR_INFO = ldInfo.sort((a, b) => a.n - b.n);
+  r.READING_TOPICS = readingTopicsFrom(rows('темы.txt', 2));
+  r.LUNAR_INFO = ldInfo.sort((a, b) => a.n - b.n).map((d) => ({ ...d, sections: splitSections(d.blocks, r.READING_TOPICS, `лунные-дни.txt, день ${d.n}`) }));
   /* Общие главы справочника: одна запись, каждый раздел [Название] — глава; на экране идут в том же порядке */
   const ref = (article('лунные-дни-справочник.txt') || [])[0];
   r.LUNAR_REF = ref ? { title: ref.name, caption: ref.fields['подпись'] || '', sections: Object.entries(ref.sections).map(([title, blocks]) => ({ title, blocks })) } : null;
@@ -578,6 +610,7 @@ export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, 
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
 export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
 export const lunarRef = () => data.LUNAR_REF;
+export const READING_TOPICS = new Proxy([], { get: (_, k) => Reflect.get(data.READING_TOPICS, k) });
 export const LEGACY_SETS = new Proxy([], { get: (_, k) => Reflect.get(data.LEGACY_SETS, k) });
 export const SETS = new Proxy([], { get: (_, k) => Reflect.get(data.SETS, k) });
 export const MOODS = new Proxy([], { get: (_, k) => Reflect.get(data.MOODS, k) });
