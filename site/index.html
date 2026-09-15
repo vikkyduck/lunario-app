@@ -804,8 +804,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=27">
-<link rel="stylesheet" href="/app/moon-glass.css?v=27">
+<link rel="stylesheet" href="/app/experience.css?v=29">
+<link rel="stylesheet" href="/app/moon-glass.css?v=29">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -1247,9 +1247,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=27"></script>
+<script type="module" src="/app/sky.js?v=29"></script>
 
-<script src="/app/experience.js?v=27"></script>
+<script src="/app/experience.js?v=29"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1292,10 +1292,18 @@ document.addEventListener('pointerdown', (e) => {
 let lightFrame=0, lightTarget=null, lightEvent=null;
 document.addEventListener('pointermove',(e)=>{
   if(e.pointerType==='touch' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.day-focus,.wid,.quick-actions button,.welcome-primary'); lightEvent=e;
+  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.day-focus,.wid,.sq,.moonline,.quick-actions button,.welcome-primary'); lightEvent=e;
   if(lightFrame) return;
   lightFrame=requestAnimationFrame(()=>{
-    if(lightTarget&&lightEvent){const r=lightTarget.getBoundingClientRect();lightTarget.style.setProperty('--light-x',`${lightEvent.clientX-r.left}px`);lightTarget.style.setProperty('--light-y',`${lightEvent.clientY-r.top}px`)}
+    if(lightTarget&&lightEvent){
+      const r=lightTarget.getBoundingClientRect(),x=lightEvent.clientX-r.left,y=lightEvent.clientY-r.top;
+      // Same optical coordinates as the landing; scoped names leave the moon logo's --mx/--my intact.
+      if(r.width&&r.height){
+        lightTarget.style.setProperty('--glass-x',`${(x/r.width*100).toFixed(2)}%`);
+        lightTarget.style.setProperty('--glass-y',`${(y/r.height*100).toFixed(2)}%`);
+        lightTarget.style.setProperty('--glass-edge',(Math.atan2(y-r.height/2,x-r.width/2)*180/Math.PI+90).toFixed(1));
+      }
+    }
     lightFrame=0;
   });
 },{passive:true});

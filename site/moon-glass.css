@@ -1,15 +1,15 @@
 /* Lunario's material layer. Layout, forms and saved data remain in experience.*. */
 :root{
-  --bg:#0b0a14;--surface:#1d1738;--sheet:#17132a;--field:#141126;--selected:rgba(217,184,104,.16);
+  --bg:#0b0a14;--surface:#1d1738;--sheet:#141126;--field:#141126;--selected:rgba(217,184,104,.16);
   --text:#f5f2ea;--muted:#cdc6e2;--gold:#d9b868;--gold-2:#f0d79a;
-  --line:rgba(217,184,104,.25);--focus:#f0d79a;--control-border:rgba(217,184,104,.55);
+  --line:rgba(245,242,234,.12);--focus:#f0d79a;--control-border:rgba(217,184,104,.55);
   --hover:#2a2150;--accent-soft:#211b35;
   --moon-ground:linear-gradient(180deg,#141126 0%,#0b0a14 70%);
-  --moon-panel:linear-gradient(145deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.90),rgba(20,17,38,.90));
+  --moon-panel:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
   --moon-edge:linear-gradient(135deg,#f0d79a99 0%,#d9b86847 35%,#b98f3e38 65%,#f0d79a66 100%);
   --moon-shine:rgba(240,215,154,.12);--moon-shadow:inset 0 1px 0 #fff6dd24,0 12px 26px -18px #000b;
   --moon-control:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);--moon-glass:rgba(20,17,38,.80);
-  --moon-reader:#17132a;--moon-fade:#0b0a14;--moon-empty:#1d1738;
+  --moon-reader:#141126;--moon-fade:#0b0a14;--moon-empty:#1d1738;
 }
 :root[data-theme=light]{
   --bg:#f7f3ec;--surface:#fffbf7;--sheet:#faf6f2;--field:#fffcf9;--selected:#e6e1f1;
@@ -25,8 +25,8 @@
 }
 html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed;--muted:inherit;--line:inherit}
 /* Soft light sits behind the content, including the email/code screens. */
-body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(235,191,96,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,211,146,.07),transparent 100%)}
-body.hello::before{z-index:0;background:radial-gradient(ellipse 30% 24% at 26% 72%,rgba(255,231,153,.28),rgba(251,207,104,.10) 48%,transparent 100%),radial-gradient(ellipse 36% 42% at 100% 63%,rgba(255,227,145,.21),transparent 100%);mix-blend-mode:screen}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(217,184,104,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,215,154,.07),transparent 100%)}
+body.hello::before{z-index:0;background:radial-gradient(ellipse 30% 24% at 26% 72%,rgba(240,215,154,.28),rgba(217,184,104,.10) 48%,transparent 100%),radial-gradient(ellipse 36% 42% at 100% 63%,rgba(240,215,154,.21),transparent 100%);mix-blend-mode:screen}
 html[data-theme=light] body.inner::before{opacity:.55}
 body.inner .bg .orb{opacity:.24}body.inner .bg .cloud{opacity:.14}
 body.inner .sky.on{display:block;opacity:.48}body.hello .sky.on{opacity:.72}
@@ -187,18 +187,13 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
 #v-hello .heromoon img{filter:drop-shadow(0 0 32px #f2d18d24)}
 #v-hello .gifts{margin:0;gap:32px}
 #v-hello .gift{gap:20px;align-items:flex-start}
-#v-hello .gift b{font-size:28px;font-weight:500;color:#f5f2ea;line-height:1.5}
+#v-hello .gift b{font-size:30px;font-weight:600;color:#f5f2ea;line-height:1.5}
 #v-hello .gift .ico{width:28px;height:28px;flex-basis:28px;margin-top:7px;background-color:#f0d79a;filter:drop-shadow(0 0 10px #f0d79a26)}
 #v-hello .cta{margin-top:48px;position:relative;isolation:isolate}
-#v-hello .cta .btn{position:relative;isolation:isolate;overflow:hidden;min-height:80px;padding:22px 30px;gap:24px;font-size:22px;line-height:1.4;border:1px solid transparent;border-radius:24px;color:#f5f2ea;background:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.035) 45%,rgba(245,242,234,.07));box-shadow:inset 0 1px 0 #ffffff38,inset 0 -1px 0 #08061140,0 18px 42px -24px #f7d37899;backdrop-filter:blur(22px) saturate(1.5) brightness(1.08);-webkit-backdrop-filter:blur(22px) saturate(1.5) brightness(1.08);transition:box-shadow .25s,transform .2s}
-#v-hello .cta .btn>span{position:relative;z-index:1}
-#v-hello .cta .btn::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(125deg,#ffffffb3,rgba(255,255,255,.06) 36%,rgba(255,255,255,.06) 62%,#ffffff59);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-#v-hello .cta .btn::after{content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(200px circle at var(--light-x,10%) var(--light-y,0%),#ffffff24,transparent 80%);opacity:.35;transition:opacity .25s}
-@media(hover:hover) and (pointer:fine){#v-hello .cta .btn:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 #ffffff50,0 20px 44px -24px #f7d378b3}#v-hello .cta .btn:hover::after{opacity:1}}
-#v-hello .cta .btn:active{transform:scale(.985)}
+#v-hello .cta .btn{position:relative;min-height:80px;padding:22px 30px;gap:24px;font-size:22px;font-weight:600;line-height:1.4;border-radius:24px;color:#f5f2ea}
 @media(min-width:760px) and (max-width:1050px){
   #v-hello .hello-stage{grid-template-columns:minmax(0,1fr) minmax(0,.6fr);gap:36px}
-  #v-hello .gift b{font-size:26px}
+  #v-hello .gift b{font-size:28px}
   #v-hello .gift{gap:16px}
 }
 @media(max-width:759px){
@@ -207,13 +202,86 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   #v-hello .hello-content{max-width:none}
   #v-hello .gifts{gap:24px}
   #v-hello .gift{gap:16px}
-  #v-hello .gift b{font-size:24px;line-height:1.45}
+  #v-hello .gift b{font-size:26px;line-height:1.45}
   #v-hello .gift .ico{width:24px;height:24px;flex-basis:24px;margin-top:5px}
   #v-hello .cta{margin-top:36px}
   #v-hello .cta .btn{min-height:74px;padding:20px 24px;font-size:21px}
-  body.hello::before{background:radial-gradient(ellipse 90% 25% at 20% 76%,rgba(255,231,153,.25),transparent 100%),radial-gradient(ellipse 70% 32% at 110% 24%,rgba(255,227,145,.16),transparent 100%)}
+  body.hello::before{background:radial-gradient(ellipse 90% 25% at 20% 76%,rgba(240,215,154,.25),transparent 100%),radial-gradient(ellipse 70% 32% at 110% 24%,rgba(240,215,154,.16),transparent 100%)}
 }
-@media(max-width:370px){#v-hello .gift b{font-size:22px}#v-hello .gift{gap:14px}#v-hello .cta .btn{font-size:20px;gap:18px}}
+@media(max-width:370px){#v-hello .gift b{font-size:24px}#v-hello .gift{gap:14px}#v-hello .cta .btn{font-size:20px;gap:18px}}
 @media(max-height:700px){#v-hello .hello-stage{padding-block:24px}#v-hello .gifts{gap:22px}#v-hello .cta{margin-top:32px}}
 @media(prefers-reduced-motion:reduce){.compact-brand .moon-img{animation:none!important}#v-hello .cta .btn{transition:none}#v-hello .cta .btn::after{display:none}#v-hello .cta .btn:hover{transform:none}}
 @media(prefers-reduced-transparency:reduce){#v-hello .cta .btn{background:#302742;backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+/* Readability: original ivory and gold, stronger Onest; metadata remains quieter. */
+body{font-size:18px;font-weight:500}
+body.inner :is(.feature-group,.account-group)>h2{font-size:21px;color:var(--text)}
+body.inner :is(.wid,.compact-links .wid) b{font-size:20px;font-weight:600;line-height:1.45;letter-spacing:-.01em}
+body.inner .wid>span:not(.dot):not(.destination-arrow){font-size:17px;font-weight:500;color:var(--text);line-height:1.6}
+body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.field label,.hb-rule,.rem-lbl small,.profile-detail>summary,#profile-summary){font-size:17px;font-weight:500;color:var(--muted);line-height:1.65}
+body.inner :is(.field label,.text-action,.back,.rem-summary,.segmented button,.emotion-family,.mchip,.chip,.observation>summary,.practice-create>summary){font-size:17px;font-weight:600;color:var(--text)}
+body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.ln-text,.histbody p,textarea){font-weight:500}
+body.inner .wpane :is(.hint,.msg){font-size:17px!important}
+body.inner .quick-actions button b{font-size:17px;font-weight:600}
+body.inner :is(.ritual-practices,#h-progress){font-size:17px;font-weight:500;color:var(--text)}
+body.inner .ritual-tools .text-action{font-size:16px;font-weight:600}
+body.inner #h-set-question{font-size:18px;font-weight:600}
+body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:18px;color:var(--text)}
+body.inner #home-sky .moonline b{font-weight:600}
+html[data-theme] body.inner .app-nav button{font-size:16px;font-weight:600;color:var(--text)}
+html[data-theme] body.inner .app-nav button.on{color:var(--gold-2)}
+body:not(.inner) :is(#v-onb,#v-login) :is(p,.field label,.geo){font-size:18px;font-weight:500;line-height:1.65}
+body:not(.inner) :is(#v-onb,#v-login) .field label{font-weight:600;color:var(--text)}
+body:not(.inner) :is(#v-onb,#v-login) input:not([type=checkbox]){font-size:18px;font-weight:500}
+body:not(.inner) :is(#v-onb,#v-login) .btn{font-size:20px;font-weight:600}
+body:not(.inner) #v-hello .hello-login{font-size:18px;font-weight:600}
+body:not(.inner) #v-hello .trust{color:#cdc6e2;font-weight:500}
+
+/* Optical material copied from https://lunario.online/ (.glass), 15 September 2026.
+   Identical gradient, 22px blur, saturation, brightness, edge colors, highlight and shadows.
+   Only scope, CSS variable names and content stacking adapt to the app's components.
+   Long reading surfaces and fields keep their dense background. */
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
+  isolation:isolate;overflow:hidden;
+  background:linear-gradient(135deg,rgba(245,242,234,.10) 0%,rgba(245,242,234,.04) 45%,rgba(245,242,234,.07) 100%);
+  backdrop-filter:blur(22px) saturate(160%) brightness(1.08);
+  -webkit-backdrop-filter:blur(22px) saturate(160%) brightness(1.08);
+  border:1px solid transparent;background-clip:padding-box;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 12px 34px -14px rgba(0,0,0,.55);
+  --glass-x:50%;--glass-y:0%;--glass-edge:0;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;
+}
+body.inner :is(.rem-summary,#home-sky .moonline){position:relative}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
+  content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;
+  background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),rgba(255,255,255,.75) 0deg,rgba(244,223,168,.55) 40deg,rgba(255,255,255,.08) 110deg,rgba(255,255,255,.05) 220deg,rgba(244,223,168,.35) 300deg,rgba(255,255,255,.75) 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  pointer-events:none;opacity:1;box-shadow:none;transform:none;animation:none;
+}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
+  content:'';display:block;position:absolute;inset:-40%;border-radius:inherit;z-index:-1;pointer-events:none;
+  background:radial-gradient(circle at var(--glass-x) var(--glass-y),rgba(255,255,255,.28) 0%,rgba(244,223,168,.14) 18%,transparent 46%);
+  opacity:0;transition:opacity .35s ease;transform:none;animation:none;
+}
+@media(hover:hover) and (pointer:fine){
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):hover{
+    transform:translateY(-3px) scale(1.015);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.18),0 18px 44px -14px rgba(217,184,104,.4);
+  }
+}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.97)}
+/* On a light backdrop the same optics get a translucent white substrate for legibility. */
+html[data-theme=light] :is(body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background-color:rgba(255,253,249,.72)}
+@media(prefers-reduced-motion:reduce){
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary){transition:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):is(:hover,:active){transform:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{display:none}
+}
+@media(prefers-reduced-transparency:reduce){
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+/* The account status dot lives outside the avatar and must not be clipped by the glass. */
+html[data-theme] body.inner #h-acct{overflow:visible}
+html[data-theme] body.inner #h-acct::after{inset:0;clip-path:circle(50%)}

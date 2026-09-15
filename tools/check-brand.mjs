@@ -53,6 +53,7 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(geometry.moon.width<=280 && Math.abs(geometry.moon.width-geometry.moon.height)<1);
       assert.ok(geometry.textRight<=geometry.moon.x+1,'Text and moon occupy separate columns');
       assert.equal(geometry.clip,'none');assert.equal(geometry.mask,'none');assert.match(geometry.font,/Onest/);
+      assert.equal(await page.locator('#h-acct').evaluate(e=>getComputedStyle(e).overflow),'visible','Keep the profile indicator outside its photo');
       coverage.push({width,height,...geometry});await shot('home-'+width);
     }
     await page.setViewportSize({width:390,height:844});
@@ -77,6 +78,11 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(await page.locator('.heromoon').evaluate(e=>e.getBoundingClientRect().width<=650));
       const button=await page.locator('#v-hello .cta .btn').evaluate(e=>({color:getComputedStyle(e).color,glass:getComputedStyle(e).backdropFilter}));
       assert.equal(button.color,'rgb(245, 242, 234)');assert.match(button.glass,/blur/);
+      assert.match(button.glass,/blur\(22px\) saturate\(1\.6\) brightness\(1\.08\)/,'Use the landing optical material');
+      const typography=await page.locator('#v-hello .gift b').first().evaluate(e=>({size:parseFloat(getComputedStyle(e).fontSize),weight:getComputedStyle(e).fontWeight}));
+      assert.equal(typography.weight,'600');assert.ok(typography.size>=24,'Benefits stay readable on the narrowest phone');
+      assert.ok(await page.locator('.welcome-primary').evaluate(e=>getComputedStyle(e,'::before').backgroundImage.startsWith('conic-gradient')));
+
       assert.equal(await page.locator('#v-hello .gift b').first().textContent(),'Замечать свое настроение');
       assert.ok(await page.locator('#v-hello .cta .btn').evaluate(e=>e.getBoundingClientRect().height>=70));
       assert.ok(await page.locator('#v-hello .gift b').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=22));
@@ -87,6 +93,17 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(layout.separate,'Welcome moon must not collide with copy or the main action at '+width);assert.equal(layout.overflow,false);
       await shot('welcome-'+width);
     }
+    // The landing's moving edge responds to pointer position, with no effect under reduced motion.
+    await page.setViewportSize({width:1440,height:900});await ready();
+    const primary=page.locator('.welcome-primary');await primary.scrollIntoViewIfNeeded();
+    const rect=await primary.boundingBox();
+    await page.mouse.move(rect.x+rect.width*.25,rect.y+rect.height*.35);await page.waitForTimeout(60);
+    const edge=await primary.evaluate(e=>e.style.getPropertyValue('--glass-edge'));assert.ok(edge.length>0);
+    await page.mouse.move(rect.x+rect.width*.7,rect.y+rect.height*.6);await page.waitForTimeout(60);
+    assert.notEqual(await primary.evaluate(e=>e.style.getPropertyValue('--glass-edge')),edge);
+    await page.emulateMedia({reducedMotion:'reduce'});
+    assert.equal(await primary.evaluate(e=>getComputedStyle(e,'::after').display),'none');
+    await page.emulateMedia({reducedMotion:'no-preference'});
     // Exercise both login steps without sending email. Catch the input/button collision from the screenshot.
     await page.route(base+'/api/auth/request',route=>route.fulfill({json:{ok:true}}));
     for(const [width,height] of [[1440,900],[390,844],[320,568],[844,390]]) {
