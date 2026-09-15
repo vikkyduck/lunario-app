@@ -77,8 +77,33 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(await page.locator('.heromoon').evaluate(e=>e.getBoundingClientRect().width<=650));
       const button=await page.locator('#v-hello .cta .btn').evaluate(e=>({color:getComputedStyle(e).color,glass:getComputedStyle(e).backdropFilter}));
       assert.equal(button.color,'rgb(245, 242, 234)');assert.match(button.glass,/blur/);
+      assert.equal(await page.locator('#v-hello .gift b').first().textContent(),'Замечать свое настроение');
+      assert.ok(await page.locator('#v-hello .cta .btn').evaluate(e=>e.getBoundingClientRect().height>=70));
+      assert.ok(await page.locator('#v-hello .gift b').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=22));
       await shot('welcome-'+width);
     }
+    // Exercise both login steps without sending email. Catch the input/button collision from the screenshot.
+    await page.route(base+'/api/auth/request',route=>route.fulfill({json:{ok:true}}));
+    for(const [width,height] of [[1440,900],[390,844],[320,568],[844,390]]) {
+      await page.setViewportSize({width,height});await page.evaluate(()=>openLogin());await ready();
+      for(const step of ['email','code']) {
+        if(step==='code'){
+          await page.locator('#ob-email').fill('layout@example.test');
+          await page.locator('#l-box .auth-submit').click();
+          await page.locator('#ob-code').waitFor();await ready();
+        }
+        const geometry=await page.locator('#l-box').evaluate(e=>{
+          const field=e.querySelector('input').getBoundingClientRect(),button=e.querySelector('.auth-submit').getBoundingClientRect();
+          return {gap:button.top-field.bottom,overflow:document.documentElement.scrollWidth>innerWidth+1};
+        });
+        assert.ok(geometry.gap>=24,step+' field and button need a clear gap');assert.equal(geometry.overflow,false);
+        await page.locator('#l-box .auth-submit').scrollIntoViewIfNeeded();
+        assert.ok(await page.locator('#l-box .auth-submit').isVisible());
+        await shot('login-'+step+'-'+width);
+      }
+    }
+    await page.unroute(base+'/api/auth/request');
+    await page.evaluate(()=>go('hello'));await ready();
     await page.evaluate(()=>{
       Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:-33.8688,longitude:151.2093}});}},configurable:true});
       return window.LunarioSky.locate(true);

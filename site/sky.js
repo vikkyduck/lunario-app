@@ -1,5 +1,5 @@
-import {CONSTELLATIONS} from './constellations.js?v=25';
-import {MOSCOW, observer, visibleSky} from './sky-model.js?v=25';
+import {CONSTELLATIONS} from './constellations.js?v=26';
+import {MOSCOW, observer, visibleSky} from './sky-model.js?v=26';
 
 const canvas=document.getElementById('sky');
 const ctx=canvas?.getContext('2d');

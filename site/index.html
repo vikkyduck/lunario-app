@@ -804,8 +804,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=25">
-<link rel="stylesheet" href="/app/moon-glass.css?v=25">
+<link rel="stylesheet" href="/app/experience.css?v=26">
+<link rel="stylesheet" href="/app/moon-glass.css?v=26">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -826,7 +826,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </header>
     <div class="hello-content">
       <ul class="gifts">
-        <li class="gift"><i class="ico smile" aria-hidden="true"></i><span><b>Замечать своё настроение</b></span></li>
+        <li class="gift"><i class="ico smile" aria-hidden="true"></i><span><b>Замечать свое настроение</b></span></li>
         <li class="gift"><i class="ico pen" aria-hidden="true"></i><span><b>Записывать мысли</b></span></li>
         <li class="gift"><i class="ico question" aria-hidden="true"></i><span><b>Посмотреть на вопрос иначе</b></span></li>
       </ul>
@@ -840,9 +840,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <!-- ВХОД ПО ПОЧТЕ -->
   <section class="view" id="v-login">
     <button class="back" onclick="go('hello')">← Назад</button>
-    <span class="eyebrow" style="margin-top:6px">Вход</span>
-    <h1 style="margin-top:6px">Войти по почте</h1>
-    <p style="margin-top:10px">Пришлём шестизначный код — пароль не нужен. Профиль, записи и практики откроются на этом устройстве.</p>
+    <span class="eyebrow">Вход</span>
+    <h1>Войти по почте</h1>
+    <p class="login-intro">Пришлём шестизначный код — пароль не нужен. Профиль, записи и практики откроются на этом устройстве.</p>
     <div class="card sec" id="l-box"></div>
     <div class="card sec" id="l-after" style="display:none">
       <p style="font-size:14.5px;color:#ded8ee;margin:0">Почта сохранена. Осталось заполнить короткий профиль — записи привяжутся к ней.</p>
@@ -1247,9 +1247,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=25"></script>
+<script type="module" src="/app/sky.js?v=26"></script>
 
-<script src="/app/experience.js?v=25"></script>
+<script src="/app/experience.js?v=26"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1732,6 +1732,7 @@ function inApp(){ try{ return localStorage.getItem('lun_app')==='1'; }catch(e){ 
 function openCabinet(){ try{ localStorage.removeItem('lun_app'); }catch(e){} location.href='/app/cabinet'; }
 function renderAuth(){
   const box = $('m-auth'), u = S.user;
+  box.classList.add('auth-flow');
   if (u.email && authStep !== 'code') {
     box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Вы вошли как <b>${esc(u.email)}</b></p>
       ${isStaff(u) ? `<button class="btn sm" style="width:100%;margin-top:13px" onclick="openCabinet()">Кабинет сотрудника</button>` : ''}
@@ -1744,18 +1745,18 @@ function renderAuth(){
     return;
   }
   if (authStep === 'code') {
-    box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Код отправлен на <b>${esc(authEmail)}</b></p>
-      <div class="field" style="margin:12px 0 0"><label>Код из письма</label>
+    box.innerHTML = `<p class="auth-sent">Код отправлен на <b>${esc(authEmail)}</b></p>
+      <div class="field"><label>Код из письма</label>
         <input id="a-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
-      <button class="btn" style="margin-top:10px" onclick="authVerify()">Войти</button>
-      <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="authStep='idle';renderAuth()">Изменить адрес</button>
+      <button class="btn auth-submit" onclick="authVerify()">Войти</button>
+      <button class="btn ghost sm auth-secondary" onclick="authStep='idle';renderAuth()">Изменить адрес</button>
       <p class="msg" id="a-authmsg"></p>`;
     setTimeout(()=>$('a-code') && $('a-code').focus(), 60);
     return;
   }
-  box.innerHTML = `<div class="field" style="margin:0"><label>Почта</label>
+  box.innerHTML = `<div class="field"><label>Почта</label>
       <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru" value="${esc(S.user.email||'')}"></div>
-    <button class="btn" onclick="authRequest()">Прислать код</button>
+    <button class="btn auth-submit" onclick="authRequest()">Прислать код</button>
     <p class="msg" id="a-authmsg"></p>`;
 }
 let obStep = 'idle', obEmail = '';
@@ -1763,23 +1764,24 @@ let obTarget = 'o-auth';
 function renderObAuth(){
   const box = $(obTarget) || $('o-auth');
   if (!box) return;
+  box.classList.add('auth-flow');
   if (obStep === 'idle') {
     box.innerHTML = `<button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="obStep='email';renderObAuth()">Войти по почте</button>`;
     return;
   }
   if (obStep === 'email') {
-    box.innerHTML = `<div class="field" style="margin:13px 0 0"><label>Почта</label>
+    box.innerHTML = `<div class="field"><label>Почта</label>
         <input id="ob-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru"></div>
-      <button class="btn" onclick="obRequest()">Прислать код</button>
+      <button class="btn auth-submit" onclick="obRequest()">Прислать код</button>
       <p class="msg" id="ob-msg"></p>`;
     setTimeout(()=>$('ob-email') && $('ob-email').focus(), 60);
     return;
   }
-  box.innerHTML = `<p style="font-size:13.5px;margin:13px 0 0">Код отправлен на <b>${esc(obEmail)}</b></p>
-    <div class="field" style="margin:10px 0 0"><label>Код из письма</label>
+  box.innerHTML = `<p class="auth-sent">Код отправлен на <b>${esc(obEmail)}</b></p>
+    <div class="field"><label>Код из письма</label>
       <input id="ob-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
-    <button class="btn" onclick="obVerify()">Войти</button>
-    <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="obStep='email';renderObAuth()">Изменить адрес</button>
+    <button class="btn auth-submit" onclick="obVerify()">Войти</button>
+    <button class="btn ghost sm auth-secondary" onclick="obStep='email';renderObAuth()">Изменить адрес</button>
     <p class="msg" id="ob-msg"></p>`;
   setTimeout(()=>$('ob-code') && $('ob-code').focus(), 60);
 }

@@ -24,6 +24,10 @@
   --moon-reader:#fffcf8;--moon-fade:#f7f3ec;--moon-empty:#f1e6ee;
 }
 html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed;--muted:inherit;--line:inherit}
+/* Soft light sits behind the content, including the email/code screens. */
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(235,191,96,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,211,146,.07),transparent 100%)}
+body.hello::before{z-index:1;background:radial-gradient(ellipse 34% 28% at 28% 75%,rgba(240,203,116,.17),transparent 100%),radial-gradient(ellipse 38% 46% at 96% 64%,rgba(234,190,95,.13),transparent 100%)}
+html[data-theme=light] body.inner::before{opacity:.55}
 body.inner .bg .orb{opacity:.24}body.inner .bg .cloud{opacity:.14}
 body.inner .sky.on{display:block;opacity:.48}body.hello .sky.on{opacity:.72}
 html[data-theme=light] body.inner .sky.on{opacity:.22}
@@ -36,12 +40,12 @@ body.inner :is(.wid,.sq,.quick-actions button,.question-entry .wid,.profile-summ
 }
 body.inner :is(.wid,.sq,.quick-actions button){backdrop-filter:none;-webkit-backdrop-filter:none}
 body.inner :is(.wid,.sq)::before{display:block;opacity:.4;background:radial-gradient(220px circle at var(--light-x,15%) var(--light-y,0%),var(--moon-shine),transparent 75%);box-shadow:inset 1px 1px 0 #ffecc617,inset -1px -1px 0 #b59ed113}
-body.inner .wid{border-radius:22px;padding:22px;min-height:150px;gap:10px}
+body.inner .wid{border-radius:22px;padding:26px;min-height:158px;gap:12px}
 body.inner .wid b{font-size:17px;font-weight:600}
 body.inner .wid .ico{width:30px;height:30px;background-color:var(--gold-2);filter:drop-shadow(0 0 7px #d8b96b24)}
 body.inner .wid>span.destination-arrow{color:var(--gold-2);opacity:.8}
 body.inner .compact-links{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:22px}
-body.inner .compact-links .wid{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:20px;min-height:88px}
+body.inner .compact-links .wid{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:24px;min-height:96px}
 body.inner .compact-links .wid:last-child{border-bottom:0}
 body.inner .compact-links .wid::before{display:none}
 body.inner .compact-links .wid .ico{width:26px;height:26px}
@@ -87,7 +91,7 @@ body.inner #h-next{width:100%;min-height:52px}
 .ritual-emblem{position:absolute;right:30px;top:30px;width:58px;height:86px;border:1px solid #e7c98da6;border-radius:10px;background:linear-gradient(135deg,#2a2150,#141126 67%);box-shadow:0 5px 16px #0c061342,inset 0 0 0 4px #21182b,inset 0 0 0 5px #c49f5a4d;transform:rotate(9deg);pointer-events:none}
 .ritual-emblem::before{content:'';position:absolute;inset:18px 8px;border:1px solid #e6c78a50;border-radius:50%}
 .ritual-emblem span{position:absolute;width:30px;height:30px;left:12px;top:24px;background:url('/app/assets/moon-hero.png') center/contain no-repeat;filter:drop-shadow(0 0 7px #dbba7538)}
-body.inner .quick-actions{gap:12px;margin-top:16px}
+body.inner .quick-actions{gap:16px;margin-top:22px}
 body.inner .quick-actions button{min-height:98px;font-weight:400;padding:15px 10px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:20px}
 body.inner .quick-actions button b{font-size:15px;font-weight:400;line-height:1.45}
 body.inner .quick-actions .ico{width:26px;height:26px;background-color:var(--gold-2)}
@@ -104,7 +108,7 @@ body.inner .wg-head h2{font-weight:600;font-size:24px}
 body.inner .wpane .practice-question{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:25px!important;font-weight:600;line-height:1.6}
 body.inner .answer-actions{background:var(--sheet)}
 body.inner #journal-card .answer-actions{background:var(--bg)}
-body.inner .timeline-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:14px;box-shadow:inset 0 1px 0 #fff2d20a}
+body.inner .timeline-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:20px;padding:28px;margin-bottom:18px;box-shadow:inset 0 1px 0 #fff2d20a}
 body.inner .timeline-kind{font-size:13px;color:var(--gold-2)}
 body.inner .timeline-day{margin:30px 0 14px}
 body.inner .timeline-empty{background:var(--moon-reader);border:1px solid var(--line);box-shadow:var(--moon-shadow)}
@@ -123,11 +127,11 @@ body.inner .theme-option.light>span{background:linear-gradient(135deg,#fffcf7,#e
 body.inner .theme-option.dark>span{background:linear-gradient(135deg,#141126,#0b0a14)}
 body.inner .theme-option.system>span{background:linear-gradient(90deg,#f7f3ec 50%,#141126 50%)}
 html[data-theme=light] .home-moon{opacity:.55}
-body:not(.inner) :is(#v-onb,#v-login) .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 0 #f6ddb723,0 18px 42px #0d081a54;background:linear-gradient(135deg,#1d1738,#141126)}
+body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 0 #f6ddb723,0 18px 42px #0d081a54;background:linear-gradient(135deg,#1d1738,#141126)}
 
 @media(min-width:900px){
   body.inner .wrap{padding-top:38px}
-  .today-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:36px}
+  .today-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:44px}
   .home-intro{padding-top:28px;padding-bottom:40px}
   body.inner .day-focus{padding:30px}
   body.inner .today-side>.feature-group:first-child{margin-top:0}
@@ -136,7 +140,7 @@ body:not(.inner) :is(#v-onb,#v-login) .card{border:1px solid #d8b56f61;box-shado
 @media(max-width:899px){
   .home-intro{margin:0;padding:26px 0 30px;grid-template-columns:minmax(0,1fr) 160px;gap:24px}
   body.inner .home-intro #h-wish{font-size:29px;line-height:1.5}
-  body.inner .today-side{margin-top:32px}
+  body.inner .today-side{margin-top:40px}
 }
 @media(max-width:599px){
   body.inner .wrap{padding-inline:22px;padding-top:calc(30px + env(safe-area-inset-top))}
@@ -147,9 +151,9 @@ body:not(.inner) :is(#v-onb,#v-login) .card{border:1px solid #d8b56f61;box-shado
   body.inner .ritual-practices{max-width:95%;font-size:15px}
   .ritual-emblem{right:24px;top:25px;width:52px;height:78px}
   .ritual-emblem span{left:10px;top:22px;width:28px;height:28px}
-  body.inner .wid{padding:19px}
-  body.inner .compact-links .wid{padding:19px}
-  body.inner .timeline-entry{padding:20px}
+  body.inner .wid{padding:22px}
+  body.inner .compact-links .wid{padding:22px}
+  body.inner .timeline-entry{padding:22px}
 }
 @media(max-width:370px){
   body.inner .wrap{padding-inline:16px}
@@ -178,13 +182,27 @@ body:not(.inner) :is(#v-onb,#v-login) .card{border:1px solid #d8b56f61;box-shado
 
 /* The welcome composition keeps the approved copy, with a smaller moon and one lit glass action. */
 body.hello .heromoon{width:clamp(300px,68vw,620px);height:auto;aspect-ratio:1;left:auto;right:-70px;top:50%;transform:translateY(-50%);opacity:.94}
-#v-hello .cta .btn{position:relative;isolation:isolate;border:1px solid rgba(240,215,154,.68);border-radius:999px;color:#f5f2ea;background:linear-gradient(135deg,rgba(240,215,154,.24),rgba(217,184,104,.08) 50%,rgba(240,215,154,.15));box-shadow:inset 0 1px 0 #fff6dd80,inset 0 -1px 0 #b98f3e44,0 8px 28px -10px #d9b86855;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-#v-hello .cta .btn:hover{border-color:#f0d79a;box-shadow:inset 0 1px 0 #fff6dd99,0 8px 32px -8px #d9b86877}
+#v-hello .hello-content{max-width:510px;padding-block:56px}
+#v-hello .gifts{margin-top:0;gap:28px}
+#v-hello .gift{gap:20px;align-items:flex-start}
+#v-hello .gift .ico{width:28px;height:28px;flex-basis:28px;margin-top:5px;background-color:#f0d79a;filter:drop-shadow(0 0 10px #f0d79a26)}
+#v-hello .cta{margin-top:44px}
+#v-hello .cta .btn{position:relative;isolation:isolate;min-height:76px;padding:20px 30px;gap:22px;font-size:21px;line-height:1.4;border:1px solid rgba(245,242,255,.38);border-radius:26px;color:#f5f2ea;background:radial-gradient(ellipse at 6% 0%,rgba(255,255,255,.21),transparent 70%),linear-gradient(125deg,rgba(199,190,217,.17),rgba(72,61,105,.34) 55%,rgba(168,157,193,.16));box-shadow:inset 0 1px 0 #ffffff59,inset 0 -1px 0 #ffffff12,0 16px 40px -22px #edc67670,0 8px 24px #08061133;backdrop-filter:blur(22px) saturate(1.15);-webkit-backdrop-filter:blur(22px) saturate(1.15);transition:box-shadow .2s,border-color .2s,transform .16s}
+#v-hello .cta .btn:hover{border-color:rgba(245,242,255,.6);box-shadow:inset 0 1px 0 #ffffff80,inset 0 -1px 0 #ffffff20,0 20px 48px -24px #edc67680,0 8px 24px #08061133}
 @media(min-width:900px){body.hello .heromoon{width:clamp(390px,32vw,500px);right:max(36px,calc((100vw - 1180px)/2));top:51%}}
 @media(max-width:599px){body.hello .heromoon{width:320px;right:-120px;top:36%;opacity:.70}.home-moon{align-self:start;margin-top:8px}}
 @media(max-height:600px) and (min-width:600px){body.hello .heromoon{width:330px;right:0}}
 @media(prefers-reduced-motion:reduce){.compact-brand .moon-img{animation:none!important}}
 @media(prefers-reduced-transparency:reduce){#v-hello .cta .btn{background:#302742;backdrop-filter:none;-webkit-backdrop-filter:none}}
 
-#v-hello .gift b{font-size:18px;font-weight:600;color:#f5f2ea;line-height:1.5}
-@media(min-width:900px){#v-hello .gift b{font-size:20px}}
+#v-hello .gift b{font-size:22px;font-weight:600;color:#f5f2ea;line-height:1.5}
+@media(min-width:900px){#v-hello .gift b{font-size:26px}}
+@media(max-width:599px){
+  #v-hello .hello-content{padding-block:48px}
+  #v-hello .gifts{gap:26px}
+  #v-hello .gift{gap:14px}
+  #v-hello .gift .ico{width:24px;height:24px;flex-basis:24px;margin-top:4px}
+  #v-hello .cta .btn{min-height:70px;padding:19px 24px;font-size:20px;border-radius:24px}
+  body.hello::before{background:radial-gradient(ellipse 80% 28% at 20% 72%,rgba(240,203,116,.15),transparent 100%),radial-gradient(ellipse 68% 44% at 110% 34%,rgba(234,190,95,.1),transparent 100%)}
+}
+@media(max-height:600px){#v-hello .hello-content{padding-block:32px}#v-hello .gifts{gap:20px}#v-hello .cta{margin-top:32px}}
