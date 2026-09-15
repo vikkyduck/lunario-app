@@ -83,7 +83,7 @@ export function skyEvents(fromMs, days = 60) {
 export function skyNow(ms = Date.now(), tz = 'Europe/Moscow') {
   const b = skyAt(ms);
   const m = moonState(ms);
-  const phaseName = ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Старая Луна'][Math.floor(((m.cycle + 1 / 16) % 1) * 8)];
+  const phaseName = m.name;
   const retro = Object.keys(RETRO).filter((k) => b[k] && b[k].retro).map((k) => { const r = T('retro', k, RETRO[k]); return { key: k, name: b[k].name, symbol: b[k].symbol, sign: b[k].sign, adj: r[1], note: r[3] }; });
   const keys = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'];
   const aspects = [];

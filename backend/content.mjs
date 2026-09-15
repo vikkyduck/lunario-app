@@ -423,10 +423,6 @@ const NUM_DAY_FALLBACK = {
 
 /* ── Настрой дня ── */
 /* Пожелание дня в приветствии: «Вдохновения вам, Викки». Родительный падеж, без точки. */
-const WISHES_FALLBACK = ['Вдохновения', 'Лёгкого дня', 'Ясности', 'Спокойствия', 'Тепла', 'Сил', 'Радости', 'Лёгкости', 'Смелости',
-  'Нежности к себе', 'Тихой уверенности', 'Внимания к себе', 'Доверия себе', 'Мягкости', 'Любви', 'Терпения', 'Удачи', 'Ясного ума',
-  'Доброго дня', 'Хороших новостей', 'Отдыха', 'Опоры', 'Точных решений', 'Свободы', 'Благодарности', 'Простоты', 'Света', 'Покоя',
-  'Веры в себя', 'Тёплых встреч'];
 const AFFIRMATIONS_FALLBACK = [
   'Я разрешаю себе идти в своём темпе — этого достаточно.',
   'Мне не нужно быть удобной, чтобы меня любили.',
@@ -495,10 +491,9 @@ const TOPICS_FALLBACK = [
 function build() {
   const r = {};
 
-  /* Карты Таро: книга с картинками и разделами; старый строчный файл тоже читается. */
+  /* Карты Таро: книга с картинками и разделами; без файла — запасные записи из кода. */
   const cardBook = book('карты-таро.txt');
-  const arcana = cardBook ? null : rows('карты-таро.txt', 3);
-  r.ARCANA = cardBook ? cardBook.map(cardFromBook) : (arcana || ARCANA_FALLBACK).map(cardFromFallback);
+  r.ARCANA = cardBook ? cardBook.map(cardFromBook) : ARCANA_FALLBACK.map(cardFromFallback);
 
   /* У знаков из файла берём только черту: даты определяют знак и меняться не должны. */
   const signs = rows('знаки-зодиака.txt', 2);
@@ -510,12 +505,9 @@ function build() {
     return [c[0], c[1], { work: num(w, 60), love: num(l, 60), health: num(hh, 60), money: num(m, 60) }];
   }) : DAY_TONES_FALLBACK;
 
-  /* Руны: книга со знаком-рисунком в каждой записи; в старом строчном файле рисунок брался по порядку строк. */
+  /* Руны: книга со знаком-рисунком в каждой записи. */
   const runeBook = book('руны.txt');
-  const runes = runeBook ? null : rows('руны.txt', 3);
-  r.RUNES = runeBook ? runeBook.map(runeFromBook)
-    : runes ? runes.map((c, i) => runeFromFallback([c[0], c[1], (RUNES_FALLBACK[i] || RUNES_FALLBACK[0])[2], c[2]], i))
-    : RUNES_FALLBACK.map(runeFromFallback);
+  r.RUNES = runeBook ? runeBook.map(runeFromBook) : RUNES_FALLBACK.map(runeFromFallback);
 
   const dest = rows('нумерология-судьба.txt', 3);
   r.NUM_DESTINY = dest ? Object.fromEntries(dest.map((c) => [c[0], [c[1], c[2]]])) : NUM_DESTINY_FALLBACK;
@@ -532,11 +524,7 @@ function build() {
      LUNAR_DAYS — пары [название, рекомендация] по номеру, как раньше; LUNAR_INFO — полные записи с картинкой и описанием. */
   const ldArt = article('лунные-дни.txt');
   const ldInfo = (ldArt || []).map(lunarFromArticle).filter((d) => d.n >= 1 && d.n <= 30);
-  const ld = ldArt ? null : rows('лунные-дни.txt', 3);
-  r.LUNAR_DAYS = LUNAR_DAYS_FALLBACK.map((d, i) => {
-    const a = ldInfo.find((x) => x.n === i + 1); if (a) return [a.name || d[0], a.advice || d[1]];
-    const row = ld && ld.find((c) => Number(c[0]) === i + 1); return row ? [row[1], row[2]] : d;
-  });
+  r.LUNAR_DAYS = LUNAR_DAYS_FALLBACK.map((d, i) => { const a = ldInfo.find((x) => x.n === i + 1); return a ? [a.name || d[0], a.advice || d[1]] : d; });
   r.READING_TOPICS = readingTopicsFrom(rows('темы.txt', 2));
   r.LUNAR_INFO = ldInfo.sort((a, b) => a.n - b.n).map((d) => ({ ...d, sections: splitSections(d.blocks, r.READING_TOPICS, `лунные-дни.txt, день ${d.n}`) }));
   /* Общие главы справочника: одна запись, каждый раздел [Название] — глава; на экране идут в том же порядке */
@@ -581,7 +569,6 @@ function build() {
   r.SKY = sky;
 
   r.AFFIRMATIONS = lines('аффирмации.txt') || AFFIRMATIONS_FALLBACK;
-  r.WISHES = lines('пожелания.txt') || WISHES_FALLBACK;
   r.DAY_QUESTIONS = lines('вопросы-дня.txt') || DAY_QUESTIONS_FALLBACK;
 
   const yn = rows('ответы-да-нет.txt', 4);
@@ -598,7 +585,6 @@ export const SIGNS = new Proxy([], { get: (_, k) => Reflect.get(data.SIGNS, k) }
 export const DAY_TONES = new Proxy([], { get: (_, k) => Reflect.get(data.DAY_TONES, k) });
 export const RUNES = new Proxy([], { get: (_, k) => Reflect.get(data.RUNES, k) });
 export const AFFIRMATIONS = new Proxy([], { get: (_, k) => Reflect.get(data.AFFIRMATIONS, k) });
-export const WISHES = new Proxy([], { get: (_, k) => Reflect.get(data.WISHES, k) });
 export const DAY_QUESTIONS = new Proxy([], { get: (_, k) => Reflect.get(data.DAY_QUESTIONS, k) });
 export const YN_VERDICTS = new Proxy([], { get: (_, k) => Reflect.get(data.YN_VERDICTS, k) });
 export const TOPICS = new Proxy([], { get: (_, k) => Reflect.get(data.TOPICS, k) });
@@ -611,6 +597,8 @@ export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_
 export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
 export const lunarRef = () => data.LUNAR_REF;
 export const READING_TOPICS = new Proxy([], { get: (_, k) => Reflect.get(data.READING_TOPICS, k) });
+/* Темы-«обёртки» (вступление, рекомендация, «как прожить») — не содержательные разделы; напоминание и досье их не считают */
+export const READING_META = new Set(['symbol', 'advice', 'live']);
 export const LEGACY_SETS = new Proxy([], { get: (_, k) => Reflect.get(data.LEGACY_SETS, k) });
 export const SETS = new Proxy([], { get: (_, k) => Reflect.get(data.SETS, k) });
 export const MOODS = new Proxy([], { get: (_, k) => Reflect.get(data.MOODS, k) });

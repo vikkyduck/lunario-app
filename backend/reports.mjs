@@ -7,6 +7,7 @@ import { statSync } from 'node:fs';
 import { join } from 'node:path';
 import { campaignList, campaignUsers, slaMetrics, ticketQueue, TICKET_STATUS } from './workspace.mjs';
 import * as C from './content.mjs';
+import { preferences } from './experience.mjs';
 
 let db, DATA_DIR = '';
 export function initReports(database, dataDir) {
@@ -164,6 +165,8 @@ const EVENT_NAMES = {
   journal_add: 'Сделал запись', wish_add: 'Добавил желание', compat_calc: 'Посчитал совместимость', share_card: 'Поделился карточкой', install_prompt: 'Увидел «Установить»', installed: 'Установил на телефон',
   natal_view: 'Открыл натальную карту', paywall_view: 'Увидел платное', paywall_click: 'Нажал на платное', invite_copy: 'Скопировал приглашение', invite_used: 'Пришёл по приглашению', push_on: 'Включил напоминание', push_off: 'Выключил напоминание', pay_start: 'Начал оплату', payment_success: 'Оплатил',
   reminder_on: 'Включил напоминание функции', reminder_off: 'Выключил напоминание функции', reminder_test: 'Прислал пробное напоминание', card_download: 'Скачал открытку',
+  support_open: 'Открыл поддержку', support_new: 'Написал в поддержку', gratitude_add: 'Записал благодарность', answer_add: 'Ответил на вопрос дня', news_view: 'Открыл «Новое в приложении»', wish_photo: 'Добавил фото к желанию', photo_set: 'Поставил фото аккаунта',
+  topics_set: 'Выбрал темы чтения', topics_all: 'Переключил «показать всё»', lunar_expand: 'Развернул раздел лунного дня', habit_award: 'Получил награду за привычку', utm_seen: 'Пришёл по ссылке кампании',
   habit_add: 'Добавил привычку', habit_mark: 'Отметил привычку', askesis_start: 'Взял аскезу', askesis_mark: 'Отметил день аскезы', sky_view: 'Открыл «На небе»', lunar_view: 'Открыл лунный день', moodreport_view: 'Открыл отчёт по настроениям',
 };
 
@@ -369,7 +372,7 @@ function problems(from, to) {
     { key: 'mail', name: 'Письма с кодом не ушли', value: lc.mailErr, hint: 'сбои отправки почты' },
     { key: 'api', name: 'Сбои функций', value: apiErrs, hint: errs.filter((e) => e.path !== 'mail').map((e) => `${e.path} — ${e.n}`).join(', ') || 'сбоев не было' },
     { key: 'ai', name: 'Рост стоимости ИИ', value: 0, hint: 'ИИ-модели в приложении не подключены', state: 'off' },
-    { key: 'support', name: 'Неотвеченные обращения', value: 0, hint: 'чат поддержки не запущен', state: 'off' },
+    { key: 'support', name: 'Неотвеченные обращения', value: one("SELECT COUNT(*) c FROM tickets WHERE first_reply_at = '' AND status <> 'resolved'").c, hint: 'ждут первого ответа поддержки' },
   ];
   return { total: items.reduce((s, i) => s + i.value, 0), items, errs };
 }
@@ -603,9 +606,8 @@ const builders = {
     R.how = 'Уникальных — люди с событием функции за период. Повторно — событие в 2+ разных днях. Доля — от активных с содержательным действием за период. Заглушки исключены из активации и активной аудитории.';
   },
   topics(R, { P }) {
-    const META = new Set(['symbol', 'advice', 'live']);
     const labels = Object.fromEntries([...C.READING_TOPICS].map((t) => [t.key, t.label]));
-    const users = all("SELECT id, preferences FROM users WHERE onboarded = 1 AND preferences <> ''").map((r) => { try { const pr = JSON.parse(r.preferences); return { id: r.id, topics: (pr.topics || []).filter((k) => labels[k]), all: !!pr.topicsAll, views: pr.lunarViews || 0 }; } catch { return null; } }).filter(Boolean);
+    const users = all("SELECT id, preferences FROM users WHERE onboarded = 1 AND preferences <> ''").map((r) => { const pr = preferences(r.preferences); return { id: r.id, topics: (pr.topics || []).filter((k) => labels[k]), all: !!pr.topicsAll, views: pr.lunarViews || 0 }; });
     const onboarded = one('SELECT COUNT(*) c FROM users WHERE onboarded = 1').c;
     const chose = users.filter((x) => x.topics.length), allOn = users.filter((x) => x.all);
     const count = {}; for (const x of chose) for (const k of x.topics) count[k] = (count[k] || 0) + 1;
@@ -621,7 +623,7 @@ const builders = {
       kpi('«Показывать всё»', chose.length + allOn.length ? pct(allOn.length, users.length || 1) : null, { unit: '% настроивших', sub: `${allOn.length} чел. читают все разделы` }),
       kpi('Меняли выбор за период', setEv.p, { unit: 'чел.', sub: `${setEv.n} изменений` }),
     ];
-    const keys = Object.keys(labels).filter((k) => !META.has(k));
+    const keys = Object.keys(labels).filter((k) => !C.READING_META.has(k));
     R.charts = [chart('hbars', 'Какие темы выбирают', 'людей с темой в выборе', keys.map((k) => [labels[k], count[k] || 0]).sort((a, b) => b[1] - a[1]), 'Темы, которые никто не выбирает и не разворачивает за 30 дней, — кандидаты на сокращение.')];
     R.tables = [
       table('Темы', ['Тема', 'В выборе (чел.)', 'Разворачивали скрытой (раз)', 'Разворачивали, но не выбрали'], keys.map((k) => [labels[k], count[k] || 0, expand[k] || 0, expand[k] && !count[k] ? 'да — кандидат в набор по умолчанию' : '']), 'Разворот — открытие скрытого раздела по «Показать всё» или по его заголовку.'),
@@ -740,7 +742,7 @@ const builders = {
     R.kpis = [kpi('Сбоев за период', errs.reduce((s, e) => s + e.n, 0), { unit: 'шт.', good: 'down' }), kpi('Ночная рассылка', lastPush ? (lastPush >= addDays(R.today, -1) ? 'ок' : 'не было ' + lastPush) : null, { unit: '', sub: 'последняя успешная отправка ' + (lastPush || '—'), state: lastPush ? 'ok' : 'nodata' }), kpi('База данных', dbSize, { unit: 'МБ' }), nodata('Задержка API', 'время ответа не логируется'), nodata('Клиентские ошибки', 'сбор ошибок из браузера не подключён'), off('Почтовые алерты', 'не настроены')];
     R.charts = [chart('line', 'Сбои по дням', 'ошибки сервера и почты', errSeries), chart('pie', 'Платформы сессий', 'за 30 дней', Object.entries(ua))];
     R.tables = [table('Сигналы', ['Сигнал', 'Значение', 'Пояснение'], pr.items.map((i) => [i.name, i.state === 'off' ? 'не запущено' : i.value, i.hint])), table('Где ломается', ['Адрес', 'Раз', 'Последний'], errs.map((e) => [e.path, e.n, e.last.replace('T', ' ').slice(0, 16)])), table('Последние сбои', ['Когда', 'Где', 'Что'], all('SELECT ts, path, message FROM errors WHERE day BETWEEN ? AND ? ORDER BY ts DESC LIMIT 50', P.from, P.to).map((e) => [e.ts.replace('T', ' ').slice(0, 16), e.path, e.message]))];
-    R.how = 'Сбой — ответ сервера с ошибкой или неудачная отправка письма. Ночная рассылка — таймер 09:00 МСК; «ок», если сегодня или вчера были успешные отправки.';
+    R.how = 'Сбой — ответ сервера с ошибкой или неудачная отправка письма. Напоминания уходят по таймеру раз в 5 минут в часовом поясе человека; «ок», если сегодня или вчера были успешные отправки.';
   },
   data(R, { P }) {
     const total = one('SELECT COUNT(*) c FROM events WHERE day BETWEEN ? AND ?', P.from, P.to).c;
@@ -811,5 +813,5 @@ export function userCard(id) {
   return { id: u.id, email: mask(u.email), name: u.name, reg: (u.email_at || u.created_at).slice(0, 10), lastAuth: lastAuth ? lastAuth.slice(0, 16).replace('T', ' ') : '—', lastSeen: u.last_seen.slice(0, 16).replace('T', ' '), lastAct: lastAct ? lastAct.slice(0, 16).replace('T', ' ') : '—',
     days, streak: u.streak, first: first ? `${FNAME[first.type] || first.type} · ${first.ts.slice(0, 10)}` : '—', source: u.invited_by ? 'Приглашение' : 'Прямой', platform: plat, push: !!one('SELECT 1 FROM push_subs WHERE user_id = ? LIMIT 1', u.id), city: u.city, tz: u.tz,
     counts: { entries: one('SELECT COUNT(*) c FROM entries WHERE user_id = ?', u.id).c, journal: one('SELECT COUNT(*) c FROM journal WHERE user_id = ?', u.id).c, wishes: one('SELECT COUNT(*) c FROM wishes WHERE user_id = ?', u.id).c, moods: one('SELECT COUNT(*) c FROM moods WHERE user_id = ?', u.id).c },
-    byType, tickets: 'чат поддержки не запущен', ai: 'ИИ не подключён' };
+    byType, tickets: (() => { const t = one("SELECT COUNT(*) c, SUM(status <> 'resolved') o FROM tickets WHERE user_id = ?", u.id); return t.c ? `${t.c} · открытых ${t.o || 0}` : 'обращений не было'; })(), ai: 'ИИ не подключён' };
 }

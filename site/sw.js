@@ -4,9 +4,10 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v38';
+const V = '38';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
+const CACHE = 'lunario-app-v' + V;
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
-const SHELL = ['/app/', '/app/experience.css?v=37', '/app/moon-glass.css?v=37', '/app/experience.js?v=37', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=38', '/app/sky-model.js?v=37', '/app/constellations.js?v=37', '/app/assets/moon-hero.png'];
+const SHELL = ['/app/', '/app/experience.css?v=' + V, '/app/moon-glass.css?v=' + V, '/app/experience.js?v=' + V, '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=' + V, '/app/sky-model.js?v=' + V, '/app/constellations.js?v=' + V, '/app/assets/moon-hero.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -58,7 +59,7 @@ self.addEventListener('fetch', (e) => {
 /* кеш не растёт бесконечно: старые файлы сверх лимита выбрасываем, оболочка остаётся */
 async function trim(c) {
   const keys = await c.keys();
-  const extra = keys.filter((k) => !SHELL.includes(new URL(k.url).pathname));
+  const extra = keys.filter((k) => { const u = new URL(k.url); return !SHELL.includes(u.pathname + u.search); });
   for (const k of extra.slice(0, Math.max(0, extra.length - RUNTIME_LIMIT))) await c.delete(k);
 }
 

@@ -1,3 +1,5 @@
+import { preferences } from './experience.mjs';
+import { inSign as inSignPhrase } from './sky.mjs';
 /* Лунарио — «полочки»: личное досье каждого человека.
 
    Всё, что приложение знает о человеке, раскладывается по трём полкам —
@@ -17,9 +19,6 @@ const ELEMENT = {
   'Рак': 'вода', 'Скорпион': 'вода', 'Рыбы': 'вода',
 };
 /* «Солнце в Овне»: знак в предложном падеже для текста досье */
-const IN_SIGN = { 'Овен': 'Овне', 'Телец': 'Тельце', 'Близнецы': 'Близнецах', 'Рак': 'Раке', 'Лев': 'Льве', 'Дева': 'Деве', 'Весы': 'Весах',
-  'Скорпион': 'Скорпионе', 'Стрелец': 'Стрельце', 'Козерог': 'Козероге', 'Водолей': 'Водолее', 'Рыбы': 'Рыбах' };
-const inSign = (n) => IN_SIGN[n] || n;
 const TOPIC_RU = { work: 'работа', money: 'деньги', love: 'отношения', health: 'здоровье', move: 'дом и переезд', study: 'учёба', self: 'о себе' };
 const KIND_RU = { yesno: '«Да / Нет»', rune: 'руна', runes: 'расклад рун', spread: 'расклад Таро', card: 'карта дня' };
 const SHELVES = ['about', 'day', 'history'];
@@ -46,8 +45,8 @@ export function createShelves(deps) {
 
   /* ── «Обо мне»: анкета и всё, что из неё считается ── */
   const readingInterests = (u) => {
-    let topics = []; try { topics = JSON.parse(u.preferences || '{}').topics || []; } catch { topics = []; }
-    return topics.filter((k) => !['symbol', 'advice', 'live'].includes(k)).map((k) => { const t = [...C.READING_TOPICS].find((x) => x.key === k); return t ? t.label : ''; }).filter(Boolean);
+    const topics = preferences(u.preferences).topics || [];
+    return topics.filter((k) => !C.READING_META.has(k)).map((k) => { const t = [...C.READING_TOPICS].find((x) => x.key === k); return t ? t.label : ''; }).filter(Boolean);
   };
   function buildAbout(u, d) {
     const birthOk = /^\d{4}-\d{2}-\d{2}$/.test(u.birth || '');
@@ -111,7 +110,7 @@ export function createShelves(deps) {
         done: db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ? AND done = 1').get(u.id).c,
       },
       habits: habitList(u.id, d).map((h) => ({ title: h.title, streak: h.streak, today: h.today, total: h.total })),
-      askesis: ask.active.map((a) => ({ title: a.title, day: a.day, days: a.days, kept: a.kept, missed: a.missed })),
+      askesis: ask.active.map((a) => ({ title: a.title, day: a.done, days: a.total, kept: a.done, missed: 0 })),   // форма из practices.askesisList
     };
   }
 
@@ -182,7 +181,7 @@ export function createShelves(deps) {
     if (a.sign && a.sign.trait) L.push(`Черта знака: ${a.sign.trait}.`);
     if (a.destiny) L.push(`Число судьбы ${a.destiny.n} — ${a.destiny.title}. ${a.destiny.text}`);
     if (a.year) L.push(`Личный год ${a.year.n}${a.year.planet ? ` (${a.year.planet} · ${a.year.energy})` : ''}, с ${fmt(a.year.from)} по ${fmt(dayShift(a.year.to, -1))}. ${a.year.text}${a.year.next ? ` Следующий, год ${a.year.next.n}, начнётся ${fmt(a.year.next.from)}.` : ''}`);
-    if (a.natal && (a.natal.sun || a.natal.moon)) L.push(`Натальная карта: Солнце в ${inSign(a.natal.sun) || '—'}${a.natal.moon ? `, Луна в ${inSign(a.natal.moon)}${a.natal.moonUncertain ? ' (знак зависит от времени рождения)' : ''}` : ''}${a.natal.asc ? `, Асцендент в ${inSign(a.natal.asc)}` : ''}${a.natal.timeKnown ? '' : '; время рождения не указано, дома не считаются'}.`);
+    if (a.natal && (a.natal.sun || a.natal.moon)) L.push(`Натальная карта: Солнце ${a.natal.sun ? inSignPhrase(a.natal.sun) : 'в —'}${a.natal.moon ? `, Луна ${inSignPhrase(a.natal.moon)}${a.natal.moonUncertain ? ' (знак зависит от времени рождения)' : ''}` : ''}${a.natal.asc ? `, Асцендент ${inSignPhrase(a.natal.asc)}` : ''}${a.natal.timeKnown ? '' : '; время рождения не указано, дома не считаются'}.`);
     if (a.interests && a.interests.length) L.push(`Интересы (выбранные темы чтения): ${a.interests.join(', ')}.`);
     L.push(`В Лунарио с ${fmt(a.since)}${a.streak ? `, серия ${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')} подряд` : ''}${a.plus ? ', подписка Плюс' : ''}.`);
 

@@ -40,14 +40,17 @@ read -r -p "3/3 Подпись отправителя [Лунарио <hello@lun
 SMTP_FROM=${SMTP_FROM:-"Лунарио <hello@lunario.online>"}
 
 umask 077
-cat > "$ENV" <<CONF
-SMTP_HOST=smtp.yandex.ru
-SMTP_PORT=465
-SMTP_USER=$SMTP_USER
-SMTP_PASS=$SMTP_PASS
-SMTP_FROM=$SMTP_FROM
-CONF
-chmod 600 "$ENV"
+# меняем только свои ключи — PRODAMUS_*, STATS_*, ADMIN_EMAILS и прочее в .env остаются (как в set-pay.sh / set-stats.sh)
+touch "$ENV"
+grep -v '^SMTP_HOST=\|^SMTP_PORT=\|^SMTP_USER=\|^SMTP_PASS=\|^SMTP_FROM=' "$ENV" > "$ENV.tmp" || true
+{
+  echo "SMTP_HOST=smtp.yandex.ru"
+  echo "SMTP_PORT=465"
+  echo "SMTP_USER=$SMTP_USER"
+  echo "SMTP_PASS=$SMTP_PASS"
+  echo "SMTP_FROM=$SMTP_FROM"
+} >> "$ENV.tmp"
+mv "$ENV.tmp" "$ENV"; chmod 600 "$ENV"
 echo
 echo "✓ Настройки сохранены в $ENV (права 600, читает только root)"
 

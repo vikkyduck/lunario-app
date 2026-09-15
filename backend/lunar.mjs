@@ -138,9 +138,13 @@ export function moonPhasesBetween(fromMs, toMs) {
   return out;
 }
 /* Освещённость диска и доля цикла на момент времени */
+export const MOON_NAMES = ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Старая Луна'];
+/* Название фазы по доле цикла: восемь секторов, каждый центрирован на своей точке (новолуние — ±1/16 вокруг нуля) */
+export const moonPhaseName = (cycle) => MOON_NAMES[Math.floor(((cycle + 1 / 16) % 1) * 8)];
 export function moonState(ms) {
   const e = elong360(jdOf(ms));
-  return { cycle: e / 360, illumination: Math.round((1 - Math.cos(e * R)) / 2 * 100), waxing: e < 180 };
+  const cycle = e / 360;
+  return { cycle, illumination: Math.round((1 - Math.cos(e * R)) / 2 * 100), waxing: e < 180, name: moonPhaseName(cycle) };
 }
 
 /* «с 13 сентября 12:46 по 14 сентября 13:57» в часовом поясе человека */

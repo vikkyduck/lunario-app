@@ -26,7 +26,7 @@ const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.t
 });
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
 import { sendMail, mailReady, loginMail, staffMail, verifySmtp } from './mailer.mjs';
-import { lunarDay, lunarPeriodText } from './lunar.mjs';
+import { lunarDay, lunarPeriodText, moonState } from './lunar.mjs';
 import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
 import * as W from './workspace.mjs';
@@ -269,6 +269,8 @@ const MSK = 'Europe/Moscow';
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: MSK }); // YYYY-MM-DD
 const nowISO = () => new Date().toISOString();
 const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().slice(0, max);
+/* Многострочные тексты (дневник, заметки, обращения): переносы строк — часть текста, убираем только прочие управляющие символы */
+const cleanText = (s, max) => String(s ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b-\x1f]/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 // код действует 15 минут; используется и на обычном входе, и при выдаче доступа сотруднику
 function issueLoginCode(email) {
@@ -309,6 +311,10 @@ const hasBonus = (u) => !!u.bonus_until && u.bonus_until >= today();
 const hasPlus = (u) => !!u.plus_until && u.plus_until >= today();
 const spreadLimit = (u) => (hasPlus(u) ? 999 : hasBonus(u) ? 4 : 2);
 
+/* Личные таблицы человека: их чистит «Очистить историю», при удалении аккаунта к ним добавляются сессии и подписки */
+const PERSONAL_TABLES = ['entries', 'moods', 'journal', 'wishes', 'usage', 'shelves'];
+/* Событие продукта: только тип, короткая деталь и возрастная когорта — без личных текстов */
+const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), today(), u.id, type, String(detail || '').slice(0, 60), ageBand(u.birth));
 function ageBand(birth) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birth || ''))) return '';
   const b = new Date(birth + 'T00:00:00Z'), now = new Date();
@@ -483,13 +489,8 @@ function personalYearAt(birth, day) {
   };
 }
 const dayNum = (day) => { let n = reduceNum(digits(day).reduce((a, b) => a + b, 0)); return n > 9 ? reduceNum(digits(n).reduce((a, b) => a + b, 0)) : n; };
-function moonPhase(day) {                       // 0..1 доля цикла
-  const t = Date.parse(day + 'T12:00:00Z');
-  const synodic = 29.530588853 * 864e5;
-  return (((t - Date.parse('2000-01-06T18:14:00Z')) % synodic) + synodic) % synodic / synodic;
-}
-const MOON_NAMES = ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Старая Луна'];
-const moonName = (day) => MOON_NAMES[Math.floor(moonPhase(day) * 8) % 8];
+/* Фаза Луны — из lunar.mjs (ряды Меёса), та же модель, что у «На небе» и лунного дня */
+const moonOf = (day) => moonState(Date.parse(day + 'T12:00:00Z'));
 
 /* ── карты и руны: что уходит на экран (тексты экран берёт из каталога по коду) ── */
 const cardPublic = (a) => ({ slug: a.slug, name: a.name, keys: a.keys, question: a.question, today: a.today, image: a.image });
@@ -521,10 +522,10 @@ function dayPack(u, day) {
   const tone = C.DAY_TONES[hash32(seed + ':tone') % C.DAY_TONES.length];
   return {
     date: day,
-    moon: moonName(day),
-    moonPhase: +moonPhase(day).toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
+    moon: moonOf(day).name,
+    moonPhase: +moonOf(day).cycle.toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
     // освещённость диска, а не доля цикла: при фазе 0.65 диск освещён на 79 %, не на 65
-    moonPct: Math.round((1 - Math.cos(moonPhase(day) * 2 * Math.PI)) / 2 * 100),
+    moonPct: moonOf(day).illumination,
     card: cardOfDay(u, day),
     sign: sign ? sign.name : '',
     forecast: sign
@@ -533,7 +534,6 @@ function dayPack(u, day) {
     affirmation: (W.materialForDay('affirmation', day) || {}).text || C.AFFIRMATIONS[hash32(seed + ':aff') % C.AFFIRMATIONS.length],
     set,                            /* установка на главной и вопрос дня к ней */
     question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
-    wish: C.WISHES[hash32(seed + ':wish') % C.WISHES.length],
     lunar: lunarPack(u),
   };
 }
@@ -765,8 +765,7 @@ const server = createServer(async (req, res) => {
               /* Разовая услуга (консультация): доступ не выдаём, эксперт свяжется вручную. */
               console.log(`[оплата] заказ ${orderId} (${pay.feature}) оплачен${isDemo ? ' (демо)' : ''}, пользователь ${u2.id}`);
             }
-            db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
-              .run(nowISO(), today(), u2.id, 'payment_success', pay.feature + (isDemo ? ':demo' : ''), ageBand(u2.birth));
+            track(u2, 'payment_success', pay.feature + (isDemo ? ':demo' : ''));
           }
         }
       }
@@ -930,7 +929,7 @@ const server = createServer(async (req, res) => {
         const chart = natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
         chart.tz = u.tz || ''; chart.city = u.city || ''; chart.cityFound = u.lat != null;
         chart.tzNote = u.tz ? `${u.tz}, UTC${tzOff >= 0 ? '+' : '−'}${Math.abs(tzOff) / 60}` + (time ? '' : ' (полдень)') : 'пояс не определён — время взято как UTC';
-        db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'natal_view', time ? 'with_time' : 'no_time', ageBand(u.birth));
+        track(u, 'natal_view', time ? 'with_time' : 'no_time');
         return json(res, 200, chart);
       }
 
@@ -940,7 +939,7 @@ const server = createServer(async (req, res) => {
       /* ── чат с поддержкой: человек видит только свои обращения ── */
       if (p === '/api/support/tickets') {
         if (req.method === 'GET') return json(res, 200, { items: W.userTickets(u.id), topics: W.TICKET_TOPICS });
-        if (req.method === 'POST') { const b = await readBody(req); const r = W.ticketCreate(u.id, b); if (r.ok) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'support_new', String(b.topic || '').slice(0, 60), ageBand(u.birth)); return json(res, r.ok ? 200 : 400, r); }
+        if (req.method === 'POST') { const b = await readBody(req); const r = W.ticketCreate(u.id, b); if (r.ok) track(u, 'support_new', b.topic); return json(res, r.ok ? 200 : 400, r); }
       }
       if (p === '/api/support/ticket') {
         const id = url.searchParams.get('id');
@@ -1023,8 +1022,7 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const type = clean(b.t, 40);
         if (!EVENT_TYPES.has(type)) return json(res, 400, { ok: false });
-        db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
-          .run(nowISO(), d, u.id, type, clean(b.d, 60), ageBand(u.birth));
+        track(u, type, clean(b.d, 60));
         if (type === 'lunar_view') {   /* сколько раз открывал лунный день: ряд тем появляется со второго открытия */
           const pr = preferences(u.preferences); if ((pr.lunarViews || 0) < 99) db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify({ ...pr, lunarViews: (pr.lunarViews || 0) + 1 }), u.id);
         }
@@ -1039,8 +1037,7 @@ const server = createServer(async (req, res) => {
         const notify = b.notify === true;
         db.prepare('INSERT INTO interest (ts, user_id, feature, price, notify, email) VALUES (?,?,?,?,?,?)')
           .run(nowISO(), u.id, feature, feature === 'subscription' ? SUB_PRICE : '', notify ? 1 : 0, notify ? (u.email || '') : '');
-        db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
-          .run(nowISO(), d, u.id, 'paywall_click', feature, ageBand(u.birth));
+        track(u, 'paywall_click', feature);
         return json(res, 200, { ok: true, notify: notify && !!u.email });
       }
 
@@ -1143,7 +1140,7 @@ const server = createServer(async (req, res) => {
         if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
         const row = db.prepare('SELECT spreads FROM usage WHERE user_id=? AND day=?').get(u.id, d);
         const used = row ? row.spreads : 0;
-        if (used >= 2) return json(res, 429, { ok: false, error: 'limit' });
+        if (used >= spreadLimit(u)) return json(res, 429, { ok: false, error: 'limit' });
         /* карты выпадают случайно и не повторяются внутри расклада; любой расклад — один разбор из дневного лимита */
         const L = C.LAYOUTS.tarot[b.layout] ? b.layout : 'three';
         const pos = C.LAYOUTS.tarot[L].pos;
@@ -1172,7 +1169,7 @@ const server = createServer(async (req, res) => {
          Всё лежит в одной ленте, вид записи подписан. */
       if (p === '/api/journal') {
         if (req.method === 'PATCH') {
-          const b = await readBody(req), text = clean(b.text, 2000);
+          const b = await readBody(req), text = cleanText(b.text, 2000);
           const item = db.prepare("SELECT id, day FROM journal WHERE id=? AND user_id=? AND kind='gratitude'").get(Number(b.id) || 0, u.id);
           if (!item) return json(res, 404, { ok: false, error: 'not_found' });
           if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
@@ -1181,12 +1178,12 @@ const server = createServer(async (req, res) => {
         }
         if (req.method === 'POST') {
           const b = await readBody(req);
-          const text = clean(b.text, 2000);
+          const text = cleanText(b.text, 2000);
           if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
           const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
           const title = clean(b.title, 300);
           const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
-          if (kind) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, kind === 'gratitude' ? 'gratitude_add' : 'answer_add', '', ageBand(u.birth));
+          if (kind) track(u, kind === 'gratitude' ? 'gratitude_add' : 'answer_add', '');
           return json(res, 200, { ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });
         }
         const kind = url.searchParams.get('kind');
@@ -1209,7 +1206,7 @@ const server = createServer(async (req, res) => {
           if (!db.prepare('SELECT 1 FROM wishes WHERE id = ? AND user_id = ?').get(wid, u.id)) return json(res, 404, { ok: false, error: 'not_found' });
           const photo = dataUrlOk(b.photo, 600 * 1024); if (!photo) return json(res, 400, { ok: false, error: 'bad_photo' });
           db.prepare('UPDATE wishes SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), wid);
-          db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'wish_photo', '', ageBand(u.birth));
+          track(u, 'wish_photo', '');
         }
         if (req.method === 'DELETE') db.prepare("UPDATE wishes SET photo = '', photo_ts = '' WHERE id = ? AND user_id = ?").run(id, u.id);
         return json(res, 200, { items: wishList(u.id) });
@@ -1221,7 +1218,7 @@ const server = createServer(async (req, res) => {
           const b = await readBody(req, 512 * 1024);
           const photo = dataUrlOk(b.photo, 300 * 1024); if (!photo) return json(res, 400, { ok: false, error: 'bad_photo' });
           db.prepare('UPDATE users SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), u.id);
-          db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'photo_set', '', ageBand(u.birth));
+          track(u, 'photo_set', '');
         }
         if (req.method === 'DELETE') db.prepare("UPDATE users SET photo = '', photo_ts = '' WHERE id = ?").run(u.id);
         return json(res, 200, { ok: true, user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
@@ -1264,8 +1261,7 @@ const server = createServer(async (req, res) => {
           urlNotification: `${PUBLIC_BASE}/app/api/pay/webhook`,
           ...(u.email ? { customer_email: u.email } : {}),
         };
-        db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
-          .run(nowISO(), d, u.id, 'pay_start', feature, ageBand(u.birth));
+        track(u, 'pay_start', feature);
         return json(res, 200, { ok: true, url: payLink(PAY_FORM, params, PAY_SECRET) });
       }
 
@@ -1358,14 +1354,14 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const r = saveReminder(u.id, b);
         if (!r.ok) return json(res, 400, r);
-        if (b.enabled !== undefined) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, b.enabled ? 'reminder_on' : 'reminder_off', String(b.feature || ''), ageBand(u.birth));
+        if (b.enabled !== undefined) track(u, b.enabled ? 'reminder_on' : 'reminder_off', b.feature);
         return json(res, 200, r);
       }
       if (p === '/api/reminders/test' && req.method === 'POST') {
         const b = await readBody(req);
         if (!allowRate(testRate, String(u.id), 3)) return json(res, 429, { ok: false, error: 'too_many' });
         const r = await sendNow(u, String(b.feature || 'card'), PUSH, clean(b.endpoint, 500));
-        if (r.ok) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'reminder_test', String(b.feature || ''), ageBand(u.birth));
+        if (r.ok) track(u, 'reminder_test', b.feature);
         return json(res, r.ok ? 200 : 400, r);
       }
       /* сигнал пришёл — service worker забирает тексты, которые ещё не показывал на этом устройстве */
@@ -1403,7 +1399,7 @@ const server = createServer(async (req, res) => {
                 const streak = habitStreak(h, d, marks);
                 if (HABIT_MILESTONES.includes(streak) && !db.prepare('SELECT 1 FROM habit_awards WHERE habit_id = ? AND days = ?').get(h.id, streak)) {
                   db.prepare('INSERT INTO habit_awards (habit_id, days, ts) VALUES (?,?,?)').run(h.id, streak, nowISO());
-                  db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'habit_award', String(streak), ageBand(u.birth));
+                  track(u, 'habit_award', streak);
                   award = { habitId: h.id, title: open_(h.title), days: streak };
                 }
               }
@@ -1435,7 +1431,7 @@ const server = createServer(async (req, res) => {
             if (!validEndDate(until, d)) return json(res, 400, { ok: false, error: 'bad_until' });
             db.prepare('UPDATE askesis SET until = ?, days = ? WHERE id = ?').run(until, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1, a.id);
           } else {                                                       // заметка-наблюдение за сегодня
-            const note = clean(b.note, 500);
+            const note = cleanText(b.note, 500);
             db.prepare('INSERT INTO askesis_days (askesis_id, day, kept, note) VALUES (?,?,1,?) ON CONFLICT(askesis_id, day) DO UPDATE SET note = excluded.note').run(a.id, d, seal(note));
             touchStreak(u);
           }
@@ -1480,13 +1476,13 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/data' && req.method === 'DELETE') {
-        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'shelves']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
+        for (const t of PERSONAL_TABLES) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
         wipePersonal(u.id);
         db.prepare("UPDATE users SET streak = 0, streak_date = '' WHERE id = ?").run(u.id);
         return json(res, 200, { ok: true });
       }
       if (p === '/api/account' && req.method === 'DELETE') {
-        for (const t of ['entries', 'moods', 'journal', 'wishes', 'usage', 'sessions', 'push_subs', 'shelves']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
+        for (const t of [...PERSONAL_TABLES, 'sessions', 'push_subs']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
         wipePersonal(u.id); clearReminders(u.id);
         // замер интереса остаётся (обезличенный факт клика), но почта и просьба «сообщите» уходят вместе с аккаунтом
         db.prepare("UPDATE interest SET email = '', notify = 0 WHERE user_id = ?").run(u.id);

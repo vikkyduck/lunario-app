@@ -12,6 +12,7 @@ import { lunarDay } from './lunar.mjs';
 import { skyNow } from './sky.mjs';
 import { sendPush } from './push.mjs';
 import * as C from './content.mjs';
+import { preferences } from './experience.mjs';
 
 export const FEATURES = {
   card:       { title: 'Карта дня',            hint: 'Утром: карта дня готова',                   time: '09:00', freq: 'daily',  weekday: 7, url: '/app/?open=card' },
@@ -101,13 +102,10 @@ export const clearReminders = (userId) => { db.prepare('DELETE FROM reminders WH
 /* ── текст уведомления по функции; null — сегодня напоминать не о чем ── */
 const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 /* Текст из content/напоминания.txt с подстановками {…}; лишние подстановки убираются */
-const META_TOPICS = new Set(['symbol', 'advice', 'live']);
 const firstSentence = (s) => { const m = String(s || '').match(/^.+?[.!?…](\s|$)/); return (m ? m[0] : String(s || '')).trim(); };
 /* Темы чтения человека: если выбрана ровно одна содержательная тема и у дня есть такой раздел — {title, text} */
 export function lunarTopicLine(u, n) {
-  let topics = [];
-  try { topics = JSON.parse(u.preferences || '{}').topics || []; } catch { topics = []; }
-  const content = topics.filter((k) => !META_TOPICS.has(k));
+  const content = (preferences(u.preferences).topics || []).filter((k) => !C.READING_META.has(k));
   if (content.length !== 1) return null;
   const day = C.LUNAR_INFO.find((d) => d.n === n), sec = day && (day.sections || []).find((s) => s.key === content[0]);
   const para = sec && sec.blocks.find((b) => b.t === 'p');
@@ -244,12 +242,14 @@ export async function runDue(keys, log = console.log, deliver = sendPush) {
     for (const it of items) { db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url) VALUES (?,?,?,?,?,?)').run(uid, nowISO, it.feature, it.title, it.body, it.url); stat.queued++; }
     for (const s of subs) {
       try {
-        if (await deliver({ endpoint: s.endpoint }, keys)) stat.sent++;
+        if (await deliver({ endpoint: s.endpoint }, keys)) { stat.sent++; db.prepare('UPDATE push_subs SET last_ok = ? WHERE endpoint = ?').run(nowISO.slice(0, 10), s.endpoint); }
         else { db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); stat.gone++; }
       } catch (e) { stat.failed++; log('не ушло:', e.message); }
     }
   }
   db.prepare('DELETE FROM push_queue WHERE ts < ?').run(new Date(now - 2 * 864e5).toISOString());
+  db.prepare('DELETE FROM login_codes WHERE expires_at < ?').run(nowISO);
+  db.prepare('DELETE FROM sessions WHERE last_seen < ?').run(new Date(now - 400 * 864e5).toISOString());
   db.prepare('DELETE FROM push_shown WHERE item_id NOT IN (SELECT id FROM push_queue)').run();
   return stat;
 }
