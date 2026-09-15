@@ -9,6 +9,7 @@ import { campaignList, campaignUsers, slaMetrics, ticketQueue, TICKET_STATUS } f
 import * as C from './content.mjs';
 import { preferences } from './experience.mjs';
 import { MSK, dayIn, addDays } from './util.mjs';
+import { CORE_EVENTS, EVENT_NAMES, FEATURE_EVENTS } from './events.mjs';
 
 let db, DATA_DIR = '';
 export function initReports(database, dataDir) {
@@ -124,49 +125,11 @@ export function setConfig(input, by) {
 }
 export function resetConfig() { db.prepare('DELETE FROM cabinet_settings WHERE key = ?').run('config'); return { ok: true }; }
 
-/* Функции продукта: ключ события → раздел, название, статус. Заглушки и «скоро» — не использование. */
-export const FEATURES = [
-  ['card_open',    'Мой день',    'Карта дня',            'работает'],
-  ['mood_set',     'Мой день',    'Настроение',           'работает'],
-  ['journal_add',  'Мой день',    'Благодарность / запись','работает'],
-  ['wish_add',     'Мой день',    'Желания',              'работает'],
-  ['ask_yesno',    'Свериться',   'Да / нет',             'работает'],
-  ['ask_rune',     'Свериться',   'Руна',                 'работает'],
-  ['ask_spread',   'Свериться',   'Три карты',            'работает'],
-  ['worry_pick',   'Свериться',   'Что вас беспокоит?',   'работает'],
-  ['compat_calc',  'Обо мне',     'Совместимость',        'работает'],
-  ['share_card',   'Социальное',  'Карточка для соцсетей','работает'],
-  ['invite_copy',  'Социальное',  'Позвать подругу',      'работает'],
-  ['reminder_on',  'Аккаунт',     'Напоминания по функциям','работает'],
-  ['push_on',      'Аккаунт',     'Напоминание',          'работает'],
-  ['installed',    'Аккаунт',     'Установка на телефон', 'работает'],
-  ['natal_view',   'Обо мне',     'Натальная карта',      'работает'],
-  ['tests',        'Обо мне',     'Самопознание · тест',  'заглушка'],
-  ['forecast',     'Мой день',    'Прогноз и сферы',      'заглушка'],
-  ['habit_mark',   'Мой день',    'Дневник привычек',     'работает'],
-  ['askesis_mark', 'Мой день',    'Аскеза',               'работает'],
-  ['lunar_view',   'Что вокруг',  'Лунный день',          'работает'],
-  ['sky_view',     'Что вокруг',  'На небе',              'работает'],
-  ['moodreport_view', 'История',  'Отчёт по настроениям', 'работает'],
-  ['history',      'История',     'Прошлые записи',       'работает'],
-  ['statistics',   'История',     'Моя статистика',       'заглушка'],
-  ['report',       'История',     'Недельный ИИ-отчёт',   'заглушка'],
-  ['chat',         'Свериться',   'ИИ-чат',               'заглушка'],
-];
-const FUNC = ['card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'journal_add', 'wish_add', 'compat_calc', 'worry_pick', 'share_card', 'natal_view', 'habit_mark', 'askesis_mark', 'lunar_view', 'sky_view', 'moodreport_view'];
+/* Функции продукта и содержательные действия — из общего реестра events.mjs (один источник для сервера и отчётов) */
+export const FEATURES = FEATURE_EVENTS.map((e) => [e.key, e.section, e.title, 'работает']);
+const FUNC = CORE_EVENTS;
 const ACTIVE = ['app_open', ...FUNC];
 const FNAME = Object.fromEntries(FEATURES.map((f) => [f[0], f[2]]));
-const EVENT_NAMES = {
-  app_open: 'Открыл приложение', intro_view: 'Показ приветствия', tour_view: 'Открыл «С чего начать»', login_open: 'Открыл вход по почте',
-  worry_pick: 'Выбрал тему «Что беспокоит»', onboard_start: 'Начал анкету', onboard_done: 'Заполнил анкету', login_code_sent: 'Запросил код', login_done: 'Подтвердил почту',
-  card_open: 'Открыл карту дня', mood_set: 'Отметил настроение', ask_yesno: 'Спросил «Да / нет»', ask_rune: 'Вытянул руну', ask_spread: 'Сделал расклад', spread_limit: 'Упёрся в лимит раскладов',
-  journal_add: 'Сделал запись', wish_add: 'Добавил желание', compat_calc: 'Посчитал совместимость', share_card: 'Поделился карточкой', install_prompt: 'Увидел «Установить»', installed: 'Установил на телефон',
-  natal_view: 'Открыл натальную карту', invite_copy: 'Скопировал приглашение', invite_used: 'Пришёл по приглашению', push_on: 'Включил напоминание', push_off: 'Выключил напоминание',
-  reminder_on: 'Включил напоминание функции', reminder_off: 'Выключил напоминание функции', reminder_test: 'Прислал пробное напоминание', card_download: 'Скачал открытку',
-  support_open: 'Открыл поддержку', support_new: 'Написал в поддержку', gratitude_add: 'Записал благодарность', answer_add: 'Ответил на вопрос дня', news_view: 'Открыл «Новое в приложении»', wish_photo: 'Добавил фото к желанию', photo_set: 'Поставил фото аккаунта',
-  topics_set: 'Выбрал темы чтения', topics_all: 'Переключил «показать всё»', lunar_expand: 'Развернул раздел лунного дня', habit_award: 'Получил награду за привычку', utm_seen: 'Пришёл по ссылке кампании',
-  habit_add: 'Добавил привычку', habit_mark: 'Отметил привычку', askesis_start: 'Взял аскезу', askesis_mark: 'Отметил день аскезы', sky_view: 'Открыл «На небе»', lunar_view: 'Открыл лунный день', moodreport_view: 'Открыл отчёт по настроениям',
-};
 
 const kpi = (title, value, o = {}) => ({ title, value, unit: o.unit || '', prev: o.prev ?? null, delta: o.delta === undefined ? delta(value, o.prev ?? null) : o.delta, sub: o.sub || '', state: o.state || (value === null ? 'nodata' : 'ok'), good: o.good || 'up' });
 const off = (title, sub) => ({ title, value: null, unit: '', prev: null, delta: null, sub, state: 'off' });
@@ -186,6 +149,12 @@ function registered(from, to) {
     WHERE email <> '' AND email_at <> '' AND substr(email_at,1,10) BETWEEN ? AND ?`, from, to);
 }
 const firstFunc = (id) => one(`SELECT type, ts FROM events WHERE user_id = ? AND type IN (${inList(FUNC)}) ORDER BY ts LIMIT 1`, id);
+/* то же для когорты — один проход по индексу вместо запроса на каждого */
+function firstFuncs(ids) {
+  const m = new Map(); if (!ids.length) return m;
+  for (const r of all(`SELECT user_id, type, MIN(ts) ts FROM events WHERE user_id IN (${ids.map(() => '?').join(',')}) AND type IN (${inList(FUNC)}) GROUP BY user_id`, ...ids)) m.set(r.user_id, r);
+  return m;
+}
 const actedBetween = (id, a, b, types = ACTIVE) => !!one(`SELECT 1 FROM events WHERE user_id = ? AND type IN (${inList(types)}) AND day BETWEEN ? AND ? LIMIT 1`, id, a, b);
 const activeUsers = (a, b, types = ACTIVE) => one(`SELECT COUNT(DISTINCT user_id) c FROM events WHERE type IN (${inList(types)}) AND day BETWEEN ? AND ?`, a, b).c;
 const dauSeries = (days, from, to, types = ACTIVE) => fill(days, all(`SELECT day, COUNT(DISTINCT user_id) n FROM events WHERE type IN (${inList(types)}) AND day BETWEEN ? AND ? GROUP BY day`, from, to));
@@ -195,8 +164,9 @@ const staffEmails = () => new Set([...all('SELECT email FROM staff').map((r) => 
 function activation24(from, to) {
   const cohort = all(`SELECT id, email_at FROM users WHERE email <> '' AND email_at <> '' AND substr(email_at,1,10) BETWEEN ? AND ?`, from, to);
   let a24 = 0, late = 0, none = 0, sameDay = 0; const firsts = {}; const hours = [];
+  const first = firstFuncs(cohort.map((u) => u.id));
   for (const u of cohort) {
-    const f = firstFunc(u.id);
+    const f = first.get(u.id);
     if (!f) { none++; continue; }
     const h = (Date.parse(f.ts) - Date.parse(u.email_at)) / 36e5;
     firsts[f.type] = (firsts[f.type] || 0) + 1;

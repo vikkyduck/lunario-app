@@ -12,6 +12,8 @@ import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { versionMismatch } from './bump-version.mjs';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = await mkdtemp(join(tmpdir(), 'lunario-personal-features-'));
@@ -243,6 +245,91 @@ try {
   assert.equal((await reminders.sendNow(person,'mood',{},'https://push.invalid/unknown',async()=>{throw Error('Must not send');})).error,'no_push');
   qaDB.prepare('DELETE FROM push_subs WHERE user_id=?').run(person.id);
   console.log('PASS: all seven feature schedules, timezone, native lunar/sky plans, feature previews, device-specific test delivery and queue isolation.');
+  // ── Одна версия оболочки: index.html, импорты sky.js и SHELL в sw.js должны совпадать ──
+  assert.equal(versionMismatch(), null, 'Shell version must be the same in index.html, sky.js and sw.js');
+
+  // ── Политика личных данных: каждая таблица с user_id описана; удаление аккаунта уносит и переписку с поддержкой ──
+  const { PERSONAL_DATA, tablesWithUser } = await import(pathToFileURL(join(fixture, 'backend/account-data.mjs')).href);
+  const policy = new Set(PERSONAL_DATA.map((r) => r.table));
+  for (const t of tablesWithUser(qaDB)) assert.ok(policy.has(t), `Table ${t} has user_id but no lifecycle rule`);
+  for (const t of policy) assert.ok(qaDB.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(t), `Policy names unknown table ${t}`);
+  const seed = async (acc, name) => {
+    await acc.json('/me'); await acc.json('/profile', 'POST', { name, birth: '1991-02-03', city: 'Москва', consent: true });
+    await acc.json('/mood', 'POST', { mood: 'joy' });
+    await acc.json('/journal', 'POST', { text: 'Личная запись', kind: 'gratitude', title: 'Кому и за что я благодарна сегодня?' });
+    await acc.json('/wishes', 'POST', { text: 'Личное желание' });
+    const h = (await acc.json('/habits', 'POST', { title: 'Привычка', rule: 'каждый день' })).items[0]; await acc.json('/habits', 'PATCH', { id: h.id });
+    const a = (await acc.json('/askesis', 'POST', { title: 'Аскеза', until })).active[0]; await acc.json('/askesis', 'PATCH', { id: a.id, note: 'Наблюдение' });
+    await acc.json('/ask', 'POST', { question: 'Стоит ли мне менять работу этой осенью?', kind: 'yesno' });
+    const t = await acc.json('/support/tickets', 'POST', { topic: 'Прочее', text: 'Личный вопрос в поддержку' }); await acc.json('/support/ticket?id=' + t.id, 'POST', { text: 'Ещё сообщение' });
+    await acc.json('/reminders', 'POST', { feature: 'card', enabled: true, tz: 'Europe/Moscow' });
+    await acc.json('/push', 'POST', { endpoint: 'https://push.example.com/box/' + name });
+    await acc.json('/shelves');
+    return (await acc.json('/me')).user.id;
+  };
+  const rowsOf = (uid) => Object.fromEntries(PERSONAL_DATA.filter((r) => r.table !== 'users').map((r) => [r.table, r.by === 'email' ? 0
+    : r.via ? qaDB.prepare(`SELECT COUNT(*) c FROM ${r.table} WHERE ${r.via.key} IN (SELECT id FROM ${r.via.table} WHERE user_id=?)`).get(uid).c
+    : qaDB.prepare(`SELECT COUNT(*) c FROM ${r.table} WHERE user_id=?`).get(uid).c]));
+  const victim = account(), keeper = account();
+  const victimId = await seed(victim, 'Удаляемый'), keeperId = await seed(keeper, 'Остающийся');
+  const before = rowsOf(victimId), keeperBefore = rowsOf(keeperId);
+  for (const t of ['tickets', 'messages', 'reminders', 'push_subs', 'sessions', 'journal', 'habit_marks', 'askesis_days', 'shelves']) assert.ok(before[t] > 0, `Seed must fill ${t}`);
+  assert.ok(qaDB.prepare('SELECT subject FROM tickets WHERE user_id=?').get(victimId).subject.startsWith('enc1:'), 'Ticket subject must be encrypted at rest');
+  await victim.json('/account', 'DELETE');
+  const after = rowsOf(victimId);
+  for (const r of PERSONAL_DATA) { if (r.table === 'users' || r.by === 'email') continue; assert.equal(after[r.table], r.on === 'keep' ? before[r.table] : 0, `${r.table} after account deletion (${r.on})`); }
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users WHERE id=?').get(victimId).c, 0);
+  assert.deepEqual(rowsOf(keeperId), keeperBefore, 'Deleting one account leaves the neighbour untouched');
+  await keeper.json('/data', 'DELETE');
+  const cleared = rowsOf(keeperId);
+  for (const r of PERSONAL_DATA) { if (r.table === 'users' || r.by === 'email') continue; if (r.on === 'history') assert.equal(cleared[r.table], 0, `${r.table} after clearing history`); }
+  for (const t of ['tickets', 'messages', 'reminders', 'push_subs', 'sessions']) assert.ok(cleared[t] > 0, `Clearing history keeps ${t}`);
+  assert.equal((await keeper.json('/me')).user.id, keeperId, 'Clearing history keeps the account');
+  console.log('PASS: one lifecycle policy covers every table with user_id; account deletion removes support threads and devices; clearing history keeps the account and support.');
+
+  // ── События: подтверждённые действия пишет сервер, браузер их подделать не может ──
+  const evt = account(); await evt.json('/me'); await evt.json('/profile', 'POST', { name: 'События', birth: '1990-05-05', city: 'Москва', consent: true });
+  const evtId = (await evt.json('/me')).user.id;
+  const count = (type) => qaDB.prepare('SELECT COUNT(*) c FROM events WHERE user_id=? AND type=?').get(evtId, type).c;
+  assert.equal((await evt.raw('/event', 'POST', { t: 'mood_set' })).status, 400, 'Server-owned events are rejected from /api/event');
+  await evt.json('/mood', 'POST', { mood: 'joy' }); assert.equal(count('mood_set'), 1);
+  await evt.json('/card', 'POST'); await evt.json('/card', 'POST'); assert.equal(count('card_open'), 1, 'Card of the day is drawn once and counted once');
+  await evt.json('/journal', 'POST', { text: 'Обычная запись' }); assert.equal(count('journal_add'), 1);
+  await evt.json('/journal', 'POST', { text: 'Спасибо', kind: 'gratitude', title: 'Кому и за что я благодарна сегодня?' }); assert.equal(count('gratitude_add'), 1);
+  await evt.json('/event', 'POST', { t: 'forecast_view' }); assert.equal(count('forecast_view'), 1);
+  const { CORE_EVENTS } = await import(pathToFileURL(join(fixture, 'backend/events.mjs')).href);
+  for (const k of ['gratitude_add', 'answer_add', 'mood_set', 'journal_add', 'habit_add', 'askesis_start']) assert.ok(CORE_EVENTS.includes(k), `${k} counts as a core action`);
+  console.log('PASS: server records confirmed actions itself; /api/event accepts only client impressions; gratitude and daily-question answers count as activity.');
+
+  // ── Адрес push-ячейки: только https на стандартном порту к публичному имени ──
+  for (const bad of ['https://127.0.0.1/box', 'https://localhost/box', 'http://push.example.com/box', 'https://push.example.com:8443/box', 'https://[::1]/box', 'https://user:pw@push.example.com/box'])
+    assert.equal((await evt.raw('/push', 'POST', { endpoint: bad })).status, 400, 'Rejected: ' + bad);
+  assert.equal((await evt.raw('/push', 'POST', { endpoint: 'https://push.example.com/box/ok' })).status, 200);
+  assert.equal(count('push_on'), 1);
+
+  // ── Статус задачи меняет только сотрудник своей области ──
+  const staffMail = 'content@example.test', code = '123456';
+  qaDB.prepare('INSERT INTO staff (email, name, roles, added_by, created_at) VALUES (?,?,?,?,?)').run(staffMail, 'Редактор', JSON.stringify(['content']), 'test', new Date().toISOString());
+  qaDB.prepare('INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts) VALUES (?,?,?,?,0)').run(staffMail, createHash('sha256').update(code + staffMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+  const staff = account(); await staff.json('/me'); await staff.json('/auth/verify', 'POST', { email: staffMail, code });
+  const now = new Date().toISOString();
+  qaDB.prepare("INSERT INTO tasks (title, text, role, status, priority, created_at, updated_at) VALUES ('Чужая', '', 'product', 'new', 'normal', ?, ?)").run(now, now);
+  qaDB.prepare("INSERT INTO tasks (title, text, role, status, priority, created_at, updated_at) VALUES ('Своя', '', 'content', 'new', 'normal', ?, ?)").run(now, now);
+  const foreign = qaDB.prepare("SELECT id FROM tasks WHERE title='Чужая'").get().id, own = qaDB.prepare("SELECT id FROM tasks WHERE title='Своя'").get().id;
+  assert.equal((await staff.raw('/cabinet/tasks', 'POST', { id: foreign, status: 'done', onlyStatus: true })).status, 403);
+  assert.equal(qaDB.prepare('SELECT status FROM tasks WHERE id=?').get(foreign).status, 'new');
+  assert.equal((await staff.raw('/cabinet/tasks', 'POST', { id: own, status: 'done', onlyStatus: true })).status, 200);
+
+  // ── Сессия: без cookie нет нового аккаунта; истёкшая сессия отвергается ──
+  const usersBefore = qaDB.prepare('SELECT COUNT(*) c FROM users').get().c;
+  assert.equal((await fetch(base + '/api/timeline?kind=&day=&offset=0')).status, 401);
+  assert.equal((await fetch(base + '/api/nothing-here')).status, 401);
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users').get().c, usersBefore, 'Unknown or anonymous API calls must not create accounts');
+  const expiring = account(); const expId = (await expiring.json('/me')).user.id;
+  qaDB.prepare("UPDATE sessions SET created_at='2000-01-01T00:00:00.000Z' WHERE user_id=?").run(expId);
+  assert.equal((await expiring.raw('/timeline?kind=&day=&offset=0')).status, 401, 'A year-old session is rejected');
+  assert.notEqual((await expiring.json('/me')).user.id, expId, 'After expiry /me starts a fresh session');
+  console.log('PASS: push endpoints are validated, task status respects role scope, sessions expire and stray API calls create no accounts.');
   qaDB.close();
   console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, 30/60/90/180/365 daily-only awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
   if (process.argv.includes('--ui-recovery') || process.argv.includes('--ui-restoration') || process.argv.includes('--ui') || process.argv.includes('--ui-repeat') || process.argv.includes('--ui-experience') || process.argv.includes('--ui-design') || process.argv.includes('--ui-regression') || process.argv.includes('--ui-brand')) {
@@ -378,6 +465,23 @@ try {
       }
     } finally { await browser.close(); }
   }
+  // ── Старая база с token_hash: пересборка users сохраняет все добавленные колонки ──
+  await stop();
+  await rm(join(fixture, 'data'), { recursive: true, force: true }); await mkdir(join(fixture, 'data'));
+  const old = new DatabaseSync(join(fixture, 'data/app.db'));
+  old.exec(`CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, last_seen TEXT NOT NULL, name TEXT DEFAULT '', birth TEXT DEFAULT '', birth_time TEXT DEFAULT '', city TEXT DEFAULT '',
+    email TEXT DEFAULT '', consent_version TEXT DEFAULT '', consent_ts TEXT DEFAULT '', streak INTEGER DEFAULT 0, streak_date TEXT DEFAULT '', onboarded INTEGER DEFAULT 0, token_hash TEXT DEFAULT '', ref_code TEXT DEFAULT '', photo TEXT DEFAULT '');
+    INSERT INTO users (created_at, last_seen, name, token_hash, ref_code, photo) VALUES ('2025-01-01T00:00:00.000Z','2025-01-01T00:00:00.000Z','Старый','abc','ref123','data:image/png;base64,AAAA');`);
+  old.close();
+  await start();
+  const migrated = new DatabaseSync(join(fixture, 'data/app.db'));
+  const cols = migrated.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  for (const c of ['ref_code', 'photo', 'photo_ts', 'invited_by', 'bonus_until', 'preferences', 'lat', 'tz']) assert.ok(cols.includes(c), `Migrated users table keeps/gains ${c}`);
+  assert.ok(!cols.includes('token_hash'));
+  const legacy = migrated.prepare("SELECT ref_code, photo FROM users WHERE name='Старый'").get();
+  assert.equal(legacy.ref_code, 'ref123'); assert.ok(legacy.photo.startsWith('data:image/png'));
+  migrated.close();
+  console.log('PASS: legacy token_hash schema migrates without losing later columns or their values.');
 } finally {
   await stop();
   await rm(fixture, { recursive: true, force: true });

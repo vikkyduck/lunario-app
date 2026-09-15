@@ -4,7 +4,7 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const V = '42';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
+const V = '43';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
 const CACHE = 'lunario-app-v' + V;
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/experience.css?v=' + V, '/app/moon-glass.css?v=' + V, '/app/experience.js?v=' + V, '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=' + V, '/app/sky-model.js?v=' + V, '/app/constellations.js?v=' + V, '/app/assets/moon-hero.png'];

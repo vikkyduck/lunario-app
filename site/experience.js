@@ -1,7 +1,8 @@
 /* Reading, persistent preferences and full practice pages share the existing data and widgets. */
-const XP={prefs:{theme:'dark',ritual:['card','mood','gratitude'],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,ritualDraft:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
-const FULL_PRACTICES=new Set(['journal','habits','askesis']);
-const RITUALS={card:['Карта дня','Открыть карту дня'],mood:['Настроение дня','Отметить настроение'],habits:['Дневник привычек','Отметить привычки'],gratitude:['Дневник благодарности','Записать благодарность'],tone:['Вопрос дня','Ответить на вопрос дня'],journal:['Дневник','Записать мысль']};
+/* Настройки приходят из /api/me (умолчания — в backend/experience.mjs); до этого форма пустая */
+const XP={prefs:{theme:'dark',ritual:[],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,ritualDraft:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
+/* Практики ритуала: подпись кнопки «следующий шаг»; название и раздел — из реестра FEATURES */
+const RITUALS={card:'Открыть карту дня',mood:'Отметить настроение',habits:'Отметить привычки',gratitude:'Записать благодарность',tone:'Ответить на вопрос дня',journal:'Записать мысль'};
 function activeView(){return document.querySelector('.view.on')?.id.slice(2)||'home';}
 function rememberScroll(){XP.scroll[XP.page?'practice:'+XP.page:activeView()]=window.scrollY;}
 function restoreScroll(key){requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,XP.scroll[key]||0)));}
@@ -18,8 +19,8 @@ function openPractice(key,fromHistory=false){
   if(!fromHistory){history.replaceState({lunView:view},'',cleanPracticeUrl());const u=new URL(location.href);u.searchParams.set('practice',key);history.pushState({lunPractice:key,lunView:view},'',u.pathname+u.search);}
   document.querySelectorAll('.view').forEach(el=>el.classList.toggle('on',el.id==='v-practice'));
   document.body.classList.add('inner','practice-open');
-  $('practice-title').textContent=WIDGETS[key][1];$('practice-body').appendChild($('w-'+key));
-  const feature=WIDGET_REMINDERS[key];$('practice-tools').innerHTML=feature?`<button class="text-action rem-summary" type="button" onclick="openPracticeSettings('${feature}')">Уведомления →</button>`:'';
+  $('practice-title').textContent=FEATURES[key].title;$('practice-body').appendChild($('w-'+key));
+  const feature=FEATURES[key].reminder;$('practice-tools').innerHTML=feature?`<button class="text-action rem-summary" type="button" onclick="openPracticeSettings('${feature}')">Уведомления →</button>`:'';
   if(feature)refreshPracticeReminder();
   window.refreshMoonLogos?.();loadWidgetContent(key);restoreScroll('practice:'+key);$('practice-back').focus({preventScroll:true});
 }
@@ -30,7 +31,7 @@ window.addEventListener('popstate',e=>{
 });
 function openPracticeSettings(feature){openWidget('practiceSettings');$('practice-settings-box').innerHTML=remBox(feature);remEditing[feature]=true;paintRem(feature);}
 function refreshPracticeReminder(){
-  const key=XP.page,feature=WIDGET_REMINDERS[key];if(!feature)return;
+  const key=XP.page,feature=FEATURES[key]?.reminder;if(!feature)return;
   loadReminders().then(()=>{if(XP.page!==key)return;const tools=$('practice-tools');tools.innerHTML=remBox(feature);paintRem(feature);const button=tools.querySelector('.rem-summary');if(button){button.setAttribute('onclick',`openPracticeSettings('${feature}')`);button.removeAttribute('aria-controls');button.setAttribute('aria-haspopup','dialog');button.removeAttribute('aria-expanded');button.lastElementChild.textContent='→';tools.replaceChildren(button);}}).catch(()=>{});
 }
 
@@ -54,10 +55,10 @@ async function saveTheme(theme){
   catch{toast('Не удалось сохранить тему. Попробуйте ещё раз');}finally{saveTheme.busy=false;}
 }
 function ritualDone(key){return {card:!!S.day?.card,mood:!!S.mood,habits:!!S.habitsReady&&S.habitsPending===0&&S.habitsCount>0,gratitude:!!S.gratitudeDone,tone:!!toneSaved||!!S.answerDone,journal:!!S.journalDone}[key];}
-function ritualNext(){const key=XP.prefs.ritual.find(k=>!ritualDone(k));return key?{key,view:['gratitude','journal'].includes(key)?'history':'home',label:RITUALS[key][1]}:null;}
+function ritualNext(){const key=XP.prefs.ritual.find(k=>!ritualDone(k));return key?{key,view:FEATURES[key].view,label:RITUALS[key]}:null;}
 function paintRitual(){
   if(!XP.ritualDraft)XP.ritualDraft=[...XP.prefs.ritual];
-  $('ritual-box').innerHTML=`<p class="hint">Выберите 2–3 практики. Они будут открываться с главной кнопки в выбранном порядке.</p><div class="ritual-options">${Object.entries(RITUALS).map(([key,[label]])=>{const n=XP.ritualDraft.indexOf(key);return `<button class="ritual-option" type="button" aria-pressed="${n>=0}" onclick="toggleRitual('${key}')"><span>${esc(label)}</span><span aria-hidden="true">${n>=0?n+1:'＋'}</span></button>`;}).join('')}</div><p id="ritual-count" class="hint" role="status">Выбрано ${XP.ritualDraft.length} из 3</p><button class="btn" id="ritual-save" onclick="saveRitual()" ${XP.ritualDraft.length<2?'disabled':''}>Сохранить ритуал</button>`;
+  $('ritual-box').innerHTML=`<p class="hint">Выберите 2–3 практики. Они будут открываться с главной кнопки в выбранном порядке.</p><div class="ritual-options">${Object.keys(RITUALS).map((key)=>{const n=XP.ritualDraft.indexOf(key);return `<button class="ritual-option" type="button" aria-pressed="${n>=0}" onclick="toggleRitual('${key}')"><span>${esc(FEATURES[key].title)}</span><span aria-hidden="true">${n>=0?n+1:'＋'}</span></button>`;}).join('')}</div><p id="ritual-count" class="hint" role="status">Выбрано ${XP.ritualDraft.length} из 3</p><button class="btn" id="ritual-save" onclick="saveRitual()" ${XP.ritualDraft.length<2?'disabled':''}>Сохранить ритуал</button>`;
 }
 function toggleRitual(key){const i=XP.ritualDraft.indexOf(key);if(i>=0)XP.ritualDraft.splice(i,1);else if(XP.ritualDraft.length<3)XP.ritualDraft.push(key);else{$('ritual-count').textContent='Уже выбраны 3 практики. Уберите одну, чтобы выбрать другую';return;}paintRitual();}
 async function saveRitual(){

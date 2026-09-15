@@ -716,8 +716,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=42">
-<link rel="stylesheet" href="/app/moon-glass.css?v=42">
+<link rel="stylesheet" href="/app/experience.css?v=43">
+<link rel="stylesheet" href="/app/moon-glass.css?v=43">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -1162,9 +1162,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=42"></script>
+<script type="module" src="/app/sky.js?v=43"></script>
 
-<script src="/app/experience.js?v=42"></script>
+<script src="/app/experience.js?v=43"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1176,6 +1176,7 @@ function nativePost(m){ try{ window.webkit.messageHandlers.lunario.postMessage(m
 const api = async (path, opts) => {
   const r = await fetch(API + path, Object.assign({ headers:{'Content-Type':'application/json'} }, opts));
   const j = await r.json().catch(()=>({}));
+  if (r.status===401 && path!=='/me'){ location.reload(); throw Object.assign(new Error('no_session'), { code:'no_session', status:401 }); }   /* сессия истекла на сервере */
   if (!r.ok) throw Object.assign(new Error(j.error||'err'), { code:j.error, status:r.status });
   if(opts?.method && opts.method!=='GET')XP.timeline.dirty=true;
   return j;
@@ -1269,28 +1270,38 @@ function openLogin(){
   go('login'); track('login_open');
 }
 
-/* ── виджеты: панель переезжает из хранилища в обёртку и обратно ── */
-const WIDGETS = {
-  card:['Ваш ритуал','Карта дня'], mood:['Сегодня','Настроение дня'], worry:['Свериться','Разобрать вопрос'],
-  day:['Сегодня','Прогноз дня'], tone:['Сегодня','Вопрос дня'],
-  journal:['Дневник','Дневник'], wishes:['Дневник','Мои желания'], habits:['Сегодня','Дневник привычек'], askesis:['Сегодня','Взять аскезу'], sky:['Луна и небо','На небе'], gratitude:['Дневник','Дневник благодарности'],
-  ask:['Свериться',''], year:['Я','Личный год'], birthnum:['Я','Нумерология'], compat:['Я','Совместимость'],
-  lunar:['Луна и небо','Лунный день'], hmood:['Дневник','История настроений'], hentries:['Дневник','Мои вопросы и ответы'], week:['Дневник','Итоги недели'],
-  invite:['Я','Позвать подругу'], remind:['Я','Уведомления'], edit:['Я','Изменить мои данные'], mail:['Я','Вход по почте'], shelves:['Я','Мои данные'],
-  support:['Я','Чат поддержки'], natal:['Я','Натальная карта'],
-  ritual:['Сегодня','Мой ритуал'],appearance:['Я','Оформление'],practiceSettings:['','Уведомления'],askDate:['Взять аскезу','Передвинуть дату'],timelineEntry:['Дневник','Запись'],
-  appinfo:['Я','О приложении'], terms:['Я','Условия использования'],topics:['Я','Темы чтения'],skyplace:['Я','Небо над вами']
+/* ── реестр функций: раздел и название панели, где живёт (view), полноэкранная практика (page), ключ напоминания (reminder).
+   Отсюда — заголовки, строка уведомлений под заголовком, полный экран и переход по ?open= из уведомления. ── */
+const FEATURES = {
+  card:{sec:'Ваш ритуал',title:'Карта дня',view:'home',reminder:'card'}, mood:{sec:'Сегодня',title:'Настроение дня',view:'home',reminder:'mood'},
+  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, ritual:{sec:'Сегодня',title:'Мой ритуал',view:'home'},
+  habits:{sec:'Сегодня',title:'Дневник привычек',view:'home',page:true,reminder:'habits'}, askesis:{sec:'Сегодня',title:'Взять аскезу',view:'home',page:true,reminder:'askesis'},
+  lunar:{sec:'Луна и небо',title:'Лунный день',view:'home',reminder:'lunar'}, sky:{sec:'Луна и небо',title:'На небе',view:'home',reminder:'sky'},
+  worry:{sec:'Свериться',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться',title:'',view:'ask'},
+  journal:{sec:'Дневник',title:'Дневник',view:'history',page:true}, gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history',reminder:'gratitude'},
+  wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history',reminder:'moodreport'},
+  hentries:{sec:'Дневник',title:'Мои вопросы и ответы',view:'history'}, week:{sec:'Дневник',title:'Итоги недели',view:'history'}, timelineEntry:{sec:'Дневник',title:'Запись',view:'history'},
+  natal:{sec:'Я',title:'Натальная карта',view:'account'}, year:{sec:'Я',title:'Личный год',view:'account'}, birthnum:{sec:'Я',title:'Нумерология',view:'account'}, compat:{sec:'Я',title:'Совместимость',view:'account'},
+  remind:{sec:'Я',title:'Уведомления',view:'account'}, mail:{sec:'Я',title:'Вход по почте',view:'account'}, edit:{sec:'Я',title:'Изменить мои данные',view:'account'}, shelves:{sec:'Я',title:'Мои данные',view:'account'},
+  support:{sec:'Я',title:'Чат поддержки',view:'account'}, invite:{sec:'Я',title:'Позвать подругу',view:'account'}, appearance:{sec:'Я',title:'Оформление',view:'account'}, topics:{sec:'Я',title:'Темы чтения',view:'account'},
+  skyplace:{sec:'Я',title:'Небо над вами',view:'account'}, appinfo:{sec:'Я',title:'О приложении',view:'account'}, terms:{sec:'Я',title:'Условия использования',view:'account'},
+  practiceSettings:{sec:'',title:'Уведомления'}, askDate:{sec:'Взять аскезу',title:'Передвинуть дату'},
 };
-const WIDGET_REMINDERS={card:'card',mood:'mood',hmood:'moodreport',habits:'habits',askesis:'askesis',gratitude:'gratitude',lunar:'lunar',sky:'sky'};
+/* Цель из ?open= в уведомлении: ключ функции или ключ её напоминания (moodreport → История настроений) */
+function openTarget(key){
+  if(key==='news')return ['news',''];
+  const k=FEATURES[key]?key:Object.keys(FEATURES).find(f=>FEATURES[f].reminder===key);
+  return k?[FEATURES[k].view||'home',k]:null;
+}
 let wgOpen = null, wgFocus = null;
 function openWidget(k, title){
   requestAnimationFrame(() => window.refreshMoonLogos?.());
-  if(FULL_PRACTICES.has(k)){openPractice(k);return;}
-  const w = WIDGETS[k], pane = $('w-'+k); if (!w || !pane) return;
+  const f = FEATURES[k], pane = $('w-'+k); if (!f || !pane) return;
+  if(f.page){openPractice(k);return;}
   const trigger=document.activeElement;closeWidget();wgFocus=trigger;
-  $('wg-eb').textContent = w[0];$('wg-eb').hidden=w[0]===(title||w[1]); $('wg-title').textContent = title || w[1];
+  $('wg-eb').textContent = f.sec;$('wg-eb').hidden=f.sec===(title||f.title); $('wg-title').textContent = title || f.title;
   $('wg-body').appendChild(pane); wgOpen = k;
-  const feature=WIDGET_REMINDERS[k];
+  const feature=f.reminder;
   $('wg-tools').innerHTML=feature?remBox(feature):'';
   if(feature){remEditing[feature]=false;loadReminders().then(()=>paintRem(feature)).catch(()=>{if(wgOpen===k)$('wg-tools').innerHTML='<button type="button" class="text-action" onclick="openWidget(\'remind\')">Проверить уведомления →</button>';});}
   $('wg').dataset.kind=k;$('wg').classList.add('on'); document.body.classList.add('wg-open');
@@ -1306,7 +1317,7 @@ const WIDGET_LOADERS = {
   mood: () => { moodUI.precision=false; moodUI.mode='families'; renderMoods(); paintMoodExtra(); },
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
   askesis: () => loadAskesis(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => paintTone(),
-  day: () => showForecastNote(), worry: () => renderHub(), invite: () => loadInvite(), remind: () => paintAllReminders(), edit: () => fillEdit(),
+  day: () => { showForecastNote(); track('forecast_view'); }, worry: () => renderHub(), invite: () => loadInvite(), remind: () => paintAllReminders(), edit: () => fillEdit(),
   support: () => supOpen(), natal: () => loadNatal(), mail: () => renderAuth(), shelves: () => loadShelves(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
 };
 function loadWidgetContent(k){ WIDGET_LOADERS[k]?.(); }
@@ -1359,7 +1370,7 @@ async function loadShelves(){
       + row('Дневник', dy.journal.length ? dy.journal.map((j) => `<small>${fmtDay(j.day).slice(0, 5)}</small> ${esc(j.text)}`).join('<br>') : '')
       + row('Желания', dy.wishes.open.length ? esc(dy.wishes.open.join(' · ')) + (dy.wishes.done ? `<small> · исполнено ${dy.wishes.done}</small>` : '') : '')
       + row('Привычки', dy.habits.map((x) => `${esc(x.title)}<small> · ${x.streak} подряд</small>`).join('<br>'))
-      + row('Аскезы', dy.askesis.map((x) => `${esc(x.title)}<small> · день ${x.day} из ${x.days}</small>`).join('<br>'));
+      + row('Аскезы', dy.askesis.map((x) => `${esc(x.title)}<small> · день ${x.done} из ${x.total}, до ${fmtDay(x.until)}</small>`).join('<br>'));
     const hist = !h.total ? '<p>Обращений пока не было.</p>'
       : row('Всего', `${h.total}<small> · ${Object.entries(h.byKind).map(([k, n]) => `${ru[k] || k} ${n}`).join(', ')}</small>`)
       + row('Темы', esc(h.topics.map((t) => `${t.name} ${t.n}`).join(', '))) + row('Ответы «Да / Нет»', esc(h.verdicts.map((v) => `${v.verdict} ${v.n}`).join(', ')))
@@ -1448,7 +1459,7 @@ async function supSend(id){
 function paintNextStep(){
   if(!S.day||!$('h-next'))return;
   const next=ritualNext(),done=XP.prefs.ritual.filter(ritualDone).length;
-  $('h-ritual-practices').textContent=XP.prefs.ritual.map(key=>RITUALS[key][0]).join(' · ');
+  $('h-ritual-practices').textContent=XP.prefs.ritual.map(key=>FEATURES[key].title).join(' · ');
   $('h-next').hidden=!next;if(next)$('h-next').textContent=next.label+' →';
   $('h-progress').classList.toggle('ritual-finished',!next);
   $('h-progress').textContent=next?done+' из '+XP.prefs.ritual.length+' практик':'Ритуал на сегодня завершён';
@@ -1747,7 +1758,7 @@ async function addWish(){
     const r=await api('/wishes',{method:'POST',body:JSON.stringify({text:t,photo})});
     if(XP.wishPhoto===photo){XP.wishPhoto='';paintWishDraft();}
     if($('w-text').value.trim()===t) $('w-text').value='';
-    renderWishes(r); track('wish_add'); hap('done'); toast('Желание сохранено');
+    renderWishes(r); hap('done'); toast('Желание сохранено');
   } catch(e){ toast('Не удалось сохранить желание. Текст остался в поле.'); }
   finally { addWish.saving=false;$('wish-save').disabled=false; }
 }
@@ -1782,7 +1793,6 @@ function journalDictate(){
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&journalSpeech)stopJournalDictation();});
 async function compat(){
-  track('compat_calc');
   const b=$('m-cdate').value; if(!b){ toast('Укажите дату партнёра'); return; }
   try{
     const r=await api('/compat',{method:'POST',body:JSON.stringify({birth:b})});
@@ -1898,7 +1908,7 @@ async function saveJournal(){
   try {
     const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t})});
     if($('j-text').value.trim()===t) $('j-text').value='';
-    track('journal_add'); hap('done');
+    hap('done');
     const card=$('journal-card'); card.classList.remove('saved'); void card.offsetWidth; card.classList.add('saved');
     $('journal-saved').hidden=false;$('journal-saved').textContent='Запись сохранена · '+fmtDay(r.item.day);toast('Запись сохранена');S.journalDone=true;paintNextStep();growTextarea($('j-text'));loadJournal();
   } catch(e){ toast('Не удалось сохранить запись. Текст остался в поле.'); }
@@ -1943,16 +1953,21 @@ async function installApp(){ if(!deferred) return; track('installed'); deferred.
 /* ══════════ Карты Таро и руны: каталог, результаты, история, открытки ══════════ */
 /* Каталог: тексты и картинки карт и рун приходят одним запросом и дальше живут в памяти.
    Ответы сервера несут только коды и названия — по кодам экран находит полные тексты. */
+/* Последний удачный каталог остаётся в браузере: без сети настроения, награды и вопросы берутся из него,
+   а не из копий справочников в коде — источник у контента один, content.mjs. */
+const catalogFrom = (c) => ({ cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
+  news: c.news || [], quickMoods: c.quickMoods || [], moods: c.moods || [], moodFamilies: c.moodFamilies || {}, legacyMoods: c.legacyMoods || {},
+  worries: c.worries || [], awards: c.awards || [], reminderTexts: c.reminderTexts || {} });
 let CAT = null, catPromise = null;
+try { const cached = localStorage.getItem('lun_catalog'); if (cached) CAT = catalogFrom(JSON.parse(cached)); } catch (e) {}
 function loadCatalog(){
-  if (CAT) return Promise.resolve(CAT);
+  if (CAT && CAT.fresh) return Promise.resolve(CAT);
   if (catPromise) return catPromise;
   catPromise = api('/catalog?v=' + encodeURIComponent(S.catalogV || 1)).then(c => {
-    CAT = { cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
-      news: c.news || [], quickMoods:c.quickMoods||[], moods: c.moods || [], moodFamilies: c.moodFamilies || null, legacyMoods: c.legacyMoods || null,
-      worries: c.worries || [], awards: c.awards || [], reminderTexts: c.reminderTexts || {} };
+    CAT = catalogFrom(c); CAT.fresh = true;
+    try { localStorage.setItem('lun_catalog', JSON.stringify(c)); } catch (e) {}
     return CAT;
-  }).catch(e => { catPromise = null; throw e; });
+  }).catch(e => { catPromise = null; if (CAT) return CAT; throw e; });
   return catPromise;
 }
 const cardBy = (s) => (CAT && CAT.cards[s]) || null;
@@ -2017,7 +2032,7 @@ const preload = (src) => new Promise((res) => { const im = new Image(); im.onloa
 /* Карта тянется на сервере случайно — один раз в день — и сразу попадает в историю. */
 async function openCard(){
   if (S.flipped || S.opening) return;
-  S.opening = true; track('card_open'); $('t-open').disabled = true;
+  S.opening = true; $('t-open').disabled = true;
   try{
     const [r] = await Promise.all([api('/card', { method: 'POST' }), loadCatalog().catch(() => null)]);
     S.day.card = r.card;
@@ -2130,14 +2145,12 @@ async function runAsk(mode, q, out, hint, layout){
   await loadCatalog().catch(() => {});
   if (mode === 'spread') {
     const L = layout || 'three';
-    track('ask_spread', L);
     const r = await api('/spread', { method: 'POST', body: JSON.stringify({ question: q, layout: L }) });
     if (S.limits) S.limits.spreadsLeft = r.left;
     out.innerHTML = spreadHtml({ q, layout: r.layout, cards: r.cards.map(c => c.slug), live: r.cards, day: S.day.date });
     if (hint) hint.textContent = `Разбор расклада: осталось ${r.left} из ${S.limits ? S.limits.spreadsTotal : 2} на сегодня.`;
   } else {
     const L = mode === 'rune' ? (layout || 'one') : '';
-    track(mode === 'rune' ? 'ask_rune' : 'ask_yesno', L);
     const r = await api('/ask', { method: 'POST', body: JSON.stringify({ question: q, kind: mode, layout: L }) });
     out.innerHTML = r.kind === 'rune' ? runesHtml({ q, layout: r.layout, runes: r.runes.map(x => x.slug), live: r.runes, day: S.day.date })
       : yesnoHtml({ q, title: r.title, body: r.body, day: S.day.date, memory: r.memory });
@@ -2508,7 +2521,6 @@ async function remTest(f){
       const r=await api('/reminders/test',{method:'POST',body:JSON.stringify({feature:f,endpoint:S.pushEndpoint})});
       toast(r.ok ? 'Отправлено. Проверьте уведомления устройства' : 'Не получилось отправить');
     }
-    track('reminder_test',f);
   } catch(e) { toast(e.code==='too_many' ? 'Не чаще 3 пробных уведомлений за 10 минут' : 'Не получилось отправить пробное уведомление'); }
   finally { remBusy[f]=false; REM_ORDER.forEach(paintRem); }
 }
@@ -2525,7 +2537,7 @@ async function pushSubscribe(){
     const reg = await ensurePushWorker();
     const sub = await withTimeout(reg.pushManager.getSubscription()) || await withTimeout(reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:toBytes(S.pushKey)}));
     await api('/push',{method:'POST',body:JSON.stringify({endpoint:sub.endpoint})});
-    S.pushEndpoint=sub.endpoint; S.pushOn=true; track('push_on'); return true;
+    S.pushEndpoint=sub.endpoint; S.pushOn=true; return true;
   } catch(e) { S.pushOn=false; toast('Не получилось подключить уведомления. Проверьте связь и повторите'); return false; }
 }
 let nativeRequestId=0;
@@ -2687,7 +2699,7 @@ function registerWebMcp(){
         execute:async()=>{const d=S.day||{};const l=d.lunar||{};return {date:d.date,moon:d.moon,lunarDay:l.n?{n:l.n,title:l.title,advice:l.advice,period:l.period}:null,setting:d.set?d.set.statement||'':'' };}},
       {name:'lunario_open',description:'Открыть раздел или инструмент Лунарио: home, ask, history, account, news; или виджет card, mood, lunar, sky, natal, year, compat, topics.',
         inputSchema:{type:'object',properties:{target:{type:'string'}},required:['target']},
-        execute:async({target})=>{const t=String(target||'');if(['home','ask','history','account','news'].includes(t)){go(t);return {ok:true,view:t};}if(WIDGETS[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
+        execute:async({target})=>{const t=String(target||'');if(['home','ask','history','account','news'].includes(t)){go(t);return {ok:true,view:t};}if(FEATURES[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
     ]});
   }catch(e){}
 }
@@ -2919,30 +2931,22 @@ async function drawPostcardExtra(ctx, p){
   }
   return false;
 }
-/* ══════════ Круг эмоций Плутчика: восемь лепестков по три оттенка и восемь сочетаний ══════════ */
-const MOOD_FALLBACK = [['serenity','безмятежность','joy'],['joy','радость','joy'],['ecstasy','восторг','joy'],['acceptance','принятие','trust'],['trust','доверие','trust'],['admiration','восхищение','trust'],
-  ['apprehension','тревога','fear'],['fear','страх','fear'],['terror','ужас','fear'],['distraction','отвлечение','surprise'],['surprise','удивление','surprise'],['amazement','изумление','surprise'],
-  ['pensiveness','задумчивость','sadness'],['sadness','грусть','sadness'],['grief','горе','sadness'],['boredom','скука','disgust'],['disgust','отвращение','disgust'],['loathing','омерзение','disgust'],
-  ['annoyance','досада','anger'],['anger','злость','anger'],['rage','ярость','anger'],['interest','интерес','anticipation'],['anticipation','ожидание','anticipation'],['vigilance','настороженность','anticipation'],
-  ['optimism','оптимизм','dyad'],['love','любовь','dyad'],['submission','покорность','dyad'],['awe','трепет','dyad'],['disappointment','разочарование','dyad'],['remorse','раскаяние','dyad'],['contempt','презрение','dyad'],['aggressiveness','агрессия','dyad']];
-const FAM_FALLBACK = { joy:['Радость','#f2c94c'], trust:['Доверие','#9ccc3c'], fear:['Страх','#3aa35a'], surprise:['Удивление','#2aa7c9'], sadness:['Грусть','#4c78c8'], disgust:['Отвращение','#8f5fb8'], anger:['Злость','#e0475c'], anticipation:['Ожидание','#f0932b'], dyad:['На стыке','#b9b2cf'] };
-const LEGACY_FALLBACK = { joy:'joy', calm:'serenity', tired:'pensiveness', anx:'apprehension', sad:'sadness' };
+/* ══════════ Круг эмоций Плутчика: восемь лепестков по три оттенка и восемь сочетаний — список и цвета из каталога ══════════ */
 /* какой лепесток рисовать у сочетания — по тому, что в нём звучит громче */
 const DYAD_FACE = { optimism:'joy', love:'joy', submission:'anticipation', awe:'surprise', disappointment:'sadness', remorse:'sadness', contempt:'anger', aggressiveness:'anger' };
 const MOUTH = { joy:'M11.5 18.5q4.5 4.5 9 0', trust:'M12 19q4 3 8 0', fear:'M11.5 19q2.2-2 4.5 0t4.5 0', surprise:'M13.8 19.2a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0-4.4 0',
   sadness:'M11.5 20.5q4.5-4 9 0', disgust:'M11.5 19.5q2 1.6 4.5 0t4.5 0', anger:'M11.5 20.5q4.5-3 9 0', anticipation:'M12.5 19.5h7' };
-const moodList = () => (CAT && CAT.moods && CAT.moods.length ? CAT.moods : MOOD_FALLBACK.map(([key, label, family]) => ({ key, label, family })));
-const moodFams = () => (CAT && CAT.moodFamilies) || FAM_FALLBACK;
+const moodList = () => CAT?.moods || [];
+const moodFams = () => CAT?.moodFamilies || {};
 /* своё слово: хранится как «own:слово» — на экране и в отчёте показывается как есть, без лепестка */
 const ownMood = (key) => typeof key === 'string' && key.startsWith('own:') ? key.slice(4) : '';
-function moodInfo(key){ const quick=quickMoods().find(m=>m.key===key);if(quick)return quick; if(key==='displeasure') return {key,label:'неудовольствие',family:'disgust',tone:'-'}; if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = ((CAT && CAT.legacyMoods) || LEGACY_FALLBACK)[key] || key; return moodList().find(m => m.key === k) || null; }
+function moodInfo(key){ const quick=quickMoods().find(m=>m.key===key);if(quick)return quick; if(key==='displeasure') return {key,label:'неудовольствие',family:'disgust',tone:'-'}; if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = (CAT?.legacyMoods || {})[key] || key; return moodList().find(m => m.key === k) || null; }
 const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : String(k); } });
 const moodFace = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return 'anticipation'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
-const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || FAM_FALLBACK.dyad)[1]; };
+const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || ['', '#b9b2cf'])[1]; };
 const moodUiColor = key => `var(--emotion-${moodInfo(key)?.family==='own'?'own':moodFace(key)},${moodColor(key)})`;
 const moodSvg = (mood, size) => `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" style="color:${moodUiColor(mood)}"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/><path d="${MOUTH[moodFace(mood)]}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
-const QUICK_MOOD_FALLBACK=[{key:'quick:well',label:'Хорошо',family:'joy'},{key:'quick:calm',label:'Спокойно',family:'trust'},{key:'quick:tired',label:'Устала',family:'sadness'},{key:'quick:anxious',label:'Тревожно',family:'fear'},{key:'quick:heavy',label:'Тяжело',family:'sadness'}];
-const quickMoods=()=>CAT?.quickMoods?.length?CAT.quickMoods:QUICK_MOOD_FALLBACK;
+const quickMoods=()=>CAT?.quickMoods||[];
 const moodUI={mode:'families',family:null,own:null,ownOpen:false,precision:false};
 function moodMode(mode){moodUI.mode=mode;renderMoods();focusSelectedTab('Выбор эмоций');}
 function moodFamily(family){moodUI.family=moodUI.family===family?null:family;renderMoods();document.querySelector('[onclick="moodFamily(\''+family+'\')"]')?.focus({preventScroll:true});}
@@ -2954,6 +2958,7 @@ function renderMoods(){
   const chip=m=>`<button type="button" class="chip mchip${cur?.key===m.key?' on':''}" aria-pressed="${cur?.key===m.key}" style="--c:${moodUiColor(m.key)}" onclick="pickMood('${m.key}')">${esc(m.label)}</button>`;
   const familyKeys=Object.keys(fams).filter(f=>f!=='dyad'&&list.some(m=>m.family===f));
   $('t-moods').className='mood-picker';
+  if(!quickMoods().length){$('t-moods').innerHTML=`<p class="practice-question">Как вы сейчас?</p><p class="hint">Список настроений не загрузился. <button type="button" class="text-action" onclick="loadCatalog().then(renderMoods).catch(()=>toast('Нет связи'))">Повторить</button></p>`;return;}
   $('t-moods').innerHTML=`<p class="practice-question">Как вы сейчас?</p>
     <div class="quick-moods">${quickMoods().map(m=>`<button type="button" class="quick-mood${S.mood===m.key?' on':''}" aria-pressed="${S.mood===m.key}" onclick="quickMood('${m.key}')">${moodSvg(m.key,30)}<span>${esc(m.label)}</span></button>`).join('')}<button type="button" class="quick-mood" onclick="moodOwn()"><i class="ico pen"></i><span>Своё слово</span></button></div>
     ${cur?`<div class="mpick saved-state" role="status">${moodSvg(S.mood,36)}<div><b>Сегодня — ${esc(cur.label)}</b><small>Сохранено · ${fmtDay(S.day.date)}. Можно выбрать другое</small></div></div>`:''}
@@ -3139,7 +3144,7 @@ function paintHabits(){
 async function habitAdd(){
   const title = ($('hb-new').value || '').trim(), rule = ($('hb-rule').value || '').trim();
   if (title.length < 2) { toast('Назовите привычку'); return; }
-  try { const r = await api('/habits', { method: 'POST', body: JSON.stringify({ title, rule }) }); HB = r.items; habitDraft={title:'',rule:''};habitFormOpen=false; track('habit_add'); hap(); paintHabits(); }
+  try { const r = await api('/habits', { method: 'POST', body: JSON.stringify({ title, rule }) }); HB = r.items; habitDraft={title:'',rule:''};habitFormOpen=false; hap(); paintHabits(); }
   catch (e) { toast(e.code === 'too_many' ? 'Двадцать привычек — уже много. Уберите одну.' : 'Не получилось добавить'); }
 }
 async function habitSave(id){
@@ -3150,7 +3155,7 @@ async function habitSave(id){
 async function habitMark(id, day){
   if(habitBusy.has(id))return;habitBusy.add(id);
   try {
-    const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day }) }); HB = r.items; track('habit_mark'); hap('ok'); paintHabits();
+    const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day }) }); HB = r.items; hap('ok'); paintHabits();
     if (r.award) showAward(r.award);
   } catch (e) { toast('Не получилось отметить'); }
   finally{habitBusy.delete(id);document.querySelectorAll('[data-habit="'+id+'"] .hb-check').forEach(b=>b.disabled=false);}
@@ -3159,10 +3164,8 @@ async function habitRemove(id){
   if (!confirm('Убрать привычку из списка? Отметки сохранятся в истории.')) return;
   try { const r = await api('/habits?id=' + id, { method: 'DELETE' }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; paintHabits(); } catch (e) { toast('Не получилось'); }
 }
-/* награды: луна растёт вместе с серией — от молодого серпа до солнца */
-const AWARDS_FALLBACK = { 30: ['Молодая луна', 'Тридцать дней подряд. Привычка родилась — теперь ей есть на что опереться.'], 60: ['Растущая луна', 'Два месяца без пропуска. Это уже не усилие, а часть вашего дня.'],
-  90: ['Почти полная', 'Девяносто дней. Так рождается характер — тихо и каждый день.'], 180: ['Полнолуние', 'Полгода. Привычка стала вашей — как чистить зубы, только важнее.'], 365: ['Солнце', 'Год без пропуска. Это уже не привычка, а вы.'] };
-const awardText = (days) => { const a = CAT && CAT.awards && CAT.awards.find((x) => x[0] === days); return a ? [a[1], a[2]] : AWARDS_FALLBACK[days] || ['Награда', '']; };
+/* награды: луна растёт вместе с серией — от молодого серпа до солнца; тексты из каталога */
+const awardText = (days) => { const a = CAT?.awards?.find((x) => x[0] === days); return a ? [a[1], a[2]] : [`${days} дней подряд`, '']; };
 function awardIcon(days, size){
   const k = days >= 365 ? 1 : days >= 180 ? 1 : days >= 90 ? .8 : days >= 60 ? .5 : .18;
   if (days >= 365) return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" stroke="#f0d79a" stroke-width="2.5" stroke-linecap="round"><circle cx="32" cy="32" r="13" fill="#f0d79a"/>${[...Array(12)].map((_, i) => { const a = i * Math.PI / 6; return `<line x1="${32 + Math.cos(a) * 19}" y1="${32 + Math.sin(a) * 19}" x2="${32 + Math.cos(a) * 27}" y2="${32 + Math.sin(a) * 27}"/>`; }).join('')}</svg>`;
@@ -3243,12 +3246,12 @@ async function askStart(){
   const title = ($('as-title').value || '').trim(), until = $('as-until').value;
   if (title.length < 2) { toast('Назовите аскезу'); return; }
   if (!until) { toast('Выберите, до какого дня'); return; }
-  try { AS = await api('/askesis', { method: 'POST', body: JSON.stringify({ title, until }) }); askForm.new = null;askForm.open=false; track('askesis_start'); hap('done'); toast('Аскеза взята — мы рядом ✦'); paintAskesis(); refreshNativeAskesis(); }
+  try { AS = await api('/askesis', { method: 'POST', body: JSON.stringify({ title, until }) }); askForm.new = null;askForm.open=false; hap('done'); toast('Аскеза взята — мы рядом ✦'); paintAskesis(); refreshNativeAskesis(); }
   catch (e) { toast(e.code === 'bad_until' ? 'Дата должна быть не раньше сегодня' : e.code === 'too_many' ? 'Пять аскез сразу — уже много' : 'Не получилось'); }
 }
 async function askNote(id){
   const note = (($('as-note-' + id) || {}).value || '').trim(); if (!note) { toast('Заметка пустая'); return; }
-  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, note }) }); delete askNoteDrafts[id];askNoteOpen[id]=false;track('askesis_mark'); hap('ok'); toast('Заметка сохранена'); paintAskesis(); }
+  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, note }) }); delete askNoteDrafts[id];askNoteOpen[id]=false; hap('ok'); toast('Заметка сохранена'); paintAskesis(); }
   catch (e) { toast('Не получилось сохранить'); }
 }
 let askDateId=null;
@@ -3297,7 +3300,7 @@ function pickImage(maxSide, quality){
 }
 async function wishPhoto(id){
   const photo = await pickImage(900, 0.82); if (!photo) return;
-  try { const r = await api('/wishes/photo', { method: 'POST', body: JSON.stringify({ id, photo }) }); renderWishes(r); track('wish_add', 'photo'); toast('Фото добавлено ✦'); }
+  try { const r = await api('/wishes/photo', { method: 'POST', body: JSON.stringify({ id, photo }) }); renderWishes(r); toast('Фото добавлено ✦'); }
   catch (e) { toast(e.status === 413 ? 'Фото слишком большое — попробуйте другое' : 'Не получилось загрузить фото'); }
 }
 function showWishPhoto(id, t){
@@ -3357,18 +3360,16 @@ async function paintNews(){
 }
 
 /* ── старт ── */
-const OPEN_MAP = { card: ['today', 'card'], mood: ['today', 'mood'], habits: ['today', 'habits'], askesis: ['today', 'askesis'], journal: ['history', 'journal'], gratitude: ['history', 'gratitude'], news: ['news', ''], tone: ['today', 'tone'],
-  lunar: ['around', 'lunar'], sky: ['around', 'sky'], moodreport: ['history', 'hmood'], remind: ['account', 'remind'] };
 function startApp(){
   const initialPractice=new URLSearchParams(location.search).get('practice');
   paintHome(); paintToday(); go(initialPractice==='journal'?'history':'home');
-  if(FULL_PRACTICES.has(initialPractice))openPractice(initialPractice); showPushInvitation(); refreshNativeAskesis();
+  if(FEATURES[initialPractice]?.page)openPractice(initialPractice); showPushInvitation(); refreshNativeAskesis();
   if (S.day.card) { showFlipped(); $('t-after').style.display = 'block'; }   /* карта на сегодня уже открыта — она в истории */
   loadCatalog().then(() => { renderMoods(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); }).catch(() => {});
   /* из уведомления приходят сразу в нужный раздел */
   try {
-    const open = new URLSearchParams(location.search).get('open');
-    if (open && OPEN_MAP[open]) { go(OPEN_MAP[open][0]); if (OPEN_MAP[open][1]) openWidget(OPEN_MAP[open][1]); history.replaceState(null, '', location.pathname); }
+    const target = openTarget(new URLSearchParams(location.search).get('open') || '');
+    if (target) { go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); }
   } catch (e) {}
 }
 (async function(){

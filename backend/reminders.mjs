@@ -97,7 +97,6 @@ export function saveReminder(userId, patch) {
     .run(userId, feature, enabled ? 1 : 0, time, freq, weekday, tz, next ? new Date(next).toISOString() : '');
   return { ok: true, item: pub(feature, rowOf(userId, feature)) };
 }
-export const clearReminders = (userId) => { db.prepare('DELETE FROM reminders WHERE user_id = ?').run(userId); db.prepare('DELETE FROM push_queue WHERE user_id = ?').run(userId); };
 
 /* ── текст уведомления по функции; null — сегодня напоминать не о чем ── */
 /* Текст из content/напоминания.txt с подстановками {…}; лишние подстановки убираются */

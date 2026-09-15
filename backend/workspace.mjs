@@ -114,7 +114,8 @@ export function materialForDay(kind, day) {
 }
 
 /* ── картинки и файлы ── */
-const MEDIA_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'application/pdf': 'pdf', 'text/plain': 'txt' };
+/* SVG не принимаем: это документ со скриптом, открытый по ссылке с нашего домена он получил бы cookie сотрудника */
+const MEDIA_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'application/pdf': 'pdf', 'text/plain': 'txt' };
 export function mediaList() {
   const items = all('SELECT * FROM media ORDER BY archived, created_at DESC');
   const live = items.filter((m) => !m.archived).reduce((s, m) => s + m.size, 0), archived = items.filter((m) => m.archived).reduce((s, m) => s + m.size, 0);
@@ -201,8 +202,11 @@ export function taskSave(b, by) {
     .run(title, clean(b.text, 2000), role, status, priority, isDay(b.due_day) ? b.due_day : '', by || '', clean(b.assignee, 120), now(), now());
   return { ok: true };
 }
-export function taskStatus(id, status, by) {
+/* role — область сотрудника (контент или поддержка видят только свои задачи); пустая — весь беклог */
+export function taskStatus(id, status, by, role = '') {
   if (!(status in TASK_STATUS)) return { ok: false, error: 'bad_status' };
+  const t = one('SELECT role FROM tasks WHERE id = ?', Number(id)); if (!t) return { ok: false, error: 'not_found' };
+  if (role && t.role !== role) return { ok: false, error: 'no_access' };   // скрытая в списке задача не должна меняться по id
   db.prepare('UPDATE tasks SET status=?, updated_at=?, done_at=? WHERE id=?').run(status, now(), status === 'done' ? now() : '', Number(id));
   return { ok: true };
 }
@@ -215,7 +219,7 @@ const SLA_FIRST_MIN = 30;   // цель: первый ответ за 30 мин�
 const msg = (m) => ({ id: m.id, who: m.who, author: m.who === 'support' ? (m.author.split('@')[0] || 'поддержка') : '', text: open_(m.text), ts: m.ts });
 
 export function userTickets(userId) {
-  return all('SELECT * FROM tickets WHERE user_id = ? ORDER BY last_at DESC', userId).map((t) => ({ id: t.id, subject: t.subject, topic: t.topic, status: t.status, statusName: TICKET_STATUS[t.status], created_at: t.created_at, last_at: t.last_at,
+  return all('SELECT * FROM tickets WHERE user_id = ? ORDER BY last_at DESC', userId).map((t) => ({ id: t.id, subject: open_(t.subject), topic: t.topic, status: t.status, statusName: TICKET_STATUS[t.status], created_at: t.created_at, last_at: t.last_at,
     unread: one('SELECT COUNT(*) c FROM messages WHERE ticket_id = ? AND who = ? AND read_user = 0', t.id, 'support').c }));
 }
 export function userUnread(userId) { return one('SELECT COUNT(*) c FROM messages m JOIN tickets t ON t.id = m.ticket_id WHERE t.user_id = ? AND m.who = ? AND m.read_user = 0', userId, 'support').c; }
@@ -226,7 +230,7 @@ export function ticketCreate(userId, b) {
   if (openCount >= 5) return { ok: false, error: 'too_many_open' };
   const t = now();
   const r = db.prepare('INSERT INTO tickets (user_id, subject, topic, feature, status, priority, created_at, last_at, last_by) VALUES (?,?,?,?,?,?,?,?,?)')
-    .run(userId, clean(b.subject, 120) || text.slice(0, 60), topic, clean(b.feature, 60), 'new', 'normal', t, t, 'user');
+    .run(userId, seal(clean(b.subject, 120) || text.slice(0, 60)), topic, clean(b.feature, 60), 'new', 'normal', t, t, 'user');   // тема — тоже личный текст
   db.prepare('INSERT INTO messages (ticket_id, who, author, text, ts, read_user) VALUES (?,?,?,?,?,1)').run(Number(r.lastInsertRowid), 'user', '', seal(text), t);
   return { ok: true, id: Number(r.lastInsertRowid) };
 }
@@ -236,7 +240,7 @@ export function ticketThread(id, userId = null) {
   const list = all('SELECT * FROM messages WHERE ticket_id = ? ORDER BY ts', t.id);
   if (userId !== null) db.prepare('UPDATE messages SET read_user = 1 WHERE ticket_id = ? AND who = ?').run(t.id, 'support');
   else db.prepare('UPDATE messages SET read_support = 1 WHERE ticket_id = ? AND who = ?').run(t.id, 'user');
-  return { id: t.id, subject: t.subject, topic: t.topic, feature: t.feature, status: t.status, statusName: TICKET_STATUS[t.status], priority: t.priority, created_at: t.created_at, first_reply_at: t.first_reply_at, resolved_at: t.resolved_at,
+  return { id: t.id, subject: open_(t.subject), topic: t.topic, feature: t.feature, status: t.status, statusName: TICKET_STATUS[t.status], priority: t.priority, created_at: t.created_at, first_reply_at: t.first_reply_at, resolved_at: t.resolved_at,
     user: userId !== null ? null : { id: t.user_id, email: mask(u.email), name: u.name || '' }, messages: list.map(msg) };
 }
 export function ticketMessage(id, who, text, author = '', userId = null) {
@@ -258,7 +262,7 @@ export function ticketSet(id, b, by) {
 export function ticketQueue(status = '') {
   const rows = status ? all(`SELECT * FROM tickets WHERE status = ? ORDER BY CASE priority WHEN 'high' THEN 0 ELSE 1 END, last_at DESC`, status) : all(`SELECT * FROM tickets ORDER BY CASE status WHEN 'resolved' THEN 1 ELSE 0 END, CASE priority WHEN 'high' THEN 0 ELSE 1 END, last_at DESC`);
   return rows.map((t) => { const u = one('SELECT email, name FROM users WHERE id = ?', t.user_id) || {}; const mins = t.first_reply_at ? Math.round((Date.parse(t.first_reply_at) - Date.parse(t.created_at)) / 60000) : null;
-    return { id: t.id, user: { id: t.user_id, email: mask(u.email), name: u.name || '' }, subject: t.subject, topic: t.topic, status: t.status, statusName: TICKET_STATUS[t.status], priority: t.priority, created_at: t.created_at, last_at: t.last_at, last_by: t.last_by,
+    return { id: t.id, user: { id: t.user_id, email: mask(u.email), name: u.name || '' }, subject: open_(t.subject), topic: t.topic, status: t.status, statusName: TICKET_STATUS[t.status], priority: t.priority, created_at: t.created_at, last_at: t.last_at, last_by: t.last_by,
       firstReplyMin: mins, slaOk: mins === null ? null : mins <= SLA_FIRST_MIN, unread: one('SELECT COUNT(*) c FROM messages WHERE ticket_id = ? AND who = ? AND read_support = 0', t.id, 'user').c }; });
 }
 /* SLA и работа поддержки за период */

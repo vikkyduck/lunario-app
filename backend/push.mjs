@@ -6,6 +6,31 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { generateKeyPairSync, createSign, createPrivateKey, createPublicKey } from 'node:crypto';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+
+/* Адрес почтовой ячейки браузера задаёт клиент, а стучится по нему сервер. Поэтому принимаем только https
+   на стандартном порту, имя хоста (не IP) и не локальное имя — иначе сервер можно направить внутрь своей сети. */
+const LOCAL_HOST = /(^|\.)(localhost|local|internal|lan|home\.arpa|localdomain)$/i;
+export function pushEndpointOk(endpoint) {
+  let u; try { u = new URL(String(endpoint || '')); } catch { return false; }
+  if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443')) return false;
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  return !!host && !isIP(host) && !LOCAL_HOST.test(host) && host.includes('.');
+}
+/* 10/8, 172.16/12, 192.168/16, 127/8, 169.254/16, 0/8, 100.64/10 и IPv6-аналоги */
+export function isPrivateIp(ip) {
+  const v4 = String(ip).match(/^(?:::ffff:)?(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (v4) { const a = Number(v4[1]), b = Number(v4[2]); return a === 10 || a === 127 || a === 0 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127); }
+  const l = String(ip).toLowerCase();
+  return l === '::1' || l === '::' || l.startsWith('fc') || l.startsWith('fd') || l.startsWith('fe80');
+}
+/* Перед отправкой: имя разрешается только в публичные адреса. Ошибка DNS — не приговор ячейке, а временный сбой. */
+async function assertPublicEndpoint(endpoint) {
+  if (!pushEndpointOk(endpoint)) return false;
+  const addrs = await lookup(new URL(endpoint).hostname, { all: true });
+  return addrs.length > 0 && addrs.every((a) => !isPrivateIp(a.address));
+}
 
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 
@@ -45,10 +70,12 @@ function jwt(audience, keys, contact) {
 
 /* Одно уведомление. Возвращает true, если ячейка приняла; false — если её больше нет. */
 export async function sendPush(sub, keys, contact = 'mailto:hello@lunario.online') {
+  if (!(await assertPublicEndpoint(sub.endpoint))) return false;   // адрес не публичный — ячейки для нас нет
   const url = new URL(sub.endpoint);
   const token = jwt(`${url.protocol}//${url.host}`, keys, contact);
   const res = await fetch(sub.endpoint, {
     method: 'POST',
+    redirect: 'error',
     signal: AbortSignal.timeout(15000),
     headers: {
       TTL: '86400',

@@ -7,7 +7,7 @@ import { join, extname, normalize, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt, createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { vapidKeys } from './push.mjs';
+import { vapidKeys, pushEndpointOk } from './push.mjs';
 import * as C from './content.mjs';
 import { personalExport } from './personal-export.mjs';
 import { preferences, validPreferences, timeline } from './experience.mjs';
@@ -34,7 +34,9 @@ import { natalChart } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
-import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, clearReminders, pendingFor, sendNow, askesisNativePlan, skyNativePlan, previewNotification } from './reminders.mjs';
+import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, askesisNativePlan, skyNativePlan, previewNotification } from './reminders.mjs';
+import { CLIENT_EVENTS } from './events.mjs';
+import { clearHistory, deleteAccount } from './account-data.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -49,16 +51,7 @@ const Backup = createBackup({ dataDir: DATA_DIR, contentDir: CONTENT_DIR, backup
 const CONSENT_VERSION = '2026-08-23';
 const PUSH = vapidKeys(DATA_DIR);
 const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replace(/\/+$/, '');
-/* Что разрешено писать в аналитику. Текстов вопросов в списке нет намеренно. */
-const EVENT_TYPES = new Set([
-  'app_open', 'intro_view', 'tour_view', 'login_open', 'worry_pick', 'onboard_start', 'onboard_done', 'login_code_sent', 'login_done',
-  'card_open', 'mood_set', 'ask_yesno', 'ask_rune', 'ask_spread', 'spread_limit',
-  'journal_add', 'wish_add', 'compat_calc', 'share_card', 'install_prompt', 'installed',
-  'invite_copy', 'invite_used', 'push_on', 'push_off',
-  'support_open', 'support_new', 'utm_seen', 'natal_view', 'card_download',
-  'reminder_on', 'reminder_off', 'reminder_test', 'habit_add', 'habit_mark', 'habit_award', 'askesis_start', 'askesis_mark', 'sky_view', 'lunar_view', 'moodreport_view',
-  'gratitude_add', 'answer_add', 'news_view', 'wish_photo', 'photo_set', 'topics_set', 'topics_all', 'lunar_expand',
-]);
+/* Какие события принимает /api/event и какие пишет сам обработчик — в реестре events.mjs */
 const {seal, open:open_} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
@@ -153,16 +146,6 @@ function sendDataUrl(res, dataUrl) {
   return res.end(buf);
 }
 
-/* Привычки и аскезы — личное; стираются вместе с историей */
-function wipePersonal(userId) {
-  db.prepare('DELETE FROM habit_awards WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)').run(userId);
-  db.prepare('DELETE FROM daily_sets WHERE user_id = ?').run(userId);
-  db.prepare('DELETE FROM habit_marks WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)').run(userId);
-  db.prepare('DELETE FROM habits WHERE user_id = ?').run(userId);
-  db.prepare('DELETE FROM askesis_days WHERE askesis_id IN (SELECT id FROM askesis WHERE user_id = ?)').run(userId);
-  db.prepare('DELETE FROM askesis WHERE user_id = ?').run(userId);
-}
-
 /* Приглашения: свой код у каждого и запись, кто кого привёл. */
 {
   const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
@@ -204,18 +187,19 @@ function wipePersonal(userId) {
     const moved = db.prepare(`INSERT OR IGNORE INTO sessions (token_hash, user_id, created_at, last_seen)
       SELECT token_hash, id, created_at, last_seen FROM users WHERE token_hash <> ''`).run();
     if (moved.changes) console.log(`перенесено сессий из старых аккаунтов: ${moved.changes}`);
-    // UNIQUE на token_hash не даёт завести второй анонимный профиль — пересобираем таблицу
+    // UNIQUE на token_hash не даёт завести второй анонимный профиль — пересобираем таблицу.
+    // Все остальные колонки (в том числе добавленные выше миграциями) переезжают как есть — иначе они бы пропали.
+    const info = db.prepare('PRAGMA table_info(users)').all().filter((c) => c.name !== 'token_hash');
+    const base = new Set(['id', 'created_at', 'last_seen', 'name', 'birth', 'birth_time', 'city', 'email', 'consent_version', 'consent_ts', 'streak', 'streak_date', 'onboarded']);
     db.exec('BEGIN');
     db.exec(`CREATE TABLE users_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, last_seen TEXT NOT NULL,
       name TEXT DEFAULT '', birth TEXT DEFAULT '', birth_time TEXT DEFAULT '', city TEXT DEFAULT '',
       email TEXT DEFAULT '', consent_version TEXT DEFAULT '', consent_ts TEXT DEFAULT '',
-      streak INTEGER DEFAULT 0, streak_date TEXT DEFAULT '', onboarded INTEGER DEFAULT 0,
-      lat REAL, lon REAL, tz TEXT DEFAULT '', city_region TEXT DEFAULT '')`);
-    db.exec(`INSERT INTO users_new (id, created_at, last_seen, name, birth, birth_time, city, email,
-      consent_version, consent_ts, streak, streak_date, onboarded, lat, lon, tz, city_region)
-      SELECT id, created_at, last_seen, name, birth, birth_time, city, email,
-      consent_version, consent_ts, streak, streak_date, onboarded, lat, lon, tz, city_region FROM users`);
+      streak INTEGER DEFAULT 0, streak_date TEXT DEFAULT '', onboarded INTEGER DEFAULT 0)`);
+    for (const c of info) if (!base.has(c.name)) db.exec(`ALTER TABLE users_new ADD COLUMN ${c.name} ${c.type || 'TEXT'}${c.dflt_value !== null ? ' DEFAULT ' + c.dflt_value : ''}`);
+    const keep = info.map((c) => c.name).join(', ');
+    db.exec(`INSERT INTO users_new (${keep}) SELECT ${keep} FROM users`);
     db.exec('DROP TABLE users');
     db.exec('ALTER TABLE users_new RENAME TO users');
     db.exec('COMMIT');
@@ -225,6 +209,13 @@ function wipePersonal(userId) {
 }
 
 if (!db.prepare('PRAGMA table_info(users)').all().some(c=>c.name==='preferences')) db.exec("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT ''");
+/* Индексы по человеку: лента, желания, привычки, аскезы и события ищутся по user_id, а не полным просмотром */
+db.exec(`CREATE INDEX IF NOT EXISTS idx_events_user ON events (user_id, day, type);
+  CREATE INDEX IF NOT EXISTS idx_journal_user ON journal (user_id, id);
+  CREATE INDEX IF NOT EXISTS idx_journal_user_day ON journal (user_id, day);
+  CREATE INDEX IF NOT EXISTS idx_wishes_user ON wishes (user_id, id);
+  CREATE INDEX IF NOT EXISTS idx_habits_user ON habits (user_id);
+  CREATE INDEX IF NOT EXISTS idx_askesis_user ON askesis (user_id);`);
 const {habitList, askesisList} = createPractices(db, open_);
 initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
 initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
@@ -276,8 +267,6 @@ console.log('Личные записи шифруются перед запис�
 const hasBonus = (u) => !!u.bonus_until && u.bonus_until >= today();
 const spreadLimit = (u) => (hasBonus(u) ? 4 : 2);
 
-/* Личные таблицы человека: их чистит «Очистить историю», при удалении аккаунта к ним добавляются сессии и подписки */
-const PERSONAL_TABLES = ['entries', 'moods', 'journal', 'wishes', 'usage', 'shelves'];
 /* Событие продукта: только тип, короткая деталь и возрастная когорта — без личных текстов */
 const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), today(), u.id, type, String(detail || '').slice(0, 60), ageBand(u.birth));
 function ageBand(birth) {
@@ -424,6 +413,13 @@ function lunarPack(u) {
   } catch (e) { return null; }
 }
 const topicOf = (q) => (C.TOPICS.find(([, re]) => re.test(q)) || ['self'])[0];
+/* «На небе» считает события на 62 дня вперёд — держим результат пять минут на часовой пояс */
+const skyMemo = new Map();
+function skyCached(tz) {
+  const key = tz + ':' + Math.floor(Date.now() / 300000);
+  if (!skyMemo.has(key)) { if (skyMemo.size > 50) skyMemo.clear(); skyMemo.set(key, skyNow(Date.now(), tz)); }
+  return skyMemo.get(key);
+}
 const testRate = new Map();
 const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : String(k); } });
 const moodTone = (k) => { const m = C.moodInfo(k); return m ? m.tone : '0'; };
@@ -453,7 +449,13 @@ function weekSummary(u) {
 const validEndDate = (value, today) => ISO_DAY.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value && value >= today;
 
 /* ── пользователь ── */
-const userById = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+/* Фото — картинка до 300 КБ; в объект аккаунта берём только признак, саму картинку читает /api/photo */
+const USER_COLS = "*, (photo <> '') AS photo";
+const userById = (id) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id);
+const userByEmail = (email) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`).get(email);
+const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').get(id) || {}).photo || '';
+/* Сессия живёт год с выдачи и полгода без входа; пользование отмечаем не чаще раза в 10 минут */
+const SESSION_MAX_MS = 365 * 864e5, SESSION_IDLE_MS = 180 * 864e5, SEEN_STEP_MS = 10 * 60000;
 function parseCookies(req) {
   const out = {};
   for (const p of String(req.headers.cookie || '').split(';')) {
@@ -475,13 +477,17 @@ function newSession(userId, res, ua = '') {
 function getUser(req, res, create = true) {
   const tok = parseCookies(req).lunario_app;
   if (tok) {
-    const sess = db.prepare('SELECT user_id FROM sessions WHERE token_hash = ?').get(sha(tok));
+    const h = sha(tok), sess = db.prepare('SELECT user_id, created_at, last_seen FROM sessions WHERE token_hash = ?').get(h);
     if (sess) {
-      const u = userById(sess.user_id);
-      if (u) {
-        db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), sha(tok));
-        db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
-        return u;
+      const now = Date.now();
+      if (now - Date.parse(sess.created_at) > SESSION_MAX_MS || now - Date.parse(sess.last_seen) > SESSION_IDLE_MS) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(h);
+      else {
+        const u = userById(sess.user_id);
+        if (u) {
+          if (now - Date.parse(sess.last_seen) > SEEN_STEP_MS) db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), h);
+          if (now - Date.parse(u.last_seen) > SEEN_STEP_MS) db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
+          return u;
+        }
       }
     }
   }
@@ -537,14 +543,30 @@ const wantsMarkdown = (req) => /\btext\/markdown\b/.test(req.headers.accept || '
 /* ── маршруты ── */
 /* ── полочки: досье каждого человека — «Обо мне», «Мой день», «Истории».
    Экран «Мои данные» показывает их человеку, разборы и гороскопы берут отсюда контекст. */
-const natalOf = (u) => {
+/* Натальная карта по анкете — одна подготовка для маршрута /api/natal и досье: время рождения, пояс, координаты.
+   Анкета старше координат или город записан не как в базе — доопределяем по названию и запоминаем. */
+function natalFor(u) {
   const time = /^\d{2}:\d{2}$/.test(u.birth_time || '') ? u.birth_time : '';
+  if ((u.lat == null || !u.tz) && u.city) {
+    const geo = cityByName(u.city);
+    if (geo) { db.prepare('UPDATE users SET lat=?, lon=?, tz=?, city_region=? WHERE id=?').run(geo.lat, geo.lon, geo.tz, [geo.region, geo.country].filter(Boolean).join(', '), u.id); u.lat = geo.lat; u.lon = geo.lon; u.tz = geo.tz; }
+  }
   const tzOff = u.tz ? tzOffsetMinutes(u.tz, `${u.birth}T${time || '12:00'}:00`) : 0;
-  return natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
-};
-const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalOf, MOOD_RU, nowISO });
+  const chart = natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
+  chart.tz = u.tz || ''; chart.city = u.city || ''; chart.cityFound = u.lat != null;
+  chart.tzNote = u.tz ? `${u.tz}, UTC${tzOff >= 0 ? '+' : '−'}${Math.abs(tzOff) / 60}` + (time ? '' : ' (полдень)') : 'пояс не определён — время взято как UTC';
+  return chart;
+}
+const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalFor, MOOD_RU, nowISO });
 /* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку */
 const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data', '/api/preferences']);
+/* Серия действий подряд (отметки привычек) пересобирает полки один раз, а не на каждое; «Мои данные» дожидаются отложенной сборки */
+const shelfTimers = new Map();
+function scheduleShelves(uid, d) {
+  clearTimeout(shelfTimers.get(uid));
+  shelfTimers.set(uid, setTimeout(() => { shelfTimers.delete(uid); Shelves.refresh(uid, d); }, 500));
+}
+function flushShelves(uid, d) { if (shelfTimers.has(uid)) { clearTimeout(shelfTimers.get(uid)); shelfTimers.delete(uid); Shelves.refresh(uid, d); } }
 /* У тех, кто пришёл раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
 setTimeout(() => {
   const ids = db.prepare('SELECT id FROM users WHERE onboarded = 1 AND id NOT IN (SELECT user_id FROM shelves)').all().map((r) => r.id);
@@ -586,9 +608,14 @@ const server = createServer(async (req, res) => {
 
     /* ── API ── */
     if (p.startsWith('/api/')) {
-      const u = getUser(req, res);
+      /* Анонимный аккаунт заводится только там, где начинается работа; остальным без сессии — 401, а не новый пользователь */
+      const u = getUser(req, res, p === '/api/me' || p === '/api/auth/request');
       const d = today();
-      if (req.method !== 'GET' && SHELF_TOUCH.has(p) && u && u.id) { const uid = u.id; res.once('finish', () => Shelves.refresh(uid, d)); }
+      if (!u) {
+        if (p === '/api/cabinet/me') { const cfg = getConfig(); return json(res, 200, { email: '', name: '', roles: [], isAdmin: false, mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom }); }
+        return json(res, 401, { ok: false, error: 'no_session' });
+      }
+      if (req.method !== 'GET' && SHELF_TOUCH.has(p)) { const uid = u.id; res.once('finish', () => scheduleShelves(uid, d)); }
 
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
       if (p.startsWith('/api/cabinet/')) {
@@ -695,7 +722,7 @@ const server = createServer(async (req, res) => {
           if (req.method === 'GET') return json(res, 200, { items: own ? W.taskList(own) : W.taskList(url.searchParams.get('role') || ''), statuses: W.TASK_STATUS, roles: W.TASK_ROLES, canCreate: admin || roles.includes('product'), own });
           if (req.method === 'POST') {
             const b = await readBody(req);
-            if (b.id && b.onlyStatus) return json(res, 200, W.taskStatus(b.id, b.status, u.email));
+            if (b.id && b.onlyStatus) { const r = W.taskStatus(b.id, b.status, u.email, own); return json(res, r.ok ? 200 : r.error === 'no_access' ? 403 : 400, r); }
             if (!(admin || roles.includes('product'))) return json(res, 403, { ok: false, error: 'product_only' });
             return json(res, 200, W.taskSave(b, u.email));
           }
@@ -730,22 +757,13 @@ const server = createServer(async (req, res) => {
       /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
       if (p === '/api/natal' && req.method === 'GET') {
         if (!ISO_DAY.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
-        const time = /^\d{2}:\d{2}$/.test(u.birth_time || '') ? u.birth_time : '';
-        // анкета старше координат или город записан не как в базе — доопределяем по названию и запоминаем
-        if ((u.lat == null || !u.tz) && u.city) {
-          const geo = cityByName(u.city);
-          if (geo) { db.prepare('UPDATE users SET lat=?, lon=?, tz=?, city_region=? WHERE id=?').run(geo.lat, geo.lon, geo.tz, [geo.region, geo.country].filter(Boolean).join(', '), u.id); u.lat = geo.lat; u.lon = geo.lon; u.tz = geo.tz; }
-        }
-        const tzOff = u.tz ? tzOffsetMinutes(u.tz, `${u.birth}T${time || '12:00'}:00`) : 0;
-        const chart = natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
-        chart.tz = u.tz || ''; chart.city = u.city || ''; chart.cityFound = u.lat != null;
-        chart.tzNote = u.tz ? `${u.tz}, UTC${tzOff >= 0 ? '+' : '−'}${Math.abs(tzOff) / 60}` + (time ? '' : ' (полдень)') : 'пояс не определён — время взято как UTC';
-        track(u, 'natal_view', time ? 'with_time' : 'no_time');
+        const chart = natalFor(u);
+        track(u, 'natal_view', chart.timeKnown ? 'with_time' : 'no_time');
         return json(res, 200, chart);
       }
 
       /* ── первый источник (UTM с лендинга или рекламы) — один раз ── */
-      if (p === '/api/utm' && req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.setUtm(u.id, b)); }
+      if (p === '/api/utm' && req.method === 'POST') { const b = await readBody(req); const r = W.setUtm(u.id, b); if (r.ok && !r.kept) track(u, 'utm_seen', clean(b.utm_source, 40)); return json(res, 200, r); }
 
       /* ── чат с поддержкой: человек видит только свои обращения ── */
       if (p === '/api/support/tickets') {
@@ -791,7 +809,7 @@ const server = createServer(async (req, res) => {
         }
         db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);
 
-        let existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        let existing = userByEmail(email);
         if (!existing) {
           // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся
           db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), u.id);
@@ -799,7 +817,8 @@ const server = createServer(async (req, res) => {
         }
         if (existing.id === u.id) return json(res, 200, { ok: true, merged: false, user: publicUser(existing) });
 
-        // аккаунт с этой почтой уже есть — переключаем устройство на него
+        // аккаунт с этой почтой уже есть — переключаем устройство на него; прежний токен устройства отзываем
+        db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(parseCookies(req).lunario_app || ''));
         newSession(existing.id, res, req.headers['user-agent']);
         if (u.onboarded && !existing.onboarded) {   // анкету только что заполнили на этом устройстве — она едет в найденный аккаунт
           db.prepare(`UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
@@ -832,7 +851,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/event' && req.method === 'POST') {
         const b = await readBody(req);
         const type = clean(b.t, 40);
-        if (!EVENT_TYPES.has(type)) return json(res, 400, { ok: false });
+        if (!CLIENT_EVENTS.has(type)) return json(res, 400, { ok: false });   // подтверждённые действия пишет сам обработчик
         track(u, type, clean(b.d, 60));
         if (type === 'lunar_view') {   /* сколько раз открывал лунный день: ряд тем появляется со второго открытия */
           const pr = preferences(u.preferences); if ((pr.lunarViews || 0) < 99) db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify({ ...pr, lunarViews: (pr.lunarViews || 0) + 1 }), u.id);
@@ -881,6 +900,7 @@ const server = createServer(async (req, res) => {
           .run(clean(b.name, 60), birth, clean(b.birthTime, 5), geo ? geo.name : cityName,
                geo ? [geo.region, geo.country].filter(Boolean).join(', ') : '', geo ? geo.lat : null, geo ? geo.lon : null, geo ? geo.tz : '',
                CONSENT_VERSION, nowISO(), u.id);
+        if (!u.onboarded) track(u, 'onboard_done', '');
         const fresh = userById(u.id);
         return json(res, 200, { ok: true, user: publicUser(fresh), day: dayPack(fresh, d) });
       }
@@ -893,7 +913,7 @@ const server = createServer(async (req, res) => {
           const a = drawDistinct([...C.ARCANA], 1)[0];
           db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
             .run(u.id, nowISO(), d, 'card', '', a.name, a.keys, JSON.stringify({ card: a.slug }));
-          card = cardPublic(a);
+          card = cardPublic(a); track(u, 'card_open', a.slug);
         }
         return json(res, 200, { ok: true, card, streak: touchStreak(u) });
       }
@@ -921,6 +941,7 @@ const server = createServer(async (req, res) => {
         }
         db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
           .run(u.id, nowISO(), d, stored, seal(q), title, body, data);
+        track(u, kind === 'rune' ? 'ask_rune' : 'ask_yesno', kind === 'rune' ? extra.layout : topic);
         const prev = db.prepare("SELECT title, day FROM entries WHERE user_id=? AND kind='yesno' AND day<? AND title<>? ORDER BY id DESC LIMIT 1").get(u.id, d, title);
         return json(res, 200, { ok: true, kind, title, body, topic, ...extra, streak: touchStreak(u), memory: kind === 'yesno' && prev ? { title: prev.title, day: prev.day } : null });
       }
@@ -940,6 +961,7 @@ const server = createServer(async (req, res) => {
         db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
           .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.name} — ${c.keys}`).join(' '),
                JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) }));
+        track(u, 'ask_spread', L);
         return json(res, 200, { ok: true, layout: L, cards, left: Math.max(0, spreadLimit(u) - used - 1), streak: touchStreak(u) });
       }
 
@@ -949,6 +971,7 @@ const server = createServer(async (req, res) => {
         const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* своё слово: «own:собранно» */
         if (!own && !C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
         db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
+        track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* своё слово — личный текст, в аналитику не идёт */
         const month = d.slice(0, 7);
         const stats = db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, month + '%');
         return json(res, 200, { ok: true, mood, stats, streak: touchStreak(u) });
@@ -972,7 +995,7 @@ const server = createServer(async (req, res) => {
           const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
           const title = clean(b.title, 300);
           const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
-          if (kind) track(u, kind === 'gratitude' ? 'gratitude_add' : 'answer_add', '');
+          track(u, kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add', '');
           return json(res, 200, { ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });
         }
         const kind = url.searchParams.get('kind');
@@ -1002,7 +1025,7 @@ const server = createServer(async (req, res) => {
       }
       /* Своё фото в аккаунте — показывается в кружке в правом верхнем углу */
       if (p === '/api/photo') {
-        if (req.method === 'GET') { if (!u.photo) { res.writeHead(404); return res.end(); } return sendDataUrl(res, u.photo); }
+        if (req.method === 'GET') { const photo = userPhoto(u.id); if (!photo) { res.writeHead(404); return res.end(); } return sendDataUrl(res, photo); }
         if (req.method === 'POST') {
           const b = await readBody(req, 512 * 1024);
           const photo = dataUrlOk(b.photo, 300 * 1024); if (!photo) return json(res, 400, { ok: false, error: 'bad_photo' });
@@ -1021,6 +1044,7 @@ const server = createServer(async (req, res) => {
           const photo=b.photo ? dataUrlOk(b.photo,600*1024) : '';
           if (b.photo && !photo) return json(res,400,{error:'bad_photo'});
           db.prepare('INSERT INTO wishes (user_id, ts, text, photo, photo_ts) VALUES (?,?,?,?,?)').run(u.id, nowISO(), seal(text),photo,photo?nowISO():'');
+          track(u, 'wish_add', photo ? 'photo' : '');
         } else if (req.method === 'PATCH') {
           const b = await readBody(req);
           db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), Number(b.id) || 0, u.id);
@@ -1038,9 +1062,11 @@ const server = createServer(async (req, res) => {
       if (p === '/api/push' && req.method === 'POST') {
         const b = await readBody(req);
         const endpoint = clean(b.endpoint, 500);
-        if (!/^https:\/\//.test(endpoint)) return json(res, 400, { ok: false });
+        if (!pushEndpointOk(endpoint)) return json(res, 400, { ok: false, error: 'bad_endpoint' });
+        const fresh = !db.prepare('SELECT 1 FROM push_subs WHERE endpoint = ?').get(endpoint);
         db.prepare('INSERT INTO push_subs (endpoint, user_id, created_at) VALUES (?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id')
           .run(endpoint, u.id, nowISO());
+        if (fresh) track(u, 'push_on', '');
         return json(res, 200, { ok: true });
       }
       if (p === '/api/push' && req.method === 'DELETE') {
@@ -1152,7 +1178,7 @@ const server = createServer(async (req, res) => {
           if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
           if (db.prepare('SELECT COUNT(*) c FROM habits WHERE user_id = ? AND archived = 0').get(u.id).c >= 20) return json(res, 400, { ok: false, error: 'too_many' });
           db.prepare('INSERT INTO habits (user_id, title, created_at, rule, rule_text) VALUES (?,?,?,?,?)').run(u.id, seal(title), nowISO(), parseRule(ruleText), ruleText);
-          touchStreak(u);
+          touchStreak(u); track(u, 'habit_add', parseRule(ruleText));
         } else if (req.method === 'PATCH') {
           const b = await readBody(req);
           const h = db.prepare('SELECT * FROM habits WHERE id = ? AND user_id = ? AND archived = 0').get(Number(b.id) || 0, u.id);
@@ -1165,7 +1191,7 @@ const server = createServer(async (req, res) => {
             const day = ISO_DAY.test(b.day || '') && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
             if (db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day)) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
             else {
-              db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u);
+              db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u); track(u, 'habit_mark', day === d ? 'today' : 'past');
               /* ежедневная привычка дошла до рубежа — награда, один раз */
               if ((h.rule || 'daily') === 'daily') {
                 const marks = new Set(db.prepare('SELECT day FROM habit_marks WHERE habit_id = ?').all(h.id).map((m) => m.day));
@@ -1194,7 +1220,7 @@ const server = createServer(async (req, res) => {
           if (db.prepare("SELECT COUNT(*) c FROM askesis WHERE user_id = ? AND status = 'active'").get(u.id).c >= 5) return json(res, 400, { ok: false, error: 'too_many' });
           const days = Math.round((Date.parse(until) - Date.parse(d)) / 864e5) + 1;
           db.prepare('INSERT INTO askesis (user_id, title, days, started, until) VALUES (?,?,?,?,?)').run(u.id, seal(title), days, d, until);
-          touchStreak(u);
+          touchStreak(u); track(u, 'askesis_start', String(days));
         } else if (req.method === 'PATCH') {
           const b = await readBody(req);
           const a = db.prepare("SELECT * FROM askesis WHERE id = ? AND user_id = ? AND status = 'active'").get(Number(b.id) || 0, u.id);
@@ -1206,7 +1232,7 @@ const server = createServer(async (req, res) => {
           } else {                                                       // заметка-наблюдение за сегодня
             const note = cleanText(b.note, 500);
             db.prepare('INSERT INTO askesis_days (askesis_id, day, kept, note) VALUES (?,?,1,?) ON CONFLICT(askesis_id, day) DO UPDATE SET note = excluded.note').run(a.id, d, seal(note));
-            touchStreak(u);
+            touchStreak(u); track(u, 'askesis_mark', '');
           }
         } else if (req.method === 'DELETE') {
           db.prepare("UPDATE askesis SET status = 'stopped', finished_at = ? WHERE id = ? AND user_id = ? AND status = 'active'").run(d, Number(url.searchParams.get('id')) || 0, u.id);
@@ -1215,11 +1241,11 @@ const server = createServer(async (req, res) => {
       }
 
       /* ── на небе: сейчас и ближайшие недели ── */
-      if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyNow(Date.now(), u.tz || MSK));
+      if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyCached(u.tz || MSK));
 
       /* ── полочки: что Лунарио знает о человеке — три полки и досье текстом для разборов ── */
-      if (p === '/api/shelves' && req.method === 'GET') return json(res, 200, Shelves.read(u, d));
-      if (p === '/api/shelves/context' && req.method === 'GET') return json(res, 200, { text: Shelves.contextText(Shelves.read(u, d)) });
+      if (p === '/api/shelves' && req.method === 'GET') { flushShelves(u.id, d); return json(res, 200, Shelves.read(u, d)); }
+      if (p === '/api/shelves/context' && req.method === 'GET') { flushShelves(u.id, d); return json(res, 200, { text: Shelves.contextText(Shelves.read(u, d)) }); }
 
       if (p === '/api/numerology' && req.method === 'GET') {
         if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
@@ -1240,6 +1266,7 @@ const server = createServer(async (req, res) => {
         const seed = hash32([u.birth, other].sort().join('|'));
         const mk = (k, lo, hi) => lo + (hash32(seed + k) % (hi - lo + 1));
         const rings = [['Эмоции', mk('e', 55, 95)], ['Общение', mk('c', 50, 95)], ['Быт', mk('b', 45, 90)], ['Страсть', mk('p', 55, 95)]];
+        track(u, 'compat_calc', '');
         const total = Math.round(rings.reduce((s, r) => s + r[1], 0) / rings.length);
         return json(res, 200, {
           total, rings, you: a.name, other: o.name,
@@ -1248,17 +1275,10 @@ const server = createServer(async (req, res) => {
         });
       }
 
-      if (p === '/api/data' && req.method === 'DELETE') {
-        for (const t of PERSONAL_TABLES) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
-        wipePersonal(u.id);
-        db.prepare("UPDATE users SET streak = 0, streak_date = '' WHERE id = ?").run(u.id);
-        return json(res, 200, { ok: true });
-      }
+      /* «Очистить историю» и «Удалить аккаунт» — одна политика на все личные таблицы (account-data.mjs) */
+      if (p === '/api/data' && req.method === 'DELETE') { clearHistory(db, u); return json(res, 200, { ok: true }); }
       if (p === '/api/account' && req.method === 'DELETE') {
-        for (const t of [...PERSONAL_TABLES, 'sessions', 'push_subs']) db.prepare(`DELETE FROM ${t} WHERE user_id = ?`).run(u.id);
-        wipePersonal(u.id); clearReminders(u.id);
-        // замер интереса остаётся (обезличенный факт клика), но почта и просьба «сообщите» уходят вместе с аккаунтом
-        db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
+        deleteAccount(db, u);
         clearSessionCookie(res);
         return json(res, 200, { ok: true });
       }
@@ -1280,7 +1300,8 @@ const server = createServer(async (req, res) => {
     if (p.startsWith('/uploads/') && (req.method === 'GET' || req.method === 'HEAD')) {
       const f = W.mediaPath(p.slice('/uploads/'.length));
       if (!f) { res.writeHead(404); return res.end(); }
-      res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400' });
+      res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400',
+        'Content-Security-Policy': "sandbox; default-src 'none'", 'X-Content-Type-Options': 'nosniff' });   /* даже документ со скриптом здесь ничего не выполнит */
       return res.end(req.method === 'HEAD' ? undefined : readFileSync(f));
     }
     if (p === '/' || p === '/index.html') {

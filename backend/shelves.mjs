@@ -23,6 +23,7 @@ const ELEMENT = {
 const TOPIC_RU = { work: 'работа', money: 'деньги', love: 'отношения', health: 'здоровье', move: 'дом и переезд', study: 'учёба', self: 'о себе' };
 const KIND_RU = { yesno: '«Да / Нет»', rune: 'руна', runes: 'расклад рун', spread: 'расклад Таро', card: 'карта дня' };
 const SHELVES = ['about', 'day', 'history'];
+const SHELF_VERSION = 2;   /* форма полок; старые — пересобираются при чтении */
 
 const fmt = (d) => (d ? String(d).split('-').reverse().join('.') : '');
 const short = (s, n = 160) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
@@ -109,7 +110,7 @@ export function createShelves(deps) {
         done: db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ? AND done = 1').get(u.id).c,
       },
       habits: habitList(u.id, d).map((h) => ({ title: h.title, streak: h.streak, today: h.today, total: h.total })),
-      askesis: ask.active.map((a) => ({ title: a.title, day: a.done, days: a.total, kept: a.done, missed: 0 })),   // форма из practices.askesisList
+      askesis: ask.active.map((a) => ({ title: a.title, done: a.done, total: a.total, left: a.left, until: a.until, notes: a.notes.length })),   // та же форма, что у practices.askesisList
     };
   }
 
@@ -148,7 +149,7 @@ export function createShelves(deps) {
     if (!u) return null;
     const out = { about: buildAbout(u, d), day: buildDay(u, d), history: buildHistory(u, d) };
     const ts = nowISO();
-    for (const s of SHELVES) put.run(u.id, s, seal(JSON.stringify(out[s])), d, ts);
+    for (const s of SHELVES) put.run(u.id, s, seal(JSON.stringify({ v: SHELF_VERSION, ...out[s] })), d, ts);
     return { ...out, updated: ts };
   }
 
@@ -158,7 +159,7 @@ export function createShelves(deps) {
     if (rows.length !== SHELVES.length || rows.some((r) => r.day !== d)) return rebuild(u, d);
     const out = {};
     for (const r of rows) { try { out[r.shelf] = JSON.parse(open(r.json)); } catch { return rebuild(u, d); } }
-    if (SHELVES.some((s) => !out[s])) return rebuild(u, d);
+    if (SHELVES.some((s) => !out[s] || out[s].v !== SHELF_VERSION)) return rebuild(u, d);
     out.updated = rows.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), '');
     return out;
   }
@@ -199,7 +200,7 @@ export function createShelves(deps) {
     if (dy.journal.length) L.push(`Дневник: ${dy.journal.map((j) => `${fmt(j.day).slice(0, 5)} «${short(j.text, 140)}»`).join('; ')}.`);
     if (dy.wishes.open.length) L.push(`Желания: ${dy.wishes.open.map((w) => `«${short(w, 80)}»`).join(', ')}${dy.wishes.done ? `; исполнено — ${dy.wishes.done}` : ''}.`);
     if (dy.habits.length) L.push(`Привычки: ${dy.habits.map((h) => `${h.title} (${h.streak} ${plural(h.streak, 'день', 'дня', 'дней')} подряд${h.today ? ', сегодня отмечена' : ''})`).join('; ')}.`);
-    if (dy.askesis.length) L.push(`Аскезы: ${dy.askesis.map((x) => `${x.title} — день ${x.day} из ${x.days}, соблюдено ${x.kept}${x.missed ? `, пропущено ${x.missed}` : ''}`).join('; ')}.`);
+    if (dy.askesis.length) L.push(`Аскезы: ${dy.askesis.map((x) => `${x.title} — день ${x.done} из ${x.total}, до ${fmt(x.until)}${x.notes ? `, наблюдений ${x.notes}` : ''}`).join('; ')}.`);
 
     L.push('', 'ИСТОРИИ');
     if (!h.total) L.push('Обращений пока не было.');
