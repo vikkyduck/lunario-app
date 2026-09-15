@@ -111,9 +111,9 @@ export async function checkBrand({browser,base,owner}) {
       await page.setViewportSize({width,height});await page.evaluate(()=>openLogin());await ready();
       for(const step of ['email','code']) {
         if(step==='code'){
-          await page.locator('#ob-email').fill('layout@example.test');
+          await page.locator('#auth-email').fill('layout@example.test');
           await page.locator('#l-box .auth-submit').click();
-          await page.locator('#ob-code').waitFor();await ready();
+          await page.locator('#auth-code').waitFor();await ready();
         }
         const geometry=await page.locator('#l-box').evaluate(e=>{
           const field=e.querySelector('input').getBoundingClientRect(),button=e.querySelector('.auth-submit').getBoundingClientRect();

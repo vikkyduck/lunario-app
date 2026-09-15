@@ -13,6 +13,7 @@ import { skyNow } from './sky.mjs';
 import { sendPush } from './push.mjs';
 import * as C from './content.mjs';
 import { preferences } from './experience.mjs';
+import { MSK, MOSCOW, dayIn, plural } from './util.mjs';
 
 export const FEATURES = {
   card:       { title: 'Карта дня',            hint: 'Утром: карта дня готова',                   time: '09:00', freq: 'daily',  weekday: 7, url: '/app/?open=card' },
@@ -25,7 +26,6 @@ export const FEATURES = {
   sky:        { title: 'На небе',              hint: 'Когда что-то происходит: полнолуние, затмение, ретроградный Меркурий', time: '10:00', freq: 'events', weekday: 7, url: '/app/?open=sky' },
 };
 const FREQS = ['daily', 'weekdays', 'weekly', 'events'];
-const MSK = 'Europe/Moscow';
 const validTz = (tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } };
 
 let db = null, hooks = {};
@@ -58,7 +58,7 @@ export function initReminders(database, h = {}) {
 /* Следующий момент срабатывания (мс UTC) — в часовом поясе человека. */
 export function nextAt(r, fromMs = Date.now()) {
   const tz = r.tz && validTz(r.tz) ? r.tz : MSK;
-  let day = new Date(fromMs).toLocaleDateString('sv-SE', { timeZone: tz });
+  let day = dayIn(tz, fromMs);
   for (let i = 0; i < 400; i++) {
     const wd = ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;   // 1 — понедельник … 7 — воскресенье
     const okDay = r.freq === 'weekly' ? wd === Number(r.weekday) : r.freq === 'weekdays' ? wd <= 5 : true;
@@ -100,7 +100,6 @@ export function saveReminder(userId, patch) {
 export const clearReminders = (userId) => { db.prepare('DELETE FROM reminders WHERE user_id = ?').run(userId); db.prepare('DELETE FROM push_queue WHERE user_id = ?').run(userId); };
 
 /* ── текст уведомления по функции; null — сегодня напоминать не о чем ── */
-const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 /* Текст из content/напоминания.txt с подстановками {…}; лишние подстановки убираются */
 const firstSentence = (s) => { const m = String(s || '').match(/^.+?[.!?…](\s|$)/); return (m ? m[0] : String(s || '')).trim(); };
 /* Темы чтения человека: если выбрана ровно одна содержательная тема и у дня есть такой раздел — {title, text} */
@@ -116,11 +115,10 @@ const tpl = (key, vars) => {
   const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : '')).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
   return { title: fill(title), body: fill(body) };
 };
-const MOOD_RU = { joy: 'радостно', calm: 'спокойно', tired: 'устало', anx: 'тревожно', sad: 'грустно' };
 export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK, eventsOnly = false) {
   if (!FEATURES[feature]) return null;
   // Practice records use the same Moscow day as server.mjs; delivery time is user-local.
-  const d = new Date(atMs).toLocaleDateString('sv-SE', { timeZone: MSK }), url = FEATURES[feature].url;
+  const d = dayIn(MSK, atMs), url = FEATURES[feature].url;
   if (feature === 'card') return { ...tpl('card'), url };
   if (feature === 'mood') {
     if (db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ?').get(u.id, d)) return null;
@@ -151,7 +149,7 @@ export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK,
     return { ...tpl('gratitude'), url };
   }
   if (feature === 'lunar') {
-    const ld = lunarDay(atMs, u.lat ?? 55.7558, u.lon ?? 37.6173);
+    const ld = lunarDay(atMs, u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon);
     if (!ld) return null;
     const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['Лунный день', ''];
     /* Одна выбранная содержательная тема (не символ/рекомендация/«как прожить») — в тело идёт её первая фраза */
@@ -184,14 +182,14 @@ export function askesisNativePlan(userId, fromMs=Date.now()) {
   const r=listReminders(userId).find(r=>r.feature==='askesis');
   if(!r?.enabled) return {items:[]};
   const tz=r.tz||MSK;
-  const today=new Date(fromMs).toLocaleDateString('sv-SE',{timeZone:MSK});
+  const today=dayIn(MSK,fromMs);
   const active=hooks.askesisList?hooks.askesisList(userId,today).active:[];
   const items=[];let cursor=fromMs;
   // iOS caps pending notifications. Refresh this rolling plan when the app opens.
   for(let i=0;i<14;i++) {
     const at=nextAt(r,cursor);if(!at)break;
-    const day=new Date(at).toLocaleDateString('sv-SE',{timeZone:tz});
-    const notification=askesisNotification(active,new Date(at).toLocaleDateString('sv-SE',{timeZone:MSK}));if(!notification)break;
+    const day=dayIn(tz,at);
+    const notification=askesisNotification(active,dayIn(MSK,at));if(!notification)break;
     items.push({date:day,...notification});cursor=at+1000;
   }
   return {items,tz,time:r.time};
@@ -213,7 +211,7 @@ export function skyNativePlan(u, feature, fromMs = Date.now()) {
     const at = nextAt(r, cursor); if (!at) break;
     const tz = r.tz || u.tz || MSK;
     const n = notificationFor(feature, u, at, tz, r.freq === 'events');
-    if (n) items.push({ date: new Date(at).toLocaleDateString('sv-SE', {timeZone:tz}), ...n });
+    if (n) items.push({ date: dayIn(tz, at), ...n });
     cursor = at + 1000;
   }
   return { items, tz: r.tz || u.tz || MSK, time: r.time };

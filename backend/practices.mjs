@@ -1,4 +1,5 @@
 import * as C from './content.mjs';
+import { MSK, dayIn, addDays } from './util.mjs';
 
 export const HABIT_MILESTONES = [30, 60, 90, 180, 365];
 const WD_RULES = [[1, /(^|[^а-я])(пн|понедельн)/], [2, /(^|[^а-я])(вт([^а-я]|$)|вторн)/], [3, /(^|[^а-я])(ср([^а-я]|$)|сред)/], [4, /(^|[^а-я])(чт|четверг)/],
@@ -28,8 +29,7 @@ const RULE_LABEL = (rule) => rule === 'daily' ? 'каждый день' : rule =
   : rule.startsWith('mtimes:') ? `${rule.slice(7)} раза в месяц` : rule.startsWith('every:') ? `каждые ${rule.slice(6)} дн.`
   : rule.startsWith('days:') ? rule.slice(5).split(',').map((n) => ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'][Number(n)]).join(', ') : rule;
 const wdOf = (day) => ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;     // 1 — понедельник … 7 — воскресенье
-const addDays = (day, n) => new Date(Date.parse(day) + n * 864e5).toISOString().slice(0, 10);
-const habitStart = h => new Date(h.created_at).toLocaleDateString('sv-SE', {timeZone:'Europe/Moscow'});
+const habitStart = h => dayIn(MSK, Date.parse(h.created_at));
 const weekStart = (day) => addDays(day, 1 - wdOf(day));
 /* нужно ли делать привычку в этот день; для недельных и месячных — «ещё не сделана в этом периоде» */
 function habitDue(h, day, marks) {

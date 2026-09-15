@@ -1,5 +1,6 @@
 /* Рабочие кабинеты: роли по почте, доступы, расходы. Отчёты и дашборд — в reports.mjs.
    Личных текстов здесь нет: только счётчики, дни и типы событий. */
+import { MSK, dayIn } from './util.mjs';
 
 export const ROLES = {
   admin:     'Админ',
@@ -41,7 +42,7 @@ export function initCabinet(database) {
   }
 }
 
-const dayMSK = (d = new Date()) => d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });
+const dayMSK = (d = new Date()) => dayIn(MSK, d.getTime());
 export function logError(path, message) {
   try {
     const ts = new Date().toISOString();

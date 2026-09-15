@@ -1,5 +1,6 @@
 import { preferences } from './experience.mjs';
 import { inSign as inSignPhrase } from './sky.mjs';
+import { ISO_DAY, addDays, plural } from './util.mjs';
 /* Лунарио — «полочки»: личное досье каждого человека.
 
    Всё, что приложение знает о человеке, раскладывается по трём полкам —
@@ -23,10 +24,8 @@ const TOPIC_RU = { work: 'работа', money: 'деньги', love: 'отно�
 const KIND_RU = { yesno: '«Да / Нет»', rune: 'руна', runes: 'расклад рун', spread: 'расклад Таро', card: 'карта дня' };
 const SHELVES = ['about', 'day', 'history'];
 
-const dayShift = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
 const fmt = (d) => (d ? String(d).split('-').reverse().join('.') : '');
 const short = (s, n = 160) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
-const plural = (n, one, few, many) => n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many;
 
 /* deps — то, что уже есть в server.mjs: база, шифрование, тексты и расчёты. Модуль ничего не дублирует. */
 export function createShelves(deps) {
@@ -49,7 +48,7 @@ export function createShelves(deps) {
     return topics.filter((k) => !C.READING_META.has(k)).map((k) => { const t = [...C.READING_TOPICS].find((x) => x.key === k); return t ? t.label : ''; }).filter(Boolean);
   };
   function buildAbout(u, d) {
-    const birthOk = /^\d{4}-\d{2}-\d{2}$/.test(u.birth || '');
+    const birthOk = ISO_DAY.test(u.birth || '');
     const sign = birthOk ? signOf(u.birth) : null;
     const about = {
       name: u.name || '', email: u.email || '', birth: u.birth || '', birthTime: u.birth_time || '',
@@ -83,7 +82,7 @@ export function createShelves(deps) {
     const moodOf = (day) => (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, day) || {}).mood || '';
     const week = [];
     for (let i = 6; i >= 0; i--) {
-      const day = dayShift(d, -i);
+      const day = addDays(d, -i);
       const card = db.prepare("SELECT title FROM entries WHERE user_id = ? AND day = ? AND kind = 'card' ORDER BY id DESC LIMIT 1").get(u.id, day);
       week.push({
         day, mood: moodOf(day), moodRu: MOOD_RU[moodOf(day)] || '', card: card ? card.title : '',
@@ -180,7 +179,7 @@ export function createShelves(deps) {
     L.push(`${who.join(', ') || 'Имя не указано'}. ${born}`);
     if (a.sign && a.sign.trait) L.push(`Черта знака: ${a.sign.trait}.`);
     if (a.destiny) L.push(`Число судьбы ${a.destiny.n} — ${a.destiny.title}. ${a.destiny.text}`);
-    if (a.year) L.push(`Личный год ${a.year.n}${a.year.planet ? ` (${a.year.planet} · ${a.year.energy})` : ''}, с ${fmt(a.year.from)} по ${fmt(dayShift(a.year.to, -1))}. ${a.year.text}${a.year.next ? ` Следующий, год ${a.year.next.n}, начнётся ${fmt(a.year.next.from)}.` : ''}`);
+    if (a.year) L.push(`Личный год ${a.year.n}${a.year.planet ? ` (${a.year.planet} · ${a.year.energy})` : ''}, с ${fmt(a.year.from)} по ${fmt(addDays(a.year.to, -1))}. ${a.year.text}${a.year.next ? ` Следующий, год ${a.year.next.n}, начнётся ${fmt(a.year.next.from)}.` : ''}`);
     if (a.natal && (a.natal.sun || a.natal.moon)) L.push(`Натальная карта: Солнце ${a.natal.sun ? inSignPhrase(a.natal.sun) : 'в —'}${a.natal.moon ? `, Луна ${inSignPhrase(a.natal.moon)}${a.natal.moonUncertain ? ' (знак зависит от времени рождения)' : ''}` : ''}${a.natal.asc ? `, Асцендент ${inSignPhrase(a.natal.asc)}` : ''}${a.natal.timeKnown ? '' : '; время рождения не указано, дома не считаются'}.`);
     if (a.interests && a.interests.length) L.push(`Интересы (выбранные темы чтения): ${a.interests.join(', ')}.`);
     L.push(`В Лунарио с ${fmt(a.since)}${a.streak ? `, серия ${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')} подряд` : ''}.`);

@@ -213,6 +213,11 @@ try {
   assert.equal(reminders.notificationFor('gratitude',person,Date.parse(day+'T20:59:00Z'),'Asia/Tokyo'),null,'Reminder suppression uses the same day as the diary');
   await owner.json('/journal','POST',{kind:'answer',title:me.day.question,text:'Сегодня я могу дать себе время'});
   assert.ok((await owner.json('/journal')).items.some(i=>i.kind==='answer' && i.title===me.day.question && i.day===day));
+  // Home screen status comes from one request; it mirrors the same tables the practice screens read.
+  const status=await owner.json('/day-status');
+  assert.equal(status.gratitude,true);assert.equal(status.answer,true);assert.equal(typeof status.journal,'boolean');
+  assert.ok(status.habits.some(h=>h.title==='Тест: прогулка вечером'));assert.ok(Array.isArray(status.askesis.active));
+  assert.equal((await other.json('/day-status')).gratitude,false,'Day status must be per account');
   assert.equal((await owner.json('/catalog')).moods.length,32);
   // Every requested feature exposes a scheduled preference and a feature-specific preview.
   for (const feature of ['mood','moodreport','habits','askesis','gratitude','lunar','sky']) {

@@ -848,14 +848,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="btn" id="o-go">Открыть мой день</button>
       <p class="msg" id="o-msg"></p>
     </div>
-    <div class="card sec auth-flow" id="o-codebox" style="display:none">
-      <p class="auth-sent">Код отправлен на <b id="o-codemail"></b></p>
-      <div class="field"><label>Код из письма</label>
-        <input id="o-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
-      <button class="btn auth-submit" onclick="obFinish()">Открыть мой день</button>
-      <button class="btn ghost sm auth-secondary" onclick="obResend()">Прислать код</button>
-      <p class="msg" id="o-codemsg"></p>
-    </div>
+    <div class="card sec" id="o-codebox" style="display:none"></div>
     <div class="card sec" id="o-back" style="display:none">
       <p style="font-size:15px;color:#ded8ee;margin:0">Уже пользовались Лунарио?</p>
       <p style="font-size:13.5px;line-height:1.55;margin:7px 0 0">Войдите по почте — дневник, вопросы и практики вернутся, заполнять заново ничего не нужно.</p>
@@ -1024,8 +1017,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-mail"><div class="card" id="m-auth"></div></div>
   <div class="wpane" id="w-natal"><div id="natal-box"><p class="hint">Считаем…</p></div></div>
   <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
-  <div class="wpane" id="w-appinfo"><p>Лунарио — пространство, где можно услышать себя: замечать настроение, записывать мысли и смотреть на вопрос иначе.</p><p class="material-note">Материалы Лунарио помогают посмотреть на ситуацию иначе и не заменяют медицинскую, психологическую или юридическую помощь.</p><button class="text-action" onclick="openWidget('terms')">Условия использования →</button></div>
-  <div class="wpane" id="w-terms"><p>Карты, руны, астрологические и нумерологические интерпретации — материалы для размышления. Решения о своих действиях принимаете вы.</p><p class="material-note">Материалы Лунарио не заменяют медицинскую, психологическую или юридическую помощь.</p><p>Записи сохраняются, когда вы нажимаете кнопку сохранения. Напоминания включаются по вашему выбору. Скачать свои данные и управлять аккаунтом можно в разделе «Я».</p><p class="material-note"><a href="/politika" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/soglasie" target="_blank" rel="noopener">Обработка персональных данных</a></p></div>
+  <div class="wpane" id="w-appinfo"><p>Лунарио — пространство, где можно услышать себя: замечать настроение, записывать мысли и смотреть на вопрос иначе.</p><p class="material-note" data-material-note></p><button class="text-action" onclick="openWidget('terms')">Условия использования →</button></div>
+  <div class="wpane" id="w-terms"><p>Карты, руны, астрологические и нумерологические интерпретации — материалы для размышления. Решения о своих действиях принимаете вы.</p><p class="material-note" data-material-note></p><p>Записи сохраняются, когда вы нажимаете кнопку сохранения. Напоминания включаются по вашему выбору. Скачать свои данные и управлять аккаунтом можно в разделе «Я».</p><p class="material-note"><a href="/politika" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/soglasie" target="_blank" rel="noopener">Обработка персональных данных</a></p></div>
   <div class="wpane" id="w-stub"><p class="stubtext">Пока в разработке</p></div>
 </div>
 <div class="wg-bg" id="wg" onclick="closeWidget(event)">
@@ -1256,6 +1249,9 @@ function track(t, d){
   }catch(e){ /* аналитика никогда не ломает приложение */ }
 }
 function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2600); }
+/* Строка состояния под формой: пустая, подсказка или ошибка — одно место вместо className/classList в каждой форме */
+const showMsg=(el,text='',err=false)=>{ if(!el)return; el.className='msg'+(err?' err':''); el.textContent=text; };
+const LOADING='<p class="hint">Загружаем…</p>', LOAD_ERR='<p class="msg err">Не получилось загрузить.</p>';
 const COMMAND_SELECTOR = '.wid,.quick-actions button,.day-focus,.app-nav button,.moonline';
 function revealCommands(root=document){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -1290,10 +1286,12 @@ document.addEventListener('pointermove',(e)=>{
     lightFrame=0;
   });
 },{passive:true});
-function hap(p){
+/* Вибрация: tap — нажатие, ok — сохранено, done — шаг завершён, award — награда */
+const HAP = { tap: 9, ok: [0, 12], done: [0, 14, 45, 22], award: [0, 20, 60, 30, 60, 40] };
+function hap(kind = 'tap'){
   // в оболочке вибрация идёт через Taptic Engine — navigator.vibrate на iOS не работает
-  if (IOS_SHELL && nativePost({ type:'haptic', kind: Array.isArray(p) ? 'success' : 'tap' })) return;
-  try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){}
+  if (IOS_SHELL && nativePost({ type:'haptic', kind: kind === 'tap' ? 'tap' : 'success' })) return;
+  try{ if(navigator.vibrate) navigator.vibrate(HAP[kind] || HAP.tap); }catch(e){}
 }
 const esc = (s) => String(s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -1304,36 +1302,33 @@ function go(v){
   v=VIEW_ALIASES[v]||v;
   rememberScroll();closeWidget();leavePractice();
   history.replaceState({lunView:v},'',cleanPracticeUrl());
-  if(v==='news'){ try{localStorage.setItem('lun_news_seen',new Date().toISOString().slice(0,7));}catch(e){} const dot=document.querySelector('.news-dot'); if(dot) dot.hidden=true; }
+  if(v==='news') markNewsSeen();
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
   document.body.classList.toggle('hello', v==='hello');                // большая луна в фоне — только на приветствии
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
-  const navFor = {home:'home',today:'home',around:'home',ask:'ask',history:'history',account:'account',about:'account',news:'account'}[v];
+  const navFor = v==='news' ? 'account' : v;
   document.querySelectorAll('.app-nav button').forEach(b=>{const on=b.dataset.nav===navFor;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   window.refreshMoonLogos?.();window.LunarioSky?.refresh();
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();}
   if(v==='history') loadHistory();
-  if(v==='account'){loadAccount();loadAbout();}
+  if(v==='account')loadAccount();
   if(v==='news') paintNews();
 }
 function onboarded(){ return !!(S.user && S.user.onboarded); }
-function obMount(target){
-  if (obTarget !== target) { const prev = $(obTarget); if (prev) prev.innerHTML = ''; obTarget = target; }
-}
 function openForm(){
-  obMount('o-auth'); obStep='idle';
   $('v-onb').classList.remove('verifying-email');
   $('o-form').style.display=''; $('o-codebox').style.display='none';
-  $('o-mailfield').style.display = S.mailReady ? '' : 'none';
-  if (S.mailReady && $('o-back') && $('o-back').style.display !== 'none') renderObAuth();
+  const askMail = S.mailReady && !S.user?.email;   /* почта уже привязана через «Уже пользовались?» — второй раз не спрашиваем */
+  $('o-mailfield').style.display = askMail ? '' : 'none'; $('o-back').style.display = askMail ? '' : 'none';
+  if (askMail) authMount('o-auth', { idle: obAuthIdle, onDone: obDone });
   go('onb'); track('onboard_start');
 }
 function openLogin(){
-  obMount('l-box'); obStep='email';
   $('l-box').style.display=''; $('l-after').style.display='none';
-  go('login'); renderObAuth(); track('login_open');
+  authMount('l-box', { step: 'email', onDone: obDone });
+  go('login'); track('login_open');
 }
 
 /* ── виджеты: панель переезжает из хранилища в обёртку и обратно ── */
@@ -1362,37 +1357,21 @@ function openWidget(k, title){
   if(feature){remEditing[feature]=false;loadReminders().then(()=>paintRem(feature)).catch(()=>{if(wgOpen===k)$('wg-tools').innerHTML='<button type="button" class="text-action" onclick="openWidget(\'remind\')">Проверить уведомления →</button>';});}
   $('wg').dataset.kind=k;$('wg').classList.add('on'); document.body.classList.add('wg-open');
   requestAnimationFrame(()=>{revealCommands(pane);document.querySelector('.wg-x')?.focus({preventScroll:true});});
-  document.querySelector('#wg .wg').scrollTop = 0; hap(9);
+  document.querySelector('#wg .wg').scrollTop = 0; hap();
   loadWidgetContent(k);
 }
-function loadWidgetContent(k){
-  if(k==='ritual')paintRitual();
-  if(k==='appearance')paintAppearance();
-  if(k==='topics')paintTopics();
-  if(k==='skyplace')paintSkyPlace();
-  if (k==='journal'){loadJournal();prepareDictation();requestAnimationFrame(()=>growTextarea($('j-text')));}
-  if (k==='wishes') api('/wishes').then(renderWishes).catch(()=>{});
-  if (k==='hentries') loadEntries();
-  if (k==='week') loadWeek();
-  if (k==='hmood') loadMoodReport();
-  if (k==='mood'){moodUI.precision=false;moodUI.mode='families';renderMoods();paintMoodExtra();}
-  if (k==='habits'){habitView='today';hbEditing=null;habitFormOpen=false;if(HB)paintHabits();loadHabits();}
-  if (k==='askesis') loadAskesis();
-  if (k==='sky') loadSky();
-  if (k==='lunar') paintLunarWidget();
-  if (k==='gratitude') loadGratitude();
-  if (k==='tone') paintTone();
-  if (k==='day')showForecastNote();
-  if (k==='worry') renderHub();
-  if (k==='invite') loadInvite();
-  if (k==='remind') paintAllReminders();
-  if (k==='edit') fillEdit();
-  if (k==='support') supOpen();
-  if (k==='natal') loadNatal();
-  if (k==='mail') renderAuth();
-  if (k==='shelves') loadShelves();
-  if (k==='year' || k==='birthnum') loadNumerology();
-}
+/* Что подгрузить при открытии панели; у виджетов без записи содержимое статично (карта дня рисуется с главной) */
+const WIDGET_LOADERS = {
+  ritual: () => paintRitual(), appearance: () => paintAppearance(), topics: () => paintTopics(), skyplace: () => paintSkyPlace(),
+  journal: () => { loadJournal(); prepareDictation(); requestAnimationFrame(() => growTextarea($('j-text'))); },
+  wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(), hmood: () => loadMoodReport(),
+  mood: () => { moodUI.precision=false; moodUI.mode='families'; renderMoods(); paintMoodExtra(); },
+  habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
+  askesis: () => loadAskesis(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => paintTone(),
+  day: () => showForecastNote(), worry: () => renderHub(), invite: () => loadInvite(), remind: () => paintAllReminders(), edit: () => fillEdit(),
+  support: () => supOpen(), natal: () => loadNatal(), mail: () => renderAuth(), shelves: () => loadShelves(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
+};
+function loadWidgetContent(k){ WIDGET_LOADERS[k]?.(); }
 function closeWidget(e){
   if (e && e.target !== $('wg')) return;
   if (!wgOpen) return;
@@ -1450,7 +1429,7 @@ async function loadShelves(){
       + row('Последние', h.recent.slice(0, 6).map((r) => `<small>${fmtDay(r.day).slice(0, 5)} · ${esc(r.kindRu)}</small> ${r.question ? esc(r.question) + ' → ' : ''}${esc(r.answer)}`).join('<br>'));
     const shelf = (t, sub, body, i) => `<div class="item rise" style="--i:${i}"><b>${t}</b><small>${sub}</small><div class="sh-rows">${body || '<p>Пока пусто.</p>'}</div></div>`;
     box.innerHTML = shelf('Обо мне', 'анкета и то, что из неё считается', about, 0) + shelf('Мой день', `сегодня, ${fmtDay(dy.date)}, и последняя неделя`, day, 1) + shelf('Истории', 'к чему вы возвращаетесь и что вам отвечали', hist, 2)
-      + `<p style="font-size:12.5px;color:#8f87ad;margin-top:4px">Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? new Date(s.updated).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
+      + `<p class="hint" style="margin-top:4px">Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? fmtWhen(s.updated) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
   } catch (e) { box.innerHTML = `<div class="item"><p>${e.code === 'no_birth' ? 'Заполните профиль — здесь появятся ваши данные.' : 'Не получилось загрузить данные, попробуйте позже.'}</p></div>`; }
 }
 async function loadNatal(){
@@ -1479,7 +1458,7 @@ const supportDrafts={};
 function rememberSupportDraft(){if(supTicket!==null&&$('sup-reply'))supportDrafts[supTicket]=$('sup-reply').value;}
 function supStop(){ clearTimeout(supTimer); supTimer = null; supTicket = null; }
 async function supOpen(){
-  rememberSupportDraft();supStop(); const box = $('sup-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
+  rememberSupportDraft();supStop(); const box = $('sup-box'); box.innerHTML = LOADING;
   try{
     const r = await api('/support/tickets');
     box.innerHTML = `<p style="font-size:14.5px">Напишите нам — ответ появится в этом чате. О новом ответе сообщит точка у «Чата поддержки».</p>
@@ -1490,14 +1469,14 @@ async function supOpen(){
     $('h-supdot').hidden = !r.items.some((t)=>t.unread);
   }catch(e){ box.innerHTML = '<p class="msg err">Не получилось загрузить чат.</p>'; }
 }
-const supWhen = (t) => new Date(t).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+const supWhen = (t) => fmtWhen(t, { month: 'short' });
 async function supCreate(){
-  const text = $('sup-text').value.trim(), msg = $('sup-msg'); msg.className='msg';
-  if(text.length<3){ msg.classList.add('err'); msg.textContent='Напишите хотя бы пару слов.'; return; }
+  const text = $('sup-text').value.trim(), msg = $('sup-msg'); showMsg(msg);
+  if(text.length<3){ showMsg(msg, 'Напишите хотя бы пару слов.', true); return; }
   try{ const r = await api('/support/tickets',{method:'POST',body:JSON.stringify({topic:$('sup-topic').value,text})});
-    if(!r.ok){ msg.classList.add('err'); msg.textContent = r.error==='too_many_open' ? 'У вас уже пять открытых обращений — дождитесь ответа.' : 'Не отправилось.'; return; }
-    hap([0,12]); supThread(r.id);
-  }catch(e){ msg.classList.add('err'); msg.textContent='Не отправилось.'; }
+    if(!r.ok){ showMsg(msg, r.error==='too_many_open' ? 'У вас уже пять открытых обращений — дождитесь ответа.' : 'Не отправилось.', true); return; }
+    hap('ok'); supThread(r.id);
+  }catch(e){ showMsg(msg, 'Не отправилось.', true); }
 }
 async function supThread(id){
   rememberSupportDraft();supStop(); supTicket = id; const box = $('sup-box');
@@ -1524,22 +1503,22 @@ async function supThread(id){
   }catch(e){ if(supTicket!==id||wgOpen!=='support')return;const msg=$('sup-msg2');if(msg)msg.textContent='Не удалось обновить сообщения. Ваш текст сохранён в поле';else box.innerHTML='<p class="msg err">Не получилось открыть обращение. <button class="text-action" onclick="supThread('+id+')">Повторить</button></p>'; }
 }
 async function supSend(id){
-  const text = $('sup-reply').value.trim(), msg = $('sup-msg2'); msg.className='msg'; if(!text) return;
-  try{ const r = await api('/support/ticket?id='+id,{method:'POST',body:JSON.stringify({text})}); if(!r.ok) throw new Error(r.error); if(supTicket===id&&$('sup-reply')?.value.trim()===text){$('sup-reply').value='';supportDrafts[id]='';growTextarea($('sup-reply'));}hap([0,12]); supThread(id); }
-  catch(e){ msg.classList.add('err'); msg.textContent='Не отправилось.'; }
+  const text = $('sup-reply').value.trim(), msg = $('sup-msg2'); showMsg(msg); if(!text) return;
+  try{ const r = await api('/support/ticket?id='+id,{method:'POST',body:JSON.stringify({text})}); if(!r.ok) throw new Error(r.error); if(supTicket===id&&$('sup-reply')?.value.trim()===text){$('sup-reply').value='';supportDrafts[id]='';growTextarea($('sup-reply'));}hap('ok'); supThread(id); }
+  catch(e){ showMsg(msg, 'Не отправилось.', true); }
 }
 
-function nextDayAction(){return ritualNext();}
 function paintNextStep(){
   if(!S.day||!$('h-next'))return;
-  const next=nextDayAction(),done=XP.prefs.ritual.filter(ritualDone).length;
+  const next=ritualNext(),done=XP.prefs.ritual.filter(ritualDone).length;
   $('h-ritual-practices').textContent=XP.prefs.ritual.map(key=>RITUALS[key][0]).join(' · ');
   $('h-next').hidden=!next;if(next)$('h-next').textContent=next.label+' →';
   $('h-progress').classList.toggle('ritual-finished',!next);
   $('h-progress').textContent=next?done+' из '+XP.prefs.ritual.length+' практик':'Ритуал на сегодня завершён';
 }
-function continueDay(){const next=nextDayAction();if(next){go(next.view);openWidget(next.key);}}
+function continueDay(){const next=ritualNext();if(next){go(next.view);openWidget(next.key);}}
 const MATERIAL_NOTE='Материалы Лунарио помогают посмотреть на ситуацию иначе и не заменяют медицинскую, психологическую или юридическую помощь.';
+document.querySelectorAll('[data-material-note]').forEach(el=>el.textContent=MATERIAL_NOTE);
 function showForecastNote(){
   const box=$('forecast-note');if(!box)return;
   let seen=false;try{seen=localStorage.getItem('lun_forecast_note_'+S.user.id)==='1';}catch(e){}
@@ -1559,9 +1538,7 @@ function paintHome(){
   const u=S.user, d=S.day;
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
-  try{ const dot=document.querySelector('.news-dot'); if(dot) dot.hidden=localStorage.getItem('lun_news_seen')===d.date.slice(0,7); }catch(e){}
   $('h-wish').textContent = d.set?.text || '';
-  document.querySelectorAll('[data-status=mood]').forEach(el=>el.textContent=S.mood?'Сегодня — '+MOOD_LABEL[S.mood]:'Как вы сейчас?');
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
   $('h-cabs').hidden = !staff; $('h-cabs').closest('.row').classList.toggle('staff', staff); document.body.classList.toggle('staff', staff);
@@ -1570,9 +1547,12 @@ function paintHome(){
   moonSetPhase(d.moonPhase);paintNextStep();
 }
 function updatePracticeStatus(key, value){
-  S.homeStatus = {...S.homeStatus,[key]:value};
   document.querySelectorAll('[data-status="'+key+'"]').forEach(el=>el.textContent=value);paintNextStep();
 }
+/* Точка у аватара: «Новое в приложении» этого месяца ещё не открывали */
+const newsSeen=()=>{ try{ return localStorage.getItem('lun_news_seen')===S.day.date.slice(0,7); }catch(e){ return true; } };
+function paintNewsDot(){ const dot=document.querySelector('.news-dot'); if(dot) dot.hidden=newsSeen(); }
+function markNewsSeen(){ try{ localStorage.setItem('lun_news_seen',S.day.date.slice(0,7)); }catch(e){} paintNewsDot(); }
 function habitsHomeStatus(items){
   const due=items.filter(h=>h.due), done=due.filter(h=>h.today).length;S.habitsPending=due.length-done;S.habitsReady=true;S.habitsCount=items.length;
   updatePracticeStatus('habits',!items.length?'Добавить первую привычку':due.length?'Отмечено '+done+' из '+due.length:'Сегодня без отметок');
@@ -1581,21 +1561,19 @@ function askesisHomeStatus(data){
   const first=data.active[0];
   updatePracticeStatus('askesis',first?(first.left===0?'Сегодня последний день':'До конца '+first.left+' '+plural(first.left,'день','дня','дней')):'Свой срок и поддержка');
 }
+function gratitudeHomeStatus(done){ S.gratitudeDone=done; updatePracticeStatus('gratitude',done?'Благодарность записана':'Записать благодарность'); }
+/* Что из практик уже сделано сегодня — один запрос /day-status, не чаще раза в 30 секунд */
 let homeStatusRequest=null, homeStatusAt=0;
 function refreshHomeStatus(force=false){
   if(homeStatusRequest)return homeStatusRequest;
   if(!force && Date.now()-homeStatusAt<30000)return Promise.resolve();
   const uid=S.user.id;
-  homeStatusRequest=Promise.allSettled([api('/habits'),api('/askesis'),api('/journal?kind=gratitude'),api('/journal?kind=answer'),api('/journal')]).then(results=>{
+  homeStatusRequest=api('/day-status').then(r=>{
     if(S.user.id!==uid)return;
-    const [habits,askesis,gratitude,answers,journal]=results;
-    if(journal.status==='fulfilled')S.journalDone=journal.value.items.some(i=>i.day===S.day.date&&!i.kind);
-    if(answers.status==='fulfilled')S.answerDone=answers.value.today;
-    if(habits.status==='fulfilled')habitsHomeStatus(habits.value.items);
-    if(askesis.status==='fulfilled')askesisHomeStatus(askesis.value);
-    if(gratitude.status==='fulfilled'){S.gratitudeDone=gratitude.value.today;updatePracticeStatus('gratitude',gratitude.value.today?'Благодарность записана':'Записать благодарность');}
+    S.journalDone=r.journal; S.answerDone=r.answer;
+    habitsHomeStatus(r.habits); askesisHomeStatus(r.askesis); gratitudeHomeStatus(r.gratitude);
     homeStatusAt=Date.now();paintNextStep();
-  }).finally(()=>{homeStatusRequest=null;});
+  }).catch(()=>{}).finally(()=>{homeStatusRequest=null;});
   return homeStatusRequest;
 }
 function paintLunar(){
@@ -1622,11 +1600,11 @@ function paintToday(){
 const plural=(n,a,b,c)=>{const m=n%100;if(m>=11&&m<=14)return c;const l=n%10;return l===1?a:l>=2&&l<=4?b:c;};
 function pickOwnMood(){ const w = ($('mood-own').value || '').trim().split(/\s+/)[0] || ''; if (!w) { toast('Напишите одно слово'); return; } pickMood('own:' + w.slice(0, 24)); }
 async function pickMood(id){
-  hap(9);
+  hap();
   try{
     const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id})});
     S.mood=r.mood; moodUI.own=ownMood(r.mood); renderMoods();
-    paintMoodStat(r.stats); paintMoodExtra(); paintHome();
+    paintMoodStat(r.stats); paintMoodExtra(); paintNextStep();
   }catch(e){ toast('Не удалось сохранить'); }
 }
 function paintMoodStat(stats){
@@ -1702,140 +1680,91 @@ function askErrorText(e){
     : 'Не получилось. Попробуйте ещё раз.';
 }
 $('a-go').onclick=async()=>{
-  const q=$('a-q').value.trim(), msg=$('a-msg'); msg.className='msg'; msg.textContent='';
+  const q=$('a-q').value.trim(), msg=$('a-msg'); showMsg(msg);
   $('a-go').disabled=true; $('a-go').textContent='Смотрим…';
   try{
     await runAsk(S.mode,q,$('a-result'),$('a-hint'),S.layout);
     $('a-result').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(e){ msg.classList.add('err'); msg.textContent=askErrorText(e); }
+  }catch(e){ showMsg(msg, askErrorText(e), true); }
   checkQ();
 };
 
-/* ── вход по коду на почту (аккаунт) ── */
-let authStep = 'idle', authEmail = '';
+/* ── вход по коду на почту: один поток на анкету («Уже пользовались?»), экран входа и виджет «Вход по почте».
+   Три места отличаются только контейнером и тем, что делать после проверки кода (onDone). ── */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+const AUTH_ERRORS = {
+  send: { too_often: 'Слишком часто. Попробуйте через несколько минут.', mail_off: 'Отправка почты ещё не настроена.', send_failed: 'Письмо не ушло. Проверьте адрес или попробуйте позже.', _: 'Не получилось отправить код.' },
+  verify: { wrong_code: 'Код не подошёл. Проверьте письмо.', expired: 'Код истёк — запросите новый.', too_many: 'Слишком много попыток. Запросите новый код.', _: 'Не получилось войти.' },
+};
+const authErrorText = (e, step) => AUTH_ERRORS[step][e && e.code] || AUTH_ERRORS[step]._;
 /* сотрудник: кабинет открывается по умолчанию, пока человек не нажал «В приложение» — выбор запоминается на устройстве */
 const isStaff = (u) => !!(u && u.roles && u.roles.length);
 function inApp(){ try{ return localStorage.getItem('lun_app')==='1'; }catch(e){ return false; } }
 function openCabinet(){ try{ localStorage.removeItem('lun_app'); }catch(e){} location.href='/app/cabinet'; }
-function renderAuth(){
-  const box = $('m-auth'), u = S.user;
+/* box — id контейнера; step — idle | email | code; idle() — что показать в покое; onDone(r) — что делать после кода */
+const auth = { box: '', step: 'idle', email: '', idle: () => '', onDone: () => {} };
+function authMount(box, o){
+  if (auth.box && auth.box !== box) { const prev = $(auth.box); if (prev) prev.innerHTML = ''; }
+  Object.assign(auth, { step: 'idle', email: '', idle: () => '' }, o, { box });
+  paintAuth();
+}
+function paintAuth(){
+  const box = $(auth.box); if (!box) return;
   box.classList.add('auth-flow');
-  if (u.email && authStep !== 'code') {
-    box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Вы вошли как <b>${esc(u.email)}</b></p>
-      ${isStaff(u) ? `<button class="btn sm" style="width:100%;margin-top:13px" onclick="openCabinet()">Кабинет сотрудника</button>` : ''}
-      <button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="logout()">Выйти на этом устройстве</button>`;
-    return;
-  }
-  if (!S.mailReady) {
-    if(S.localPreview){
-      box.innerHTML='<p>Вход по почте доступен на сайте Лунарио.</p><p style="margin-top:12px">Это локальный просмотр: письма с кодом здесь не отправляются. Записи демо остаются здесь и не переносятся в аккаунт на сайте.</p><a class="btn auth-submit" href="https://lunario.online/app/" target="_blank" rel="noopener">Открыть сайт для входа ↗</a>';
-      return;
-    }
-    box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Вход по почте скоро появится</p>
-      <p style="font-size:13.5px;margin-top:7px">Пока записи хранятся на этом устройстве. Не удаляйте приложение — иначе история потеряется.</p>`;
-    return;
-  }
-  if (authStep === 'code') {
-    box.innerHTML = `<p class="auth-sent">Код отправлен на <b>${esc(authEmail)}</b></p>
-      <div class="field"><label>Код из письма</label>
-        <input id="a-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
-      <button class="btn auth-submit" onclick="authVerify()">Войти</button>
-      <button class="btn ghost sm auth-secondary" onclick="authStep='idle';renderAuth()">Изменить адрес</button>
-      <p class="msg" id="a-authmsg"></p>`;
-    setTimeout(()=>$('a-code') && $('a-code').focus(), 60);
-    return;
-  }
-  box.innerHTML = `<div class="field"><label>Почта</label>
-      <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru" value="${esc(S.user.email||'')}"></div>
-    <button class="btn auth-submit" onclick="authRequest()">Прислать код</button>
-    <p class="msg" id="a-authmsg"></p>`;
+  if (auth.step === 'idle') { box.innerHTML = auth.idle(); return; }
+  box.innerHTML = auth.step === 'email'
+    ? `<div class="field"><label for="auth-email">Почта</label><input id="auth-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru" value="${esc(auth.email)}"></div>
+      <button class="btn auth-submit" onclick="authSend()">Прислать код</button><p class="msg" id="auth-msg"></p>`
+    : `<p class="auth-sent">Код отправлен на <b>${esc(auth.email)}</b></p>
+      <div class="field"><label for="auth-code">Код из письма</label><input id="auth-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
+      <button class="btn auth-submit" onclick="authCheck()">Войти</button>
+      <button class="btn ghost sm auth-secondary" onclick="auth.step='email';paintAuth()">Изменить адрес</button><p class="msg" id="auth-msg"></p>`;
+  setTimeout(() => $(auth.step === 'email' ? 'auth-email' : 'auth-code')?.focus(), 60);
 }
-let obStep = 'idle', obEmail = '';
-let obTarget = 'o-auth';
-function renderObAuth(){
-  const box = $(obTarget) || $('o-auth');
-  if (!box) return;
-  box.classList.add('auth-flow');
-  if (obStep === 'idle') {
-    box.innerHTML = `<button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="obStep='email';renderObAuth()">Войти по почте</button>`;
-    return;
-  }
-  if (obStep === 'email') {
-    box.innerHTML = `<div class="field"><label>Почта</label>
-        <input id="ob-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru"></div>
-      <button class="btn auth-submit" onclick="obRequest()">Прислать код</button>
-      <p class="msg" id="ob-msg"></p>`;
-    setTimeout(()=>$('ob-email') && $('ob-email').focus(), 60);
-    return;
-  }
-  box.innerHTML = `<p class="auth-sent">Код отправлен на <b>${esc(obEmail)}</b></p>
-    <div class="field"><label>Код из письма</label>
-      <input id="ob-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
-    <button class="btn auth-submit" onclick="obVerify()">Войти</button>
-    <button class="btn ghost sm auth-secondary" onclick="obStep='email';renderObAuth()">Изменить адрес</button>
-    <p class="msg" id="ob-msg"></p>`;
-  setTimeout(()=>$('ob-code') && $('ob-code').focus(), 60);
+const requestCode = (email) => api('/auth/request', { method:'POST', body: JSON.stringify({ email }) }).then(() => track('login_code_sent'));
+async function authSend(){
+  const email = $('auth-email').value.trim().toLowerCase(), msg = $('auth-msg');
+  if (!EMAIL_RE.test(email)) { showMsg(msg, 'Проверьте адрес почты.', true); return; }
+  showMsg(msg, 'Отправляем код…');
+  try { await requestCode(email); auth.email = email; auth.step = 'code'; paintAuth(); hap('ok'); }
+  catch (e) { showMsg(msg, authErrorText(e, 'send'), true); }
 }
-async function obRequest(){
-  const email = $('ob-email').value.trim().toLowerCase(), msg = $('ob-msg');
-  msg.className='msg';
-  if(!EMAIL_RE.test(email)){ msg.classList.add('err'); msg.textContent='Проверьте адрес почты.'; return; }
-  msg.textContent='Отправляем код…';
-  try{
-    await api('/auth/request',{method:'POST',body:JSON.stringify({email})});
-    obEmail = email; obStep = 'code'; renderObAuth(); hap([0,12]);
-  }catch(e){
-    msg.classList.add('err');
-    msg.textContent = authErrorText(e, 'send');
-  }
-}
-async function obVerify(){
-  const code = $('ob-code').value.trim(), msg = $('ob-msg');
-  msg.className='msg';
-  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
-  try{
-    const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:obEmail,code})});
-    hap([0,14,45,22]);
+async function authCheck(){
+  const code = $('auth-code').value.trim(), msg = $('auth-msg');
+  if (code.length !== 6) { showMsg(msg, 'Код состоит из шести цифр.', true); return; }
+  try {
+    const r = await api('/auth/verify', { method:'POST', body: JSON.stringify({ email: auth.email, code }) });
+    hap('done'); track('login_done');
     if (isStaff(r.user) && !inApp()) { location.href = '/app/cabinet'; return; }   // сотрудник — сначала в кабинет
-    if (r.user && r.user.onboarded) { location.reload(); return; }   // профиль нашёлся — открываем приложение
-    S.user = r.user;
-    if (obTarget === 'l-box') { $('l-after').style.display = 'block'; $('l-box').style.display = 'none'; return; }
-    msg.textContent = 'Почта сохранена. Осталось заполнить профиль — записи привяжутся к ней.';
-    obStep = 'idle'; renderObAuth();
-  }catch(e){
-    msg.classList.add('err');
-    msg.textContent = authErrorText(e, 'verify');
-  }
+    auth.onDone(r);
+  } catch (e) { showMsg(msg, authErrorText(e, 'verify'), true); }
 }
-async function authRequest(){
-  const email = $('a-email').value.trim().toLowerCase(), msg = $('a-authmsg');
-  msg.className='msg';
-  if(!EMAIL_RE.test(email)){ msg.classList.add('err'); msg.textContent='Проверьте адрес почты.'; return; }
-  msg.textContent='Отправляем код…';
-  try{
-    await api('/auth/request',{method:'POST',body:JSON.stringify({email})});
-    authEmail = email; authStep = 'code'; renderAuth(); hap([0,12]);
-  }catch(e){
-    msg.classList.add('err');
-    msg.textContent = authErrorText(e, 'send');
-  }
+/* Виджет «Вход по почте» в «Я» */
+function renderAuth(){
+  const u = S.user;
+  const idle = () => u.email
+    ? `<p style="font-size:15px;color:#ded8ee">Вы вошли как <b>${esc(u.email)}</b></p>
+      ${isStaff(u) ? `<button class="btn sm" style="width:100%;margin-top:13px" onclick="openCabinet()">Кабинет сотрудника</button>` : ''}
+      <button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="logout()">Выйти на этом устройстве</button>`
+    : S.localPreview
+    ? '<p>Вход по почте доступен на сайте Лунарио.</p><p style="margin-top:12px">Это локальный просмотр: письма с кодом здесь не отправляются. Записи демо остаются здесь и не переносятся в аккаунт на сайте.</p><a class="btn auth-submit" href="https://lunario.online/app/" target="_blank" rel="noopener">Открыть сайт для входа ↗</a>'
+    : `<p style="font-size:15px;color:#ded8ee">Вход по почте скоро появится</p>
+      <p style="font-size:13.5px;margin-top:7px">Пока записи хранятся на этом устройстве. Не удаляйте приложение — иначе история потеряется.</p>`;
+  authMount('m-auth', { step: u.email || !S.mailReady ? 'idle' : 'email', idle, onDone: (r) => {
+    if (r.merged) { location.reload(); return; }   /* чужой аккаунт найден — перезагрузка подтянет его целиком */
+    S.user = r.user; toast('Почта сохранена — доступ не потеряется'); renderAuth(); loadAccount();
+  } });
 }
-async function authVerify(){
-  const code = $('a-code').value.trim(), msg = $('a-authmsg');
-  msg.className='msg';
-  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
-  try{
-    const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:authEmail,code})});
-    if (isStaff(r.user) && !inApp()) { location.href = '/app/cabinet'; return; }   // сотрудник — в кабинет
-    if(r.merged){location.reload();return;}   /* чужой аккаунт найден — перезагрузка подтянет его целиком */
-    S.user = r.user; authStep='idle'; hap([0,14,45,22]);
-    toast('Почта сохранена — доступ не потеряется');
-    renderAuth(); loadMe();
-  }catch(e){
-    msg.classList.add('err');
-    msg.textContent = authErrorText(e, 'verify');
-  }
+/* До анкеты — «Уже пользовались?» на анкете и экран входа: профиль нашёлся — перезагрузка открывает приложение;
+   почта новая — привязана к этому устройству, остаётся заполнить анкету (почту в ней уже не спрашиваем) */
+function obDone(r){
+  if (r.user && r.user.onboarded) { location.reload(); return; }
+  S.user = r.user;
+  if (auth.box === 'l-box') { $('l-after').style.display = ''; $('l-box').style.display = 'none'; return; }
+  $('o-back').style.display = 'none'; $('o-mailfield').style.display = 'none';
+  toast('Почта сохранена — осталось заполнить профиль');
 }
+const obAuthIdle = () => `<button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="auth.step='email';paintAuth()">Войти по почте</button>`;
 async function logout(){
   if(!confirm('Выйти на этом устройстве? Записи останутся в аккаунте и вернутся при следующем входе.')) return;
   await api('/auth/logout',{method:'POST'});
@@ -1850,7 +1779,7 @@ async function loadWeek(){
     if (w.asked.length) parts.push('спрашивали: ' + w.asked.map(a=>`${a.kind} — ${a.count}`).join(' · '));
     if (w.notes) parts.push(`записей в дневнике — ${w.notes}`);
     $('w-detail').innerHTML = parts.length
-      ? parts.map(t=>`<p style="font-size:13.5px;color:#8f87ad;margin-top:6px">${t}</p>`).join('')
+      ? parts.map(t=>`<p class="hint" style="margin-top:6px">${t}</p>`).join('')
       : '';
   }catch(e){ $('w-summary').textContent = 'Итог недели появится, когда наберутся отметки.'; }
 }
@@ -1858,12 +1787,12 @@ async function loadInvite(){
   try{
     const i = await api('/invite');
     const bonus = i.bonusActive ? `<p style="font-size:13px;color:var(--gold);margin-top:9px">Подарок действует до ${fmtDay(i.bonusUntil)} — четыре подробных разбора в день.</p>` : '';
-    const brought = i.brought ? `<p style="font-size:13px;color:#8f87ad;margin-top:9px">По вашей ссылке пришли: ${i.brought}</p>` : '';
+    const brought = i.brought ? `<p class="hint" style="margin-top:9px">По вашей ссылке пришли: ${i.brought}</p>` : '';
     $('inv-box').innerHTML = `
       <div class="field" style="margin:0"><input id="inv-link" readonly value="${esc(i.link)}" style="font-size:13px"></div>
       <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="copyInvite()">Скопировать ссылку</button>
       ${bonus}${brought}`;
-  }catch(e){ $('inv-box').innerHTML = '<p style="font-size:13.5px;color:#8f87ad">Ссылка появится чуть позже.</p>'; }
+  }catch(e){ $('inv-box').innerHTML = '<p class="hint">Ссылка появится чуть позже.</p>'; }
 }
 async function copyInvite(){
   const el = $('inv-link');
@@ -1881,19 +1810,19 @@ async function addWish(){
     const r=await api('/wishes',{method:'POST',body:JSON.stringify({text:t,photo})});
     if(XP.wishPhoto===photo){XP.wishPhoto='';paintWishDraft();}
     if($('w-text').value.trim()===t) $('w-text').value='';
-    renderWishes(r); track('wish_add'); hap([0,14,45,22]); toast('Желание сохранено');
+    renderWishes(r); track('wish_add'); hap('done'); toast('Желание сохранено');
   } catch(e){ toast('Не удалось сохранить желание. Текст остался в поле.'); }
   finally { addWish.saving=false;$('wish-save').disabled=false; }
 }
 async function toggleWish(id){
-  hap(9);
+  hap();
   try { renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
   catch(e){ toast('Не удалось изменить отметку желания. Попробуйте ещё раз.'); }
 }
 function journalPrompt(text){
   const el=$('j-text'); if(!el) return;
   if(!el.value.trim()) el.value=text+'\n';
-  el.focus(); el.setSelectionRange(el.value.length,el.value.length); hap(9);
+  el.focus(); el.setSelectionRange(el.value.length,el.value.length); hap();
 }
 let journalSpeech=null;
 function prepareDictation(){
@@ -1927,7 +1856,7 @@ async function compat(){
       ${r.rings.map(([n,v])=>`<div class="ring"><svg width="54" height="54" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle class="v" cx="28" cy="28" r="24" fill="none" stroke="#d9b868" stroke-width="4" stroke-linecap="round" data-p="${v}"/></svg><span style="font-size:12px;color:var(--violet-2)">${v}%</span><span style="font-size:10.5px;color:var(--muted)">${n}</span></div>`).join('')}
       </div><p style="font-size:14px">${r.text}</p>`;
     setTimeout(()=>document.querySelectorAll('#m-cres circle.v').forEach((c,i)=>{ c.style.transitionDelay=i*90+'ms'; c.style.strokeDashoffset=151-151*(+c.dataset.p)/100; }),60);
-    hap([0,14,45,22]);
+    hap('done');
   }catch(e){ toast('Не получилось рассчитать'); }
 }
 function attachCity(inputId, listId, geoId){
@@ -1939,7 +1868,7 @@ function attachCity(inputId, listId, geoId){
     list.querySelectorAll('button').forEach(b=>b.onclick=()=>choose(items[+b.dataset.i]));
   };
   const choose=(c)=>{ picked=c; inp.value=c.name; items=[]; hl=-1; paint();
-    geo.innerHTML=`✦ <b>${c.name}</b> — ${[c.region,c.country].filter(Boolean).join(', ')}<br>${c.lat.toFixed(4)}, ${c.lon.toFixed(4)} · ${c.tz}`; hap(9); };
+    geo.innerHTML=`✦ <b>${c.name}</b> — ${[c.region,c.country].filter(Boolean).join(', ')}<br>${c.lat.toFixed(4)}, ${c.lon.toFixed(4)} · ${c.tz}`; hap(); };
   inp.addEventListener('input',()=>{
     picked=null; geo.textContent='Координаты и часовой пояс подставим сами — они понадобятся для натальной карты.';
     clearTimeout(t);
@@ -1961,29 +1890,22 @@ function attachCity(inputId, listId, geoId){
 }
 
 /* ── анкета: профиль → код на почту → главная ── */
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
-/* Тексты ошибок входа — одна карта на анкету, экран входа и виджет «Вход по почте» */
-const AUTH_ERRORS = {
-  send: { too_often: 'Слишком часто. Попробуйте через несколько минут.', mail_off: 'Отправка почты ещё не настроена.', send_failed: 'Письмо не ушло. Проверьте адрес или попробуйте позже.', _: 'Не получилось отправить код.' },
-  verify: { wrong_code: 'Код не подошёл. Проверьте письмо.', expired: 'Код истёк — запросите новый.', too_many: 'Слишком много попыток. Запросите новый код.', _: 'Не получилось войти.' },
-};
-const authErrorText = (e, step) => AUTH_ERRORS[step][e && e.code] || AUTH_ERRORS[step]._;
 attachCity('o-city','o-city-list','o-geo');
 $('o-go').onclick=async()=>{
-  const msg=$('o-msg'); msg.className='msg'; msg.textContent='';
+  const msg=$('o-msg'); showMsg(msg);
   const birth=$('o-birth').value;
-  if(!birth){ msg.classList.add('err'); msg.textContent='Укажите дату рождения — без неё подсказки будут общими.'; return; }
+  if(!birth){ showMsg(msg, 'Укажите дату рождения — без неё подсказки будут общими.', true); return; }
   const email=$('o-email').value.trim().toLowerCase();
-  if(S.mailReady && !EMAIL_RE.test(email)){ msg.classList.add('err'); msg.textContent='Проверьте адрес почты.'; return; }
-  if(!$('o-consent').checked){ msg.classList.add('err'); msg.textContent='Чтобы продолжить, подтвердите согласие на обработку данных.'; return; }
+  if(S.mailReady && !EMAIL_RE.test(email)){ showMsg(msg, 'Проверьте адрес почты.', true); return; }
+  if(!$('o-consent').checked){ showMsg(msg, 'Чтобы продолжить, подтвердите согласие на обработку данных.', true); return; }
   const body = JSON.stringify({ name:$('o-name').value, birth, birthTime:$('o-time').value, city:$('o-city').value, consent:true });
   $('o-go').disabled=true; $('o-go').textContent='Готовим ваш день…';
   let last=null;
   for (let attempt=1; attempt<=2; attempt++){
     try{
       const r = await api('/profile', { method:'POST', body });
-      S.user=r.user; S.day=r.day; hap([0,14,45,22]);
-      if (S.mailReady && email) { obEmail=email; await obSendCode(); return; }
+      S.user=r.user; S.day=r.day; hap('done');
+      if (S.mailReady && email) { await obSendCode(email); return; }
       startApp(); return;
     }catch(e){
       last=e;
@@ -1992,53 +1914,31 @@ $('o-go').onclick=async()=>{
     }
   }
   $('o-go').disabled=false; $('o-go').textContent='Открыть мой день';
-  msg.classList.add('err');
-  msg.textContent = last && last.code==='no_consent' ? 'Подтвердите согласие на обработку данных.'
+  showMsg(msg, last && last.code==='no_consent' ? 'Подтвердите согласие на обработку данных.'
     : last && last.code==='bad_birth' ? 'Проверьте дату рождения.'
     : last && last.status ? 'Сервер не принял анкету. Напишите нам, если повторится.'
-    : 'Не удалось связаться с сервером — похоже, пропала сеть. Данные не потеряны: нажмите ещё раз.';
+    : 'Не удалось связаться с сервером — похоже, пропала сеть. Данные не потеряны: нажмите ещё раз.', true);
 };
-async function obSendCode(){
-  const msg=$('o-codemsg'); msg.className='msg'; msg.textContent='';
-  try{
-    await api('/auth/request',{method:'POST',body:JSON.stringify({email:obEmail})});
-    $('o-codemail').textContent=obEmail; $('o-form').style.display='none'; $('o-codebox').style.display=''; if($('o-back')) $('o-back').style.display='none';
-    $('v-onb').classList.add('verifying-email');
-    window.scrollTo(0,0); setTimeout(()=>$('o-code').focus(),80); track('login_code_sent');
-  }catch(e){
-    // код не ушёл — не держим человека на пороге: открываем главную, почту можно привязать в аккаунте
-    toast(authErrorText(e, 'send'));
-    startApp();
-  }
-}
-async function obResend(){ await obSendCode(); toast('Код отправлен ещё раз'); }
-async function obFinish(){
-  const code=$('o-code').value.trim(), msg=$('o-codemsg'); msg.className='msg';
-  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
-  try{
-    const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:obEmail,code})});
-    hap([0,14,45,22]); track('login_done');
-    if (isStaff(r.user) && !inApp()) { location.href = '/app/cabinet'; return; }   // сотрудник — сначала в кабинет
+/* В анкете указана почта: код — на том же экране; не ушёл — не держим человека на пороге, почту можно привязать в «Я» */
+async function obSendCode(email){
+  try { await requestCode(email); }
+  catch (e) { toast(authErrorText(e, 'send')); startApp(); return; }
+  $('o-form').style.display='none'; $('o-back').style.display='none'; $('o-codebox').style.display='';
+  $('v-onb').classList.add('verifying-email'); window.scrollTo(0,0);
+  authMount('o-codebox', { step: 'code', email, onDone: (r) => {
     if (r.merged) { location.reload(); return; }        // почта уже была — открываем тот аккаунт
     S.user = r.user; startApp();
-  }catch(e){
-    msg.classList.add('err');
-    msg.textContent = authErrorText(e, 'verify');
-  }
+  } });
 }
 
 /* ── разделы: данные подгружаются при входе ── */
-function loadMe(){ loadAccount(); loadHistory(); }   /* старое имя — им пользуются вход по почте и выход */
-function loadAbout(){
-  const u=S.user;
-  $('m-name').textContent='Обо мне';
-  $('m-sign').textContent=[u.sign,u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
-  loadNumerology();
-}
-function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline();loadWeek(); api('/wishes').then(renderWishes).catch(()=>{}); loadEntries(); loadJournal(); }
+/* На экране «Дневник» видны лента и счётчик желаний; итоги, вопросы и записи виджеты грузят сами при открытии */
+function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline(); loadWishes(); }
+const loadWishes=()=>api('/wishes').then(renderWishes).catch(()=>{});
 function loadAccount(){
-  const u=S.user; paintAvatar();
+  const u=S.user; paintAvatar(); loadNumerology();
   $('ac-name').textContent=u.name||'Мой профиль';
+  $('m-sign').textContent=[u.sign,u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   $('ac-mail').textContent=u.email||'Мой профиль и приложение';
   const geoLine=$('m-geo');
@@ -2061,7 +1961,7 @@ async function saveJournal(){
   try {
     const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t})});
     if($('j-text').value.trim()===t) $('j-text').value='';
-    track('journal_add'); hap([0,14,45,22]);
+    track('journal_add'); hap('done');
     const card=$('journal-card'); card.classList.remove('saved'); void card.offsetWidth; card.classList.add('saved');
     $('journal-saved').hidden=false;$('journal-saved').textContent='Запись сохранена · '+fmtDay(r.item.day);toast('Запись сохранена');S.journalDone=true;paintNextStep();growTextarea($('j-text'));loadJournal();
   } catch(e){ toast('Не удалось сохранить запись. Текст остался в поле.'); }
@@ -2075,20 +1975,19 @@ function fillEdit(){
   if (!editReady) { attachCity('e-city','e-city-list','e-geo'); editReady = true; }
 }
 async function saveProfile(){
-  const msg = $('e-msg'); msg.className='msg';
+  const msg = $('e-msg');
   const birth = $('e-birth').value;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) { msg.classList.add('err'); msg.textContent='Проверьте дату рождения.'; return; }
-  msg.textContent = 'Сохраняем…';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) { showMsg(msg, 'Проверьте дату рождения.', true); return; }
+  showMsg(msg, 'Сохраняем…');
   try{
     const r = await api('/profile',{method:'POST',body:JSON.stringify({
       name:$('e-name').value.trim(), birth, birthTime:$('e-time').value, city:$('e-city').value.trim(), consent:true })});
     S.user = r.user; S.day = r.day; S.num = null; natalCache = null;
-    msg.className='msg'; msg.textContent='';
+    showMsg(msg);
     toast('Данные обновлены'); closeWidget();
     paintHome(); paintToday(); loadAccount();
   }catch(e){
-    msg.classList.add('err');
-    msg.textContent = e.code==='bad_birth' ? 'Проверьте дату рождения.' : 'Не получилось сохранить. Попробуйте ещё раз.';
+    showMsg(msg, e.code==='bad_birth' ? 'Проверьте дату рождения.' : 'Не получилось сохранить. Попробуйте ещё раз.', true);
   }
 }
 async function wipe(what){
@@ -2124,6 +2023,8 @@ const runeBy = (s) => (CAT && CAT.runes[s]) || null;
 const layoutOf = (kind, key) => (CAT && CAT.layouts[kind] && CAT.layouts[kind][key]) || null;
 const keysLine = (k) => String(k || '').replace(/\.\s*$/, '').split(/\.\s+/).join(' · ');
 const fmtDay = (d) => String(d || '').split('-').reverse().join('.');
+/* «16 сентября, 21:05» — момент времени; месяц можно укоротить или добавить день недели */
+const fmtWhen = (at, o) => new Date(at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', ...o });
 const paras = (arr) => (arr || []).map(t => `<p>${esc(t)}</p>`).join('');
 const glyphSvg = (path) => `<svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="${esc(path || 'M16 5v22')}" stroke="#e9c77e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const CHEV = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
@@ -2133,7 +2034,7 @@ function moreBlock(html, label){
   const id = 'more' + (++moreSeq);
   return `<div class="more" id="${id}"><button class="morebtn" type="button" aria-expanded="false" aria-controls="${id}-body" onclick="toggleMore('${id}')"><span>${label || 'Читать полностью'}</span>${CHEV}</button><div class="morebody" id="${id}-body">${html}</div></div>`;
 }
-function toggleMore(id){ const el = $(id); if (!el) return; const open=el.classList.toggle('on');el.querySelector('.morebtn').setAttribute('aria-expanded',String(open));hap(9); }
+function toggleMore(id){ const el = $(id); if (!el) return; const open=el.classList.toggle('on');el.querySelector('.morebtn').setAttribute('aria-expanded',String(open));hap(); }
 const CARD_SEC = { image: 'Образ', spread: 'В раскладе', state: 'Состояние человека', shadow: 'Теневая сторона', advice: 'Совет' };
 const RUNE_SEC = { meaning: 'Значение', advice: 'Совет', state: 'Состояние человека', interact: 'Во взаимодействии' };
 function sectionsHtml(obj, keys, titles){
@@ -2184,7 +2085,7 @@ async function openCard(){
     const [r] = await Promise.all([api('/card', { method: 'POST' }), loadCatalog().catch(() => null)]);
     S.day.card = r.card;
     if (r.card && r.card.image) await preload(r.card.image + '?v=1');
-    paintCard(); hap([0, 12]);
+    paintCard(); hap('ok');
     showFlipped();
     setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
   }catch(e){ toast('Не получилось открыть карту — попробуйте ещё раз'); $('t-open').disabled = false; }
@@ -2281,7 +2182,7 @@ function renderLayouts(){
   box.innerHTML = `<div class="chips flow">${LAYOUT_ORDER[S.mode].map(k => `<button type="button" class="chip${S.layout === k ? ' on' : ''}" onclick="setLayout('${k}')">${esc(CAT.layouts[kind][k].title)}</button>`).join('')}</div>
     <p class="laydesc"><b>${esc(L.sub)}</b> — ${esc(L.desc)}</p>`;
 }
-function setLayout(k){ S.layout = k; hap(9); renderLayouts(); checkQ(); }
+function setLayout(k){ S.layout = k; hap(); renderLayouts(); checkQ(); }
 $('a-q').addEventListener('input', checkQ);
 function checkQ(){
   const v = $('a-q').value.trim(), ok = v.length >= 10 && /\s/.test(v);
@@ -2304,7 +2205,7 @@ async function runAsk(mode, q, out, hint, layout){
     out.innerHTML = r.kind === 'rune' ? runesHtml({ q, layout: r.layout, runes: r.runes.map(x => x.slug), live: r.runes, day: S.day.date })
       : yesnoHtml({ q, title: r.title, body: r.body, day: S.day.date, memory: r.memory });
   }
-  out.style.display = 'block'; hap([0, 14, 45, 22]); preparePending();
+  out.style.display = 'block'; hap('done'); preparePending();
 }
 
 /* ── история: записи раскрываются в тот же вид, что и свежий результат ── */
@@ -2336,7 +2237,7 @@ async function loadEntries(more=false){
 }
 function toggleEntry(n){
   const it = $('he-' + n), body = $('hb-' + n); if (!it) return;
-  const open = !it.classList.contains('on'); it.classList.toggle('on', open); it.querySelector('.histhead').setAttribute('aria-expanded',open); hap(9);
+  const open = !it.classList.contains('on'); it.classList.toggle('on', open); it.querySelector('.histhead').setAttribute('aria-expanded',open); hap();
   if (open && !body.innerHTML) { body.innerHTML = entryHtml(S.entries[n]); preparePending(); }
 }
 function entryHtml(i){
@@ -2575,6 +2476,8 @@ function loadReminders(force){
   return remPromise;
 }
 const remBox = (f, full=false) => `<div class="rem" data-rem="${f}" data-full="${full}"></div>`;
+/* Строка уведомлений под заголовком виджета: настройки подгружаются, если ещё не были */
+const remRefresh = (f) => loadReminders().then(() => paintRem(f)).catch(() => {});
 const remText = (r) => r.freq === 'events' ? 'когда что-то происходит, в ' + r.time : r.time + ' · ' + (r.freq === 'weekly' ? WD_ON[r.weekday - 1] : FREQ_LABEL[r.freq].toLowerCase());
 function remDeviceReady(){
   return IOS_SHELL ? IOS_BRIDGE>=4 && S.nativePermission==='granted' : PUSH_OK && Notification.permission==='granted' && S.pushOn;
@@ -2583,7 +2486,7 @@ function remStatus(f, r){
   if(!r.enabled)return 'Выключены для этой функции';
   if(!remDeviceReady())return 'Расписание сохранено. Доставка на это устройство не подключена';
   if(IOS_SHELL)return S.nativeStates?.[f]===false?'На этом телефоне напоминание не включено':'Напоминание включено на телефоне · '+remText(r);
-  return r.nextAt ? 'Следующее напоминание: ' + new Date(r.nextAt).toLocaleString('ru-RU', {weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}) : 'Уведомления включены';
+  return r.nextAt ? 'Следующее напоминание: ' + fmtWhen(r.nextAt, { weekday: 'short' }) : 'Уведомления включены';
 }
 function paintDeviceStatus(){
   const box=$('rem-device-status');if(!box)return;
@@ -2615,7 +2518,7 @@ function paintRem(f){
   });
   paintDeviceStatus();
 }
-function remEdit(f){ const full=document.activeElement.closest('[data-rem]')?.dataset.full;remEditing[f]=!remEditing[f];hap(9);paintRem(f);document.querySelector(`[data-rem="${f}"][data-full="${full}"] .rem-summary`)?.focus({preventScroll:true}); }
+function remEdit(f){ const full=document.activeElement.closest('[data-rem]')?.dataset.full;remEditing[f]=!remEditing[f];hap();paintRem(f);document.querySelector(`[data-rem="${f}"][data-full="${full}"] .rem-summary`)?.focus({preventScroll:true}); }
 async function connectPushDevice(){
   if (IOS_SHELL) {
     if (IOS_BRIDGE < 4) { toast('Обновите приложение, чтобы проверить разрешение на уведомления'); return false; }
@@ -2635,7 +2538,7 @@ async function remConnect(f){
   finally { remBusy[f]=false; REM_ORDER.forEach(paintRem); }
 }
 async function remToggle(f){
-  const r = S.rem && S.rem[f]; if (!r || remBusy[f]) return; hap(9);
+  const r = S.rem && S.rem[f]; if (!r || remBusy[f]) return; hap();
   remBusy[f]=true; paintRem(f);
   try {
     // Request permission directly in this click, before any network wait.
@@ -2731,11 +2634,11 @@ window.__lunScheduleState = (states, reason) => {
   if (reason === 'denied') toast('Уведомления для Лунарио выключены — их можно разрешить в Настройках телефона');
 };
 /* После карты обновляем ту же строку уведомлений у заголовка. */
-function cardNudge(){loadReminders().then(()=>paintRem('card')).catch(()=>{});}
+function cardNudge(){remRefresh('card');}
 /* «Напоминания» в аккаунте: все функции одним списком */
 async function paintAllReminders(){
-  const box = $('rem-all'); box.innerHTML = '<p class="hint">Загружаем…</p>';
-  try { await loadReminders(true); } catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; return; }
+  const box = $('rem-all'); box.innerHTML = LOADING;
+  try { await loadReminders(true); } catch (e) { box.innerHTML = LOAD_ERR; return; }
   box.innerHTML = `<p class="hint">Выберите, о чём напоминать. Для каждой функции можно задать своё время и регулярность.</p><p id="rem-device-status" class="rem-status" role="status"></p>
     <div class="list" style="margin-top:12px">${REM_ORDER.map(f => `<div class="item"><b style="margin-bottom:8px">${esc(S.rem[f].title)}</b>${remBox(f,true)}</div>`).join('')}</div>`;
   REM_ORDER.forEach(paintRem);
@@ -2748,7 +2651,7 @@ function paintMoodExtra(){
   const m = moodInfo(S.mood);
   const id = m ? regRes({ type: 'mood', mood: S.mood, label: m.label, day: S.day.date }) : '';
   box.innerHTML = `${m ? actionsHtml(id, true) : '<p class="hint" style="text-align:center;margin-top:12px">Отметьте настроение — и его можно будет сохранить открыткой.</p>'}`;
-  loadReminders().then(() => paintRem('mood')).catch(() => {}); preparePending();
+  remRefresh('mood'); preparePending();
 }
 
 /* ══════════ Отчёт по настроениям: неделя по дням, месяц по долям ══════════ */
@@ -2757,8 +2660,8 @@ const monthName = (key) => { const [y, m] = key.split('-'); return MONTHS_RU[Num
 async function loadMoodReport(){
   const box = $('mr-box'); box.innerHTML = '<p class="hint">Считаем…</p>';
   try { S.moodReport = await api('/mood/report'); paintMoodReport(); track('moodreport_view'); }
-  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
-  loadReminders().then(() => paintRem('moodreport')).catch(() => {});
+  catch (e) { box.innerHTML = LOAD_ERR; }
+  remRefresh('moodreport');
 }
 function paintMoodReport(){
   const r = S.moodReport, box = $('mr-box'), total = r.month.days;
@@ -2798,7 +2701,7 @@ function paintLunarWidget(){
     <details class="lunar-period"><summary>Период и место расчёта</summary><p>${esc(l.period)}</p><p>По месту рождения из профиля: ${esc(S.user.city||'Москва')}. Часовой пояс: ${esc(S.user.tz||'Europe/Moscow')}</p></details>
     <details class="lunar-library"><summary>Все 30 лунных дней</summary><div id="ln-days"></div><div id="ln-preview"></div><div id="ln-ref"></div></details>`;
   XP.lunarSeenAtOpen=(XP.prefs.lunarViews||0)>=1;   /* ряд тем — со второго открытия: смотрим счётчик до того, как засчитать это открытие */
-  loadReminders().then(()=>paintRem('lunar')).catch(()=>{});preparePending();track('lunar_view','topics:'+(topicsAll()?'all':((XP.prefs.topics||[]).length||'default')));XP.prefs.lunarViews=(XP.prefs.lunarViews||0)+1;
+  remRefresh('lunar');preparePending();track('lunar_view','topics:'+(topicsAll()?'all':((XP.prefs.topics||[]).length||'default')));XP.prefs.lunarViews=(XP.prefs.lunarViews||0)+1;
   loadLunarDays().then(()=>{paintLunarArticle();$('ln-ref').innerHTML=lunarRefHtml(LUN.reference);}).catch(()=>{if($('ln-art'))$('ln-art').innerHTML='<p class="hint">Справочник не загрузился. Откройте лунный день ещё раз</p>';});
 }
 /* ── Темы чтения: человек выбирает разделы, остальное — под заголовками-свёртками. Ряд тем появляется со второго открытия. ── */
@@ -2815,7 +2718,7 @@ function topicsRowHtml(){
 async function toggleTopic(key){
   const cur=new Set(topicsChosen());if(cur.has(key))cur.delete(key);else cur.add(key);
   const topics=topicList().map(t=>t.key).filter(k=>cur.has(k));
-  try{await savePreferences({...XP.prefs,topics});track('topics_set',topics.join(','));hap(9);}
+  try{await savePreferences({...XP.prefs,topics});track('topics_set',topics.join(','));hap();}
   catch{toast('Не удалось сохранить выбор. Попробуйте ещё раз');return;}
   paintLunarArticle();if($('topics-box'))paintTopics();
 }
@@ -2900,17 +2803,16 @@ function lunarRefHtml(ref){
   if (!ref || !ref.sections) return '';
   const secs = ref.sections.filter(s => s.title !== 'Оглавление' && s.blocks && s.blocks.length);
   if (!secs.length) return '';
-  return `<div class="card yr-art" style="margin-top:12px"><h3>${esc(ref.title)}</h3>${ref.caption ? `<p style="font-size:13.5px;color:#8f87ad;margin-top:0">${esc(ref.caption)}</p>` : ''}
+  return `<div class="card yr-art" style="margin-top:12px"><h3>${esc(ref.title)}</h3>${ref.caption ? `<p class="hint" style="margin-top:0">${esc(ref.caption)}</p>` : ''}
     ${secs.map(sec => moreBlock(blocksHtml(sec.blocks), sec.title)).join('')}</div>`;
 }
 
 /* ══════════ На небе: сегодня и ближайшие недели ══════════ */
-const fmtWhen = (at) => new Date(at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 async function loadSky(){
   const box = $('sky-box'); if (!S.sky) box.innerHTML = '<p class="hint">Смотрим на небо…</p>';
   try { S.sky = await api('/sky'); paintSky(); track('sky_view'); }
   catch (e) { box.innerHTML = '<p class="msg err">Не получилось рассчитать небо.</p>'; }
-  loadReminders().then(() => { paintRem('sky'); if (IOS_SHELL && S.rem.sky.enabled) nativeSchedule('sky'); }).catch(() => {});
+  remRefresh('sky').then(() => { if (IOS_SHELL && S.rem?.sky.enabled) nativeSchedule('sky'); });
 }
 function paintSky(){
   const s = S.sky, box = $('sky-box');
@@ -3150,7 +3052,7 @@ function renderHub(){
   w.innerHTML=`<div class="card hubq"><p>Темы</p><div class="chips flow" id="hub-chips">${HUB_TOPICS.map(([label],i)=>`<button type="button" class="chip${hubDraft.topic===i?' on':''}" aria-pressed="${hubDraft.topic===i}" onclick="hubTopic(${i})">${label}</button>`).join('')}</div>
     <div class="field"><label for="hub-q">Что именно сейчас не даёт покоя?</label><textarea id="hub-q" maxlength="300" placeholder="Опишите своими словами…" oninput="hubDraft.text=this.value;hubCheck()">${esc(hubDraft.text)}</textarea></div>
     <section class="hub-questions"><h3>Вопросы</h3><div class="chips flow" id="hub-questions"></div></section>
-    <div id="hub-opts" hidden><span class="eyebrow">Как получить ответ</span><div class="chips flow">${HUB_OPTS.map(([key,ic,label])=>`<button type="button" class="chip${hubDraft.kind===key?' on':''}" aria-pressed="${hubDraft.kind===key}" onclick="hubMethod('${key}')">${label}</button>`).join('')}</div>
+    <div id="hub-opts" hidden><span class="eyebrow">Как получить ответ</span><div class="chips flow">${HUB_OPTS.map(([key,,label])=>`<button type="button" class="chip${hubDraft.kind===key?' on':''}" data-kind="${key}" aria-pressed="${hubDraft.kind===key}" onclick="hubMethod('${key}')">${label}</button>`).join('')}</div>
     <button type="button" class="btn" id="hub-go" onclick="hubAsk()">Получить ответ</button></div></div><div id="hub-res" hidden></div>`;
   hubCheck();loadHubQuestions();
 }
@@ -3171,7 +3073,7 @@ function hubTopic(index){
   if(!hubDraft.text.trim()||hubDraft.text===previous)hubDraft.text=HUB_TOPICS[index][1];
   hubDraft.topic=index;renderHub();$('hub-q').focus();
 }
-function hubMethod(kind){hubDraft.kind=kind;document.querySelectorAll('#hub-opts .chip').forEach(b=>{const on=b.getAttribute('onclick')===`hubMethod('${kind}')`;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
+function hubMethod(kind){hubDraft.kind=kind;document.querySelectorAll('#hub-opts .chip').forEach(b=>{const on=b.dataset.kind===kind;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
 function hubCheck(){const v=$('hub-q').value.trim();$('hub-opts').hidden=!(v.length>=10&&/\s/.test(v));}
 async function hubAsk(){
   if(hubAsk.busy)return;const q=$('hub-q').value.trim();if(q.length<10||!(/\s/.test(q)))return;
@@ -3197,7 +3099,7 @@ async function saveAnswer(){
   if(toneSaving)return;const t=($('tone-a').value||'').trim();
   if(t.length<3){toast('Напишите хотя бы пару слов');return;}
   toneSaving=true;$('tone-save').disabled=true;
-  try{const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})});toneDraft='';toneSaved=r.item;paintNextStep();toast('Записано в дневник');hap([0,14]);loadJournal();}
+  try{const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})});toneDraft='';toneSaved=r.item;paintNextStep();toast('Записано в дневник');hap('ok');loadJournal();}
   catch(e){toast('Не получилось сохранить. Ваш текст остался в поле');}
   finally{toneSaving=false;paintTone();}
 }
@@ -3205,11 +3107,11 @@ async function saveAnswer(){
 /* ══════════ Дневник благодарности ══════════ */
 const gratQ = () => 'Кому и за что я благодарна сегодня?';
 async function loadGratitude(){
-  const box = $('gr-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
+  const box = $('gr-box'); box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
   try { const r = await api('/journal?kind=gratitude'); S.grat = r; paintGratitude(); }
-  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
-  loadReminders().then(() => paintRem('gratitude')).catch(() => {});
+  catch (e) { box.innerHTML = LOAD_ERR; }
+  remRefresh('gratitude');
 }
 let gratitudeEdit=null,gratitudeDraft='',gratitudeSaving=false;
 function editGratitude(id){
@@ -3228,7 +3130,7 @@ function paintGratitude(){
       ${todayItem?`<button type="button" class="text-action secondary" onclick="gratitudeEdit=null;gratitudeDraft='';paintGratitude()">Отмена</button>`:''}`}</div>
     ${todayItem && !editing?actionsHtml(id,true):''}
     ${r.items.filter(i=>i.id!==todayItem?.id).length?moreBlock(r.items.filter(i=>i.id!==todayItem?.id).slice(0,30).map(i=>`<div class="item"><small>${fmtDay(i.day)}</small><p class="entry-text">${esc(i.text)}</p></div>`).join(''),'Прошлые благодарности'):'<p class="hint">Запись остаётся здесь и в Дневнике, вместе с датой</p>'}`;
-  S.gratitudeDone=!!todayItem;updatePracticeStatus('gratitude',todayItem?'Благодарность записана':'Записать благодарность');
+  gratitudeHomeStatus(!!todayItem);
   paintRem('gratitude');preparePending();
 }
 async function saveGratitude(){
@@ -3240,7 +3142,7 @@ async function saveGratitude(){
     const r=await api('/journal',{method:edit?'PATCH':'POST',body:JSON.stringify({id:edit,text,kind:'gratitude',title:gratQ()})});
     const item={...(S.grat.items.find(i=>i.id===edit)||{}),...r.item,kind:'gratitude',title:gratQ()};
     S.grat.items=[item,...S.grat.items.filter(i=>i.id!==item.id)];
-    gratitudeEdit=null;gratitudeDraft='';toast('Запись сохранена');hap([0,14]);paintGratitude();
+    gratitudeEdit=null;gratitudeDraft='';toast('Запись сохранена');hap('ok');paintGratitude();
   } catch(e){toast('Не удалось сохранить. Текст остался в поле');button.disabled=false;button.textContent='Сохранить';}
   finally{gratitudeSaving=false;}
 }
@@ -3249,11 +3151,11 @@ async function saveGratitude(){
 let HB = null, hbEditing = null;
 const RULE_CHIPS = ['каждый день', 'по будням', 'по выходным', 'через день', 'раз в неделю', '3 раза в неделю', 'раз в месяц'];
 async function loadHabits(){
-  const box = $('hb-box'); if (!HB) box.innerHTML = '<p class="hint">Загружаем…</p>';
+  const box = $('hb-box'); if (!HB) box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
   try { const r = await api('/habits'); HB = r.items; paintHabits(); }
-  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
-  loadReminders().then(() => paintRem('habits')).catch(() => {});
+  catch (e) { box.innerHTML = LOAD_ERR; }
+  remRefresh('habits');
 }
 let habitView='today',habitFormOpen=false,habitDraft={title:'',rule:''};
 const habitBusy=new Set(),habitEditDrafts={};
@@ -3302,18 +3204,18 @@ function paintHabits(){
 async function habitAdd(){
   const title = ($('hb-new').value || '').trim(), rule = ($('hb-rule').value || '').trim();
   if (title.length < 2) { toast('Назовите привычку'); return; }
-  try { const r = await api('/habits', { method: 'POST', body: JSON.stringify({ title, rule }) }); HB = r.items; habitDraft={title:'',rule:''};habitFormOpen=false; track('habit_add'); hap(9); paintHabits(); }
+  try { const r = await api('/habits', { method: 'POST', body: JSON.stringify({ title, rule }) }); HB = r.items; habitDraft={title:'',rule:''};habitFormOpen=false; track('habit_add'); hap(); paintHabits(); }
   catch (e) { toast(e.code === 'too_many' ? 'Двадцать привычек — уже много. Уберите одну.' : 'Не получилось добавить'); }
 }
 async function habitSave(id){
   const title = ($('hb-t-' + id).value || '').trim(), rule = ($('hb-r-' + id).value || '').trim();
-  try { const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, title, rule }) }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; hap(9); paintHabits(); toast('Привычка сохранена'); }
+  try { const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, title, rule }) }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; hap(); paintHabits(); toast('Привычка сохранена'); }
   catch (e) { toast('Не получилось сохранить'); }
 }
 async function habitMark(id, day){
   if(habitBusy.has(id))return;habitBusy.add(id);
   try {
-    const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day }) }); HB = r.items; track('habit_mark'); hap([0, 12]); paintHabits();
+    const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day }) }); HB = r.items; track('habit_mark'); hap('ok'); paintHabits();
     if (r.award) showAward(r.award);
   } catch (e) { toast('Не получилось отметить'); }
   finally{habitBusy.delete(id);document.querySelectorAll('[data-habit="'+id+'"] .hb-check').forEach(b=>b.disabled=false);}
@@ -3339,18 +3241,17 @@ function showAward(a){
       <div class="serif" style="font-size:26px;color:var(--gold);margin-top:6px">${esc(name)}</div>
       <p style="margin-top:8px;color:#fff;font-size:15.5px">${esc(a.title)}</p><p style="margin-top:8px;font-size:14.5px">${esc(text)}</p>
       <div class="resrow" style="margin-top:16px"><button class="btn sm" type="button" onclick="savePostcard('${id}')">↓&nbsp; Открытка</button><button class="btn ghost sm" type="button" onclick="shareRes('${id}')">Поделиться</button><button class="btn ghost sm" type="button" onclick="$('award').classList.remove('on')">Закрыть</button></div></div>`;
-  $('award').classList.add('on'); hap([0, 20, 60, 30, 60, 40]); preparePending();
+  $('award').classList.add('on'); hap('award'); preparePending();
 }
 
 /* ══════════ Взять аскезу: отказ до выбранной даты, поддержка и счёт дней, заметки по желанию ══════════ */
 let AS = null, askForm = {};
-const askDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 async function loadAskesis(){
-  const box = $('as-box'); if (!AS) box.innerHTML = '<p class="hint">Загружаем…</p>';
+  const box = $('as-box'); if (!AS) box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
   try { AS = await api('/askesis'); paintAskesis(); }
-  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить.</p>'; }
-  loadReminders().then(() => paintRem('askesis')).catch(() => {});
+  catch (e) { box.innerHTML = LOAD_ERR; }
+  remRefresh('askesis');
 }
 const askNoteDrafts={},askNoteOpen={};
 function toggleAskPanel(event,summary,key){
@@ -3370,7 +3271,7 @@ function paintAskesis(){
     const id=regRes({type:'askesis',a,day:today});
     return `<div class="card practice-card">
       <h3 class="practice-question">${esc(a.title)}</h3>
-      <p class="practice-progress">${a.left===0?'Сегодня последний день':`Осталось ${a.left} ${plural(a.left,'день','дня','дней')}`} · до ${askDate(a.until)}</p>
+      <p class="practice-progress">${a.left===0?'Сегодня последний день':`Осталось ${a.left} ${plural(a.left,'день','дня','дней')}`} · до ${ruDate(a.until)}</p>
       <div class="bar" role="progressbar" aria-label="Срок аскезы" aria-valuemin="0" aria-valuemax="${a.total}" aria-valuenow="${a.done}"><i style="width:${Math.round(a.done/a.total*100)}%"></i></div>
       <p class="ask-support">${esc(a.support)}</p>
       ${a.today?`<div class="saved-state" role="status">Наблюдение сохранено · ${fmtDay(today)}</div><p class="entry-text">${esc(a.today.text)}</p>`:''}
@@ -3396,23 +3297,23 @@ function paintAskesis(){
 }
 function askPick(text){
   $('as-title').value=text;askForm.new=Object.assign(askForm.new||{},{title:text});
-  $('as-title').focus();hap(9);
+  $('as-title').focus();hap();
 }
 function askQuick(days){
   // The end date is inclusive: a week begun today ends on its seventh day.
   const until=days?new Date(Date.parse(S.day.date+'T12:00:00Z')+(days-1)*864e5).toISOString().slice(0,10):S.day.date.slice(0,4)+'-12-31';
-  $('as-until').value=until;askForm.new=Object.assign(askForm.new||{},{until});hap(9);
+  $('as-until').value=until;askForm.new=Object.assign(askForm.new||{},{until});hap();
 }
 async function askStart(){
   const title = ($('as-title').value || '').trim(), until = $('as-until').value;
   if (title.length < 2) { toast('Назовите аскезу'); return; }
   if (!until) { toast('Выберите, до какого дня'); return; }
-  try { AS = await api('/askesis', { method: 'POST', body: JSON.stringify({ title, until }) }); askForm.new = null;askForm.open=false; track('askesis_start'); hap([0, 14, 45, 22]); toast('Аскеза взята — мы рядом ✦'); paintAskesis(); refreshNativeAskesis(); }
+  try { AS = await api('/askesis', { method: 'POST', body: JSON.stringify({ title, until }) }); askForm.new = null;askForm.open=false; track('askesis_start'); hap('done'); toast('Аскеза взята — мы рядом ✦'); paintAskesis(); refreshNativeAskesis(); }
   catch (e) { toast(e.code === 'bad_until' ? 'Дата должна быть не раньше сегодня' : e.code === 'too_many' ? 'Пять аскез сразу — уже много' : 'Не получилось'); }
 }
 async function askNote(id){
   const note = (($('as-note-' + id) || {}).value || '').trim(); if (!note) { toast('Заметка пустая'); return; }
-  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, note }) }); delete askNoteDrafts[id];askNoteOpen[id]=false;track('askesis_mark'); hap([0, 12]); toast('Заметка сохранена'); paintAskesis(); }
+  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, note }) }); delete askNoteDrafts[id];askNoteOpen[id]=false;track('askesis_mark'); hap('ok'); toast('Заметка сохранена'); paintAskesis(); }
   catch (e) { toast('Не получилось сохранить'); }
 }
 let askDateId=null;
@@ -3474,8 +3375,7 @@ async function removeWishPhoto(id){ try { const r = await api('/wishes/photo?id=
 const photoUrl = (u) => u && u.photo ? `/app/api/photo?t=${encodeURIComponent(u.photoTs || '')}` : '';
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
-  let seen=false; try { seen=localStorage.getItem('lun_news_seen')===(S.day?.date||new Date().toISOString()).slice(0,7); } catch(e){}
-  $('h-acct').innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot"${seen?' hidden':''} aria-hidden="true"></i>`;
+  $('h-acct').innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot" hidden aria-hidden="true"></i>`; paintNewsDot();
   const box = $('ac-photo'); if (box) box.innerHTML = `<div class="row" style="gap:14px"><div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>
     <div class="grow"><button class="btn ghost sm" type="button" onclick="setPhoto()">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? `<button type="button" class="linkbtn" style="margin:8px 0 0;text-align:left" onclick="removePhoto()">Убрать</button>` : '<p class="hint" style="margin-top:6px">Покажем в кружке на главной.</p>'}</div></div>`;
 }
@@ -3495,7 +3395,7 @@ function featureRoot(key){
     ||document.querySelector('button[onclick="openWidget(\''+key+'\')"]');
 }
 async function paintNews(){
-  const box = $('news-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
+  const box = $('news-box'); box.innerHTML = LOADING;
   try { await loadCatalog(); } catch(e) {}
   const month = S.day.date.slice(0,7);
   $('news-sub').textContent = monthName(month).replace(/^./,c=>c.toUpperCase());
@@ -3517,7 +3417,7 @@ async function paintNews(){
     box.appendChild(tile);
   }
   if(!box.children.length) box.innerHTML='<p class="hint">В этом месяце новинок ещё не было</p>';
-  try{localStorage.setItem('lun_news_seen',month);}catch(e){} paintAvatar(); track('news_view');
+  markNewsSeen(); track('news_view');
 }
 
 /* ── старт ── */
@@ -3560,7 +3460,7 @@ function startApp(){
       }
     }catch(e){ /* ссылка старая — просто открываем приложение */ }
     if(r.day && typeof r.day.moonPhase==='number') moonSetPhase(r.day.moonPhase);
-    if(!r.user.onboarded){ go('hello'); track('intro_view'); if(S.mailReady){ $('hello-login').style.display='block'; $('o-back').style.display='block'; obTarget='o-auth'; renderObAuth(); } return; }
+    if(!r.user.onboarded){ go('hello'); track('intro_view'); if(S.mailReady) $('hello-login').style.display='block'; return; }
     startApp();
     paintMoodStat(r.moodStats);
   }catch(e){ go('hello'); }

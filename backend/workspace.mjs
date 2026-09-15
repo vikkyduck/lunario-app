@@ -6,6 +6,7 @@
 import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { MSK, dayIn } from './util.mjs';
 
 let db, seal = (s) => s, open_ = (s) => s, UPLOADS = '';
 export function initWorkspace(database, dataDir, sealFn, openFn) {
@@ -56,8 +57,7 @@ export function initWorkspace(database, dataDir, sealFn, openFn) {
 }
 
 const now = () => new Date().toISOString();
-const MSK = 'Europe/Moscow';
-const dayMSK = (d = new Date()) => d.toLocaleDateString('sv-SE', { timeZone: MSK });
+const dayMSK = (d = new Date()) => dayIn(MSK, d.getTime());
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const clean = (s, n) => String(s ?? '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').trim().slice(0, n);

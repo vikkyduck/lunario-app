@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { campaignList, campaignUsers, slaMetrics, ticketQueue, TICKET_STATUS } from './workspace.mjs';
 import * as C from './content.mjs';
 import { preferences } from './experience.mjs';
+import { MSK, dayIn, addDays } from './util.mjs';
 
 let db, DATA_DIR = '';
 export function initReports(database, dataDir) {
@@ -20,9 +21,7 @@ const all = (sql, ...a) => db.prepare(sql).all(...a);
 const inList = (arr) => arr.map((s) => `'${s}'`).join(',');
 const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
 const delta = (cur, prev) => (cur === null || prev === null || prev === undefined ? null : prev ? Math.round(((cur - prev) / prev) * 100) : (cur ? null : 0));
-const MSK = 'Europe/Moscow';
-export const dayMSK = (d = new Date()) => d.toLocaleDateString('sv-SE', { timeZone: MSK });
-const addDays = (day, n) => { const t = new Date(day + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+export const dayMSK = (d = new Date()) => dayIn(MSK, d.getTime());
 const daysBetween = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 864e5);
 const seriesDays = (from, to) => { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; };
 const fill = (days, rows, key = 'n') => { const m = Object.fromEntries(rows.map((r) => [r.day, r[key]])); return days.map((d) => ({ x: d, y: m[d] || 0 })); };

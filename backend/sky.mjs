@@ -5,6 +5,7 @@
 import { skyAt, ASPECT_LIST, SIGNS } from './astro.mjs';
 import { moonPhasesBetween, moonState } from './lunar.mjs';
 import * as C from './content.mjs';
+import { MSK, dayIn } from './util.mjs';
 
 const norm = (x) => ((x % 360) + 360) % 360;
 const DAY = 864e5;
@@ -80,7 +81,7 @@ export function skyEvents(fromMs, days = 60) {
 }
 
 /* Сводка на сейчас: Луна, Солнце, ретроградные планеты, точные аспекты и события — сегодняшние и ближайшие. */
-export function skyNow(ms = Date.now(), tz = 'Europe/Moscow') {
+export function skyNow(ms = Date.now(), tz = MSK) {
   const b = skyAt(ms);
   const m = moonState(ms);
   const phaseName = m.name;
@@ -93,9 +94,9 @@ export function skyNow(ms = Date.now(), tz = 'Europe/Moscow') {
     for (const [key, name, angle, , sym] of ASPECT_LIST) { const off = Math.abs(d - angle); if (off <= 3) aspects.push({ a: A.name, b: B.name, aSym: A.symbol, bSym: B.symbol, name, symbol: sym, orb: Math.round(off * 10) / 10 }); }
   }
   aspects.sort((x, y) => x.orb - y.orb);
-  const day = new Date(ms).toLocaleDateString('sv-SE', { timeZone: tz });
+  const day = dayIn(tz, ms);
   const events = skyEvents(ms - DAY, 62);
-  const dayOf = (e) => new Date(e.at).toLocaleDateString('sv-SE', { timeZone: tz });
+  const dayOf = (e) => dayIn(tz, Date.parse(e.at));
   return {
     date: day,
     moon: { phase: phaseName, illumination: m.illumination, waxing: m.waxing, sign: b.moon.sign, signIn: inSign(b.moon.sign), text: b.moon.text },

@@ -16,6 +16,7 @@ import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak, HABIT_MILESTONES } from './practices.mjs';
 import { CONTENT_DIR, IMAGE_DIRS } from './content.mjs';
+import { MSK, MOSCOW, ISO_DAY, dayIn, addDays } from './util.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
@@ -231,8 +232,7 @@ initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
 
 /* ── утилиты ── */
-const MSK = 'Europe/Moscow';
-const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: MSK }); // YYYY-MM-DD
+const today = () => dayIn();                    // YYYY-MM-DD по Москве
 const nowISO = () => new Date().toISOString();
 const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().slice(0, max);
 /* Многострочные тексты (дневник, заметки, обращения): переносы строк — часть текста, убираем только прочие управляющие символы */
@@ -281,7 +281,7 @@ const PERSONAL_TABLES = ['entries', 'moods', 'journal', 'wishes', 'usage', 'shel
 /* Событие продукта: только тип, короткая деталь и возрастная когорта — без личных текстов */
 const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), today(), u.id, type, String(detail || '').slice(0, 60), ageBand(u.birth));
 function ageBand(birth) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(birth || ''))) return '';
+  if (!ISO_DAY.test(String(birth || ''))) return '';
   const b = new Date(birth + 'T00:00:00Z'), now = new Date();
   let age = now.getUTCFullYear() - b.getUTCFullYear();
   const m = now.getUTCMonth() - b.getUTCMonth();
@@ -393,13 +393,13 @@ function dayPack(u, day) {
   const seed = `${u.id}:${day}`;
   const set = setOfDay(u, day);
   const sign = u.birth ? signOf(u.birth) : null;
-  const tone = C.DAY_TONES[hash32(seed + ':tone') % C.DAY_TONES.length];
+  const tone = C.DAY_TONES[hash32(seed + ':tone') % C.DAY_TONES.length], moon = moonOf(day);
   return {
     date: day,
-    moon: moonOf(day).name,
-    moonPhase: +moonOf(day).cycle.toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
+    moon: moon.name,
+    moonPhase: +moon.cycle.toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
     // освещённость диска, а не доля цикла: при фазе 0.65 диск освещён на 79 %, не на 65
-    moonPct: moonOf(day).illumination,
+    moonPct: moon.illumination,
     card: cardOfDay(u, day),
     sign: sign ? sign.name : '',
     forecast: sign
@@ -415,11 +415,11 @@ function dayPack(u, day) {
    без координат — Москва, как и всё остальное время в приложении. */
 function lunarPack(u) {
   try {
-    const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);
+    const ld = lunarDay(Date.now(), u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon);
     if (!ld) return null;
     const [title, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', ''];
     const info = C.LUNAR_INFO.find((d) => d.n === ld.n);   /* тема и картинка — на открытку; само описание экран берёт из /api/lunar-days */
-    return { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || 'Europe/Moscow'), title, advice,
+    return { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || MSK), title, advice,
       theme: info ? info.theme : '', symbol: info ? info.symbol : '', image: info ? info.image : '' };
   } catch (e) { return null; }
 }
@@ -450,9 +450,10 @@ function weekSummary(u) {
    daily — каждый день; weekdays — по будням; weekend — по выходным; alt — через день;
    days:1,3,5 — в выбранные дни недели (1 — понедельник); weekly — раз в неделю; times:N — N раз в неделю;
    monthly — раз в месяц. Непонятную формулировку сохраняем как свободный ритм. */
-const validEndDate = (value, today) => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value && value >= today;
+const validEndDate = (value, today) => ISO_DAY.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value && value >= today;
 
 /* ── пользователь ── */
+const userById = (id) => db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 function parseCookies(req) {
   const out = {};
   for (const p of String(req.headers.cookie || '').split(';')) {
@@ -463,6 +464,7 @@ function parseCookies(req) {
 function setSessionCookie(res, token) {
   res.setHeader('Set-Cookie', `lunario_app=${token}; Path=${BASE}; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure`);
 }
+const clearSessionCookie = (res) => res.setHeader('Set-Cookie', `lunario_app=; Path=${BASE}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
 function newSession(userId, res, ua = '') {
   const token = randomBytes(32).toString('hex');
   db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, last_seen, ua) VALUES (?,?,?,?,?)')
@@ -475,7 +477,7 @@ function getUser(req, res, create = true) {
   if (tok) {
     const sess = db.prepare('SELECT user_id FROM sessions WHERE token_hash = ?').get(sha(tok));
     if (sess) {
-      const u = db.prepare('SELECT * FROM users WHERE id = ?').get(sess.user_id);
+      const u = userById(sess.user_id);
       if (u) {
         db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), sha(tok));
         db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
@@ -486,13 +488,12 @@ function getUser(req, res, create = true) {
   if (!create) return null;
   const info = db.prepare('INSERT INTO users (created_at, last_seen) VALUES (?,?)').run(nowISO(), nowISO());
   newSession(info.lastInsertRowid, res, req.headers['user-agent']);
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+  return userById(info.lastInsertRowid);
 }
 function touchStreak(u) {                       // серию продолжает любой ритуал за день
   const d = today();
   if (u.streak_date === d) return u.streak;
-  const y = new Date(Date.parse(d) - 864e5).toLocaleDateString('sv-SE', { timeZone: MSK });
-  const next = u.streak_date === y ? u.streak + 1 : 1;
+  const next = u.streak_date === addDays(d, -1) ? u.streak + 1 : 1;
   db.prepare('UPDATE users SET streak = ?, streak_date = ? WHERE id = ?').run(next, d, u.id);
   u.streak = next; u.streak_date = d;
   return next;
@@ -509,15 +510,6 @@ const publicUser = (u) => ({
   streakToday: u.streak_date === today(), email: u.email,
   roles: rolesFor(u.email),   /* сотрудники после входа попадают в кабинет */
 });
-
-function readRaw(req) {
-  return new Promise((resolve, reject) => {
-    let size = 0; const chunks = [];
-    req.on('data', (c) => { size += c.length; if (size > 65536) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
-  });
-}
 
 function readBody(req, max = 32768) {
   return new Promise((resolve, reject) => {
@@ -552,7 +544,7 @@ const natalOf = (u) => {
 };
 const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalOf, MOOD_RU, nowISO });
 /* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку */
-const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/ritual', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data', '/api/preferences']);
+const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data', '/api/preferences']);
 /* У тех, кто пришёл раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
 setTimeout(() => {
   const ids = db.prepare('SELECT id FROM users WHERE onboarded = 1 AND id NOT IN (SELECT user_id FROM shelves)').all().map((r) => r.id);
@@ -737,7 +729,7 @@ const server = createServer(async (req, res) => {
 
       /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
       if (p === '/api/natal' && req.method === 'GET') {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
+        if (!ISO_DAY.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
         const time = /^\d{2}:\d{2}$/.test(u.birth_time || '') ? u.birth_time : '';
         // анкета старше координат или город записан не как в базе — доопределяем по названию и запоминаем
         if ((u.lat == null || !u.tz) && u.city) {
@@ -803,7 +795,7 @@ const server = createServer(async (req, res) => {
         if (!existing) {
           // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся
           db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), u.id);
-          return json(res, 200, { ok: true, merged: false, user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
+          return json(res, 200, { ok: true, merged: false, user: publicUser(userById(u.id)) });
         }
         if (existing.id === u.id) return json(res, 200, { ok: true, merged: false, user: publicUser(existing) });
 
@@ -813,7 +805,7 @@ const server = createServer(async (req, res) => {
           db.prepare(`UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
                       consent_version=?, consent_ts=? WHERE id=?`)
             .run(u.name, u.birth, u.birth_time, u.city, u.city_region, u.lat, u.lon, u.tz, u.consent_version, u.consent_ts, existing.id);
-          existing = db.prepare('SELECT * FROM users WHERE id = ?').get(existing.id);
+          existing = userById(existing.id);
         }
         const empty = !u.email && !db.prepare('SELECT 1 FROM entries WHERE user_id = ? LIMIT 1').get(u.id)
           && !db.prepare('SELECT 1 FROM journal WHERE user_id = ? LIMIT 1').get(u.id)
@@ -829,7 +821,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/auth/logout' && req.method === 'POST') {
         const tok = parseCookies(req).lunario_app;
         if (tok) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(tok));
-        res.setHeader('Set-Cookie', `lunario_app=; Path=${BASE}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
+        clearSessionCookie(res);
         return json(res, 200, { ok: true });
       }
 
@@ -858,10 +850,6 @@ const server = createServer(async (req, res) => {
           limits: { spreadsLeft: Math.max(0, spreadLimit(u) - (used ? used.spreads : 0)), spreadsTotal: spreadLimit(u) },
           mailReady: mailLive(),
           supportUnread: W.userUnread(u.id),
-          counts: {
-            entries: db.prepare('SELECT COUNT(*) c FROM entries WHERE user_id = ?').get(u.id).c,
-            wishes: db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ? AND done = 0').get(u.id).c,
-          },
         });
       }
 
@@ -885,7 +873,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/profile' && req.method === 'POST') {
         const b = await readBody(req);
         const birth = clean(b.birth, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) return json(res, 400, { ok: false, error: 'bad_birth' });
+        if (!ISO_DAY.test(birth)) return json(res, 400, { ok: false, error: 'bad_birth' });
         if (b.consent !== true) return json(res, 400, { ok: false, error: 'no_consent' });
         const cityName = clean(b.city, 60);
         const geo = cityName ? cityByName(cityName) : null;   // координаты подставляются по названию
@@ -893,7 +881,7 @@ const server = createServer(async (req, res) => {
           .run(clean(b.name, 60), birth, clean(b.birthTime, 5), geo ? geo.name : cityName,
                geo ? [geo.region, geo.country].filter(Boolean).join(', ') : '', geo ? geo.lat : null, geo ? geo.lon : null, geo ? geo.tz : '',
                CONSENT_VERSION, nowISO(), u.id);
-        const fresh = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+        const fresh = userById(u.id);
         return json(res, 200, { ok: true, user: publicUser(fresh), day: dayPack(fresh, d) });
       }
 
@@ -954,8 +942,6 @@ const server = createServer(async (req, res) => {
                JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) }));
         return json(res, 200, { ok: true, layout: L, cards, left: Math.max(0, spreadLimit(u) - used - 1), streak: touchStreak(u) });
       }
-
-      if (p === '/api/ritual' && req.method === 'POST') return json(res, 200, { ok: true, streak: touchStreak(u) });
 
       if (p === '/api/mood' && req.method === 'POST') {
         const b = await readBody(req);
@@ -1024,7 +1010,7 @@ const server = createServer(async (req, res) => {
           track(u, 'photo_set', '');
         }
         if (req.method === 'DELETE') db.prepare("UPDATE users SET photo = '', photo_ts = '' WHERE id = ?").run(u.id);
-        return json(res, 200, { ok: true, user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
+        return json(res, 200, { ok: true, user: publicUser(userById(u.id)) });
       }
 
       if (p === '/api/wishes') {
@@ -1118,7 +1104,7 @@ const server = createServer(async (req, res) => {
         const stats = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day LIKE ? GROUP BY mood ORDER BY c DESC').all(u.id, month + '%');
         const total = db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ?').get(u.id).c;
         const monthEntries=db.prepare('SELECT day,mood FROM moods WHERE user_id=? AND day LIKE ? ORDER BY day').all(u.id,month+'%');
-        return json(res, 200, { week, month: { key: month, stats, entries:monthEntries, days: stats.reduce((s, m) => s + m.c, 0) }, total, summary: w.summary, labels: MOOD_RU });
+        return json(res, 200, { week, month: { key: month, stats, entries:monthEntries, days: stats.reduce((s, m) => s + m.c, 0) }, total, summary: w.summary });
       }
 
       /* ── напоминания по функциям ── */
@@ -1151,6 +1137,12 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { items: pendingFor(u.id, clean(b.endpoint, 500)) });
       }
 
+      /* ── главная: что из практик уже сделано сегодня — одним запросом вместо пяти ── */
+      if (p === '/api/day-status' && req.method === 'GET') {
+        const done = (kind) => !!db.prepare('SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = ? LIMIT 1').get(u.id, d, kind);
+        return json(res, 200, { habits: habitList(u.id, d), askesis: askesisList(u.id, d), journal: done(''), gratitude: done('gratitude'), answer: done('answer') });
+      }
+
       /* ── дневник привычек: список с регулярностью, карточка дня, награды ── */
       if (p === '/api/habits') {
         let award = null;
@@ -1170,7 +1162,7 @@ const server = createServer(async (req, res) => {
             if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
             db.prepare('UPDATE habits SET title = ?, rule = ?, rule_text = ? WHERE id = ?').run(seal(title), parseRule(ruleText), ruleText, h.id);
           } else {
-            const day = /^\d{4}-\d{2}-\d{2}$/.test(b.day || '') && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
+            const day = ISO_DAY.test(b.day || '') && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
             if (db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day)) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
             else {
               db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u);
@@ -1223,7 +1215,7 @@ const server = createServer(async (req, res) => {
       }
 
       /* ── на небе: сейчас и ближайшие недели ── */
-      if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyNow(Date.now(), u.tz || 'Europe/Moscow'));
+      if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyNow(Date.now(), u.tz || MSK));
 
       /* ── полочки: что Лунарио знает о человеке — три полки и досье текстом для разборов ── */
       if (p === '/api/shelves' && req.method === 'GET') return json(res, 200, Shelves.read(u, d));
@@ -1242,7 +1234,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/compat' && req.method === 'POST') {
         const b = await readBody(req);
         const other = clean(b.birth, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(other)) return json(res, 400, { ok: false, error: 'bad_birth' });
+        if (!ISO_DAY.test(other)) return json(res, 400, { ok: false, error: 'bad_birth' });
         if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
         const a = signOf(u.birth), o = signOf(other);
         const seed = hash32([u.birth, other].sort().join('|'));
@@ -1267,7 +1259,7 @@ const server = createServer(async (req, res) => {
         wipePersonal(u.id); clearReminders(u.id);
         // замер интереса остаётся (обезличенный факт клика), но почта и просьба «сообщите» уходят вместе с аккаунтом
         db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
-        res.setHeader('Set-Cookie', `lunario_app=; Path=${BASE}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
+        clearSessionCookie(res);
         return json(res, 200, { ok: true });
       }
       return json(res, 404, { ok: false, error: 'not_found' });
