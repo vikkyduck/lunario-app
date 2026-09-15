@@ -1,4 +1,4 @@
-export const DEFAULT_PREFERENCES = {theme:'system', ritual:['card','mood','gratitude']};
+export const DEFAULT_PREFERENCES = {theme:'dark', ritual:['card','mood','gratitude']};
 const practices = new Set(['card','mood','habits','gratitude','tone','journal']);
 export function preferences(raw) {
   try { return {...DEFAULT_PREFERENCES, ...JSON.parse(raw || '{}')}; }

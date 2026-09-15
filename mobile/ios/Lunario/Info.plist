@@ -6,6 +6,8 @@
 	<string>Лунарио</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ru</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Местоположение нужно, чтобы показать созвездия над вами. Без доступа используется Москва.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIApplicationSceneManifest</key>

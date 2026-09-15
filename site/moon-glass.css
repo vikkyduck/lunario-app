@@ -1,0 +1,190 @@
+/* Lunario's material layer. Layout, forms and saved data remain in experience.*. */
+:root{
+  --bg:#0b0a14;--surface:#1d1738;--sheet:#17132a;--field:#141126;--selected:rgba(217,184,104,.16);
+  --text:#f5f2ea;--muted:#cdc6e2;--gold:#d9b868;--gold-2:#f0d79a;
+  --line:rgba(217,184,104,.25);--focus:#f0d79a;--control-border:rgba(217,184,104,.55);
+  --hover:#2a2150;--accent-soft:#211b35;
+  --moon-ground:linear-gradient(180deg,#141126 0%,#0b0a14 70%);
+  --moon-panel:linear-gradient(145deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.90),rgba(20,17,38,.90));
+  --moon-edge:linear-gradient(135deg,#f0d79a99 0%,#d9b86847 35%,#b98f3e38 65%,#f0d79a66 100%);
+  --moon-shine:rgba(240,215,154,.12);--moon-shadow:inset 0 1px 0 #fff6dd24,0 12px 26px -18px #000b;
+  --moon-control:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);--moon-glass:rgba(20,17,38,.80);
+  --moon-reader:#17132a;--moon-fade:#0b0a14;--moon-empty:#1d1738;
+}
+:root[data-theme=light]{
+  --bg:#f7f3ec;--surface:#fffbf7;--sheet:#faf6f2;--field:#fffcf9;--selected:#e6e1f1;
+  --text:#292447;--muted:#625b76;--gold:#b38b49;--gold-2:#805f2f;
+  --line:rgba(167,128,69,.32);--focus:#896225;--control-border:#a58960;
+  --hover:#f1e5ee;--accent-soft:#f0e7ee;
+  --moon-ground:radial-gradient(ellipse at 100% 0%,#e8dfcf 0%,transparent 54%),radial-gradient(ellipse at 0% 72%,#f2e9d8 0%,transparent 65%),#f7f3ec;
+  --moon-panel:linear-gradient(130deg,#fffdf9fa,#f2e9f0f5 65%,#f9f1eafa);
+  --moon-edge:linear-gradient(135deg,#b58c49bf,#d8bc8d78 40%,#c5a76c99 80%,#b08a54a6);
+  --moon-shine:rgba(255,255,255,.56);--moon-shadow:inset 0 1px 0 #fff,0 12px 26px -20px #6a416547;
+  --moon-control:linear-gradient(120deg,#f0dba8,#d7b578);--moon-glass:rgba(248,240,242,.89);
+  --moon-reader:#fffcf8;--moon-fade:#f7f3ec;--moon-empty:#f1e6ee;
+}
+html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed;--muted:inherit;--line:inherit}
+body.inner .bg .orb{opacity:.24}body.inner .bg .cloud{opacity:.14}
+body.inner .sky.on{display:block;opacity:.48}body.hello .sky.on{opacity:.72}
+html[data-theme=light] body.inner .sky.on{opacity:.22}
+body.inner .wrap{max-width:1240px}
+body.inner .view>h1,body.inner .practice-header h1{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
+body.inner :is(.feature-group,.account-group)>h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
+body.inner :is(.wid,.sq,.quick-actions button,.question-entry .wid,.profile-summary,.wish-card){
+  background:var(--moon-panel) padding-box,var(--moon-edge) border-box;
+  border:1px solid transparent;box-shadow:var(--moon-shadow);
+}
+body.inner :is(.wid,.sq,.quick-actions button){backdrop-filter:none;-webkit-backdrop-filter:none}
+body.inner :is(.wid,.sq)::before{display:block;opacity:.4;background:radial-gradient(220px circle at var(--light-x,15%) var(--light-y,0%),var(--moon-shine),transparent 75%);box-shadow:inset 1px 1px 0 #ffecc617,inset -1px -1px 0 #b59ed113}
+body.inner .wid{border-radius:22px;padding:22px;min-height:150px;gap:10px}
+body.inner .wid b{font-size:17px;font-weight:600}
+body.inner .wid .ico{width:30px;height:30px;background-color:var(--gold-2);filter:drop-shadow(0 0 7px #d8b96b24)}
+body.inner .wid>span.destination-arrow{color:var(--gold-2);opacity:.8}
+body.inner .compact-links{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:22px}
+body.inner .compact-links .wid{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:20px;min-height:88px}
+body.inner .compact-links .wid:last-child{border-bottom:0}
+body.inner .compact-links .wid::before{display:none}
+body.inner .compact-links .wid .ico{width:26px;height:26px}
+body.inner :is(.btn,.btn.sm){font-weight:600;border-radius:16px}
+html[data-theme] body.inner .btn:not(.ghost){background:var(--moon-control);border:1px solid #f7e3b54d;color:#1c1430;box-shadow:inset 0 1px 0 #fff7df8c,0 6px 22px -12px #e2bd6970}
+html[data-theme] body.inner .btn.ghost{background:transparent;border-color:var(--control-border);color:var(--text)}
+body.inner :is(.text-action,.back){font-weight:400}
+body.inner .text-action.secondary{color:var(--muted)}
+body.inner :is(input,textarea,select){border-color:var(--line);background:var(--field);box-shadow:inset 0 1px 3px #0000000a}
+body.inner :is(input,textarea,select):focus-visible{border-color:var(--gold);outline-color:var(--focus)}
+
+/* The moon is decorative; the existing calculated phase remains in “Луна и небо”. */
+.compact-brand{display:inline-flex;align-items:baseline;font:300 37px/1.5 Comfortaa,sans-serif;letter-spacing:-1.3px;margin:0 0 12px;color:var(--text)}
+.compact-brand .o-wrap{position:relative;display:inline-block;isolation:isolate}
+.compact-brand .o-glyph{position:relative;z-index:2}
+.compact-brand .o-wrap .mark{position:absolute;left:var(--mx,50%);top:var(--my,50%);width:var(--ms,48px);height:var(--ms,48px);margin:0;transform:translate(-50%,-50%);animation:none;z-index:1;filter:drop-shadow(0 0 10px #d9b86840)}
+.compact-brand .moon-img{width:100%;height:100%;animation:moonbreathe 7s ease-in-out infinite}
+.section-brand{display:none}
+body.inner:not(:has(#v-home.on)) .section-brand{display:inline-flex}
+.widget-brand{display:flex;width:max-content;margin-bottom:14px}
+body.inner #v-home .hdr{margin-bottom:0;position:relative;z-index:2}
+body.inner #v-home .hdr .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+body.inner #h-date{font-size:13px;font-weight:400;letter-spacing:.03em;text-transform:none;color:var(--muted)}
+body.inner #h-acct{width:46px;height:46px;font-weight:600}
+body.inner .acct,body.inner .avatar{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);color:var(--gold-2)}
+.home-intro{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) clamp(160px,22vw,260px);align-items:center;gap:32px;overflow:visible;margin:0;padding:28px 0 36px;min-height:0}
+.home-moon{position:relative;order:2;width:100%;aspect-ratio:1;pointer-events:none;opacity:.94}
+.home-moon img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 24px #d9b86825)}
+body.inner .home-intro .daily-statement{order:1;margin:0;max-width:none;position:relative}
+body.inner .home-intro #h-wish{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:clamp(26px,3vw,36px);font-weight:600;line-height:1.5;letter-spacing:-.01em;margin:0;text-wrap:pretty;overflow-wrap:anywhere;color:var(--text)}
+body.inner #h-set-question{color:var(--gold-2);font-size:15px;margin-top:14px;gap:12px}
+body.inner #h-set-question span{margin-left:8px}
+.today-layout{position:relative;z-index:1}
+body.inner .day-focus{position:relative;isolation:isolate;overflow:hidden;border:1px solid transparent;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:color-mix(in srgb,var(--gold) 58%,transparent);box-shadow:inset 0 1px 0 #fff5d921,0 14px 36px -24px #bd925663;backdrop-filter:none;-webkit-backdrop-filter:none;padding:28px;border-radius:26px}
+body.inner .day-focus::before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(290px circle at var(--light-x,0%) var(--light-y,0%),var(--moon-shine),transparent 74%);pointer-events:none}
+body.inner .ritual-tools{border:0;padding:0;display:flex;align-items:flex-start;flex-direction:column;gap:0;margin-right:86px}
+body.inner .ritual-tools h2{margin:0;font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:25px;font-weight:600;line-height:1.5;letter-spacing:-.01em}
+body.inner .ritual-tools .text-action{font-size:14px;padding:4px 0;min-height:40px}
+body.inner .ritual-practices{max-width:80%;font-size:16px;line-height:1.65;color:var(--muted);margin:14px 0 16px;text-wrap:pretty}
+body.inner #h-progress{font-size:14px;margin:8px 0 18px;color:var(--muted)}
+body.inner #h-progress.ritual-finished{color:var(--ok);font-size:17px;margin-bottom:0}
+body.inner #h-next{width:100%;min-height:52px}
+.ritual-emblem{position:absolute;right:30px;top:30px;width:58px;height:86px;border:1px solid #e7c98da6;border-radius:10px;background:linear-gradient(135deg,#2a2150,#141126 67%);box-shadow:0 5px 16px #0c061342,inset 0 0 0 4px #21182b,inset 0 0 0 5px #c49f5a4d;transform:rotate(9deg);pointer-events:none}
+.ritual-emblem::before{content:'';position:absolute;inset:18px 8px;border:1px solid #e6c78a50;border-radius:50%}
+.ritual-emblem span{position:absolute;width:30px;height:30px;left:12px;top:24px;background:url('/app/assets/moon-hero.png') center/contain no-repeat;filter:drop-shadow(0 0 7px #dbba7538)}
+body.inner .quick-actions{gap:12px;margin-top:16px}
+body.inner .quick-actions button{min-height:98px;font-weight:400;padding:15px 10px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:20px}
+body.inner .quick-actions button b{font-size:15px;font-weight:400;line-height:1.45}
+body.inner .quick-actions .ico{width:26px;height:26px;background-color:var(--gold-2)}
+body.inner #home-sky .moonline{padding:20px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:22px;box-shadow:var(--moon-shadow);gap:14px;margin-bottom:12px}
+body.inner #home-sky .moon-sm{width:50px;height:50px;flex-basis:50px}
+body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:16px;line-height:1.6}
+body.inner #home-sky .moonline small{font-size:13px;line-height:1.6}
+
+/* Reading surfaces are dense and quiet, with a warm edge rather than nested glass. */
+body.inner .wg,body.inner .wg-head{background:var(--sheet)}
+body.inner .wg{border-color:var(--line);box-shadow:0 24px 80px #0005,inset 0 1px 0 #fff3d712}
+body.inner .wg-head{border-color:var(--line)}
+body.inner .wg-head h2{font-weight:600;font-size:24px}
+body.inner .wpane .practice-question{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:25px!important;font-weight:600;line-height:1.6}
+body.inner .answer-actions{background:var(--sheet)}
+body.inner #journal-card .answer-actions{background:var(--bg)}
+body.inner .timeline-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:14px;box-shadow:inset 0 1px 0 #fff2d20a}
+body.inner .timeline-kind{font-size:13px;color:var(--gold-2)}
+body.inner .timeline-day{margin:30px 0 14px}
+body.inner .timeline-empty{background:var(--moon-reader);border:1px solid var(--line);box-shadow:var(--moon-shadow)}
+body.inner .wish-picture:not(:has(img)){background:var(--moon-empty);border-bottom:1px solid var(--line)}
+body.inner :is(.hb,.practice-card,.ritual-option){border-color:var(--line);background:var(--moon-reader)}
+body.inner :is(.emotion-family,.quick-mood){border-color:var(--line);background:var(--surface)}
+body.inner :is(.emotion-family.on,.quick-mood.on,.ritual-option[aria-pressed=true]){background:var(--selected);border-color:var(--gold)}
+body.inner .hb.on{border-color:color-mix(in srgb,var(--ok) 38%,transparent)}
+body.inner :is(.timeline-filters [aria-pressed=true],.chip.on,.chip[aria-pressed=true]){color:var(--gold-2);border-color:var(--gold);background:var(--selected)}
+html[data-theme] body.inner .app-nav{background:radial-gradient(180px circle at var(--light-x,15%) var(--light-y,0%),var(--moon-shine),transparent 80%),var(--moon-glass);border:1px solid var(--line);box-shadow:inset 0 1px 0 #fff3d92b,inset 0 -1px 0 #fff3d910,0 12px 34px #10091940;backdrop-filter:blur(24px) saturate(1.15);-webkit-backdrop-filter:blur(24px) saturate(1.15);border-radius:25px}
+html[data-theme] body.inner .app-nav button{font-size:14px;font-weight:400;color:var(--muted)}
+html[data-theme] body.inner .app-nav button.on{color:var(--gold-2);background:linear-gradient(130deg,#ebce9321,#e5bd7608);box-shadow:inset 0 1px 0 #efd29a25}
+html[data-theme] body.inner .app-nav .on .ico{background-color:var(--gold-2)}
+html[data-theme] body.inner :is(.rem-summary,.wg-x){background:var(--moon-glass);border-color:var(--line);box-shadow:inset 0 1px 0 #fff0d31a;color:var(--muted)}
+body.inner .theme-option.light>span{background:linear-gradient(135deg,#fffcf7,#eadee8)}
+body.inner .theme-option.dark>span{background:linear-gradient(135deg,#141126,#0b0a14)}
+body.inner .theme-option.system>span{background:linear-gradient(90deg,#f7f3ec 50%,#141126 50%)}
+html[data-theme=light] .home-moon{opacity:.55}
+body:not(.inner) :is(#v-onb,#v-login) .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 0 #f6ddb723,0 18px 42px #0d081a54;background:linear-gradient(135deg,#1d1738,#141126)}
+
+@media(min-width:900px){
+  body.inner .wrap{padding-top:38px}
+  .today-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:36px}
+  .home-intro{padding-top:28px;padding-bottom:40px}
+  body.inner .day-focus{padding:30px}
+  body.inner .today-side>.feature-group:first-child{margin-top:0}
+  body.inner .today-side>.feature-group:first-child>h2{margin-top:0}
+}
+@media(max-width:899px){
+  .home-intro{margin:0;padding:26px 0 30px;grid-template-columns:minmax(0,1fr) 160px;gap:24px}
+  body.inner .home-intro #h-wish{font-size:29px;line-height:1.5}
+  body.inner .today-side{margin-top:32px}
+}
+@media(max-width:599px){
+  body.inner .wrap{padding-inline:22px;padding-top:calc(30px + env(safe-area-inset-top))}
+  .home-intro{margin:0;padding-inline:0;grid-template-columns:minmax(0,1fr) 100px;gap:14px}
+  body.inner .home-intro #h-wish{font-size:27px}
+  body.inner .day-focus{padding:24px}
+  body.inner .ritual-tools h2{font-size:24px}
+  body.inner .ritual-practices{max-width:95%;font-size:15px}
+  .ritual-emblem{right:24px;top:25px;width:52px;height:78px}
+  .ritual-emblem span{left:10px;top:22px;width:28px;height:28px}
+  body.inner .wid{padding:19px}
+  body.inner .compact-links .wid{padding:19px}
+  body.inner .timeline-entry{padding:20px}
+}
+@media(max-width:370px){
+  body.inner .wrap{padding-inline:16px}
+  .home-intro{grid-template-columns:minmax(0,1fr) 82px;gap:12px}
+  body.inner .home-intro #h-wish{font-size:24px}
+  body.inner .day-focus{padding:20px!important}
+  body.inner .ritual-tools{margin-right:64px}
+  body.inner .ritual-tools h2{font-size:22px}
+  .ritual-emblem{right:20px;top:24px;width:45px;height:69px}
+  .ritual-emblem span{left:8px;top:20px;width:24px;height:24px}
+  body.inner .quick-actions{grid-template-columns:1fr;gap:10px}
+  body.inner .quick-actions button{min-height:56px}
+  body.inner .wid{min-height:135px}
+  body.inner .compact-links .wid{min-height:80px}
+  body.inner #home-sky .moonline{padding:16px;gap:10px}
+  body.inner #home-sky .moon-sm{width:38px;height:38px;flex-basis:38px}
+}
+@media(hover:hover) and (pointer:fine){
+  body.inner :is(.wid,.quick-actions button):hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 14px 30px -20px #dab57670;transform:translateY(-2px)}
+  body.inner .wid:hover::before{opacity:1}
+  body.inner .compact-links .wid:hover{background:color-mix(in srgb,var(--gold) 6%,transparent);border-color:var(--line);box-shadow:none;transform:none}
+  body.inner :is(.text-action,.back):hover{color:var(--gold-2)}
+}
+@media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-actions button):hover{transform:none}body.inner :is(.wid,.day-focus)::before{background:none}}
+@media(prefers-reduced-transparency:reduce){html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+/* The welcome composition keeps the approved copy, with a smaller moon and one lit glass action. */
+body.hello .heromoon{width:clamp(300px,68vw,620px);height:auto;aspect-ratio:1;left:auto;right:-70px;top:50%;transform:translateY(-50%);opacity:.94}
+#v-hello .cta .btn{position:relative;isolation:isolate;border:1px solid rgba(240,215,154,.68);border-radius:999px;color:#f5f2ea;background:linear-gradient(135deg,rgba(240,215,154,.24),rgba(217,184,104,.08) 50%,rgba(240,215,154,.15));box-shadow:inset 0 1px 0 #fff6dd80,inset 0 -1px 0 #b98f3e44,0 8px 28px -10px #d9b86855;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+#v-hello .cta .btn:hover{border-color:#f0d79a;box-shadow:inset 0 1px 0 #fff6dd99,0 8px 32px -8px #d9b86877}
+@media(min-width:900px){body.hello .heromoon{width:clamp(390px,32vw,500px);right:max(36px,calc((100vw - 1180px)/2));top:51%}}
+@media(max-width:599px){body.hello .heromoon{width:320px;right:-120px;top:36%;opacity:.70}.home-moon{align-self:start;margin-top:8px}}
+@media(max-height:600px) and (min-width:600px){body.hello .heromoon{width:330px;right:0}}
+@media(prefers-reduced-motion:reduce){.compact-brand .moon-img{animation:none!important}}
+@media(prefers-reduced-transparency:reduce){#v-hello .cta .btn{background:#302742;backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+#v-hello .gift b{font-size:18px;font-weight:600;color:#f5f2ea;line-height:1.5}
+@media(min-width:900px){#v-hello .gift b{font-size:20px}}

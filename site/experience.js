@@ -1,5 +1,5 @@
 /* Reading, persistent preferences and full practice pages share the existing data and widgets. */
-const XP={prefs:{theme:'system',ritual:['card','mood','gratitude']},scroll:{},page:null,returnView:'home',returnFocus:null,ritualDraft:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
+const XP={prefs:{theme:'dark',ritual:['card','mood','gratitude']},scroll:{},page:null,returnView:'home',returnFocus:null,ritualDraft:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
 const FULL_PRACTICES=new Set(['journal','habits','askesis']);
 const RITUALS={card:['Карта дня','Открыть карту дня'],mood:['Настроение дня','Отметить настроение'],habits:['Дневник привычек','Отметить привычки'],gratitude:['Дневник благодарности','Записать благодарность'],tone:['Вопрос дня','Ответить на вопрос дня'],journal:['Дневник','Записать мысль']};
 function activeView(){return document.querySelector('.view.on')?.id.slice(2)||'home';}
@@ -21,7 +21,7 @@ function openPractice(key,fromHistory=false){
   $('practice-title').textContent=WIDGETS[key][1];$('practice-body').appendChild($('w-'+key));
   const feature=WIDGET_REMINDERS[key];$('practice-tools').innerHTML=feature?`<button class="text-action rem-summary" type="button" onclick="openPracticeSettings('${feature}')">Уведомления →</button>`:'';
   if(feature)refreshPracticeReminder();
-  loadWidgetContent(key);restoreScroll('practice:'+key);$('practice-back').focus({preventScroll:true});
+  window.refreshMoonLogos?.();loadWidgetContent(key);restoreScroll('practice:'+key);$('practice-back').focus({preventScroll:true});
 }
 function practiceBack(){if(!XP.page)return;if(history.state?.lunPractice)history.back();else{const v=XP.returnView;go(v);XP.returnFocus?.focus({preventScroll:true});}}
 window.addEventListener('popstate',e=>{
@@ -39,6 +39,7 @@ function applyTheme(mode){
   const theme=mode==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;
   document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;
   document.querySelector('meta[name="theme-color"]').content=theme==='light'?'#f7f3ec':'#0b0a14';
+  window.LunarioSky?.refresh();
   try{localStorage.setItem('lun_theme',mode);}catch{}
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(XP.prefs.theme==='system')applyTheme('system');});
