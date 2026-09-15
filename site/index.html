@@ -36,6 +36,10 @@
   --bg:#0b0a14;--violet:#6d5bd0;--violet-2:#e9c77e;--text:#f5f2ea;--muted:#b9b2cf;
   --line:rgba(245,242,234,.09);--card:rgba(245,242,234,.05);--card-2:rgba(245,242,234,.08);
   --gold:#d9b868;--gold-2:#f0d79a;--ok:#9fe6bd;--warn:#ffb3b3;
+  /* роли текста: основной, второстепенный (подписи к результату), приглушённый, едва заметный, акцентный */
+  --text-2:#ded8ee;--faint:#8f87ad;--strong:#fff;
+  /* шкала отступов: всё вертикальное — из неё */
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;
   --sp:cubic-bezier(.2,.85,.3,1);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -84,8 +88,8 @@ h2{font-size:22px;line-height:1.2}
 p{margin:0;color:var(--muted);line-height:1.62;font-size:15.5px}
 .eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:var(--gold);display:block}
 .card{background:var(--glass-bg);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:var(--glass-shadow);backdrop-filter:none;-webkit-backdrop-filter:none}
-.card+.card{margin-top:12px}
-.sec{margin-top:26px}
+.card+.card{margin-top:var(--s3)}
+.sec{margin-top:var(--s5)}
 .row{display:flex;align-items:center;gap:12px}
 .grow{flex:1;min-width:0}
 .btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:62px;padding:0 20px;border:0;border-radius:999px;
@@ -98,16 +102,16 @@ p{margin:0;color:var(--muted);line-height:1.62;font-size:15.5px}
 .field{display:grid;gap:7px;margin-bottom:14px}
 .field label{font-size:12.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
 input,textarea{width:100%;min-height:54px;border-radius:16px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);
-  padding:14px 16px;color:#fff;font:inherit;font-size:16px;outline:none}
+  padding:14px 16px;color:var(--strong);font:inherit;font-size:16px;outline:none}
 textarea{min-height:104px;resize:none;line-height:1.55}
-input:focus,textarea:focus{border-color:#d9b868;box-shadow:0 0 0 4px rgba(217,184,104,.15)}
-input::placeholder,textarea::placeholder{color:#8f87ad}
+input:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(217,184,104,.15)}
+input::placeholder,textarea::placeholder{color:var(--faint)}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chips.flow{flex-wrap:wrap;overflow:visible}
 .chips.flow .chip{font-size:13.5px;padding:10px 13px}
 .chip{flex:0 0 auto;padding:11px 15px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.05);
-  color:#f5f2ea;font:inherit;font-size:14px;cursor:pointer}
+  color:var(--text);font:inherit;font-size:14px;cursor:pointer}
 .chip.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55)}
 .view{display:none;animation:in .3s var(--sp)}
 .view.on{display:block}
@@ -118,51 +122,48 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
 .dc-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .75s var(--sp)}
 .daycard.flip .dc-in{transform:rotateY(180deg)}
 .dc-f{position:absolute;inset:0;backface-visibility:hidden;border-radius:22px;display:grid;place-items:center;padding:18px;text-align:center}
+.dc-back img{filter:drop-shadow(0 6px 22px rgba(217,184,104,.35))}
 .dc-back{background:linear-gradient(150deg,#2a2150,#0b0a14);border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 70px rgba(11,10,20,.7)}
 .dc-front{transform:rotateY(180deg);background:linear-gradient(160deg,#1d1738,#0b0a14);border:1px solid rgba(217,184,104,.45);box-shadow:0 30px 70px rgba(11,10,20,.65)}
 .glow{animation:breathe 5s ease-in-out infinite}
 @keyframes breathe{0%,100%{filter:drop-shadow(0 14px 34px rgba(217,184,104,.24))}50%{filter:drop-shadow(0 18px 52px rgba(240,215,154,.38))}}
 /* настроение */
-.mood{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 2px 9px;border-radius:16px;border:1px solid var(--line);
-  background:rgba(255,255,255,.05);color:var(--muted);font:inherit;font-size:10.5px;cursor:pointer;transition:transform .16s var(--sp),background .2s,color .2s}
-.mood.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55);color:#fff}
 .bar{height:7px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden;flex:1}
 .bar i{display:block;height:100%;border-radius:99px;width:0;background:linear-gradient(90deg,#b98f3e,#f0d79a);transition:width .9s var(--sp)}
 .barrow{display:flex;align-items:center;gap:10px;font-size:13.5px;margin-top:9px}
 .barrow .l{width:92px;color:var(--muted)}
-.barrow .v{width:34px;text-align:right;font-size:12px;color:#b9b2cf}
+.barrow .v{width:34px;text-align:right;font-size:12px;color:var(--muted)}
 .msg{font-size:14px;line-height:1.5;margin-top:10px;min-height:1px}
-.msg.ok{color:var(--ok)}.msg.err{color:var(--warn)}
-.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.07);
-  border:1px solid var(--line);font-size:12.5px;color:#d3cde6}
+.msg.err{color:var(--warn)}
 .big{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:52px;line-height:1;text-align:center;color:var(--gold);margin:6px 0}
-.list{display:grid;gap:9px}
+.list{display:grid;gap:var(--s2)}
 .item{padding:14px 16px;border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid var(--line);box-shadow:inset 0 1px rgba(255,255,255,.09),inset 0 -1px rgba(3,2,10,.2);backdrop-filter:none;-webkit-backdrop-filter:none}
 .item b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
-.item small{color:#8f87ad;font-size:12.5px}
+.item small{color:var(--faint);font-size:12.5px}
 .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:300;
   background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;transition:.3s var(--sp);pointer-events:none;max-width:90vw}
 .toast.on{opacity:1;transform:translate(-50%,0)}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.split{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:var(--s4) 0 var(--s3)}
 .ring{display:flex;flex-direction:column;align-items:center;gap:5px}
 .ring svg{transform:rotate(-90deg)}
+.ring .val{font-size:12px;color:var(--violet-2)}.ring .lbl{font-size:10.5px;color:var(--muted)}
 .ring circle.v{stroke-dasharray:151;stroke-dashoffset:151;transition:stroke-dashoffset 1.1s var(--sp)}
 .sug{position:relative}
-.sug-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:#1d1738;border:1px solid var(--line);
+.sug-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:var(--surface);border:1px solid var(--line);
   border-radius:16px;overflow:hidden;box-shadow:0 22px 60px rgba(11,10,20,.7);display:none}
 .sug-list.on{display:block}
 .sug-list button{display:block;width:100%;text-align:left;padding:13px 16px;background:none;border:0;border-bottom:1px solid var(--line);
   color:var(--text);font:inherit;font-size:15px;cursor:pointer}
 .sug-list button:last-child{border-bottom:0}
 .sug-list button:hover,.sug-list button.hl{background:rgba(217,184,104,.14)}
-.sug-list small{display:block;color:#8f87ad;font-size:12.5px;margin-top:2px}
-.geo{font-size:12.5px;color:#8f87ad;margin-top:6px;min-height:1px}
-.row a{color:#f0d79a;text-decoration:underline;text-underline-offset:3px}
+.sug-list small{display:block;color:var(--faint);font-size:12.5px;margin-top:2px}
+.geo{font-size:12.5px;color:var(--faint);margin-top:6px;min-height:1px}
+.consent a{color:var(--gold-2);text-decoration:underline;text-underline-offset:3px}
 .geo b{color:var(--violet-2);font-weight:600}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
-.back{display:inline-flex;align-items:center;gap:7px;font-size:14.5px;color:#f0d79a;background:none;
+.back{display:inline-flex;align-items:center;gap:7px;font-size:14.5px;color:var(--gold-2);background:none;
   border:0;padding:8px 0;cursor:pointer;font-family:inherit;min-height:44px}
 /* анкета: без прокрутки на обычном телефоне — шапка в одну строку, поля ниже */
 .onb-head{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;padding:2px 0 8px;text-align:left}
@@ -174,7 +175,6 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
 #v-onb .field label{font-size:11.5px}
 #v-onb input{min-height:44px;padding:10px 14px;border-radius:13px}
 #v-onb .geo{margin:3px 0 0;font-size:11.5px;line-height:1.3}
-#v-onb #o-form>label.row{margin:2px 0 10px!important}
 #v-onb #o-go{min-height:54px}
 /* «уже пользовались» — строкой под анкетой, а не отдельной карточкой */
 #v-onb #o-back{background:none;border:0;box-shadow:none;padding:4px 0 0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;text-align:center}
@@ -185,8 +185,6 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
 #v-onb #o-auth .field,#v-onb #o-auth .btn:not(.sm),#v-onb #o-auth .msg{flex:1 1 100%}
 #v-onb #o-auth .field{text-align:left}
 #v-onb.on{margin-bottom:-16px}   /* нижний отступ обёртки не должен давать пустую прокрутку */
-.linkline button{background:none;border:0;color:#f0d79a;font:inherit;text-decoration:underline;
-  text-underline-offset:3px;cursor:pointer;padding:4px}
 
 /* ── iOS-оболочка (App Store) ──
    Правило 3.1.1 запрещает внешние оплаты и цены на цифровое внутри приложения,
@@ -196,27 +194,25 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
 
 /* ── натальная карта ── */
 .nt{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:8px}
-.nt th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#8f87ad;text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
+.nt th{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
 .nt td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
-.nt td small{color:#8f87ad}
+.nt td small{color:var(--faint)}
 
 /* ── чат с поддержкой ── */
-.dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:#f0d79a;box-shadow:0 0 0 3px rgba(11,10,20,.9)}
+.dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px rgba(11,10,20,.9)}
 .dot[hidden]{display:none}
 .sup-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sup-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
-.sup-item b{font-size:15px;display:block}.sup-item small{color:#8f87ad;font-size:12.5px}
-.sup-item .badge{flex:0 0 auto;font-size:12px;font-weight:700;color:#1c1430;background:#f0d79a;border-radius:999px;padding:2px 8px}
+.sup-item b{font-size:15px;display:block}.sup-item small{color:var(--faint);font-size:12.5px}
+.sup-item .badge{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--bg);background:var(--gold-2);border-radius:999px;padding:2px 8px}
 .thread{display:flex;flex-direction:column;gap:8px;max-height:46dvh;overflow:auto;margin-top:12px;padding:12px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
 .thread .m{max-width:84%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
 .thread .m.user{align-self:flex-end;background:rgba(217,184,104,.18);border:1px solid rgba(217,184,104,.35)}
 .thread .m.support{align-self:flex-start;background:rgba(255,255,255,.08)}
-.thread .m small{display:block;color:#8f87ad;font-size:12px;margin-bottom:3px}
-.sup-status{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:#cdc6e2}
+.thread .m small{display:block;color:var(--faint);font-size:12px;margin-bottom:3px}
+.sup-status{display:inline-block;padding:2px 9px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
 
 /* ── вход в приложение ── */
-/* Главная умещается в экран; вход прокручивается, если высоты окна недостаточно. */
-body.fixed .wrap{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 body.hello .wrap{max-width:1180px;min-height:100dvh;padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))}
 #v-hello.on{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
 #v-hello .hello-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -231,12 +227,12 @@ body.hello .wrap{max-width:1180px;min-height:100dvh;padding:calc(24px + env(safe
 #v-hello .hello-content h2{font-size:clamp(25px,6.8vw,32px);line-height:1.2;font-weight:500;text-wrap:balance}
 #v-hello .gifts{margin:28px 0 0;padding:0;list-style:none;display:grid;gap:22px}
 #v-hello .gift{display:flex;align-items:center;gap:16px}
-#v-hello .gift .ico{width:24px;height:24px;flex:0 0 24px;color:#c9c1dc}
+#v-hello .gift .ico{width:24px;height:24px;flex:0 0 24px;color:var(--muted)}
 #v-hello .gift b{display:block;font-size:17px;font-weight:500;line-height:1.4;color:var(--text)}
-#v-hello .gift small{display:block;font-size:14.5px;line-height:1.5;color:#c6bfd4;margin-top:3px}
+#v-hello .gift small{display:block;font-size:14.5px;line-height:1.5;color:var(--muted);margin-top:3px}
 #v-hello .cta{margin-top:34px}
 #v-hello .cta .btn{min-height:58px;padding:15px 20px;background:linear-gradient(115deg,#eddaa7,#d9bd7c);box-shadow:0 6px 24px rgba(217,184,104,.12);font-weight:600}
-#v-hello .trust{max-width:440px;font-size:13px;line-height:1.6;color:#b9b2cf;text-wrap:balance}
+#v-hello .trust{max-width:440px;font-size:13px;line-height:1.6;color:var(--muted);text-wrap:balance}
 /* Светлая сторона Луны остаётся справа, вне основной текстовой колонки. */
 .heromoon{position:absolute;display:none;pointer-events:none;width:760px;height:760px;right:-460px;top:calc(50% - 380px)}
 body.hello .heromoon{display:block}
@@ -254,27 +250,8 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
   #v-hello .gifts{margin-top:22px;gap:18px}
   #v-hello .cta{margin-top:28px}
 }
-/* ── главная: один экран, без прокрутки — квадраты по центру, мелкое внизу ── */
-#v-home.on{display:flex;flex-direction:column;min-height:calc(100dvh - 46px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
-@media(max-height:640px){
-  .sqs{margin-top:8px;gap:8px}
-  .sq{font-size:13.5px;gap:8px;border-radius:18px}
-  .mini{margin-top:8px;gap:6px}
-  .mini button{padding:6px 3px 5px;gap:3px;font-size:11px}
-  .moonline{margin-top:8px}
-}
-.sq{grid-column:span 2;aspect-ratio:1/1.18;max-height:calc((100dvh - 420px)/2);width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;
-  border-radius:24px;background:var(--glass-bg);border:1px solid rgba(217,184,104,.36);
-  box-shadow:var(--glass-shadow),0 14px 36px -18px rgba(217,184,104,.45);color:var(--text);font:inherit;font-size:15px;font-weight:650;line-height:1.15;text-align:center;
-  padding:8px 4px;cursor:pointer;transition:transform .16s var(--sp)}
-.sq .ico{width:42px;height:42px}
-.mini button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 3px 8px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--line);
-  color:var(--muted);font:inherit;font-size:10.5px;line-height:1.2;text-align:center;cursor:pointer}
-.mini button .ico{width:22px;height:22px}
-.mini button.stub .ico{background:#8f87ad}
-/* ── главная (старые правила) ── */
 .acct{position:absolute;right:0;top:0;width:42px;height:42px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--gold);font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:grid;place-items:center}
-.news-dot{position:absolute;right:1px;top:1px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px #17132a,0 0 12px rgba(240,215,154,.55)}
+.news-dot{position:absolute;right:1px;top:1px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px var(--bg),0 0 12px rgba(240,215,154,.55)}
 .account-group{margin-top:24px}.account-group>.eyebrow{margin-bottom:10px}.account-group .wids{margin-top:0}
 .journal-card.saved{animation:journal-save .62s var(--sp)}
 @keyframes journal-save{0%{transform:none}45%{transform:translateY(8px) scale(.985);border-color:rgba(217,184,104,.5)}100%{transform:none}}
@@ -289,11 +266,10 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 @media(max-width:600px){
   .cabs{width:42px;padding:0;justify-content:center;font-size:0;gap:0}
   .cabs::before{content:'';width:20px;height:20px;background:var(--gold);-webkit-mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat;mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat}
-  body.staff .sq{max-height:calc((100dvh - 452px)/2)}
 }
 .moonline{display:flex;align-items:center;gap:12px;margin-top:14px;background:none;border:0;padding:0;color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
 .moonline p{font-size:15.5px;color:var(--text)}
-.moonline small{display:block;color:#8f87ad;font-size:12.5px;margin-top:3px}
+.moonline small{display:block;color:var(--faint);font-size:12.5px;margin-top:3px}
 .ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.spark{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
 .ico.star{--m:url(/app/assets/brand/icons/spark.svg)}
@@ -305,27 +281,11 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .wid .ico{width:26px;height:26px;margin-bottom:4px}
 .wid b{display:block;font-size:14.5px;font-weight:650;color:var(--text);line-height:1.3}
 .wid span{display:block;font-size:12.5px;color:var(--muted);line-height:1.45}
-.wid.stub{border-style:dashed}
-.wid.stub .ico{background:#8f87ad}
-.wid.stub span{color:#8f87ad}
-.rows{display:grid;gap:9px;margin-top:24px}
+.rows{display:grid;gap:var(--s2);margin-top:var(--s5)}
 .rowbtn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
-.rowbtn .ico{width:22px;height:22px;background:#b9b2cf}
+.rowbtn .ico{width:22px;height:22px;background:var(--muted)}
 .rowbtn.warn{color:var(--warn)}.rowbtn.warn .ico{background:var(--warn)}
-.stubtext{color:#8f87ad;font-size:15.5px;text-align:center;margin-top:44px}
-/* настроение — большими плитками в виджете */
-.mood-choice svg,.mood-choice .ico{width:28px;height:28px;flex:0 0 28px}
-.mood-choice.on{border-color:rgba(217,184,104,.62);background:rgba(217,184,104,.12)}
-/* «Что вас сегодня беспокоит??»: вопрос раскрывается в решения */
-.acc-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-radius:18px;
-  background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
-.acc-item.on .acc-head{border-color:rgba(217,184,104,.45)}
-.acc-item.on .acc-head svg{transform:rotate(180deg);color:var(--gold)}
-.acc-item.on .acc-body{display:block;animation:in .3s var(--sp)}
-.acc-opt{display:flex;align-items:center;gap:12px;width:100%;margin-top:8px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);
-  background:rgba(255,255,255,.04);color:var(--text);font:inherit;font-size:14.5px;cursor:pointer;text-align:left}
-.acc-opt .ico{width:22px;height:22px}
-.acc-opt.on{background:rgba(217,184,104,.14);border-color:rgba(217,184,104,.5)}
+.stubtext{color:var(--faint);font-size:15.5px;text-align:center;margin-top:44px}
 /* виджет: на телефоне во весь экран, на широком — панель по центру */
 .wg-bg{position:fixed;inset:0;z-index:150;display:none;background:rgba(11,10,20,.8);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .wg-bg.on{display:block}
@@ -338,18 +298,17 @@ body.wg-open{overflow:hidden}
 body.inner{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 .app-nav{position:fixed;z-index:120;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:62px;padding:5px;display:none;grid-template-columns:repeat(4,1fr);gap:3px;border:1px solid rgba(255,255,255,.13);border-radius:23px;background:rgba(19,16,34,.78);box-shadow:inset 0 1px rgba(255,255,255,.15),0 16px 48px rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
 body.inner .app-nav{display:grid}
-.app-nav button{border:0;border-radius:18px;background:transparent;color:#938ba9;font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
-.app-nav button .ico{width:21px;height:21px;background:#938ba9}
+.app-nav button{border:0;border-radius:18px;background:transparent;color:var(--faint);font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+.app-nav button .ico{width:21px;height:21px;background:var(--faint)}
 .app-nav button.on{background:rgba(255,255,255,.08);color:var(--text);box-shadow:inset 0 1px rgba(255,255,255,.1)}
 .app-nav button.on .ico{background:var(--gold-2)}
 #v-ask>.back,#v-history>.back,#v-account>.back{display:none}
 .day-focus{margin-top:22px;padding:22px;text-align:left;width:100%;color:inherit;font:inherit;cursor:pointer}
-.day-focus .next{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px;color:var(--gold-2);font-weight:650}
 .quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
 .quick-actions button{min-height:104px;padding:13px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px solid var(--line);border-radius:20px;background:var(--glass-bg);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;backdrop-filter:none;-webkit-backdrop-filter:none}
 .quick-actions .ico{width:27px;height:27px}
 .danger-zone{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
-.danger-zone>.eyebrow{color:#b9b2cf;margin-bottom:10px}
+.danger-zone>.eyebrow{color:var(--muted);margin-bottom:10px}
 /* на телефоне навигации внизу нет: разделы открываются с главной */
 /* ── широкий экран (≥900px): два формата, а не растянутый телефон. Контейнер во всю ширину до 1180px,
    плитки раскладываются по ширине; формы (анкета, вход) остаются колонкой — им ширина ни к чему ── */
@@ -360,7 +319,7 @@ body.inner .app-nav{display:grid}
   #v-onb.on,#v-login.on{max-width:520px;margin:0 auto}
   .chip:hover{border-color:rgba(217,184,104,.45)}
   .btn.ghost:hover{background:rgba(255,255,255,.1)}
-  .wid:hover,.sq:hover,.mini button:hover{border-color:rgba(217,184,104,.6)}
+  .wid:hover{border-color:rgba(217,184,104,.6)}
   #t-install{display:none!important}
   /* вход: шапка на всю ширину, содержание слева, Луна справа */
   body.hello .wrap{padding:36px 48px}
@@ -368,17 +327,9 @@ body.inner .app-nav{display:grid}
   #v-hello .hero{font-size:40px}
   .heromoon{width:1000px;height:1000px;right:auto;left:calc(50% - 100px);top:calc(50% - 500px)}
   body.hello .bg::after{background:linear-gradient(90deg,rgba(11,10,20,.6),rgba(11,10,20,.4) 40%,transparent 75%)}
-  /* главная: шапка слева, шесть квадратов и шесть плиток — по ширине экрана, блок по центру высоты */
-  #v-home.on{max-width:none;margin:0;min-height:calc(100dvh - 92px)}
   #v-home h1{font-size:34px;max-width:760px}
   #v-home .row.hdr{gap:12px;align-items:flex-start}
   .moonline{max-width:560px;margin-top:18px}
-  #v-home .sqs{max-width:none;flex:0 0 auto;align-content:start;margin-top:auto;padding-top:28px;grid-template-columns:repeat(3,1fr);gap:16px}
-  #v-home .sq{grid-column:auto;aspect-ratio:auto;max-height:none;min-height:150px;font-size:16px;gap:14px;border-radius:22px}
-  #v-home .sq .ico{width:44px;height:44px}
-  #v-home .mini{margin-top:16px;margin-bottom:auto;padding-bottom:12px;grid-template-columns:repeat(3,1fr);gap:12px}
-  #v-home .mini button{padding:16px 10px 14px;font-size:13px;gap:8px;border-radius:18px}
-  #v-home .mini button .ico{width:24px;height:24px}
   /* разделы: плитки по ширине, сколько влезает по 230px; последний ряд растягивается */
   .wids{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:28px}
   .wid{padding:20px 18px 18px;min-height:150px;gap:8px;border-radius:20px}
@@ -390,43 +341,38 @@ body.inner .app-nav{display:grid}
   .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,92vw);max-height:88vh;border-radius:28px;
     background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
 }
-@media(min-width:1180px){
-  #v-home .sqs{grid-template-columns:repeat(6,1fr)}
-  #v-home .sq{aspect-ratio:1/1.02;min-height:0}
-  #v-home .mini{grid-template-columns:repeat(6,1fr)}
-}
 @media(min-width:1400px){.heromoon{width:1200px;height:1200px;left:calc(50% - 120px);top:calc(50% - 600px)}}
 /* ── карта дня: иллюстрация аркана на лицевой стороне ── */
 .daycard{width:196px;height:368px}
 .dc-front{padding:0;overflow:hidden;border:1px solid rgba(217,184,104,.55)}
 .dc-front img{width:100%;height:100%;object-fit:cover;display:block;border-radius:22px}
 @media(min-width:900px){.daycard{width:224px;height:420px}}
-.kw{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:#cdc6e2;margin-top:7px;line-height:1.5}
-.today{color:#fff;font-size:15px;margin-bottom:8px}
+.kw{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:7px;line-height:1.5}
+.today{color:var(--strong);font-size:15px;margin-bottom:8px}
 .card p+p{margin-top:10px}
 .card h3{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
 .card h3:first-child,.card p+h3:first-of-type{margin-top:0}
 .card>h3:first-child{margin-top:0}
-.ask-q{border-color:rgba(217,184,104,.4)}.ask-q p{color:#fff;font-size:16.5px;line-height:1.5}
+.card.memory{border-color:rgba(217,184,104,.35)}
 /* сворачиваемое «читать полностью» */
 .ln-topics{margin:10px 0 4px}
 .ln-topics .chip{font-size:13.5px;padding:9px 13px}
 .ln-topics .chip.meta{opacity:.85}
-.ln-all{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:13.5px;color:#8f87ad}
-.ln-all button{background:none;border:0;padding:6px 0;color:#f0d79a;font:inherit;font-size:13.5px;cursor:pointer;min-height:36px}
+.ln-all{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:13.5px;color:var(--faint)}
+.ln-all button{background:none;border:0;padding:6px 0;color:var(--gold-2);font:inherit;font-size:13.5px;cursor:pointer;min-height:36px}
 .hbars .l{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
 .hbars .l:last-child{border-bottom:0}
 .hbars b{font-weight:600;white-space:nowrap;color:var(--gold)}
 .ln-sec{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
 .ln-hidden{margin-top:6px}
 .ln-hidden details{border-top:1px solid var(--line)}
-.ln-hidden summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:11px 0;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#8f87ad;font-weight:800}
+.ln-hidden summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:11px 0;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:800}
 .ln-hidden summary::-webkit-details-marker{display:none}
-.ln-hidden summary::after{content:'+';margin-left:auto;color:#f0d79a;font-size:16px;letter-spacing:0}
+.ln-hidden summary::after{content:'+';margin-left:auto;color:var(--gold-2);font-size:16px;letter-spacing:0}
 .ln-hidden details[open] summary::after{content:'–'}
 .ln-hidden details[open] summary{color:var(--gold)}
-.more{margin-top:12px}
-.morebtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:12px 0 2px;color:#f0d79a;font:inherit;font-size:14px;cursor:pointer}
+.more{margin-top:var(--s3)}
+.morebtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:12px 0 2px;color:var(--gold-2);font:inherit;font-size:14px;cursor:pointer}
 .morebtn svg{transition:transform .25s var(--sp)}
 .more.on .morebtn svg{transform:rotate(180deg)}
 .morebody{display:none;padding-top:8px}
@@ -434,9 +380,9 @@ body.inner .app-nav{display:grid}
 .morebody h3{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
 .more.on .morebody{display:block;animation:in .3s var(--sp)}
 /* действия под результатом: второстепенные, не спорят с основным */
-.resrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.resrow{display:flex;gap:var(--s2);justify-content:center;flex-wrap:wrap;margin-top:var(--s4)}
 .resrow .btn.sm{min-height:40px;font-size:13.5px;padding:0 16px;font-weight:600}
-.resrow .btn.ghost.sm{color:#d3cde6}
+.resrow .btn.ghost.sm{color:var(--muted)}
 /* руна: камень из книги */
 .stone{width:150px;height:150px;border-radius:26px;margin:4px auto 10px;display:block;box-shadow:0 18px 40px -16px rgba(0,0,0,.75)}
 /* схема расклада: где лежит какая карта или руна */
@@ -444,23 +390,24 @@ body.inner .app-nav{display:grid}
 .lay .c{position:relative;display:grid;place-items:center}
 .lay .c button{position:relative;background:none;border:0;padding:0;cursor:pointer;display:block}
 .lay .thumb{width:58px;height:109px;border-radius:8px;object-fit:cover;display:block;border:1px solid rgba(217,184,104,.35);box-shadow:0 8px 18px -8px rgba(0,0,0,.8)}
-.lay .num{position:absolute;top:-7px;left:-7px;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#1c1430;font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.lay .num{position:absolute;top:-7px;left:-7px;width:20px;height:20px;border-radius:50%;background:var(--gold);color:var(--bg);font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .lay .c.p2{z-index:2}.lay .c.p2 .thumb{transform:rotate(90deg);opacity:.94}.lay .c.p2 .num{top:auto;bottom:-7px;left:auto;right:-7px}
 .glyph{width:58px;height:58px;border-radius:14px;background:linear-gradient(150deg,#2a2150,#0b0a14);border:1px solid rgba(217,184,104,.4);display:grid;place-items:center}
 .glyph svg{width:34px;height:34px}
+.glyph.lg{margin:var(--s1) auto var(--s3);width:90px;height:90px}
 /* позиции расклада */
 .pos{display:flex;gap:12px;align-items:flex-start;transition:border-color .4s}
 .pos.hl{border-color:rgba(217,184,104,.7)}
 .pos .thumb{width:64px;height:120px;border-radius:9px;object-fit:cover;flex:0 0 64px;border:1px solid rgba(217,184,104,.35)}
 .pos .glyph{flex:0 0 58px}
-.pos b{display:block;font-size:16px;color:var(--gold);font-weight:650}
-.pos .pn{display:block;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:#cdc6e2;font-weight:800;line-height:1.35}
-.pos .pn small{display:block;letter-spacing:0;text-transform:none;font-weight:400;color:#8f87ad;font-size:12.5px;margin-top:2px}
-.laydesc{font-size:13.5px;margin-top:10px;color:var(--muted)}.laydesc b{color:#fff;font-weight:600}
+.pos b{display:block;font-size:16px;color:var(--gold);font-weight:650;margin-top:var(--s2)}
+.pos .pn{display:block;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800;line-height:1.35}
+.pos .pn small{display:block;letter-spacing:0;text-transform:none;font-weight:400;color:var(--faint);font-size:12.5px;margin-top:2px}
+.laydesc{font-size:13.5px;margin-top:10px;color:var(--muted)}.laydesc b{color:var(--strong);font-weight:600}
 /* история: запись раскрывается в тот же вид, что и свежий результат */
 .histhead{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .histhead>span{min-width:0}.histhead b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
-.histhead svg{flex:0 0 auto;color:#8f87ad;transition:transform .25s var(--sp)}
+.histhead svg{flex:0 0 auto;color:var(--faint);transition:transform .25s var(--sp)}
 .hist.on .histhead svg{transform:rotate(180deg);color:var(--gold)}
 .histbody{display:none;margin-top:12px}
 .hist.on .histbody{display:block;animation:in .3s var(--sp)}
@@ -470,74 +417,80 @@ body.inner .app-nav{display:grid}
 .pc-bg.on{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
 .pc-bg img{max-height:68vh;max-width:100%;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
 /* личный год: иллюстрация, планета и энергия, описание с подзаголовками, списками и таблицами из файла */
-.yr-img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:12px;background:#15122a;border:1px solid rgba(217,184,104,.25)}
-.yr-cap{font-size:14px;color:#cdc6e2;font-style:italic;text-align:center;margin-bottom:6px}
-.yr-art h4{font-size:15.5px;font-weight:600;color:#f5f2ea;line-height:1.35;margin:20px 0 4px}
+.yr-img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:12px;background:var(--field);border:1px solid rgba(217,184,104,.25)}
+.yr-cap{font-size:14px;color:var(--muted);font-style:italic;text-align:center;margin-bottom:6px}
+.yr-art h4{font-size:15.5px;font-weight:600;color:var(--text);line-height:1.35;margin:20px 0 4px}
 .yr-art .yr-cap+h4,.yr-art>h4:first-child{margin-top:0}
-.yr-art p{font-size:14.5px;line-height:1.6;margin:10px 0 0;color:#d9d3e8}
-.yr-art b{display:inline;font-size:inherit;margin:0;color:#fff;font-weight:600}   /* выделение внутри строки, а не заголовок карточки */
-.yr-art ul,.yr-art ol{margin:8px 0 0;padding-left:22px;color:#d9d3e8;font-size:14.5px;line-height:1.6}
+.yr-art p{font-size:14.5px;line-height:1.6;margin:10px 0 0;color:var(--text-2)}
+.yr-art b{display:inline;font-size:inherit;margin:0;color:var(--strong);font-weight:600}   /* выделение внутри строки, а не заголовок карточки */
+.yr-art ul,.yr-art ol{margin:8px 0 0;padding-left:22px;color:var(--text-2);font-size:14.5px;line-height:1.6}
 .yr-art li{margin-top:6px}.yr-art li::marker{color:var(--gold)}
 .yr-art ul ul{margin-top:4px;padding-left:18px}
 .yr-art{min-width:0}   /* карточка в сетке не растягивается под широкую таблицу — таблица прокручивается внутри */
-.yr-art a{color:#f0d79a;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}   /* ссылки на источники — как в файле */
+.yr-art a{color:var(--gold-2);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}   /* ссылки на источники — как в файле */
 /* лунный день: полоска всех 30 дней, над главой — номер дня и её тема */
 .ln-days{margin-top:6px}.ln-days .chip{min-width:44px;padding:9px 0;text-align:center;font-size:14px}
 .ln-eb{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--gold);margin:14px 0 0}
 .yr-art .ln-eb{margin-top:14px}
-.yr-art .ln-title{font-size:18px;font-weight:600;line-height:1.3;color:#f5f2ea;margin:4px 0 0}
+.yr-art .ln-title{font-size:18px;font-weight:600;line-height:1.3;color:var(--text);margin:4px 0 0}
 .yr-tw{overflow-x:auto;margin-top:12px;-webkit-overflow-scrolling:touch}
 .yr-t{width:100%;border-collapse:collapse;font-size:13.5px;line-height:1.45;min-width:420px}
-.yr-t th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8f87ad;text-align:left;padding:6px 8px 8px;border-bottom:1px solid rgba(217,184,104,.35);vertical-align:bottom}
-.yr-t td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;color:#d9d3e8}
-.yr-t tr>*:first-child{color:#f5f2ea;font-weight:600;padding-left:0}
+.yr-t th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:left;padding:6px 8px 8px;border-bottom:1px solid rgba(217,184,104,.35);vertical-align:bottom}
+.yr-t td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--text-2)}
+.yr-t tr>*:first-child{color:var(--text);font-weight:600;padding-left:0}
 .yr-t tr>*:last-child{padding-right:0}
 /* ── напоминания: переключатель, время, регулярность ── */
 .sw{width:46px;height:28px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.1);position:relative;cursor:pointer;flex:0 0 46px;padding:0;transition:background .2s}
-.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#b9b2cf;transition:transform .2s var(--sp),background .2s}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform .2s var(--sp),background .2s}
 .sw.on{background:rgba(217,184,104,.35);border-color:rgba(217,184,104,.6)}.sw.on i{transform:translateX(18px);background:var(--gold-2)}
 .rem-head{display:flex;align-items:center;gap:12px}
 .rem-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.rem-actions .btn{min-height:44px}
 .rem .sw{min-height:28px;background-clip:padding-box;border-top:9px solid transparent;border-bottom:9px solid transparent;box-sizing:content-box}.rem .sw i{top:3px}
-.rem .rem-lbl small{color:#c3bbd5}.rem-body input{max-width:100%}
-#push-invite{margin:16px 0}.push-invite-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.rem .rem-lbl small{color:var(--muted)}.rem-body input{max-width:100%}
+#push-invite{margin:var(--s4) 0}
 .rem-lbl{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit}
-.rem-lbl b{display:block;font-size:14.5px;font-weight:650}.rem-lbl small{display:block;color:#8f87ad;font-size:12.5px;margin-top:2px;line-height:1.35}
-.rem-gear{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.05);color:#b9b2cf;cursor:pointer;display:grid;place-items:center;flex:0 0 36px;padding:0}
-.rem-gear.on{color:var(--gold);border-color:rgba(217,184,104,.5)}
+.rem-lbl b{display:block;font-size:14.5px;font-weight:650}.rem-lbl small{display:block;color:var(--faint);font-size:12.5px;margin-top:2px;line-height:1.35}
 .rem-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);animation:in .3s var(--sp)}
 .rem-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .rem-row label{font-size:12.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
 .rem-row input[type=time]{width:auto;min-height:44px;padding:8px 14px;font-size:18px;color-scheme:dark}
-.rem-status{font-size:13px;color:#c3bbd5;margin-top:10px;line-height:1.45}
-.hint{font-size:13px;color:#8f87ad;line-height:1.45}
+.rem-status{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.45}
+.hint{font-size:13px;color:var(--faint);line-height:1.45}
+/* отступы по шкале и роли текста — вместо inline-стилей в шаблонах */
+.mt-0{margin-top:0!important}.mt-1{margin-top:var(--s1)!important}.mt-2{margin-top:var(--s2)!important}.mt-3{margin-top:var(--s3)!important}.mt-4{margin-top:var(--s4)!important}.mt-5{margin-top:var(--s5)!important}
+.mb-0{margin-bottom:0!important}.mb-2{margin-bottom:var(--s2)!important}.mb-3{margin-bottom:var(--s3)!important}.mb-4{margin-bottom:var(--s4)!important}
+.center{text-align:center}.left{text-align:left}.full{width:100%}.italic{font-style:italic}
+.title-gold{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:22px;line-height:1.25;color:var(--gold)}
+.num-mark{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:36px;line-height:1.1;color:var(--gold);width:44px;flex:0 0 44px;text-align:center}
+.row.top{align-items:flex-start;gap:var(--s4)}
+.sub{color:var(--muted);font-weight:400;font-size:13px}
+.code-input{letter-spacing:8px;text-align:center;font-size:22px}
+.consent{display:flex;gap:var(--s3);align-items:flex-start;font-size:15px;line-height:1.6;color:var(--muted);cursor:pointer;margin:var(--s2) 0 var(--s5)}
+.consent input{width:20px;min-height:20px;flex:0 0 20px;margin-top:2px;accent-color:var(--gold)}
 /* ── привычки ── */
 .hb{display:flex;align-items:flex-start;gap:12px}
-.hb-check{width:34px;height:34px;min-height:34px;border-radius:50%;flex:0 0 34px;border:1.5px solid #d9b868;background:transparent;color:#1c1430;cursor:pointer;display:grid;place-items:center;font-weight:800;margin-top:2px;padding:0}
+.hb-check{width:34px;height:34px;min-height:34px;border-radius:50%;flex:0 0 34px;border:1.5px solid var(--gold);background:transparent;color:var(--bg);cursor:pointer;display:grid;place-items:center;font-weight:800;margin-top:2px;padding:0}
 .hb.on .hb-check{background:var(--gold)}
-.hb-x{background:none;border:0;color:#8f87ad;font-size:22px;cursor:pointer;padding:0 2px;line-height:1}
 .hd-row{display:flex;gap:6px;margin-top:8px}
-.hd{width:30px;height:40px;border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:#8f87ad;font:inherit;font-size:10.5px}
+.hd{width:30px;height:40px;border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--faint);font:inherit;font-size:10.5px}
 .hd::before{content:'';width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(217,184,104,.5);box-sizing:border-box}
 .hd.on::before{background:var(--gold);border-color:var(--gold)}
-.hd.today{color:#f0d79a}.hd.today::before{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
-/* ── аскеза ── */
-.ask-days i.k{background:var(--gold);border-color:var(--gold)}.ask-days i.m{background:rgba(255,179,179,.6);border-color:rgba(255,179,179,.8)}.ask-days i.t{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
-.linkbtn{display:block;margin:12px auto 0;background:none;border:0;color:#8f87ad;font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.hd.today{color:var(--gold-2)}.hd.today::before{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
+.linkbtn{display:block;margin:0;background:none;border:0;color:var(--faint);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 /* ── отчёт по настроениям ── */
 .mr-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
-.mr-day{display:flex;flex-direction:column;align-items:center;gap:5px;color:#8f87ad;font-size:11px;padding:6px 0;border-radius:12px}
+.mr-day{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--faint);font-size:11px;padding:6px 0;border-radius:12px}
 .mr-day.today{background:rgba(217,184,104,.1)}.mr-day svg{color:var(--gold-2)}
 .mr-empty{width:30px;height:30px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.18);display:block}
 /* ── небо ── */
 .skyev.now{border-color:rgba(217,184,104,.5)}
 .skyev b{margin-bottom:2px}
-.sh-rows{margin-top:8px}
+.sh-rows{margin-top:var(--s2)}
 .sh-row{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.45}
 .sh-row:first-child{border-top:0}
-.sh-row>span{color:#8f87ad;font-size:12.5px;padding-top:2px}
-.sh-row>b{display:block;font-weight:500;font-size:14px;margin:0;color:#f5f2ea;min-width:0;overflow-wrap:anywhere}
-.sh-row small{color:#8f87ad;font-size:12.5px}
+.sh-row>span{color:var(--faint);font-size:12.5px;padding-top:2px}
+.sh-row>b{display:block;font-weight:500;font-size:14px;margin:0;color:var(--text);min-width:0;overflow-wrap:anywhere}
+.sh-row small{color:var(--faint);font-size:12.5px}
 /* ── главная: шесть квадратов, три в ряд ── */
 .acct{overflow:visible;padding:0}
 .acct-content{display:grid;place-items:center;width:100%;height:100%;overflow:hidden;border-radius:inherit}
@@ -545,24 +498,23 @@ body.inner .app-nav{display:grid}
 /* ── круг эмоций Плутчика ── */
 .mfam{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
 .mfam:first-child{border-top:0;padding-top:0}
-.mfam .fdot{width:12px;height:12px;border-radius:50%;flex:0 0 12px;margin-top:11px;box-shadow:0 0 0 3px rgba(255,255,255,.06)}
-.mfam .fname{width:84px;flex:0 0 84px;font-size:12px;color:#8f87ad;letter-spacing:.06em;text-transform:uppercase;font-weight:700;padding-top:9px;line-height:1.2}
+.mfam .fname{width:84px;flex:0 0 84px;font-size:12px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;font-weight:700;padding-top:9px;line-height:1.2}
 .mfam .chips{flex:1}
 .mchip{border-color:var(--c,var(--line))}
-.mchip.on{background:color-mix(in srgb,var(--c,#d9b868) 28%,transparent);border-color:var(--c,#d9b868);color:#fff}
+.mchip.on{background:color-mix(in srgb,var(--c,var(--gold)) 28%,transparent);border-color:var(--c,var(--gold));color:var(--strong)}
 .mpick{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
 .mpick svg{flex:0 0 40px}
 /* ── «что вас беспокоит»: свой запрос и плашки ── */
 .hubq textarea{min-height:84px}
 /* ── привычки: регулярность и награды ── */
-.hb-rule{display:inline-block;font-size:11.5px;color:#cdc6e2;background:rgba(255,255,255,.07);border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.hb-rule{display:inline-block;font-size:11.5px;color:var(--muted);background:rgba(255,255,255,.07);border-radius:999px;padding:2px 8px;margin-left:6px;vertical-align:middle}
 .hb-badge{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--gold-2);margin-left:6px;vertical-align:middle}
 .hb-edit{display:none;margin-top:10px}
 .hb.editing .hb-edit{display:block}
-.today-list .item{border-color:rgba(217,184,104,.35)}
 .award-bg{position:fixed;inset:0;z-index:210;background:rgba(11,10,20,.94);display:none;padding:24px;align-items:center;justify-content:center}
 .award-bg.on{display:flex}
 .award{max-width:380px;width:100%;text-align:center;animation:in .4s var(--sp)}
+.award .title-gold{font-size:26px}.award p{font-size:15px}
 .award svg{width:180px;height:180px;filter:drop-shadow(0 14px 40px rgba(240,215,154,.35));animation:float 8s ease-in-out infinite}
 /* ── желания: фото ── */
 /* ── аккаунт: фото ── */
@@ -620,20 +572,17 @@ body.inner .app-nav{display:grid}
 .hb-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
 .hb-columns .hb-rule{margin:0;font-size:13px;font-weight:400;color:var(--muted)}
 .mfam{flex-wrap:wrap}.mfam .chips{min-width:180px}.mchip{min-height:40px}
-@media(max-width:370px){#v-home .sqs{grid-template-columns:repeat(2,1fr)}.hb-entry{grid-template-columns:1fr}}
-@media(min-width:760px){#v-home .sqs{grid-template-columns:repeat(3,1fr)}#v-home .sq{min-height:150px;aspect-ratio:auto;font-size:17px}#v-home .mini{grid-template-columns:repeat(3,1fr)}}
-@media(min-width:1180px){#v-home .sqs{grid-template-columns:repeat(6,1fr)}#v-home .mini{grid-template-columns:repeat(6,1fr)}}
 /* Спокойные поверхности для чтения, стекло — у навигации и коротких действий. */
 .command-enter{animation-duration:.24s;animation-delay:0s}
 [hidden]{display:none!important}
 body.inner{--muted:#c0bad0;--line:rgba(236,231,249,.13)}
-body.inner :is(.card,.item,.wid){background:#1c192c;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
+body.inner :is(.card,.item,.wid){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
 body.inner :is(.wid)::before{display:none}
 body.inner .card{border-radius:20px}
 body.inner .btn{box-shadow:0 4px 14px rgba(217,184,104,.12);min-height:52px}
 body.inner .btn.sm{min-height:44px}
 body.inner .btn.ghost{box-shadow:none}
-body.inner :is(input,textarea){background:#13111f;border-color:rgba(236,231,249,.2);color:var(--text);font-size:16px}
+body.inner :is(input,textarea){background:var(--field);border-color:rgba(236,231,249,.2);color:var(--text);font-size:16px}
 body.inner textarea{line-height:1.6;resize:vertical}
 body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 :is(button,input,textarea,summary,a):focus-visible{outline:2px solid var(--gold-2);outline-offset:3px}
@@ -647,12 +596,11 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 .daily-statement{margin:26px 0 8px;max-width:820px}
 .daily-statement #h-wish{font-size:clamp(21px,3vw,28px);line-height:1.45;letter-spacing:-.015em;color:var(--text);margin-top:10px;text-wrap:pretty}
 .daily-statement .text-action{margin-top:4px}
-#v-home .sq .ico{width:27px;height:27px;margin-bottom:4px}
 .push-invite-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0}
 .push-invite-row .ico{width:18px;height:18px}
 .wg-bg{background:rgba(6,5,13,.78)}
-.wg{background:#12101f;scroll-padding-top:94px}
-.wg-head{position:sticky;top:calc(-16px - env(safe-area-inset-top));z-index:8;background:#12101f;padding:16px 0 12px;border-bottom:1px solid var(--line);align-items:center}
+.wg{background:var(--sheet);scroll-padding-top:94px}
+.wg-head{position:sticky;top:calc(-16px - env(safe-area-inset-top));z-index:8;background:var(--sheet);padding:16px 0 12px;border-bottom:1px solid var(--line);align-items:center}
 .wg-head h2{font-size:23px;line-height:1.3}
 .wg-head .eyebrow{font-size:10px;letter-spacing:.09em;color:var(--muted)}
 .wg-tools{margin:12px 0 20px}
@@ -661,7 +609,7 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 .rem-summary .ico{width:17px;height:17px;flex:0 0 17px;background:var(--muted)}
 .rem-summary>span:last-child{margin-left:auto}
 #rem-all .rem-summary{margin-top:12px}
-.wg-tools .rem-body{padding:16px;margin-top:10px;border:1px solid var(--line);border-radius:18px;background:#201b30}
+.wg-tools .rem-body{padding:16px;margin-top:10px;border:1px solid var(--line);border-radius:18px;background:var(--field)}
 .rem-status{font-size:12.5px;line-height:1.55;color:var(--muted)}
 .rem-actions{gap:6px 16px;flex-wrap:wrap}
 .rem-head small{line-height:1.45}
@@ -677,19 +625,19 @@ body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150
 .observation,.practice-create{margin-top:20px}
 :is(.observation,.practice-create)>summary{min-height:44px;padding:10px 0;cursor:pointer;color:var(--gold-2);font-size:14px;line-height:1.5}
 :is(.observation,.practice-create)[open]>summary{margin-bottom:8px}
-.segmented{display:flex;gap:4px;padding:4px;border-radius:14px;background:#0c0b15;margin:20px 0 16px;border:1px solid var(--line)}
+.segmented{display:flex;gap:4px;padding:4px;border-radius:14px;background:var(--field);margin:20px 0 16px;border:1px solid var(--line)}
 .segmented button{flex:1;min-width:0;min-height:44px;padding:8px 10px;border:0;border-radius:10px;background:none;color:var(--muted);font:inherit;font-size:13px;line-height:1.4;cursor:pointer}
-.segmented button[aria-selected=true]{background:#302a43;color:var(--text);box-shadow:0 1px 3px #0003}
+.segmented button[aria-selected=true]{background:var(--selected);color:var(--text);box-shadow:0 1px 3px #0003}
 .mood-own-row{margin-top:20px}.mood-own-row label{font-size:13px;color:var(--muted);display:block;margin-bottom:8px}
 .mood-own-row input{min-width:0}.mood-own-row .btn{flex:0 0 auto}
 .mpick.saved-state{border-radius:12px;border:1px solid var(--line);border-left:2px solid var(--ok);color:var(--text);margin:16px 0}
 .mpick.saved-state small{display:block;font-size:12px;line-height:1.5;color:var(--muted);margin-top:4px}
 .emotion-families{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.emotion-family{display:flex;align-items:center;gap:9px;min-height:64px;border-radius:14px;padding:12px;border:1px solid var(--line);background:#211c30;color:var(--text);font:inherit;font-size:13px;cursor:pointer;text-align:left}
+.emotion-family{display:flex;align-items:center;gap:9px;min-height:64px;border-radius:14px;padding:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:inherit;font-size:13px;cursor:pointer;text-align:left}
 .emotion-family svg{flex:0 0 28px;color:var(--c)}
 .emotion-family>span:last-child{margin-left:auto;color:var(--muted)}
 .emotion-family.on{border-color:var(--c)}
-.mood-shades{padding:16px;background:#211c30;border:1px solid var(--line);border-radius:16px;margin:4px 0 12px}
+.mood-shades{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;margin:4px 0 12px}
 .mood-shades .chips{margin-top:12px}.mchip{min-height:44px;font-size:14px}
 .mood-picker .mfam{gap:10px;display:block;padding:14px 0}
 .mood-picker .mfam .fname{display:block;width:auto;margin-bottom:10px;padding:0;color:var(--muted)}
@@ -699,12 +647,10 @@ body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150
 .hd-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px}
 .hd{width:100%;min-height:44px}
 .hb .icon-action{min-width:40px;flex:0 0 40px}
-.hb.entry{align-items:flex-start}.hb .grow{overflow-wrap:anywhere}
+.hb .grow{overflow-wrap:anywhere}
 .add-action{margin-top:12px}
 @keyframes panel-open{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
-@media(hover:hover) and (pointer:fine){body.inner :is(.wid,.moonline):hover{transform:translateY(-1px);border-color:rgba(236,231,249,.32);box-shadow:none}body.inner :is(.text-action,.emotion-family):hover{color:#fff}body.inner :is(.wid,.moonline):active{transform:scale(.99)}}
-@media(min-width:760px){#v-home .sqs,#v-home .mini{grid-template-columns:repeat(3,minmax(0,1fr))}#v-home .sq{min-height:150px}.wg-head{top:-24px;padding-top:12px}.emotion-families{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(min-width:1180px){#v-home .sqs,#v-home .mini{grid-template-columns:repeat(6,minmax(0,1fr))}#v-home .sq{padding:18px 14px}}
+@media(hover:hover) and (pointer:fine){body.inner :is(.wid,.moonline):hover{transform:translateY(-1px);border-color:rgba(236,231,249,.32);box-shadow:none}body.inner :is(.text-action,.emotion-family):hover{color:var(--strong)}body.inner :is(.wid,.moonline):active{transform:scale(.99)}}
 @media(max-width:370px){.wg{padding-left:14px;padding-right:14px}.emotion-family{padding:10px 8px;gap:6px;font-size:12px}.emotion-family svg{width:22px;flex-basis:22px}.hb{gap:8px;padding:12px}.hb b.hb-columns{grid-template-columns:1fr}.hb .icon-action{min-width:32px;flex-basis:32px}.mood-own-row .row{flex-wrap:wrap}.mood-own-row input{flex:1 1 100%}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.wg-bg.on .wg{translate:none}body.inner :is(.wid,.moonline):hover{transform:none}}
 @media(prefers-reduced-transparency:reduce){body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:#28233c;backdrop-filter:none;-webkit-backdrop-filter:none}}
@@ -749,8 +695,8 @@ body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer
 .danger-zone{margin-top:44px}.danger-zone .warn{margin-top:20px}
 .question-entry{grid-template-columns:1fr}.question-entry .wid{min-height:100px}
 .quick-moods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.quick-mood{display:flex;align-items:center;gap:10px;min-height:70px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#211c30;color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
-.quick-mood.on{border-color:var(--gold);background:#302940}
+.quick-mood{display:flex;align-items:center;gap:10px;min-height:70px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.quick-mood.on{border-color:var(--gold);background:var(--selected)}
 .quick-mood .ico{width:30px;height:30px;background:var(--muted)}
 #hub-chips{margin-top:16px}#hub-opts .chips{margin:12px 0 20px}.hubq .field{margin:24px 0 0}
 #hub-res{margin-top:20px}
@@ -773,8 +719,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=38">
-<link rel="stylesheet" href="/app/moon-glass.css?v=38">
+<link rel="stylesheet" href="/app/experience.css?v=40">
+<link rel="stylesheet" href="/app/moon-glass.css?v=40">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -815,8 +761,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <p class="login-intro">Пришлём шестизначный код — пароль не нужен. Профиль, записи и практики откроются на этом устройстве.</p>
     <div class="card sec" id="l-box"></div>
     <div class="card sec" id="l-after" style="display:none">
-      <p style="font-size:14.5px;color:#ded8ee;margin:0">Почта сохранена. Осталось заполнить короткий профиль — записи привяжутся к ней.</p>
-      <button class="btn" style="margin-top:12px" onclick="openForm()">Заполнить профиль</button>
+      <p class="t2">Почта сохранена. Осталось заполнить короткий профиль — записи привяжутся к ней.</p>
+      <button class="btn mt-3" onclick="openForm()">Заполнить профиль</button>
     </div>
   </section>
 
@@ -840,8 +786,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
         <p class="geo" id="o-geo">Координаты и часовой пояс подставим сами — они понадобятся для натальной карты.</p>
       </div>
       <div class="field" id="o-mailfield"><label>Почта</label><input id="o-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru"></div>
-      <label class="row" style="gap:11px;align-items:flex-start;font-size:13.5px;line-height:1.5;color:#cdc6e4;cursor:pointer;margin:4px 0 16px">
-        <input type="checkbox" id="o-consent" style="width:20px;min-height:20px;flex:0 0 20px;margin-top:1px;accent-color:#d9b868">
+      <label class="consent">
+        <input type="checkbox" id="o-consent">
         <span>Я даю согласие на <a href="/soglasie" target="_blank" rel="noopener">обработку персональных данных</a> и принимаю <a href="/politika" target="_blank" rel="noopener">Политику конфиденциальности</a>.</span>
       </label>
       <button class="btn" id="o-go">Открыть мой день</button>
@@ -849,8 +795,8 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </div>
     <div class="card sec" id="o-codebox" style="display:none"></div>
     <div class="card sec" id="o-back" style="display:none">
-      <p style="font-size:15px;color:#ded8ee;margin:0">Уже пользовались Лунарио?</p>
-      <p style="font-size:13.5px;line-height:1.55;margin:7px 0 0">Войдите по почте — дневник, вопросы и практики вернутся, заполнять заново ничего не нужно.</p>
+      <p class="t2">Уже пользовались Лунарио?</p>
+      <p>Войдите по почте — дневник, вопросы и практики вернутся, заполнять заново ничего не нужно.</p>
       <div id="o-auth"></div>
     </div>
   </section>
@@ -941,32 +887,32 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-card">
     <div class="daycard glow" id="t-card" onclick="flipCard()">
       <div class="dc-in">
-        <div class="dc-f dc-back"><img src="/app/assets/brand/logo-mark.svg" width="88" height="88" alt="" style="filter:drop-shadow(0 6px 22px rgba(217,184,104,.35))"></div>
+        <div class="dc-f dc-back"><img src="/app/assets/brand/logo-mark.svg" width="88" height="88" alt=""></div>
         <div class="dc-f dc-front" id="c-face"></div>
       </div>
     </div>
-    <div id="t-after" style="display:none;margin-top:16px"></div>
-    <button class="btn" style="margin-top:16px" id="t-open">Открыть карту дня</button>
+    <div id="t-after" class="mt-4" style="display:none"></div>
+    <button class="btn mt-4" id="t-open">Открыть карту дня</button>
   </div>
   <div class="wpane" id="w-shelves"><div class="list" id="sh-box"></div></div>
-  <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p style="font-size:14px;margin-top:14px;text-align:center" id="t-moodstat"></p><div id="mood-extra"></div></div>
+  <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p class="hint mt-3 center" id="t-moodstat"></p><div id="mood-extra"></div></div>
   <div class="wpane" id="w-habits"><div id="hb-box"></div></div>
   <div class="wpane" id="w-askesis"><div id="as-box"></div></div>
   <div class="wpane" id="w-sky"><div id="sky-box"></div></div>
   <div class="wpane" id="w-worry"><div id="t-worry"></div></div>
-  <div class="wpane" id="w-day"><h2 id="f-title"></h2><p style="margin-top:9px" id="f-text"></p><div id="f-bars" class="forecast-bars" aria-label="Сферы прогноза дня"></div><div id="forecast-note" class="material-note"></div></div>
+  <div class="wpane" id="w-day"><h2 id="f-title"></h2><p class="mt-2" id="f-text"></p><div id="f-bars" class="forecast-bars" aria-label="Сферы прогноза дня"></div><div id="forecast-note" class="material-note"></div></div>
   <div class="wpane" id="w-tone"><div id="tone-box"></div></div>
   <div class="wpane" id="w-gratitude"><div id="gr-box"></div></div>
   <div class="wpane" id="w-journal">
-    <span class="eyebrow" style="margin-bottom:11px">Дневник · видите только вы</span>
+    <span class="eyebrow mb-3">Дневник · видите только вы</span>
     <div class="card journal-card" id="journal-card">
       <textarea aria-label="Запись в дневник" id="j-text" placeholder="Что сегодня хочется оставить здесь?" maxlength="2000"></textarea>
-      <div class="chips flow" style="margin-top:10px"><button class="chip" type="button" onclick="journalPrompt('Что произошло?')">Что произошло?</button><button class="chip" type="button" onclick="journalPrompt('Что я почувствовала?')">Что я почувствовала?</button><button class="chip" type="button" onclick="journalPrompt('Что хочу помнить?')">Что хочу помнить?</button></div>
-      <button class="btn ghost sm" id="j-dictate" type="button" style="width:100%;margin-top:10px" aria-pressed="false" onclick="journalDictate()">Продиктовать</button><p id="j-speech-note" class="hint" style="margin-top:8px"></p>
+      <div class="chips flow mt-3"><button class="chip" type="button" onclick="journalPrompt('Что произошло?')">Что произошло?</button><button class="chip" type="button" onclick="journalPrompt('Что я почувствовала?')">Что я почувствовала?</button><button class="chip" type="button" onclick="journalPrompt('Что хочу помнить?')">Что хочу помнить?</button></div>
+      <button class="btn ghost sm full mt-3" id="j-dictate" type="button" aria-pressed="false" onclick="journalDictate()">Продиктовать</button><p id="j-speech-note" class="hint mt-2"></p>
       <div class="answer-actions"><button class="btn sm" onclick="saveJournal()">Сохранить запись</button></div>
     </div>
     <p id="journal-saved" class="saved-state" role="status" hidden></p>
-    <div class="list" id="m-journal" style="margin-top:11px"></div>
+    <div class="list" id="m-journal"></div>
   </div>
   <div class="wpane" id="w-wishes">
     <div class="wish-form"><label for="w-text">Моё желание</label><input id="w-text" placeholder="Например: поехать к морю" maxlength="200"><div id="wish-preview"></div><div class="wish-create-actions"><button id="wish-photo-pick" class="text-action" type="button" onclick="chooseWishPhoto()">Добавить фото</button><button class="btn sm" id="wish-save" type="button" onclick="addWish()">Сохранить желание</button></div></div>
@@ -974,11 +920,11 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   </div>
   <div class="wpane" id="w-ask">
     <div class="card">
-      <div id="a-layouts" style="display:none;margin-bottom:12px"></div>
+      <div id="a-layouts" class="mb-3" style="display:none"></div>
       <div class="field"><label id="a-label">О чём спрашиваете</label><textarea id="a-q" placeholder="Стоит ли мне соглашаться на новую роль?" maxlength="300"></textarea></div>
-      <button class="btn" style="margin-top:14px" id="a-go" disabled>Напишите вопрос</button>
+      <button class="btn mt-3" id="a-go" disabled>Напишите вопрос</button>
       <p class="msg" id="a-msg"></p>
-      <p style="font-size:12.5px;color:#8f87ad;margin-top:10px" id="a-hint"></p>
+      <p class="hint mt-3" id="a-hint"></p>
     </div>
     <div id="a-result" class="sec" style="display:none"></div>
   </div>
@@ -986,16 +932,16 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-birthnum"><div class="list" id="w-birth-box"></div></div>
   <div class="wpane" id="w-compat">
     <div class="card">
-      <div class="field" style="margin-bottom:10px"><label>Дата рождения партнёра</label><input id="m-cdate" type="date"></div>
-      <button class="btn sm" style="width:100%" onclick="compat()">Рассчитать</button>
-      <div id="m-cres" style="display:none;margin-top:16px"></div>
+      <div class="field mb-3"><label>Дата рождения партнёра</label><input id="m-cdate" type="date"></div>
+      <button class="btn sm full" onclick="compat()">Рассчитать</button>
+      <div id="m-cres" class="mt-4" style="display:none"></div>
     </div>
   </div>
   <div class="wpane" id="w-lunar"><div id="ln-box"></div></div>
   <div class="wpane" id="w-hmood"><div id="mr-box"></div></div>
   <div class="wpane" id="w-hentries"><div class="segmented entries-tabs" role="tablist" aria-label="История вопросов и карт"><button type="button" role="tab" aria-selected="true" onclick="filterEntries('questions')">Вопросы и ответы</button><button type="button" role="tab" aria-selected="false" onclick="filterEntries('card')">Карты дня</button><button type="button" role="tab" aria-selected="false" onclick="filterEntries('')">Все</button></div><div class="list" id="m-entries" aria-live="polite"></div><button class="btn ghost" id="entries-more" type="button" onclick="loadEntries(true)" hidden>Показать ещё</button></div>
-  <div class="wpane" id="w-week"><div class="card"><p style="font-size:16px;color:#ded8ee" id="w-summary"></p><div id="w-detail"></div></div></div>
-  <div class="wpane" id="w-invite"><div class="card"><p style="font-size:14px">Отправьте ссылку — и на неделю у вас обеих будет вдвое больше подробных разборов.</p><div id="inv-box" style="margin-top:12px"></div></div></div>
+  <div class="wpane" id="w-week"><div class="card"><p class="t2" id="w-summary"></p><div id="w-detail" class="mt-2"></div></div></div>
+  <div class="wpane" id="w-invite"><div class="card"><p>Отправьте ссылку — и на неделю у вас обеих будет вдвое больше подробных разборов.</p><div id="inv-box" class="mt-3"></div></div></div>
   <div class="wpane" id="w-remind"><div id="rem-all"></div></div>
   <div class="wpane" id="w-edit">
     <div class="card">
@@ -1020,7 +966,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 <div class="wg-bg" id="wg" onclick="closeWidget(event)">
   <div class="wg" role="dialog" aria-modal="true" aria-labelledby="wg-title">
     <div class="wg-head">
-      <div><div class="wordmark compact-brand widget-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div><span class="eyebrow" id="wg-eb"></span><h2 id="wg-title" style="margin-top:5px"></h2></div>
+      <div><div class="wordmark compact-brand widget-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div><span class="eyebrow" id="wg-eb"></span><h2 id="wg-title" class="mt-1"></h2></div>
       <button class="wg-x" type="button" onclick="closeWidget()" aria-label="Закрыть">×</button>
     </div>
     <div id="wg-tools" class="wg-tools"></div>
@@ -1030,7 +976,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="pc-bg" id="pc" onclick="if(event.target===this)hidePostcard()">
   <img id="pc-img" alt="Открытка">
-  <p id="pc-hint" style="text-align:center;font-size:14.5px;color:#ded8ee">Зажмите картинку и выберите «Сохранить в Фото»</p>
+  <p id="pc-hint" class="center t2">Зажмите картинку и выберите «Сохранить в Фото»</p>
   <button class="btn ghost sm" type="button" onclick="hidePostcard()">Закрыть</button>
 </div>
 <div class="award-bg" id="award" onclick="if(event.target===this)this.classList.remove('on')"><div id="award-box"></div></div>
@@ -1219,9 +1165,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=38"></script>
+<script type="module" src="/app/sky.js?v=40"></script>
 
-<script src="/app/experience.js?v=38"></script>
+<script src="/app/experience.js?v=40"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1424,7 +1370,7 @@ async function loadShelves(){
       + row('Последние', h.recent.slice(0, 6).map((r) => `<small>${fmtDay(r.day).slice(0, 5)} · ${esc(r.kindRu)}</small> ${r.question ? esc(r.question) + ' → ' : ''}${esc(r.answer)}`).join('<br>'));
     const shelf = (t, sub, body, i) => `<div class="item rise" style="--i:${i}"><b>${t}</b><small>${sub}</small><div class="sh-rows">${body || '<p>Пока пусто.</p>'}</div></div>`;
     box.innerHTML = shelf('Обо мне', 'анкета и то, что из неё считается', about, 0) + shelf('Мой день', `сегодня, ${fmtDay(dy.date)}, и последняя неделя`, day, 1) + shelf('Истории', 'к чему вы возвращаетесь и что вам отвечали', hist, 2)
-      + `<p class="hint" style="margin-top:4px">Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? fmtWhen(s.updated) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
+      + `<p class="hint mt-1">Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? fmtWhen(s.updated) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
   } catch (e) { box.innerHTML = `<div class="item"><p>${e.code === 'no_birth' ? 'Заполните профиль — здесь появятся ваши данные.' : 'Не получилось загрузить данные, попробуйте позже.'}</p></div>`; }
 }
 async function loadNatal(){
@@ -1433,17 +1379,17 @@ async function loadNatal(){
     const c = natalCache || (natalCache = await api('/natal'));
     const dms = (p) => `${p.symbol} ${p.deg}°${String(p.min).padStart(2,'0')}′`;
     const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
-    const points = c.points && c.points.length ? `<h3 style="margin-top:16px">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
-    const houses = c.houses ? `<h3 style="margin-top:16px">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.sign)}</small></td></tr>`).join('')}</tbody></table>`
-      : `<div class="card sec" style="margin-top:14px"><p style="font-size:14px">${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? (c.city ? `Город «${esc(c.city)}» не нашёлся в базе — откройте анкету и выберите его из подсказок, по нему считаются дома и часовой пояс. ` : 'Укажите город рождения в аккаунте — по нему считаются дома и часовой пояс. ') : ''}<button class="btn ghost sm" style="margin-top:10px" onclick="closeWidget();go('account');openWidget('edit')">Дополнить анкету</button></p></div>`;
-    const aspects = c.aspects.length ? `<h3 style="margin-top:16px">Аспекты</h3><div class="hbars" style="margin-top:8px">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small style="color:#8f87ad">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
+    const points = c.points && c.points.length ? `<h3 class="mt-4">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
+    const houses = c.houses ? `<h3 class="mt-4">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.sign)}</small></td></tr>`).join('')}</tbody></table>`
+      : `<div class="card mt-3"><p>${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? (c.city ? `Город «${esc(c.city)}» не нашёлся в базе — откройте анкету и выберите его из подсказок, по нему считаются дома и часовой пояс. ` : 'Укажите город рождения в аккаунте — по нему считаются дома и часовой пояс. ') : ''}<button class="btn ghost sm mt-3" onclick="closeWidget();go('account');openWidget('edit')">Дополнить анкету</button></p></div>`;
+    const aspects = c.aspects.length ? `<h3 class="mt-4">Аспекты</h3><div class="hbars mt-2">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small class="faint">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
     const sun = c.planets[0], moon = c.planets[1];
     box.innerHTML = `<div class="card sec"><p class="eyebrow">Западная традиция · тропический зодиак${c.houses ? ' · ' + esc(c.houses.system) : ''}</p>
-        <p style="font-size:15px;color:#ded8ee;margin-top:8px">☉ Солнце в ${esc(sun.sign)} · ☽ Луна в ${esc(moon.sign)}${c.houses ? ` · Asc ${esc(c.houses.asc.sign)}` : ''}</p>
-        <p class="hint" style="margin-top:6px">${fmtDay(c.input.birth)}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''}${c.hasPlace ? ` (${c.input.lat.toFixed(2)}°, ${c.input.lon.toFixed(2)}°)` : ''} · ${esc(c.tzNote || '')} · UTC ${c.input.utc}</p></div>
-      <h3 style="margin-top:16px">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
+        <p class="t2">☉ Солнце в ${esc(sun.sign)} · ☽ Луна в ${esc(moon.sign)}${c.houses ? ` · Asc ${esc(c.houses.asc.sign)}` : ''}</p>
+        <p class="hint">${fmtDay(c.input.birth)}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''}${c.hasPlace ? ` (${c.input.lat.toFixed(2)}°, ${c.input.lon.toFixed(2)}°)` : ''} · ${esc(c.tzNote || '')} · UTC ${c.input.utc}</p></div>
+      <h3 class="mt-4">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
       ${points}${houses}${aspects}
-      <p class="hint" style="margin-top:14px">${esc(c.precision)} Трактовка карты появится позже — сейчас важно, что расчёт верный.</p>`;
+      <p class="hint mt-3">${esc(c.precision)} Трактовка карты появится позже — сейчас важно, что расчёт верный.</p>`;
   }catch(e){ box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без неё карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
 }
 
@@ -1456,11 +1402,11 @@ async function supOpen(){
   rememberSupportDraft();supStop(); const box = $('sup-box'); box.innerHTML = LOADING;
   try{
     const r = await api('/support/tickets');
-    box.innerHTML = `<p style="font-size:14.5px">Напишите нам — ответ появится в этом чате. О новом ответе сообщит точка у «Чата поддержки».</p>
-      <div class="card sec" style="margin-top:12px"><div class="field"><label>Тема</label><select id="sup-topic">${r.topics.map((t)=>`<option>${esc(t)}</option>`).join('')}</select></div>
-        <div class="field" style="margin-bottom:8px"><label>Сообщение</label><textarea id="sup-text" maxlength="2000" placeholder="Что случилось или что хотите спросить"></textarea></div>
+    box.innerHTML = `<p>Напишите нам — ответ появится в этом чате. О новом ответе сообщит точка у «Чата поддержки».</p>
+      <div class="card mt-3"><div class="field"><label>Тема</label><select id="sup-topic">${r.topics.map((t)=>`<option>${esc(t)}</option>`).join('')}</select></div>
+        <div class="field mb-2"><label>Сообщение</label><textarea id="sup-text" maxlength="2000" placeholder="Что случилось или что хотите спросить"></textarea></div>
         <button class="btn" onclick="supCreate()">Отправить</button><p class="msg" id="sup-msg"></p></div>
-      ${r.items.length ? `<span class="eyebrow" style="margin-top:16px">Мои обращения</span><div class="sup-list">${r.items.map((t)=>`<button class="sup-item" type="button" onclick="supThread(${t.id})"><span><b>${esc(t.subject)}</b><small>${esc(t.topic)} · <span class="sup-status">${esc(t.statusName)}</span> · ${supWhen(t.last_at)}</small></span>${t.unread?`<span class="badge">${t.unread}</span>`:''}</button>`).join('')}</div>` : ''}`;
+      ${r.items.length ? `<span class="eyebrow mt-4">Мои обращения</span><div class="sup-list">${r.items.map((t)=>`<button class="sup-item" type="button" onclick="supThread(${t.id})"><span><b>${esc(t.subject)}</b><small>${esc(t.topic)} · <span class="sup-status">${esc(t.statusName)}</span> · ${supWhen(t.last_at)}</small></span>${t.unread?`<span class="badge">${t.unread}</span>`:''}</button>`).join('')}</div>` : ''}`;
     $('h-supdot').hidden = !r.items.some((t)=>t.unread);
   }catch(e){ box.innerHTML = '<p class="msg err">Не получилось загрузить чат.</p>'; }
 }
@@ -1488,10 +1434,10 @@ async function supThread(id){
       supTimer=setTimeout(()=>{if(supTicket===id&&wgOpen==='support')supThread(id);},15000);return;
     }
     box.innerHTML = `<button class="back" onclick="supOpen()">← Все обращения</button>
-      <p style="font-size:15px;color:#ded8ee;margin-top:6px"><b>${esc(t.subject)}</b></p><p class="hint" style="margin-top:2px">${esc(t.topic)} · <span class="sup-status" id="sup-thread-state">${esc(t.statusName)}</span></p>
+      <p class="t2 mt-2"><b>${esc(t.subject)}</b></p><p class="hint mt-1">${esc(t.topic)} · <span class="sup-status" id="sup-thread-state">${esc(t.statusName)}</span></p>
       <div class="thread" id="sup-thread" data-ticket="${id}">${messages}</div>
-      <div class="field" style="margin:12px 0 0"><label for="sup-reply">Ваше сообщение</label><textarea id="sup-reply" maxlength="2000" placeholder="${t.status==='resolved'?'Обращение закрыто — напишите, если вопрос остался':'Ваше сообщение'}" oninput="supportDrafts[${id}]=this.value">${esc(supportDrafts[id]||'')}</textarea></div>
-      <button class="btn" style="margin-top:8px" onclick="supSend(${id})">Отправить</button><p class="msg" id="sup-msg2"></p>`;
+      <div class="field mt-3 mb-0"><label for="sup-reply">Ваше сообщение</label><textarea id="sup-reply" maxlength="2000" placeholder="${t.status==='resolved'?'Обращение закрыто — напишите, если вопрос остался':'Ваше сообщение'}" oninput="supportDrafts[${id}]=this.value">${esc(supportDrafts[id]||'')}</textarea></div>
+      <button class="btn mt-2" onclick="supSend(${id})">Отправить</button><p class="msg" id="sup-msg2"></p>`;
     const th = $('sup-thread'); th.scrollTop = th.scrollHeight;
     $('h-supdot').hidden = true;
     supTimer = setTimeout(()=>{ if(supTicket===id && wgOpen==='support') supThread(id); }, 15000);   /* пока чат открыт — обновляем раз в 15 секунд */
@@ -1649,18 +1595,18 @@ function yearHtml(y){
   const i = y.info, id = y.res || (y.res = regRes({ type: 'year', year: y, stamp: String(y.year) }));
   return `<div class="item rise">
     <img class="yr-img" src="${i.image}?v=1" width="1080" height="1080" alt="Личный год ${y.n} · ${esc(i.energy)}">
-    <div class="row" style="gap:14px;align-items:flex-start;margin-top:14px">
-      <span class="serif" style="font-size:36px;color:var(--gold);width:44px;text-align:center">${y.n}</span>
-      <div class="grow"><b>Год ${y.n} · ${esc(i.planet)} · ${esc(i.energy)}</b>${i.message ? `<p style="font-size:16px;margin-top:8px;color:#fff;font-style:italic">${esc(i.message)}</p>` : `<p style="font-size:14px;margin-top:6px">${esc(y.text || '')}</p>`}</div>
+    <div class="row top mt-3">
+      <span class="num-mark">${y.n}</span>
+      <div class="grow"><b>Год ${y.n} · ${esc(i.planet)} · ${esc(i.energy)}</b>${i.message ? `<p class="mt-2 strong italic">${esc(i.message)}</p>` : `<p class="mt-2">${esc(y.text || '')}</p>`}</div>
     </div>
     ${actionsHtml(id)}
   </div>
   <div class="item rise yr-art" style="--i:1">${i.caption ? `<p class="yr-cap">${esc(i.caption)}</p>` : ''}${blocksHtml(i.blocks)}</div>`;
 }
 function paintNum(n){
-  const item=(num,title,text,f)=>`<div class="item rise"><div class="row" style="gap:14px;align-items:flex-start">
-    <span class="serif" style="font-size:36px;color:var(--gold);width:44px;text-align:center">${num}</span>
-    <div class="grow"><b>${title}</b>${f?`<small>${f}</small>`:''}<p style="font-size:14px;margin-top:6px">${text}</p></div></div></div>`;
+  const item=(num,title,text,f)=>`<div class="item rise"><div class="row top">
+    <span class="num-mark">${num}</span>
+    <div class="grow"><b>${title}</b>${f?`<small>${f}</small>`:''}<p class="mt-2">${text}</p></div></div></div>`;
   $('w-year-box').innerHTML=n.year.info ? yearHtml(n.year) : item(n.year.n,'Личный год '+n.year.n,n.year.text,yearPeriod(n.year));
   if (n.year.info) preparePending();   /* открытка года собирается заранее, как и остальные */
   $('w-birth-box').innerHTML=item(n.destiny.n,n.destiny.title,n.destiny.text,n.destiny.formula);
@@ -1711,7 +1657,7 @@ function paintAuth(){
     ? `<div class="field"><label for="auth-email">Почта</label><input id="auth-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru" value="${esc(auth.email)}"></div>
       <button class="btn auth-submit" onclick="authSend()">Прислать код</button><p class="msg" id="auth-msg"></p>`
     : `<p class="auth-sent">Код отправлен на <b>${esc(auth.email)}</b></p>
-      <div class="field"><label for="auth-code">Код из письма</label><input id="auth-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
+      <div class="field"><label for="auth-code">Код из письма</label><input id="auth-code" class="code-input" inputmode="numeric" maxlength="6" placeholder="000000"></div>
       <button class="btn auth-submit" onclick="authCheck()">Войти</button>
       <button class="btn ghost sm auth-secondary" onclick="auth.step='email';paintAuth()">Изменить адрес</button><p class="msg" id="auth-msg"></p>`;
   setTimeout(() => $(auth.step === 'email' ? 'auth-email' : 'auth-code')?.focus(), 60);
@@ -1738,13 +1684,13 @@ async function authCheck(){
 function renderAuth(){
   const u = S.user;
   const idle = () => u.email
-    ? `<p style="font-size:15px;color:#ded8ee">Вы вошли как <b>${esc(u.email)}</b></p>
-      ${isStaff(u) ? `<button class="btn sm" style="width:100%;margin-top:13px" onclick="openCabinet()">Кабинет сотрудника</button>` : ''}
-      <button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="logout()">Выйти на этом устройстве</button>`
+    ? `<p class="t2">Вы вошли как <b>${esc(u.email)}</b></p>
+      ${isStaff(u) ? `<button class="btn sm full mt-3" onclick="openCabinet()">Кабинет сотрудника</button>` : ''}
+      <button class="btn ghost sm full mt-3" onclick="logout()">Выйти на этом устройстве</button>`
     : S.localPreview
-    ? '<p>Вход по почте доступен на сайте Лунарио.</p><p style="margin-top:12px">Это локальный просмотр: письма с кодом здесь не отправляются. Записи демо остаются здесь и не переносятся в аккаунт на сайте.</p><a class="btn auth-submit" href="https://lunario.online/app/" target="_blank" rel="noopener">Открыть сайт для входа ↗</a>'
-    : `<p style="font-size:15px;color:#ded8ee">Вход по почте скоро появится</p>
-      <p style="font-size:13.5px;margin-top:7px">Пока записи хранятся на этом устройстве. Не удаляйте приложение — иначе история потеряется.</p>`;
+    ? '<p>Вход по почте доступен на сайте Лунарио.</p><p class="mt-3">Это локальный просмотр: письма с кодом здесь не отправляются. Записи демо остаются здесь и не переносятся в аккаунт на сайте.</p><a class="btn auth-submit" href="https://lunario.online/app/" target="_blank" rel="noopener">Открыть сайт для входа ↗</a>'
+    : `<p class="t2">Вход по почте скоро появится</p>
+      <p class="hint">Пока записи хранятся на этом устройстве. Не удаляйте приложение — иначе история потеряется.</p>`;
   authMount('m-auth', { step: u.email || !S.mailReady ? 'idle' : 'email', idle, onDone: (r) => {
     if (r.merged) { location.reload(); return; }   /* чужой аккаунт найден — перезагрузка подтянет его целиком */
     S.user = r.user; toast('Почта сохранена — доступ не потеряется'); renderAuth(); loadAccount();
@@ -1759,7 +1705,7 @@ function obDone(r){
   $('o-back').style.display = 'none'; $('o-mailfield').style.display = 'none';
   toast('Почта сохранена — осталось заполнить профиль');
 }
-const obAuthIdle = () => `<button class="btn ghost sm" style="width:100%;margin-top:13px" onclick="auth.step='email';paintAuth()">Войти по почте</button>`;
+const obAuthIdle = () => `<button class="btn ghost sm full mt-3" onclick="auth.step='email';paintAuth()">Войти по почте</button>`;
 async function logout(){
   if(!confirm('Выйти на этом устройстве? Записи останутся в аккаунте и вернутся при следующем входе.')) return;
   await api('/auth/logout',{method:'POST'});
@@ -1774,18 +1720,18 @@ async function loadWeek(){
     if (w.asked.length) parts.push('спрашивали: ' + w.asked.map(a=>`${a.kind} — ${a.count}`).join(' · '));
     if (w.notes) parts.push(`записей в дневнике — ${w.notes}`);
     $('w-detail').innerHTML = parts.length
-      ? parts.map(t=>`<p class="hint" style="margin-top:6px">${t}</p>`).join('')
+      ? parts.map(t=>`<p class="hint">${t}</p>`).join('')
       : '';
   }catch(e){ $('w-summary').textContent = 'Итог недели появится, когда наберутся отметки.'; }
 }
 async function loadInvite(){
   try{
     const i = await api('/invite');
-    const bonus = i.bonusActive ? `<p style="font-size:13px;color:var(--gold);margin-top:9px">Подарок действует до ${fmtDay(i.bonusUntil)} — четыре подробных разбора в день.</p>` : '';
-    const brought = i.brought ? `<p class="hint" style="margin-top:9px">По вашей ссылке пришли: ${i.brought}</p>` : '';
+    const bonus = i.bonusActive ? `<p class="hint t-gold mt-2">Подарок действует до ${fmtDay(i.bonusUntil)} — четыре подробных разбора в день.</p>` : '';
+    const brought = i.brought ? `<p class="hint mt-2">По вашей ссылке пришли: ${i.brought}</p>` : '';
     $('inv-box').innerHTML = `
-      <div class="field" style="margin:0"><input id="inv-link" readonly value="${esc(i.link)}" style="font-size:13px"></div>
-      <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="copyInvite()">Скопировать ссылку</button>
+      <div class="field mb-0"><input id="inv-link" class="compact" readonly value="${esc(i.link)}"></div>
+      <button class="btn ghost sm full mt-2" onclick="copyInvite()">Скопировать ссылку</button>
       ${bonus}${brought}`;
   }catch(e){ $('inv-box').innerHTML = '<p class="hint">Ссылка появится чуть позже.</p>'; }
 }
@@ -1845,11 +1791,11 @@ async function compat(){
   try{
     const r=await api('/compat',{method:'POST',body:JSON.stringify({birth:b})});
     $('m-cres').style.display='block';
-    $('m-cres').innerHTML=`<div class="big" style="font-size:46px">${r.total}%</div>
-      <p class="serif" style="text-align:center;font-size:19px;color:#fff">${r.you} и ${r.other}</p>
-      <div class="split" style="grid-template-columns:repeat(4,1fr);margin:16px 0 10px">
-      ${r.rings.map(([n,v])=>`<div class="ring"><svg width="54" height="54" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle class="v" cx="28" cy="28" r="24" fill="none" stroke="#d9b868" stroke-width="4" stroke-linecap="round" data-p="${v}"/></svg><span style="font-size:12px;color:var(--violet-2)">${v}%</span><span style="font-size:10.5px;color:var(--muted)">${n}</span></div>`).join('')}
-      </div><p style="font-size:14px">${r.text}</p>`;
+    $('m-cres').innerHTML=`<div class="big">${r.total}%</div>
+      <p class="serif center strong">${r.you} и ${r.other}</p>
+      <div class="split">
+      ${r.rings.map(([n,v])=>`<div class="ring"><svg width="54" height="54" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle class="v" cx="28" cy="28" r="24" fill="none" stroke="#d9b868" stroke-width="4" stroke-linecap="round" data-p="${v}"/></svg><span class="val">${v}%</span><span class="lbl">${n}</span></div>`).join('')}
+      </div><p class="mt-3">${r.text}</p>`;
     setTimeout(()=>document.querySelectorAll('#m-cres circle.v').forEach((c,i)=>{ c.style.transitionDelay=i*90+'ms'; c.style.strokeDashoffset=151-151*(+c.dataset.p)/100; }),60);
     hap('done');
   }catch(e){ toast('Не получилось рассчитать'); }
@@ -1946,7 +1892,7 @@ function loadAccount(){
 function loadJournal(){
   api('/journal').then(r=>{
     const kindOf = (i) => i.kind === 'gratitude' ? ' · благодарность' : i.kind === 'answer' ? ' · ответ на вопрос дня' : '';
-    const html=r.items.map(i=>`<div class="item"><small>${fmtDay(i.day)}${kindOf(i)}</small>${i.kind === 'answer' && i.title ? `<p style="font-size:13.5px;margin-top:4px;color:#cdc6e2;font-style:italic">${esc(i.title)}</p>` : ''}<p style="font-size:14px;margin-top:5px">${esc(i.text)}</p></div>`).join('')||'<div class="item"><p>Пока пусто. Пара строк вечером — и здесь появится ваша лента.</p></div>';
+    const html=r.items.map(i=>`<div class="item"><small>${fmtDay(i.day)}${kindOf(i)}</small>${i.kind === 'answer' && i.title ? `<p class="mt-1 italic">${esc(i.title)}</p>` : ''}<p class="mt-2">${esc(i.text)}</p></div>`).join('')||'<div class="item"><p>Пока пусто. Пара строк вечером — и здесь появится ваша лента.</p></div>';
     $('m-journal').innerHTML=html;
   }).catch(()=>{});
 }
@@ -2044,14 +1990,14 @@ function preparePending(){ const ids = pendingRes; pendingRes = []; ids.forEach(
 function actionsHtml(id, withShare){
   return `<div class="resrow utility-actions">${withShare ? `<button class="text-action" type="button" onclick="shareRes('${id}')"><i class="ico share"></i>Поделиться</button>` : ''}<button class="text-action secondary" type="button" onclick="savePostcard('${id}')">↓ Скачать на телефон</button></div>`;
 }
-const qLine = (q) => q ? `<p style="font-style:italic;text-align:center;font-size:14px;margin-bottom:12px">«${esc(q)}»</p>` : '';
+const qLine = (q) => q ? `<p class="italic center mb-3">«${esc(q)}»</p>` : '';
 
 /* ── карта дня: иллюстрация, ключи, образ, совет, вопрос себе; остальное — под «Читать полностью» ── */
 function cardDayHtml(c, day, compact){
   const id = regRes({ type: 'card', card: c, day });
   const s = c.sections || {};
-  return `<div style="text-align:center"><div class="serif" style="font-size:22px;color:var(--gold)">${esc(c.name)}</div>${c.keys ? `<div class="kw">${esc(keysLine(c.keys))}</div>` : ''}</div>
-    ${(c.today || (s.advice && s.advice.length)) ? `<div class="card" style="margin-top:14px"><h3>Сегодня</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : paras((s.advice||[]).slice(0,1))}</div>` : ''}
+  return `<div class="center"><div class="title-gold">${esc(c.name)}</div>${c.keys ? `<div class="kw">${esc(keysLine(c.keys))}</div>` : ''}</div>
+    ${(c.today || (s.advice && s.advice.length)) ? `<div class="card mt-3"><h3>Сегодня</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : paras((s.advice||[]).slice(0,1))}</div>` : ''}
     ${c.question ? `<section class="card-question"><h3>Вопрос себе</h3><p>${esc(c.question)}</p></section>` : ''}
     ${moreBlock((s.image && s.image.length ? `<h3>Образ карты</h3>${paras(s.image)}` : '') + sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC) + ((c.today || (s.advice||[]).length>1)?'<h3>Совет карты</h3>'+paras(c.today?s.advice:(s.advice||[]).slice(1)):'') , 'Прочитать подробнее')}
     ${actionsHtml(id, !compact)}`;
@@ -2113,21 +2059,21 @@ function runesHtml(p){
   const id = regRes({ type: p.layout === 'one' || runes.length === 1 ? 'rune' : 'runes', layout: p.layout, runes, q: p.q, day: p.day });
   if (runes.length === 1) {
     const r = runes[0];
-    return `<div class="card rise" style="text-align:center">${qLine(p.q)}
-        ${r.image ? `<img class="stone" src="${esc(r.image)}?v=1" alt="">` : `<div class="glyph" style="margin:4px auto 10px;width:90px;height:90px">${glyphSvg(r.path)}</div>`}
-        <div class="serif" style="font-size:23px;color:var(--gold)">${esc(r.name)}</div>
+    return `<div class="card rise center">${qLine(p.q)}
+        ${r.image ? `<img class="stone" src="${esc(r.image)}?v=1" alt="">` : `<div class="glyph lg">${glyphSvg(r.path)}</div>`}
+        <div class="title-gold">${esc(r.name)}</div>
         ${r.keyword ? `<div class="kw">${esc(r.keyword)}</div>` : ''}
-        ${r.motto ? `<p style="margin-top:8px;font-style:italic;color:#cdc6e2">${esc(r.motto)}</p>` : ''}
-        <p style="margin-top:12px;color:#fff;font-size:16px">${esc(r.answer || '')}</p>
-        <div style="text-align:left">${moreBlock(sectionsHtml(r, ['meaning', 'advice', 'state', 'interact'], RUNE_SEC))}</div>
+        ${r.motto ? `<p class="mt-2 italic">${esc(r.motto)}</p>` : ''}
+        <p class="mt-3 strong">${esc(r.answer || '')}</p>
+        <div class="left">${moreBlock(sectionsHtml(r, ['meaning', 'advice', 'state', 'interact'], RUNE_SEC))}</div>
         ${actionsHtml(id)}</div>`;
   }
-  return `<div class="card rise">${qLine(p.q)}<div style="text-align:center"><span class="eyebrow">${esc(L.title)}</span></div>
+  return `<div class="card rise">${qLine(p.q)}<div class="center"><span class="eyebrow">${esc(L.title)}</span></div>
       ${diagramHtml('rune', p.layout, runes, id)}
       <div class="list">${runes.map((r, i) => { const P = L.pos[i] || { name: 'Позиция ' + (i + 1), hint: '' }; const s = r.sections || {};
         return `<div class="card pos" id="${id}-p${i}"><span class="glyph">${glyphSvg(r.path)}</span><div class="grow">${posHead(i, P)}
-          <b style="margin-top:6px">${esc(r.name)}${r.keyword ? ` <span style="color:#cdc6e2;font-weight:400;font-size:13px">· ${esc(r.keyword)}</span>` : ''}</b>
-          <p style="font-size:14.5px;margin-top:6px;color:#ded8ee">${esc(r.answer || '')}</p>
+          <b>${esc(r.name)}${r.keyword ? ` <span class="sub">· ${esc(r.keyword)}</span>` : ''}</b>
+          <p class="mt-2 t2">${esc(r.answer || '')}</p>
           ${moreBlock(sectionsHtml({ sections: { meaning: (s.meaning || []).slice(0, 1), advice: s.advice } }, ['meaning', 'advice'], RUNE_SEC), 'Подробнее')}
         </div></div>`; }).join('')}</div>
       ${actionsHtml(id)}</div>`;
@@ -2138,12 +2084,12 @@ function spreadHtml(p){
   const L = layoutOf('tarot', p.layout) || { title: 'Расклад', pos: [] };
   const cards = p.cards.map(s => cardBy(s) || (p.live || []).find(x => x.slug === s) || { slug: s, name: s, keys: '', image: '', sections: {} });
   const id = regRes({ type: 'spread', layout: p.layout, cards, q: p.q, day: p.day });
-  return `<div class="card rise">${qLine(p.q)}<div style="text-align:center"><span class="eyebrow">${esc(L.title)}</span></div>
+  return `<div class="card rise">${qLine(p.q)}<div class="center"><span class="eyebrow">${esc(L.title)}</span></div>
       ${diagramHtml('tarot', p.layout, cards, id)}
       <div class="list">${cards.map((c, i) => { const P = L.pos[i] || { name: 'Позиция ' + (i + 1), hint: '' }; const sp = (c.sections && c.sections.spread) || [];
         return `<div class="card pos" id="${id}-p${i}">${c.image ? `<img class="thumb" src="${esc(c.image)}?v=1" alt="">` : ''}<div class="grow">${posHead(i, P)}
-          <b style="margin-top:6px">${esc(c.name)}</b>${c.keys ? `<div class="kw" style="margin-top:3px">${esc(keysLine(c.keys))}</div>` : ''}
-          ${sp[0] ? `<p style="font-size:14.5px;margin-top:8px">${esc(sp[0])}</p>` : ''}
+          <b>${esc(c.name)}</b>${c.keys ? `<div class="kw mt-1">${esc(keysLine(c.keys))}</div>` : ''}
+          ${sp[0] ? `<p class="mt-2">${esc(sp[0])}</p>` : ''}
           ${moreBlock((sp.length > 1 ? paras(sp.slice(1)) : '') + sectionsHtml(c, ['advice'], CARD_SEC), 'Подробнее')}
         </div></div>`; }).join('')}</div>
       ${actionsHtml(id)}</div>`;
@@ -2152,8 +2098,8 @@ function spreadHtml(p){
 /* ── Да / Нет ── */
 function yesnoHtml(p){
   const id = regRes({ type: 'yesno', title: p.title, body: p.body, q: p.q, day: p.day });
-  return `<div class="card rise" style="text-align:center">${qLine(p.q)}<div class="big">${esc(p.title)}</div><p style="margin-top:10px">${esc(p.body)}</p>${actionsHtml(id)}</div>` +
-    (p.memory ? `<div class="card rise" style="--i:1;border-color:rgba(217,184,104,.35)"><span class="eyebrow" style="color:var(--gold);margin-bottom:6px">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b style="color:#fff">«${esc(p.memory.title)}»</b>, сегодня — <b style="color:#fff">«${esc(p.title)}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>` : '');
+  return `<div class="card rise center">${qLine(p.q)}<div class="big">${esc(p.title)}</div><p class="mt-3">${esc(p.body)}</p>${actionsHtml(id)}</div>` +
+    (p.memory ? `<div class="card rise memory" style="--i:1"><span class="eyebrow mb-2">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b class="strong">«${esc(p.memory.title)}»</b>, сегодня — <b class="strong">«${esc(p.title)}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>` : '');
 }
 
 /* ── свериться: способ и расклад ── */
@@ -2241,7 +2187,7 @@ function entryHtml(i){
   if (i.kind === 'yesno') return yesnoHtml({ q: i.question, title: i.title, body: i.body, day: i.day });
   if ((i.kind === 'rune' || i.kind === 'runes') && d.runes) return runesHtml({ q: i.question, layout: d.layout || 'one', runes: d.runes, day: i.day });
   if (i.kind === 'spread' && d.cards) return spreadHtml({ q: i.question, layout: d.layout || 'three', cards: d.cards, day: i.day });
-  return `<p style="font-size:14px">${esc(i.body || i.title)}</p>`;   /* записи, сделанные до появления кодов */
+  return `<p>${esc(i.body || i.title)}</p>`;   /* записи, сделанные до появления кодов */
 }
 
 /* ══════════ Открытка 9:16: чистая картинка без интерфейса — на экран блокировки или подруге ══════════ */
@@ -2503,11 +2449,11 @@ function paintRem(f){
       ${full?actions:''}<div id="${panel}" class="rem-body" ${edit?'':'hidden'}>
         ${full?'':toggle+`<p class="rem-status" role="status">${esc(remStatus(f,r))}</p>`+(!remDeviceReady()?`<button type="button" class="text-action secondary" onclick="openWidget('remind')">Разрешения уведомлений →</button>`:'')+actions}
         <div class="rem-row"><label for="${panel}-time">Время</label><input id="${panel}-time" aria-label="Время уведомления" type="time" value="${r.time}" onchange="remSave('${f}',{time:this.value})"></div>
-        <div class="chips flow" style="margin-top:10px" aria-label="Регулярность">${(f === 'sky' ? ['events','daily','weekdays','weekly'] : ['daily','weekdays','weekly']).map(k => `<button type="button" class="chip${r.freq === k ? ' on' : ''}" aria-pressed="${r.freq===k}" onclick="remSave('${f}',{freq:'${k}'})">${FREQ_LABEL[k]}</button>`).join('')}</div>
-        ${r.freq === 'weekly' ? `<div class="chips flow" style="margin-top:8px" aria-label="День недели">${WD_SHORT.map((w,i) => `<button type="button" class="chip${r.weekday === i+1 ? ' on' : ''}" aria-pressed="${r.weekday===i+1}" onclick="remSave('${f}',{weekday:${i+1}})">${w}</button>`).join('')}</div>` : ''}
-        <p class="hint" style="margin-top:10px">Часовой пояс: ${esc(TZ || 'Europe/Moscow')}. Изменения сохраняются автоматически</p>
-        ${!IOS_SHELL && ['habits','mood','gratitude'].includes(f) ? '<p class="hint" style="margin-top:6px">Если сегодня всё уже отмечено, напоминание не отправляем</p>' : ''}
-        ${f==='askesis' ? '<p class="hint" style="margin-top:6px">Поддержка и оставшиеся дни — пока есть активная аскеза</p>' : ''}
+        <div class="chips flow mt-3" aria-label="Регулярность">${(f === 'sky' ? ['events','daily','weekdays','weekly'] : ['daily','weekdays','weekly']).map(k => `<button type="button" class="chip${r.freq === k ? ' on' : ''}" aria-pressed="${r.freq===k}" onclick="remSave('${f}',{freq:'${k}'})">${FREQ_LABEL[k]}</button>`).join('')}</div>
+        ${r.freq === 'weekly' ? `<div class="chips flow mt-2" aria-label="День недели">${WD_SHORT.map((w,i) => `<button type="button" class="chip${r.weekday === i+1 ? ' on' : ''}" aria-pressed="${r.weekday===i+1}" onclick="remSave('${f}',{weekday:${i+1}})">${w}</button>`).join('')}</div>` : ''}
+        <p class="hint mt-3">Часовой пояс: ${esc(TZ || 'Europe/Moscow')}. Изменения сохраняются автоматически</p>
+        ${!IOS_SHELL && ['habits','mood','gratitude'].includes(f) ? '<p class="hint mt-2">Если сегодня всё уже отмечено, напоминание не отправляем</p>' : ''}
+        ${f==='askesis' ? '<p class="hint mt-2">Поддержка и оставшиеся дни — пока есть активная аскеза</p>' : ''}
 
       </div>`;
   });
@@ -2635,7 +2581,7 @@ async function paintAllReminders(){
   const box = $('rem-all'); box.innerHTML = LOADING;
   try { await loadReminders(true); } catch (e) { box.innerHTML = LOAD_ERR; return; }
   box.innerHTML = `<p class="hint">Выберите, о чём напоминать. Для каждой функции можно задать своё время и регулярность.</p><p id="rem-device-status" class="rem-status" role="status"></p>
-    <div class="list" style="margin-top:12px">${REM_ORDER.map(f => `<div class="item"><b style="margin-bottom:8px">${esc(S.rem[f].title)}</b>${remBox(f,true)}</div>`).join('')}</div>`;
+    <div class="list mt-3">${REM_ORDER.map(f => `<div class="item"><b class="mb-2">${esc(S.rem[f].title)}</b>${remBox(f,true)}</div>`).join('')}</div>`;
   REM_ORDER.forEach(paintRem);
   if (IOS_SHELL && IOS_BRIDGE >= 2) nativePost({ type: 'scheduleStatus' });
 }
@@ -2645,7 +2591,7 @@ function paintMoodExtra(){
   const box = $('mood-extra'); if (!box) return;
   const m = moodInfo(S.mood);
   const id = m ? regRes({ type: 'mood', mood: S.mood, label: m.label, day: S.day.date }) : '';
-  box.innerHTML = `${m ? actionsHtml(id, true) : '<p class="hint" style="text-align:center;margin-top:12px">Отметьте настроение — и его можно будет сохранить открыткой.</p>'}`;
+  box.innerHTML = `${m ? actionsHtml(id, true) : '<p class="hint center mt-3">Отметьте настроение — и его можно будет сохранить открыткой.</p>'}`;
   remRefresh('mood'); preparePending();
 }
 
@@ -2661,9 +2607,9 @@ async function loadMoodReport(){
 function paintMoodReport(){
   const r = S.moodReport, box = $('mr-box'), total = r.month.days;
   const id = regRes({ type: 'moodreport', r, day: S.day.date });
-  box.innerHTML = `<p style="font-size:16px;color:#ded8ee">${esc(r.summary)}</p>
-    <div class="card" style="margin-top:14px"><h3>Неделя</h3><div class="mr-strip">${r.week.map(w => `<button type="button" onclick="diaryDay('${w.day}')" aria-label="Открыть дневник за ${fmtDay(w.day)}" class="mr-day${w.mood ? ' on' : ''}${w.day === S.day.date ? ' today' : ''}" title="${w.mood ? MOOD_LABEL[w.mood] : ''}">${w.mood ? moodSvg(w.mood, 30) : '<span class="mr-empty"></span>'}<small>${WD_SHORT[wdIdx(w.day)]}</small></button>`).join('')}</div></div>
-    <div class="card" style="margin-top:12px"><h3>${monthName(r.month.key)}</h3>${total ? r.month.stats.map(s => `<div class="barrow"><span class="l">${MOOD_LABEL[s.mood] || s.mood}</span><div class="bar"><i style="width:${Math.round(s.c / total * 100)}%"></i></div><span class="v">${s.c}</span></div>`).join('') : '<p>В этом месяце отметок пока нет.</p>'}</div>
+  box.innerHTML = `<p class="t2">${esc(r.summary)}</p>
+    <div class="card mt-3"><h3>Неделя</h3><div class="mr-strip">${r.week.map(w => `<button type="button" onclick="diaryDay('${w.day}')" aria-label="Открыть дневник за ${fmtDay(w.day)}" class="mr-day${w.mood ? ' on' : ''}${w.day === S.day.date ? ' today' : ''}" title="${w.mood ? MOOD_LABEL[w.mood] : ''}">${w.mood ? moodSvg(w.mood, 30) : '<span class="mr-empty"></span>'}<small>${WD_SHORT[wdIdx(w.day)]}</small></button>`).join('')}</div></div>
+    <div class="card mt-3"><h3>${monthName(r.month.key)}</h3>${total ? r.month.stats.map(s => `<div class="barrow"><span class="l">${MOOD_LABEL[s.mood] || s.mood}</span><div class="bar"><i style="width:${Math.round(s.c / total * 100)}%"></i></div><span class="v">${s.c}</span></div>`).join('') : '<p>В этом месяце отметок пока нет.</p>'}</div>
 
     ${r.month.entries?.length?`<h3>Записи по дням</h3><div class="mr-month-days">${r.month.entries.map(w=>`<button class="mr-day" type="button" onclick="diaryDay('${w.day}')" aria-label="Открыть дневник за ${fmtDay(w.day)}">${moodSvg(w.mood,28)}<small>${Number(w.day.slice(-2))}</small></button>`).join('')}</div>`:''}
     ${total ? actionsHtml(id, true) : ''}`;
@@ -2754,9 +2700,9 @@ function paintSkyPlace(){
   const box=$('skyplace-box'),sky=window.LunarioSky;if(!box)return;
   const d=sky?sky.describe():{label:'Москва',source:'moscow',hasProfile:false,geolocation:false};
   box.innerHTML=`<p class="hint">Созвездия на фоне рисуются для этого места. Координаты устройства никуда не отправляются; выбранный город запоминается только в этом браузере.</p>
-    <div class="card" style="margin-top:10px"><span class="eyebrow">Сейчас</span><p style="margin-top:4px" id="sp-now">${esc(d.label)}</p></div>
-    <div class="field" style="margin-top:14px;position:relative"><label for="sp-city">Указать город</label><input id="sp-city" placeholder="Начните вводить: Влад…" maxlength="60" autocomplete="off"><div class="sug-list" id="sp-city-list"></div><p class="hint" id="sp-geo" style="margin-top:6px">Выберите город из подсказки — небо перестроится сразу.</p></div>
-    <div class="rows" style="margin-top:12px">
+    <div class="card mt-3"><span class="eyebrow">Сейчас</span><p class="mt-1" id="sp-now">${esc(d.label)}</p></div>
+    <div class="field sug mt-3"><label for="sp-city">Указать город</label><input id="sp-city" placeholder="Начните вводить: Влад…" maxlength="60" autocomplete="off"><div class="sug-list" id="sp-city-list"></div><p class="hint mt-2" id="sp-geo">Выберите город из подсказки — небо перестроится сразу.</p></div>
+    <div class="rows mt-3">
       ${d.geolocation?`<button class="rowbtn" type="button" onclick="window.LunarioSky.locate(true);setTimeout(paintSkyPlace,1200)"><span>Определить по устройству</span><small>Телефон спросит разрешение один раз</small></button>`:''}
       ${d.hasProfile?`<button class="rowbtn" type="button" onclick="window.LunarioSky.useProfile();paintSkyPlace()"><span>Как в анкете</span><small>Город рождения из профиля</small></button>`:''}
     </div>`;
@@ -2798,7 +2744,7 @@ function lunarRefHtml(ref){
   if (!ref || !ref.sections) return '';
   const secs = ref.sections.filter(s => s.title !== 'Оглавление' && s.blocks && s.blocks.length);
   if (!secs.length) return '';
-  return `<div class="card yr-art" style="margin-top:12px"><h3>${esc(ref.title)}</h3>${ref.caption ? `<p class="hint" style="margin-top:0">${esc(ref.caption)}</p>` : ''}
+  return `<div class="card yr-art mt-3"><h3>${esc(ref.title)}</h3>${ref.caption ? `<p class="hint mt-0">${esc(ref.caption)}</p>` : ''}
     ${secs.map(sec => moreBlock(blocksHtml(sec.blocks), sec.title)).join('')}</div>`;
 }
 
@@ -2812,21 +2758,19 @@ async function loadSky(){
 function paintSky(){
   const s = S.sky, box = $('sky-box');
   const id = regRes({ type: 'sky', sky: s, day: s.date });
-  const ev = (e, cls) => `<div class="item skyev${cls ? ' ' + cls : ''}"><b>${esc(e.title)}</b><small>${fmtWhen(e.at)}</small>${e.note ? `<p style="font-size:14px;margin-top:6px">${esc(e.note)}</p>` : ''}</div>`;
-  box.innerHTML = `<div class="card" style="text-align:center"><span class="eyebrow">Сегодня</span>
-      <div class="serif" style="font-size:22px;color:var(--gold);margin-top:6px">${esc(s.moon.phase)} ${esc(s.moon.signIn)}</div>
-      <p style="font-size:14px;margin-top:4px">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растёт' : 'убывает'} · Солнце в знаке ${esc(s.sun.sign)}</p>
-      <p style="margin-top:10px;color:#ded8ee;font-size:14.5px">${s.retro.length ? s.retro.map(r => `${r.symbol} ${esc(r.name)} — ${r.adj}`).join(' · ') : 'Ретроградных планет сейчас нет'}</p>
+  const ev = (e, cls) => `<div class="item skyev${cls ? ' ' + cls : ''}"><b>${esc(e.title)}</b><small>${fmtWhen(e.at)}</small>${e.note ? `<p class="mt-2">${esc(e.note)}</p>` : ''}</div>`;
+  box.innerHTML = `<div class="card center"><span class="eyebrow">Сегодня</span>
+      <div class="title-gold mt-2">${esc(s.moon.phase)} ${esc(s.moon.signIn)}</div>
+      <p class="mt-1">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растёт' : 'убывает'} · Солнце в знаке ${esc(s.sun.sign)}</p>
+      <p class="t2">${s.retro.length ? s.retro.map(r => `${r.symbol} ${esc(r.name)} — ${r.adj}`).join(' · ') : 'Ретроградных планет сейчас нет'}</p>
     </div>
-    ${s.today.length ? `<div class="list" style="margin-top:12px">${s.today.map(e => ev(e, 'now')).join('')}</div>` : ''}
-    ${s.retro.length ? `<div class="card" style="margin-top:12px">${s.retro.map(r => `<h3>${r.symbol} ${esc(r.name)} ${r.adj}</h3><p>${esc(r.note)}</p>`).join('')}</div>` : ''}
-    ${s.aspects.length ? `<div class="card" style="margin-top:12px"><h3>Точные аспекты сегодня</h3>${s.aspects.map(a => `<p>${a.aSym} ${esc(a.a)} ${a.symbol} ${a.bSym} ${esc(a.b)} <small style="color:#8f87ad">· ${esc(a.name.toLowerCase())}, орб ${a.orb}°</small></p>`).join('')}</div>` : ''}
-    <span class="eyebrow" style="margin-top:18px">Ближайшие недели</span>
-    <div class="list" style="margin-top:8px">${s.upcoming.map(e => ev(e)).join('')}</div>
-
-
+    ${s.today.length ? `<div class="list mt-3">${s.today.map(e => ev(e, 'now')).join('')}</div>` : ''}
+    ${s.retro.length ? `<div class="card mt-3">${s.retro.map(r => `<h3>${r.symbol} ${esc(r.name)} ${r.adj}</h3><p>${esc(r.note)}</p>`).join('')}</div>` : ''}
+    ${s.aspects.length ? `<div class="card mt-3"><h3>Точные аспекты сегодня</h3>${s.aspects.map(a => `<p>${a.aSym} ${esc(a.a)} ${a.symbol} ${a.bSym} ${esc(a.b)} <small class="faint">· ${esc(a.name.toLowerCase())}, орб ${a.orb}°</small></p>`).join('')}</div>` : ''}
+    <span class="eyebrow mt-4">Ближайшие недели</span>
+    <div class="list mt-2">${s.upcoming.map(e => ev(e)).join('')}</div>
     ${actionsHtml(id, true)}
-    <p class="hint" style="margin-top:12px;text-align:center">Фазы и планеты рассчитаны астрономически. Затмения — по положению Луны у узлов, без учёта видимости из вашего города.</p>`;
+    <p class="hint mt-3 center">Фазы и планеты рассчитаны астрономически. Затмения — по положению Луны у узлов, без учёта видимости из вашего города.</p>`;
   paintRem('sky'); preparePending();
 }
 
@@ -3083,7 +3027,7 @@ async function hubAsk(){
 let toneDraft='',toneSaving=false,toneSaved=null;
 function paintTone(){
   const d=S.day,st=d.set;if(!$('tone-box'))return;
-  $('tone-box').innerHTML=`${st?`<p class="hint" style="margin-bottom:18px">${esc(st.statement||st.text)}</p>`:''}
+  $('tone-box').innerHTML=`${st?`<p class="hint mb-4">${esc(st.statement||st.text)}</p>`:''}
     <p class="practice-question">${esc(d.question)}</p>
     ${toneSaved?`<div class="saved-state" role="status">Сохранено в дневнике · ${fmtDay(toneSaved.day)}</div><p class="entry-text">${esc(toneSaved.text)}</p>`:''}
     <div class="answer-form"><div class="field"><textarea id="tone-a" aria-label="Ответ на вопрос дня" maxlength="2000" placeholder="Пара строк — как есть…" oninput="toneDraft=this.value;growTextarea(this)">${esc(toneDraft)}</textarea></div></div>
@@ -3232,10 +3176,10 @@ function awardIcon(days, size){
 function showAward(a){
   const [name, text] = awardText(a.days);
   const id = regRes({ type: 'award', days: a.days, name, text, title: a.title, day: S.day.date });
-  $('award-box').innerHTML = `<div class="award">${awardIcon(a.days, 180)}<span class="eyebrow" style="margin-top:14px">${a.days} ${plural(a.days, 'день', 'дня', 'дней')} подряд</span>
-      <div class="serif" style="font-size:26px;color:var(--gold);margin-top:6px">${esc(name)}</div>
-      <p style="margin-top:8px;color:#fff;font-size:15.5px">${esc(a.title)}</p><p style="margin-top:8px;font-size:14.5px">${esc(text)}</p>
-      <div class="resrow" style="margin-top:16px"><button class="btn sm" type="button" onclick="savePostcard('${id}')">↓&nbsp; Открытка</button><button class="btn ghost sm" type="button" onclick="shareRes('${id}')">Поделиться</button><button class="btn ghost sm" type="button" onclick="$('award').classList.remove('on')">Закрыть</button></div></div>`;
+  $('award-box').innerHTML = `<div class="award">${awardIcon(a.days, 180)}<span class="eyebrow mt-3">${a.days} ${plural(a.days, 'день', 'дня', 'дней')} подряд</span>
+      <div class="title-gold mt-2">${esc(name)}</div>
+      <p class="mt-2 strong">${esc(a.title)}</p><p class="mt-2">${esc(text)}</p>
+      <div class="resrow mt-4"><button class="btn sm" type="button" onclick="savePostcard('${id}')">↓&nbsp; Открытка</button><button class="btn ghost sm" type="button" onclick="shareRes('${id}')">Поделиться</button><button class="btn ghost sm" type="button" onclick="$('award').classList.remove('on')">Закрыть</button></div></div>`;
   $('award').classList.add('on'); hap('award'); preparePending();
 }
 
@@ -3287,7 +3231,7 @@ function paintAskesis(){
     <div class="chips flow ask-quick-dates" aria-label="Быстрый выбор срока">${[['Неделя',7],['2 недели',14],['Месяц',30],['40 дней',40],['До конца года',0]].map(([label,n])=>`<button type="button" class="chip" onclick="askQuick(${n})">${label}</button>`).join('')}</div>
     <button type="button" class="btn" onclick="askStart()">Взять аскезу</button>`;
   box.innerHTML=active+(AS.active.length<5?(AS.active.length?`<details class="practice-create" ${askForm.open?'open':''} ontoggle="askPanelToggle(this,'new')"><summary onclick="toggleAskPanel(event,this,'new')">Добавить аскезу</summary><div class="card practice-card">${form}</div></details>`:`<div class="card practice-card">${form}</div>`):'')+
-    (AS.past.length?`<span class="eyebrow" style="margin-top:24px">Прошлые</span><div class="list">${AS.past.map(a=>`<div class="item"><b>${esc(a.title)}</b><small>${fmtDay(a.started)} — ${fmtDay(a.finished||a.until)} · ${a.status==='done'?'пройдена до конца':'завершена досрочно'}</small>${a.notes.length?moreBlock(a.notes.map(n=>`<p><small>${fmtDay(n.day)}</small><br>${esc(n.text)}</p>`).join(''),'Мои наблюдения'):''}</div>`).join('')}</div>`:'');
+    (AS.past.length?`<span class="eyebrow mt-5">Прошлые</span><div class="list">${AS.past.map(a=>`<div class="item"><b>${esc(a.title)}</b><small>${fmtDay(a.started)} — ${fmtDay(a.finished||a.until)} · ${a.status==='done'?'пройдена до конца':'завершена досрочно'}</small>${a.notes.length?moreBlock(a.notes.map(n=>`<p><small>${fmtDay(n.day)}</small><br>${esc(n.text)}</p>`).join(''),'Мои наблюдения'):''}</div>`).join('')}</div>`:'');
   askesisHomeStatus(AS);paintRem('askesis');preparePending();
 }
 function askPick(text){
@@ -3371,8 +3315,8 @@ const photoUrl = (u) => u && u.photo ? `/app/api/photo?t=${encodeURIComponent(u.
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
   $('h-acct').innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot" hidden aria-hidden="true"></i>`; paintNewsDot();
-  const box = $('ac-photo'); if (box) box.innerHTML = `<div class="row" style="gap:14px"><div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>
-    <div class="grow"><button class="btn ghost sm" type="button" onclick="setPhoto()">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? `<button type="button" class="linkbtn" style="margin:8px 0 0;text-align:left" onclick="removePhoto()">Убрать</button>` : '<p class="hint" style="margin-top:6px">Покажем в кружке на главной.</p>'}</div></div>`;
+  const box = $('ac-photo'); if (box) box.innerHTML = `<div class="row top"><div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>
+    <div class="grow"><button class="btn ghost sm" type="button" onclick="setPhoto()">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? `<button type="button" class="linkbtn left mt-2" onclick="removePhoto()">Убрать</button>` : '<p class="hint mt-2">Покажем в кружке на главной.</p>'}</div></div>`;
 }
 async function setPhoto(){
   const photo = await pickImage(320, 0.85); if (!photo) return;

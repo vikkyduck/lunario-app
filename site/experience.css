@@ -1,11 +1,11 @@
 /* Reading layout and controls; moon-glass.css supplies the final day/night material. */
 :root{--surface:#1c192c;--sheet:#12101f;--field:#13111f;--selected:#302a43;--read-size:18px}
-:root[data-theme=light]{--bg:#f0edf8;--surface:#f5f2ea;--sheet:#f5f2ea;--field:#faf8ff;--selected:rgba(42,33,80,.10);--text:#1d1738;--muted:#5d5574;--line:rgba(42,33,80,.18);--card:#f5f2ea;--card-2:#e8e1f4;--gold:#2a2150;--gold-2:#2a2150;--ok:#45424e;--warn:#65517e;--violet:#8272b4;--violet-2:#aa97cc}
+:root[data-theme=light]{--bg:#f0edf8;--surface:#f5f2ea;--sheet:#f5f2ea;--field:#faf8ff;--selected:rgba(42,33,80,.10);--text:#1d1738;--muted:#5d5574;--line:rgba(42,33,80,.18);--card:#f5f2ea;--card-2:#e8e1f4;--gold:#2a2150;--gold-2:#2a2150;--ok:#45424e;--warn:#65517e;--violet:#8272b4;--violet-2:#aa97cc;--text-2:#2a2150;--faint:#7a7291;--strong:#12101f}
 body:not(.inner){--bg:#0b0a14;--text:#f5f2ea;--muted:#b9b2cf;--gold:#d9b868;--gold-2:#f0d79a;--line:rgba(245,242,234,.09);--card:rgba(245,242,234,.05);color-scheme:dark}
 html[data-theme] body.inner{--muted:inherit;--line:inherit;background:var(--bg);color:var(--text)}
 html[data-theme=dark] body.inner{--muted:#c0bad0;--line:rgba(236,231,249,.13)}
 html[data-theme=light] body.inner{--muted:inherit;--line:inherit}
-body.inner :is(.card,.item,.wid,.sq,.mini button,.acc-head,.acc-opt,.mood){background:var(--surface);border-color:var(--line)}
+body.inner :is(.card,.item,.wid){background:var(--surface);border-color:var(--line)}
 body.inner :is(input,textarea,select){background:var(--field);color:var(--text);border-color:var(--line);font-size:17px}
 body.inner :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
 body.inner textarea{font-size:18px;line-height:1.65;min-height:160px;resize:none;overflow:hidden}
@@ -14,8 +14,8 @@ body.inner .wid b{font-size:17px;line-height:1.4}
 body.inner .day-focus{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-color:var(--line)}
 .day-focus .daily-statement{margin-bottom:20px}
 .day-focus .ritual-tools .section-caption{margin:0}
-body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.ln-text,.histbody p){font-size:var(--read-size)!important;line-height:1.7;color:var(--text)}
-body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.wid>span,.sq>small,.field label,.text-action,.rem-summary,.segmented button,.emotion-family,.mchip,.mood-own-row label,.hb-rule,.chip,.btn.sm,.observation>summary,.practice-create>summary){font-size:16px;line-height:1.5}
+body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.histbody p){font-size:var(--read-size)!important;line-height:1.7;color:var(--text)}
+body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.wid>span,.field label,.text-action,.rem-summary,.segmented button,.emotion-family,.mchip,.mood-own-row label,.hb-rule,.chip,.btn.sm,.observation>summary,.practice-create>summary){font-size:16px;line-height:1.5}
 body.inner .wpane :is(.hint,.msg,.saved-state){font-size:16px!important;color:var(--muted)}
 body.inner :is(.wpane .saved-state,.saved-state){color:var(--ok)}
 body.inner .wpane :is(h2,h3,b,strong,label){color:var(--text)}
@@ -39,7 +39,7 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 #practice-tools{margin:0 0 24px}
 #practice-tools .rem-body{display:none}
 #w-journal>.eyebrow{display:none}
-#w-journal #m-journal{margin-top:40px!important}
+#w-journal #m-journal{margin-top:40px}
 .ritual-tools{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
 #h-next[hidden]{display:none}
 #h-progress{font-size:16px;line-height:1.5;color:var(--muted)}
@@ -87,17 +87,16 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 .theme-option.dark>span{background:#1c192c;color:#f5f2ea}.theme-option.system>span{background:linear-gradient(90deg,#f0edf8 50%,#1c192c 50%);color:#2a2150}
 .theme-option[aria-pressed=true]{outline:2px solid var(--gold);outline-offset:2px}
 html[data-theme=light] body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:rgba(245,242,234,.28);color:var(--text);border-color:var(--line);box-shadow:0 4px 20px #2820400c,inset 0 1px 0 #fff}
-html[data-theme=light] body.inner :is(.orb,.cloud,.stars,.constellations){opacity:.035}
+html[data-theme=light] body.inner :is(.orb,.cloud){opacity:.035}
 html[data-theme=light] body.inner :is(.wid,.card,.item,.wpane,.profile-summary,.profile-detail,.timeline) :is(p,span,small,label){color:var(--text)}
 html[data-theme=light] body.inner :is(.hint,.section-caption,.geo,.wid>span,.wpane small,.timeline-kind,.timeline-day,.rem-status,.rem-summary){color:var(--muted)!important}
 html[data-theme=light] body.inner .btn:not(.ghost){background:var(--moon-control);color:#f5f2ea}
 html[data-theme=light] body.inner .btn.ghost{background:transparent;color:var(--text);border-color:rgba(42,33,80,.40)}
-html[data-theme=light] body.inner :is(.hb,.rem-body,.mood-picker,.observation,.practice-create,.quick-mood,.mchip,.acc-body,.histbody){background:var(--surface);color:var(--text);border-color:var(--line)}
+html[data-theme=light] body.inner :is(.hb,.rem-body,.mood-picker,.observation,.practice-create,.quick-mood,.mchip,.histbody){background:var(--surface);color:var(--text);border-color:var(--line)}
 html[data-theme=light] body.inner .ico{background-color:var(--gold-2)}
 html[data-theme=light] body.inner .app-nav .on{background:var(--selected);color:var(--text)}
-html[data-theme=light] body.inner :is(.chip,.mchip,.hd,.icon-action,.morebtn,.histhead,.quick-mood,.rowbtn,.acc-head,.acc-opt){color:var(--text);border-color:var(--line)}
+html[data-theme=light] body.inner :is(.chip,.mchip,.hd,.icon-action,.morebtn,.histhead,.quick-mood,.rowbtn){color:var(--text);border-color:var(--line)}
 html[data-theme=light] body.inner :is(.chip.on,.mchip.on,.chip[aria-pressed=true],.hd.on,.quick-mood.on){background:var(--selected);color:var(--text);border-color:var(--gold-2)}
-html[data-theme=light] body.inner .wpane :is(p,span,small,b,strong,div)[style*="color:"]{color:var(--text)!important}
 html[data-theme=light] body.inner :is(.text-action,.emotion-family):hover{color:var(--text)}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:16px;line-height:1.5}
 body.inner #home-sky .moonline small{font-size:14px;line-height:1.5}
@@ -288,7 +287,6 @@ body:not(.inner) :is(#v-onb,#v-login) .field label{font-size:16px;line-height:1.
 body:not(.inner) :is(#v-onb,#v-login) input:not([type=checkbox]){min-height:52px;border-radius:14px;font-size:17px;background:#100d1a}
 body:not(.inner) :is(#v-onb,#v-login) p{font-size:16px;line-height:1.6}
 body:not(.inner) #v-onb .geo{font-size:14px;line-height:1.5}
-body:not(.inner) #v-onb #o-form>label.row{font-size:15px!important;line-height:1.6;margin:8px 0 24px!important}
 body:not(.inner) #v-onb .onb-head{margin-bottom:28px}
 body:not(.inner) #v-onb .onb-head p{font-size:16px;line-height:1.5}
 body:not(.inner) #v-onb #o-back{background:none;border:0;padding-inline:0}
@@ -378,3 +376,7 @@ body:not(.inner) #v-onb #o-codebox .field{margin:0;gap:12px}
 body:not(.inner) #v-onb #o-codebox input{min-height:68px}
 body:not(.inner) #v-onb #o-codebox .auth-submit{margin-top:32px;min-height:64px}
 body:not(.inner) #v-onb #o-codebox .auth-secondary{margin-top:20px;min-height:48px;border:0;background:none;box-shadow:none}
+
+/* Роли текста и компактный ввод: явная роль элемента сильнее общих правил чтения (они заменили inline-стили) */
+.t2{color:var(--text-2)!important}.strong{color:var(--strong)!important}.faint{color:var(--faint)!important}.t-gold{color:var(--gold)!important}
+body.inner input.compact{font-size:14px}

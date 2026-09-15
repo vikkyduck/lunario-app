@@ -45,12 +45,12 @@ html[data-theme=light] body.inner .sky.on{opacity:.22}
 body.inner .wrap{max-width:1240px}
 body.inner .view>h1,body.inner .practice-header h1{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
 body.inner :is(.feature-group,.account-group)>h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
-body.inner :is(.wid,.sq,.quick-actions button,.question-entry .wid,.profile-summary,.wish-card){
+body.inner :is(.wid,.quick-actions button,.question-entry .wid,.profile-summary,.wish-card){
   background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);
   border:1px solid transparent;box-shadow:var(--moon-shadow);
 }
-body.inner :is(.wid,.sq,.quick-actions button){backdrop-filter:none;-webkit-backdrop-filter:none}
-body.inner :is(.wid,.sq)::before{display:block;opacity:.4;background:radial-gradient(220px circle at var(--glass-x,15%) var(--glass-y,0%),var(--moon-shine),transparent 75%);box-shadow:inset 1px 1px 0 #ffecc617,inset -1px -1px 0 #b59ed113}
+body.inner :is(.wid,.quick-actions button){backdrop-filter:none;-webkit-backdrop-filter:none}
+body.inner :is(.wid)::before{display:block;opacity:.4;background:radial-gradient(220px circle at var(--glass-x,15%) var(--glass-y,0%),var(--moon-shine),transparent 75%);box-shadow:inset 1px 1px 0 #ffecc617,inset -1px -1px 0 #b59ed113}
 body.inner .wid{border-radius:22px;padding:26px;min-height:158px;gap:12px}
 body.inner .wid b{font-size:17px;font-weight:600}
 body.inner .wid .ico{width:30px;height:30px;background-color:var(--gold-2);filter:drop-shadow(0 0 7px #d8b96b24)}
@@ -124,7 +124,7 @@ body.inner .timeline-kind{font-size:13px;color:var(--gold-2)}
 body.inner .timeline-day{margin:30px 0 14px}
 body.inner .timeline-empty{background:var(--moon-reader);border:1px solid var(--line);box-shadow:var(--moon-shadow)}
 body.inner .wish-picture:not(:has(img)){background:var(--moon-empty);border-bottom:1px solid var(--line)}
-body.inner :is(.hb,.practice-card,.ritual-option){border-color:var(--line);background:var(--moon-reader)}
+body.inner :is(.hb,.practice-card,.ritual-option){border-color:var(--line);background:var(--surface)}
 body.inner :is(.emotion-family,.quick-mood){border-color:var(--line);background:var(--surface)}
 body.inner :is(.emotion-family.on,.quick-mood.on,.ritual-option[aria-pressed=true]){background:var(--selected);border-color:var(--gold)}
 body.inner .hb.on{border-color:color-mix(in srgb,var(--ok) 38%,transparent)}
@@ -246,11 +246,11 @@ body:not(.inner) :is(#v-onb,#v-login) .field label{font-weight:600;color:var(--t
 body:not(.inner) :is(#v-onb,#v-login) input:not([type=checkbox]){font-size:18px;font-weight:500}
 body:not(.inner) :is(#v-onb,#v-login) .btn{font-size:20px;font-weight:600}
 body:not(.inner) #v-hello .hello-login{font-size:18px;font-weight:600}
-body:not(.inner) #v-hello .trust{color:#cdc6e2;font-weight:500}
+body:not(.inner) #v-hello .trust{color:var(--muted);font-weight:500}
 
 /* Glass follows the brief without backdrop filtering: a highlight over a dense base.
    Edge reflections and shadows provide depth; only toast and widget scrim may blur. */
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
   isolation:isolate;overflow:hidden;
   background:var(--glass-bg);
   backdrop-filter:none;
@@ -262,29 +262,29 @@ body:not(.inner) #v-hello .trust{color:#cdc6e2;font-weight:500}
 }
 /* Explicit containing blocks keep reflections inside controls without backdrop-filter. */
 body.inner :is(.rem-summary,#home-sky .moonline,.wg-x,.quick-actions button){position:relative}
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;
   background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),rgba(255,255,255,.75) 0deg,rgba(244,223,168,.55) 40deg,rgba(255,255,255,.08) 110deg,rgba(255,255,255,.05) 220deg,rgba(244,223,168,.35) 300deg,rgba(255,255,255,.75) 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude;
   pointer-events:none;opacity:1;box-shadow:none;transform:none;animation:none;
 }
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
   content:'';display:block;position:absolute;inset:-40%;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(circle at var(--glass-x) var(--glass-y),rgba(255,255,255,.28) 0%,rgba(244,223,168,.14) 18%,transparent 46%);
   opacity:0;transition:opacity .35s ease;transform:none;animation:none;
 }
 @media(hover:hover) and (pointer:fine){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):hover{
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):hover{
     transform:translateY(-3px) scale(1.015);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.18),0 18px 44px -14px rgba(217,184,104,.4);
   }
 }
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.97)}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.97)}
 /* Daylight glass: a dense light base, white bevel and a violet shadow.
    Diary cards share the material but stay still while reading. */
-html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
+html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
   isolation:isolate;
   background:var(--moon-panel);background-clip:padding-box;background-color:var(--glass-base);
   border:1px solid rgba(255,255,255,.75);
@@ -293,13 +293,13 @@ html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.d
   --glass-x:30%;--glass-y:0%;--glass-edge:0;
 }
 html[data-theme=light] body.inner :is(.timeline-entry,.timeline-empty,.profile-summary,.wish-card){position:relative;overflow:hidden}
-html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{
+html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:2px;z-index:-1;pointer-events:none;
   background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),#fff 0deg,#ffffffa6 55deg,#ffffff0a 120deg,#2a215033 210deg,#ffffff66 285deg,#fff 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
   opacity:1;box-shadow:none;transform:none;animation:none;
 }
-html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
+html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(300px circle at var(--glass-x) var(--glass-y),#ffffff85,transparent 72%);
   opacity:.28;transition:opacity .3s ease;transform:none;animation:none;
@@ -315,30 +315,29 @@ html[data-theme=light] body.inner .app-nav button.on{background:linear-gradient(
 html[data-theme=light] body.inner .compact-brand .mark{filter:none}
 html[data-theme=light] body.inner .compact-brand .moon-img{animation:none}
 html[data-theme=light] body.inner .wpane .msg.err{color:var(--text)!important;background:#e9e2f4;border-inline-start:3px solid #8272b4;padding:12px 16px;border-radius:12px}
-html[data-theme=light] body.inner input.bad{border-color:#8272b4}
 html[data-theme=light] body.inner .danger-zone .warn{color:var(--text);background:#e9e2f4;padding-inline:14px}
 html[data-theme=light] body.inner .bar{background:#2a215014}
 html[data-theme=light] body.inner .bar i{background:linear-gradient(90deg,#2a2150,#8272b4)}
 html[data-theme=light] body.inner .ritual-emblem{border-color:#dfc365;box-shadow:0 5px 16px #352d5130,inset 0 0 0 4px #211b35,inset 0 0 0 5px #dfc36566}
 html[data-theme=light] body.inner .ritual-emblem::before{border-color:#dfc36580}
 @media(hover:hover) and (pointer:fine){
-  html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.profile-summary,.wish-card):hover::after{opacity:.72}
-  html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.rem-summary):hover{box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #2a21501c,0 18px 36px -18px #2a215057}
+  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.profile-summary,.wish-card):hover::after{opacity:.72}
+  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.rem-summary):hover{box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #2a21501c,0 18px 36px -18px #2a215057}
   html[data-theme=light] body.inner :is(.text-action,.back):hover{color:var(--text)}
 }
 @media(prefers-reduced-motion:reduce){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary){transition:none}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):is(:hover,:active){transform:none}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{display:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary){transition:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):is(:hover,:active){transform:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{display:none}
 }
 @media(prefers-reduced-transparency:reduce){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 @media(prefers-reduced-motion:reduce){
-  html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{display:none}
+  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{display:none}
 }
 @media(prefers-reduced-transparency:reduce){
-  html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 /* The account status dot lives outside the avatar and must not be clipped by the glass. */
 html[data-theme] body.inner #h-acct{overflow:visible}
