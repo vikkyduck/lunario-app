@@ -1,6 +1,6 @@
-/* Content stays opaque. Translucency is reserved for navigation and small controls. */
+/* Reading layout and controls; moon-glass.css supplies the final day/night material. */
 :root{--surface:#1c192c;--sheet:#12101f;--field:#13111f;--selected:#302a43;--read-size:18px}
-:root[data-theme=light]{--bg:#f0edf8;--surface:#faf8ff;--sheet:#f5f2fc;--field:#fdfbff;--selected:#e7e0f5;--text:#303039;--muted:#5e5d69;--line:#d6cee5;--card:#faf8ff;--card-2:#e8e1f4;--gold:#d4b34f;--gold-2:#dfc365;--ok:#45424e;--warn:#65517e;--violet:#8272b4;--violet-2:#aa97cc}
+:root[data-theme=light]{--bg:#f0edf8;--surface:#f5f2ea;--sheet:#f5f2ea;--field:#faf8ff;--selected:rgba(42,33,80,.10);--text:#1d1738;--muted:#5d5574;--line:rgba(42,33,80,.18);--card:#f5f2ea;--card-2:#e8e1f4;--gold:#2a2150;--gold-2:#2a2150;--ok:#45424e;--warn:#65517e;--violet:#8272b4;--violet-2:#aa97cc}
 body:not(.inner){--bg:#0b0a14;--text:#f5f2ea;--muted:#b9b2cf;--gold:#d9b868;--gold-2:#f0d79a;--line:rgba(245,242,234,.09);--card:rgba(245,242,234,.05);color-scheme:dark}
 html[data-theme] body.inner{--muted:inherit;--line:inherit;background:var(--bg);color:var(--text)}
 html[data-theme=dark] body.inner{--muted:#c0bad0;--line:rgba(236,231,249,.13)}
@@ -83,15 +83,15 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 .wish-copy .text-action{font-size:15px}
 .theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:24px 0}
 .theme-option{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--text);font:inherit;font-size:15px;padding:12px;cursor:pointer}
-.theme-option>span{display:grid;place-items:center;font-size:32px;height:110px;margin-bottom:12px;border-radius:10px;background:#f0edf8;color:#303039}
-.theme-option.dark>span{background:#1c192c;color:#f5f2ea}.theme-option.system>span{background:linear-gradient(90deg,#f0edf8 50%,#1c192c 50%);color:#dfc365}
+.theme-option>span{display:grid;place-items:center;font-size:32px;height:110px;margin-bottom:12px;border-radius:10px;background:#f0edf8;color:#2a2150}
+.theme-option.dark>span{background:#1c192c;color:#f5f2ea}.theme-option.system>span{background:linear-gradient(90deg,#f0edf8 50%,#1c192c 50%);color:#2a2150}
 .theme-option[aria-pressed=true]{outline:2px solid var(--gold);outline-offset:2px}
-html[data-theme=light] body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:rgba(246,242,255,.88);color:var(--text);border-color:var(--line);box-shadow:0 4px 20px #2820400c,inset 0 1px 0 #fff}
+html[data-theme=light] body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:rgba(245,242,234,.28);color:var(--text);border-color:var(--line);box-shadow:0 4px 20px #2820400c,inset 0 1px 0 #fff}
 html[data-theme=light] body.inner :is(.orb,.cloud,.stars,.constellations){opacity:.035}
 html[data-theme=light] body.inner :is(.wid,.card,.item,.wpane,.profile-summary,.profile-detail,.timeline) :is(p,span,small,label){color:var(--text)}
 html[data-theme=light] body.inner :is(.hint,.section-caption,.geo,.wid>span,.wpane small,.timeline-kind,.timeline-day,.rem-status,.rem-summary){color:var(--muted)!important}
-html[data-theme=light] body.inner .btn:not(.ghost){background:linear-gradient(120deg,#f5e5ab,#d4b34f);color:var(--text)}
-html[data-theme=light] body.inner .btn.ghost{background:transparent;color:var(--text);border-color:#aaa0b9}
+html[data-theme=light] body.inner .btn:not(.ghost){background:var(--moon-control);color:#f5f2ea}
+html[data-theme=light] body.inner .btn.ghost{background:transparent;color:var(--text);border-color:rgba(42,33,80,.40)}
 html[data-theme=light] body.inner :is(.hb,.rem-body,.mood-picker,.observation,.practice-create,.quick-mood,.mchip,.acc-body,.histbody){background:var(--surface);color:var(--text);border-color:var(--line)}
 html[data-theme=light] body.inner .ico{background-color:var(--gold-2)}
 html[data-theme=light] body.inner .app-nav .on{background:var(--selected);color:var(--text)}
@@ -115,7 +115,7 @@ body.inner .morebtn{font-size:16px;min-height:44px}
 
 /* Shared interface rhythm: content, destinations and controls have distinct surfaces. */
 :root{--focus:#e8cb86;--hover:#29243b;--accent-soft:#262235;--control-border:#665d7b;--radius-control:14px;--radius-panel:24px}
-:root[data-theme=light]{--focus:#716183;--hover:#eae4f6;--accent-soft:#e9e3f4;--control-border:#a79bbf}
+:root[data-theme=light]{--focus:#2a2150;--hover:#eae4f6;--accent-soft:#e9e3f4;--control-border:rgba(42,33,80,.40)}
 body.inner .wrap{padding-top:calc(32px + env(safe-area-inset-top));padding-bottom:calc(112px + env(safe-area-inset-bottom))}
 body.inner :is(#v-ask,#v-history,#v-news){max-width:820px;margin-inline:auto}
 body.inner :is(h1,#v-home .hdr h1){font-size:32px;line-height:1.2;letter-spacing:-.035em;font-weight:600}
@@ -278,8 +278,8 @@ body.inner .app-nav button{border-radius:18px;min-height:54px;gap:4px;font-size:
 body.inner .app-nav .ico{width:22px;height:22px}
 body.inner .app-nav button.on{background:var(--selected)}
 html[data-theme] body.inner .theme-option.dark>span{color:#f5f2ea}
-html[data-theme] body.inner .theme-option.light>span{color:#303039}
-html[data-theme] body.inner .theme-option.system>span{color:#dfc365}
+html[data-theme] body.inner .theme-option.light>span{color:#2a2150}
+html[data-theme] body.inner .theme-option.system>span{color:#d9b868}
 
 /* The entry keeps its moon and copy; the form gains the same readable controls. */
 body:not(.inner) :is(#v-onb,#v-login) .card{background:#171323;backdrop-filter:none;box-shadow:none;border-color:#514963;border-radius:22px;padding:24px}

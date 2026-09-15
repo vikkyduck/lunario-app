@@ -40,6 +40,7 @@ function applyTheme(mode){
   document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;
   document.querySelector('meta[name="theme-color"]').content=theme==='light'?'#f0edf8':'#0b0a14';
   window.LunarioSky?.refresh();
+  window.refreshMoonLogos?.();
   try{localStorage.setItem('lun_theme',mode);}catch{}
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(XP.prefs.theme==='system')applyTheme('system');});

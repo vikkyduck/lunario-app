@@ -3,6 +3,7 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {MOSCOW,observer,siderealDegrees,horizontal,visibleSky} from '../site/sky-model.js';
 import {CONSTELLATIONS} from '../site/constellations.js';
+import {checkDaylight} from './check-daylight.mjs';
 
 // Independent astronomical boundary checks at J2000: published GMST and known meridian/horizon geometry.
 const epoch=Date.parse('2000-01-01T12:00:00Z');
@@ -154,4 +155,5 @@ export async function checkBrand({browser,base,owner}) {
     if(folder)await writeFile(join(folder,'brand-coverage.json'),JSON.stringify({coverage,errors,fonts},null,2));
     console.log('PASS: Onest/Comfortaa, animated interior logos, reduced motion, unclipped moon, glass welcome, local fonts, device/Moscow geolocation in a foreign timezone.');
   } finally {await context.close();}
+  await checkDaylight({browser,base,owner});
 }

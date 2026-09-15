@@ -804,8 +804,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=31">
-<link rel="stylesheet" href="/app/moon-glass.css?v=31">
+<link rel="stylesheet" href="/app/experience.css?v=34">
+<link rel="stylesheet" href="/app/moon-glass.css?v=34">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -1156,11 +1156,22 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     if (!ctx || (ctx.isContextLost && ctx.isContextLost())) return;   /* контекст потерян — дорисуем по contextrestored */
     const R = S * 0.34, Rp = R * dpr;
     const p = phase * Math.PI * 2, c = Math.cos(p), waxing = phase < 0.5, sign = waxing ? 1 : -1;
-    const tex = moonTexture(px, Rp, letter); if (!tex) return;
     /* всё рисуем в устройственных пикселях; при убывающей луне зеркалим по x — свет на текстуре всегда справа */
     const litPath = (g) => { g.beginPath(); g.arc(0, 0, Rp, -Math.PI / 2, Math.PI / 2, false); g.ellipse(0, 0, Math.max(0.001, Rp * Math.abs(c)), Rp, 0, Math.PI / 2, -Math.PI / 2, c > 0); g.closePath(); };
 
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, px, px);
+    if (letter && document.body.classList.contains('inner') && document.documentElement.dataset.theme === 'light') {
+      // The illuminated part is an opening onto the actual background, so a full moon becomes the letter О.
+      ctx.setTransform(sign, 0, 0, 1, px / 2, px / 2);
+      ctx.fillStyle = '#2a2150';
+      ctx.beginPath(); ctx.arc(0, 0, Rp, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'destination-out';
+      litPath(ctx); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      return;
+    }
+    const tex = moonTexture(px, Rp, letter); if (!tex) return;
     /* тёплый нимб — гаснет внутри холста, иначе виден его квадрат */
     const haloR = Math.min(Rp * 2.1, px / 2);
     const halo = ctx.createRadialGradient(px / 2, px / 2, Rp * 0.6, px / 2, px / 2, haloR);
@@ -1247,9 +1258,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=31"></script>
+<script type="module" src="/app/sky.js?v=34"></script>
 
-<script src="/app/experience.js?v=31"></script>
+<script src="/app/experience.js?v=34"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1292,7 +1303,7 @@ document.addEventListener('pointerdown', (e) => {
 let lightFrame=0, lightTarget=null, lightEvent=null;
 document.addEventListener('pointermove',(e)=>{
   if(e.pointerType==='touch' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.day-focus,.wid,.sq,.moonline,.quick-actions button,.welcome-primary'); lightEvent=e;
+  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.day-focus,.wid,.sq,.moonline,.quick-actions button,.welcome-primary,.timeline-entry,.timeline-empty,.profile-summary,.wish-card'); lightEvent=e;
   if(lightFrame) return;
   lightFrame=requestAnimationFrame(()=>{
     if(lightTarget&&lightEvent){
