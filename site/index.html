@@ -1378,14 +1378,14 @@ async function loadNatal(){
   try{
     const c = natalCache || (natalCache = await api('/natal'));
     const dms = (p) => `${p.symbol} ${p.deg}°${String(p.min).padStart(2,'0')}′`;
-    const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
-    const points = c.points && c.points.length ? `<h3 class="mt-4">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.sign)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
-    const houses = c.houses ? `<h3 class="mt-4">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.sign)}</small></td></tr>`).join('')}</tbody></table>`
+    const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
+    const points = c.points && c.points.length ? `<h3 class="mt-4">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
+    const houses = c.houses ? `<h3 class="mt-4">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.signOf)}</small></td></tr>`).join('')}</tbody></table>`
       : `<div class="card mt-3"><p>${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? (c.city ? `Город «${esc(c.city)}» не нашёлся в базе — откройте анкету и выберите его из подсказок, по нему считаются дома и часовой пояс. ` : 'Укажите город рождения в аккаунте — по нему считаются дома и часовой пояс. ') : ''}<button class="btn ghost sm mt-3" onclick="closeWidget();go('account');openWidget('edit')">Дополнить анкету</button></p></div>`;
     const aspects = c.aspects.length ? `<h3 class="mt-4">Аспекты</h3><div class="hbars mt-2">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small class="faint">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
     const sun = c.planets[0], moon = c.planets[1];
     box.innerHTML = `<div class="card sec"><p class="eyebrow">Западная традиция · тропический зодиак${c.houses ? ' · ' + esc(c.houses.system) : ''}</p>
-        <p class="t2">☉ Солнце в ${esc(sun.sign)} · ☽ Луна в ${esc(moon.sign)}${c.houses ? ` · Asc ${esc(c.houses.asc.sign)}` : ''}</p>
+        <p class="t2">☉ Солнце ${esc(sun.signIn)} · ☽ Луна ${esc(moon.signIn)}${c.houses ? ` · Asc ${esc(c.houses.asc.signIn)}` : ''}</p>
         <p class="hint">${fmtDay(c.input.birth)}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''}${c.hasPlace ? ` (${c.input.lat.toFixed(2)}°, ${c.input.lon.toFixed(2)}°)` : ''} · ${esc(c.tzNote || '')} · UTC ${c.input.utc}</p></div>
       <h3 class="mt-4">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
       ${points}${houses}${aspects}
@@ -2761,7 +2761,7 @@ function paintSky(){
   const ev = (e, cls) => `<div class="item skyev${cls ? ' ' + cls : ''}"><b>${esc(e.title)}</b><small>${fmtWhen(e.at)}</small>${e.note ? `<p class="mt-2">${esc(e.note)}</p>` : ''}</div>`;
   box.innerHTML = `<div class="card center"><span class="eyebrow">Сегодня</span>
       <div class="title-gold mt-2">${esc(s.moon.phase)} ${esc(s.moon.signIn)}</div>
-      <p class="mt-1">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растёт' : 'убывает'} · Солнце в знаке ${esc(s.sun.sign)}</p>
+      <p class="mt-1">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растёт' : 'убывает'} · Солнце ${esc(s.sun.signIn)}</p>
       <p class="t2">${s.retro.length ? s.retro.map(r => `${r.symbol} ${esc(r.name)} — ${r.adj}`).join(' · ') : 'Ретроградных планет сейчас нет'}</p>
     </div>
     ${s.today.length ? `<div class="list mt-3">${s.today.map(e => ev(e, 'now')).join('')}</div>` : ''}
@@ -2911,7 +2911,7 @@ async function drawPostcardExtra(ctx, p){
     drawText(ctx, 'НА НЕБЕ', 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
     pcMoonDisc(ctx, 540, 470, 170, s.moon.illumination, s.moon.waxing);
     let y = drawText(ctx, `${s.moon.phase} ${s.moon.signIn}`, 540, 760, { size: 50, weight: 600, color: '#e9c77e', maxW: 900 });
-    y = drawText(ctx, `Луна освещена на ${s.moon.illumination}% · Солнце в знаке ${s.sun.sign}`, 540, y + 10, { size: 28, color: '#b9b2cf', maxW: 900 });
+    y = drawText(ctx, `Луна освещена на ${s.moon.illumination}% · Солнце ${s.sun.signIn}`, 540, y + 10, { size: 28, color: '#b9b2cf', maxW: 900 });
     if (s.retro.length) y = drawText(ctx, s.retro.map(r => `${r.name} — ${r.adj}`).join(' · '), 540, y + 20, { size: 30, color: '#ded8ee', maxW: 900 });
     const lines = [...s.today.map(e => ({ ...e, now: true })), ...s.upcoming].slice(0, 5);
     y += 70;

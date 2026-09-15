@@ -1,5 +1,5 @@
 import { preferences } from './experience.mjs';
-import { inSign as inSignPhrase } from './sky.mjs';
+import { inSign as inSignPhrase } from './astro.mjs';
 import { ISO_DAY, addDays, plural } from './util.mjs';
 /* Лунарио — «полочки»: личное досье каждого человека.
 

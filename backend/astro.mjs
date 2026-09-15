@@ -164,6 +164,11 @@ function porphyry(asc, mc) {
 
 export const SIGNS = ['Овен', 'Телец', 'Близнецы', 'Рак', 'Лев', 'Дева', 'Весы', 'Скорпион', 'Стрелец', 'Козерог', 'Водолей', 'Рыбы'];
 const SIGN_SYM = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+/* Склонение знаков — одно место на всё приложение: «Солнце в Козероге, Луна во Льве» (предложный) и «10°41′ Козерога» (родительный) */
+const SIGN_IN = { Овен: 'в Овне', Телец: 'в Тельце', Близнецы: 'в Близнецах', Рак: 'в Раке', Лев: 'во Льве', Дева: 'в Деве', Весы: 'в Весах', Скорпион: 'в Скорпионе', Стрелец: 'в Стрельце', Козерог: 'в Козероге', Водолей: 'в Водолее', Рыбы: 'в Рыбах' };
+const SIGN_OF = { Овен: 'Овна', Телец: 'Тельца', Близнецы: 'Близнецов', Рак: 'Рака', Лев: 'Льва', Дева: 'Девы', Весы: 'Весов', Скорпион: 'Скорпиона', Стрелец: 'Стрельца', Козерог: 'Козерога', Водолей: 'Водолея', Рыбы: 'Рыб' };
+export const inSign = (s) => SIGN_IN[s] || `в ${s}`;
+export const ofSign = (s) => SIGN_OF[s] || s;
 export const BODIES = [
   ['sun', 'Солнце', '☉'], ['moon', 'Луна', '☽'], ['mercury', 'Меркурий', '☿'], ['venus', 'Венера', '♀'], ['mars', 'Марс', '♂'],
   ['jupiter', 'Юпитер', '♃'], ['saturn', 'Сатурн', '♄'], ['uranus', 'Уран', '♅'], ['neptune', 'Нептун', '♆'], ['pluto', 'Плутон', '♇'], ['chiron', 'Хирон', '⚷'],
@@ -173,7 +178,7 @@ const ASPECTS = [['conjunction', 'Соединение', 0, 8, '☌'], ['opposit
 
 function place(lon) {
   const s = Math.floor(lon / 30), d = lon - s * 30, deg = Math.floor(d), min = Math.floor((d - deg) * 60), sec = Math.round(((d - deg) * 60 - min) * 60);
-  return { lon: Math.round(lon * 10000) / 10000, sign: SIGNS[s], symbol: SIGN_SYM[s], signIndex: s, deg, min, sec, text: `${deg}°${String(min).padStart(2, '0')}′ ${SIGNS[s]}` };
+  return { lon: Math.round(lon * 10000) / 10000, sign: SIGNS[s], signIn: inSign(SIGNS[s]), signOf: ofSign(SIGNS[s]), symbol: SIGN_SYM[s], signIndex: s, deg, min, sec, text: `${deg}°${String(min).padStart(2, '0')}′ ${ofSign(SIGNS[s])}` };
 }
 function houseOf(lon, cusps) { for (let i = 0; i < 12; i++) { const a = cusps[i], b = cusps[(i + 1) % 12]; if (norm(lon - a) < norm(b - a)) return i + 1; } return 12; }
 
