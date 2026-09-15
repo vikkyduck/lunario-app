@@ -958,7 +958,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <section class="feature-group"><h2 id="m-name">Обо мне</h2><div class="wids"><button class="wid" data-feature="natal" type="button" aria-label="Натальная карта" onclick="openWidget('natal')"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button><button class="wid" data-feature="year" type="button" aria-label="Личный год" onclick="openWidget('year')"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button class="wid" data-feature="birthnum" type="button" aria-label="Нумерология" onclick="openWidget('birthnum')"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button class="wid" data-feature="compat" type="button" aria-label="Совместимость" onclick="openWidget('compat')"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></button></div></section>
     </div><div class="account-settings">
     <section class="account-group"><h2>Приложение</h2><div class="wids compact-links"><button class="wid" data-feature="remind" type="button" aria-label="Уведомления" onclick="openWidget('remind')"><i class="ico bell"></i><b>Уведомления</b><span>Включить, выбрать время и регулярность</span></button><button class="wid" data-feature="mail" type="button" aria-label="Вход по почте" onclick="openWidget('mail')"><i class="ico mail"></i><b>Вход по почте</b><span>Сохранённые записи доступны на других устройствах</span></button><button class="wid" type="button" aria-label="Новое в приложении" data-feature="news" onclick="go('news')"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
-      <button class="wid sky-location-control" type="button" onclick="window.LunarioSky?.locate(true)"><i class="ico orbit"></i><b>Небо над вами</b><span data-sky-place>Москва · определить моё местоположение</span></button>
+      <button class="wid sky-location-control" type="button" onclick="openWidget('skyplace')"><i class="ico orbit"></i><b>Небо над вами</b><span data-sky-place>Москва · место не определено</span></button>
       <button class="wid" type="button" onclick="openWidget('appearance')"><i class="ico moon"></i><b>Оформление</b><span>Светлая и тёмная темы</span></button>
       <button class="wid" data-feature="topics" type="button" onclick="openWidget('topics')"><i class="ico list"></i><b>Темы чтения</b><span>Какие разделы лунного дня показывать</span></button>
       <button class="wid" type="button" onclick="openWidget('appinfo')"><i class="ico moon"></i><b>О приложении</b></button>
@@ -986,6 +986,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-ritual"><div id="ritual-box"></div></div>
   <div class="wpane" id="w-appearance"><div id="appearance-box"></div></div>
   <div class="wpane" id="w-topics"><div id="topics-box"></div></div>
+  <div class="wpane" id="w-skyplace"><div id="skyplace-box"></div></div>
   <div class="wpane" id="w-practiceSettings"><div id="practice-settings-box"></div></div>
   <div class="wpane" id="w-askDate"><div class="field"><label for="ask-date">До какого дня</label><input id="ask-date" type="date" aria-describedby="ask-date-msg"></div><button class="btn" id="ask-date-save" type="button" onclick="saveAskDate()">Сохранить дату</button><p class="msg" id="ask-date-msg" role="status"></p></div>
   <div class="wpane" id="w-timelineEntry"><div id="timeline-entry-box"></div></div>
@@ -1273,7 +1274,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=37"></script>
+<script type="module" src="/app/sky.js?v=38"></script>
 
 <script src="/app/experience.js?v=37"></script>
 <script>
@@ -1393,7 +1394,7 @@ const WIDGETS = {
   invite:['Я','Позвать подругу'], remind:['Я','Уведомления'], edit:['Я','Изменить мои данные'], mail:['Я','Вход по почте'], shelves:['Я','Мои данные'],
   support:['Я','Чат поддержки'], tests:['Я','Тесты'], natal:['Я','Натальная карта'],
   ritual:['Сегодня','Мой ритуал'],appearance:['Я','Оформление'],practiceSettings:['','Уведомления'],askDate:['Взять аскезу','Передвинуть дату'],timelineEntry:['Дневник','Запись'],
-  appinfo:['Я','О приложении'], terms:['Я','Условия использования'],topics:['Я','Темы чтения'],stub:['','']
+  appinfo:['Я','О приложении'], terms:['Я','Условия использования'],topics:['Я','Темы чтения'],skyplace:['Я','Небо над вами'],stub:['','']
 };
 const WIDGET_REMINDERS={card:'card',mood:'mood',hmood:'moodreport',habits:'habits',askesis:'askesis',gratitude:'gratitude',lunar:'lunar',sky:'sky'};
 let wgOpen = null, wgFocus = null;
@@ -1417,6 +1418,7 @@ function loadWidgetContent(k){
   if(k==='ritual')paintRitual();
   if(k==='appearance')paintAppearance();
   if(k==='topics')paintTopics();
+  if(k==='skyplace')paintSkyPlace();
   if (k==='journal'){loadJournal();prepareDictation();requestAnimationFrame(()=>growTextarea($('j-text')));}
   if (k==='wishes' || k==='hwishes') api('/wishes').then(renderWishes).catch(()=>{});
   if (k==='hentries') loadEntries();
@@ -2901,6 +2903,20 @@ function lunarTopicLine(n){
   const d=LUN.days.find(x=>x.n===n),s=d&&(d.sections||[]).find(x=>x.key===content[0]),para=s&&s.blocks.find(b=>b.t==='p');
   if(!para)return '';const m=String(para.text).match(/^.+?[.!?…](\s|$)/);return s.title+': '+(m?m[0]:para.text).trim();
 }
+/* Виджет «Небо над вами»: место для созвездий — по устройству (только по нажатию), свой город или как в анкете */
+function paintSkyPlace(){
+  const box=$('skyplace-box'),sky=window.LunarioSky;if(!box)return;
+  const d=sky?sky.describe():{label:'Москва',source:'moscow',hasProfile:false,geolocation:false};
+  box.innerHTML=`<p class="hint">Созвездия на фоне рисуются для этого места. Координаты устройства никуда не отправляются; выбранный город запоминается только в этом браузере.</p>
+    <div class="card" style="margin-top:10px"><span class="eyebrow">Сейчас</span><p style="margin-top:4px" id="sp-now">${esc(d.label)}</p></div>
+    <div class="field" style="margin-top:14px;position:relative"><label for="sp-city">Указать город</label><input id="sp-city" placeholder="Начните вводить: Влад…" maxlength="60" autocomplete="off"><div class="sug-list" id="sp-city-list"></div><p class="hint" id="sp-geo" style="margin-top:6px">Выберите город из подсказки — небо перестроится сразу.</p></div>
+    <div class="rows" style="margin-top:12px">
+      ${d.geolocation?`<button class="rowbtn" type="button" onclick="window.LunarioSky.locate(true);setTimeout(paintSkyPlace,1200)"><span>Определить по устройству</span><small>Телефон спросит разрешение один раз</small></button>`:''}
+      ${d.hasProfile?`<button class="rowbtn" type="button" onclick="window.LunarioSky.useProfile();paintSkyPlace()"><span>Как в анкете</span><small>Город рождения из профиля</small></button>`:''}
+    </div>`;
+  const pick=attachCity('sp-city','sp-city-list','sp-geo');
+  $('sp-city-list').addEventListener('click',()=>setTimeout(()=>{const c=pick.picked;if(c&&sky){sky.setCity({name:c.name,lat:c.lat,lon:c.lon});$('sp-now').textContent=sky.describe().label;toast('Небо перестроено ✦');}},0));
+}
 /* Виджет «Темы чтения» в «Я» */
 function paintTopics(){
   const box=$('topics-box');if(!box)return;
@@ -3578,6 +3594,7 @@ function startApp(){
   try{
     const r = await api('/me');
     S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;initExperience(r.preferences);
+    try{ if(r.user&&r.user.lat!=null) window.LunarioSky?.setProfile({lat:r.user.lat,lon:r.user.lon,name:r.user.city||''}); }catch(e){}
     try{ if(/[?&]app=1/.test(location.search)) localStorage.setItem('lun_app','1'); }catch(e){}
     if(isStaff(r.user) && !inApp()){ location.replace('/app/cabinet'); return; }
     track('app_open');

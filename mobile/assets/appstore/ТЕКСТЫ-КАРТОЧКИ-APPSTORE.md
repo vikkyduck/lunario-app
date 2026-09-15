@@ -121,8 +121,13 @@ Notes:
 • Account deletion: «Я» tab → «Удалить аккаунт» (guideline 5.1.1(v)).
 • Native features: daily local-notification reminder (opt-in, «Я» tab),
   haptic feedback, native share sheet, offline screen.
-• All content is for entertainment and self-reflection; a disclaimer is shown
-  in the profile section. The app gives no medical, legal or financial advice.
+• All content is for entertainment and self-reflection; the disclaimer is shown
+  in «Я» → «О приложении» and «Условия использования» («материалы не заменяют
+  медицинскую, психологическую или юридическую помощь»). The app gives no
+  medical, legal or financial advice.
+• Location is optional and requested only when the user taps «Определить по
+  устройству» in «Я» → «Небо над вами»; without it the sky is drawn for the
+  city from the profile or the device time zone. Coordinates never leave the device.
 ```
 
 ## Что НЕЛЬЗЯ писать в карточке (правила Apple)
