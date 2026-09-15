@@ -56,7 +56,12 @@ export async function checkExperience({browser,base,owner}){
     await page.reload();await page.waitForSelector('#v-home.on');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');await shot('home-dark');
     for(const theme of ['light','dark'])for(const [width,height] of [[320,568],[390,844],[844,390],[1440,900]]){
       await page.evaluate(t=>applyTheme(t),theme);await page.setViewportSize({width,height});
-      for(const view of ['home','history','account']){await page.evaluate(v=>go(v),view);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),theme+' '+view+' '+width);}
+      for(const view of ['home','history','account']){
+        await page.evaluate(v=>go(v),view);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),theme+' '+view+' '+width);
+        if(view==='home')for(const selector of ['#h-moon','#ar-period']){
+          assert.ok(await page.locator(selector).evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=16),theme+' '+selector+' readable at '+width);
+        }
+      }
       for(const key of ['habits','askesis','journal','tone','wishes']){await page.evaluate(k=>openWidget(k),key);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),key+' '+width);await close();}
       if(width===1440){await page.evaluate(()=>go('home'));await shot('home-desktop-'+theme);}
     }
