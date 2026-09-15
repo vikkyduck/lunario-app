@@ -51,16 +51,16 @@ body.inner :is(.wid,.quick-actions button,.question-entry .wid,.profile-summary,
 }
 body.inner :is(.wid,.quick-actions button){backdrop-filter:none;-webkit-backdrop-filter:none}
 body.inner :is(.wid)::before{display:block;opacity:.4;background:radial-gradient(220px circle at var(--glass-x,15%) var(--glass-y,0%),var(--moon-shine),transparent 75%);box-shadow:inset 1px 1px 0 #ffecc617,inset -1px -1px 0 #b59ed113}
-body.inner .wid{border-radius:22px;padding:26px;min-height:158px;gap:12px}
+body.inner .wid{border-radius:var(--r-xl);padding:26px;min-height:158px;gap:12px}
 body.inner .wid b{font-size:17px;font-weight:600}
-body.inner .wid .ico{width:30px;height:30px;background-color:var(--gold-2);filter:drop-shadow(0 0 7px #d8b96b24)}
+body.inner .wid .ico{width:28px;height:28px;background-color:var(--gold-2);filter:drop-shadow(0 0 7px #d8b96b24)}
 body.inner .wid>span.destination-arrow{color:var(--gold-2);opacity:.8}
 body.inner .compact-links{gap:14px;background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
-body.inner .compact-links .wid{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:22px;box-shadow:var(--moon-shadow);padding:24px;min-height:100px}
+body.inner .compact-links .wid{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:var(--r-xl);box-shadow:var(--moon-shadow);padding:24px;min-height:100px}
 body.inner .compact-links .wid:last-child{border-bottom:1px solid transparent}
 body.inner .compact-links .wid::before{display:block}
-body.inner .compact-links .wid .ico{width:26px;height:26px}
-body.inner :is(.btn,.btn.sm){font-weight:600;border-radius:16px}
+body.inner .compact-links .wid .ico{width:24px;height:24px}
+body.inner :is(.btn,.btn.sm){font-weight:600;border-radius:var(--r-m)}
 html[data-theme] body.inner .btn:not(.ghost){background:var(--moon-control);border:1px solid #f7e3b54d;color:#1c1430;box-shadow:inset 0 1px 0 #fff7df8c,0 6px 22px -12px #e2bd6970}
 html[data-theme] body.inner .btn.ghost{background:transparent;border-color:var(--control-border);color:var(--text)}
 body.inner :is(.text-action,.back){font-weight:400}
@@ -80,7 +80,7 @@ body.inner:not(:has(#v-home.on)) .section-brand{display:inline-flex}
 body.inner #v-home .hdr{margin-bottom:0;position:relative;z-index:2}
 body.inner #v-home .hdr .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
 body.inner #h-date{font-size:13px;font-weight:400;letter-spacing:.03em;text-transform:none;color:var(--muted)}
-body.inner #h-acct{width:46px;height:46px;font-weight:600}
+body.inner #h-acct{width:44px;height:44px;font-weight:600}
 body.inner .acct,body.inner .avatar{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);color:var(--gold-2)}
 .home-intro{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) clamp(160px,22vw,260px);align-items:center;gap:32px;overflow:visible;margin:0;padding:28px 0 36px;min-height:0}
 .home-moon{position:relative;order:2;width:100%;aspect-ratio:1;pointer-events:none;opacity:.94}
@@ -90,7 +90,7 @@ body.inner .home-intro #h-wish{font-family:Onest,ui-sans-serif,system-ui,sans-se
 body.inner #h-set-question{color:var(--gold-2);font-size:15px;margin-top:14px;gap:12px}
 body.inner #h-set-question span{margin-left:8px}
 .today-layout{position:relative;z-index:1}
-body.inner .day-focus{position:relative;isolation:isolate;overflow:hidden;border:1px solid transparent;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:color-mix(in srgb,var(--gold) 58%,transparent);box-shadow:inset 0 1px 0 #fff5d921,0 14px 36px -24px #bd925663;backdrop-filter:none;-webkit-backdrop-filter:none;padding:28px;border-radius:26px}
+body.inner .day-focus{position:relative;isolation:isolate;overflow:hidden;border:1px solid transparent;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:color-mix(in srgb,var(--gold) 58%,transparent);box-shadow:inset 0 1px 0 #fff5d921,0 14px 36px -24px #bd925663;backdrop-filter:none;-webkit-backdrop-filter:none;padding:28px;border-radius:var(--r-sheet)}
 body.inner .day-focus::before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(290px circle at var(--glass-x,0%) var(--glass-y,0%),var(--moon-shine),transparent 74%);pointer-events:none}
 body.inner .ritual-tools{border:0;padding:0;display:flex;align-items:flex-start;flex-direction:column;gap:0;margin-right:86px}
 body.inner .ritual-tools h2{margin:0;font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:25px;font-weight:600;line-height:1.5;letter-spacing:-.01em}
@@ -99,14 +99,14 @@ body.inner .ritual-practices{max-width:80%;font-size:16px;line-height:1.65;color
 body.inner #h-progress{font-size:14px;margin:8px 0 18px;color:var(--muted)}
 body.inner #h-progress.ritual-finished{color:var(--ok);font-size:17px;margin-bottom:0}
 body.inner #h-next{width:100%;min-height:52px}
-.ritual-emblem{position:absolute;right:30px;top:30px;width:58px;height:86px;border:1px solid #e7c98da6;border-radius:10px;background:linear-gradient(135deg,#2a2150,#141126 67%);box-shadow:0 5px 16px #0c061342,inset 0 0 0 4px #21182b,inset 0 0 0 5px #c49f5a4d;transform:rotate(9deg);pointer-events:none}
+.ritual-emblem{position:absolute;right:30px;top:30px;width:58px;height:86px;border:1px solid #e7c98da6;border-radius:var(--r-s);background:linear-gradient(135deg,#2a2150,#141126 67%);box-shadow:0 5px 16px #0c061342,inset 0 0 0 4px #21182b,inset 0 0 0 5px #c49f5a4d;transform:rotate(9deg);pointer-events:none}
 .ritual-emblem::before{content:'';position:absolute;inset:18px 8px;border:1px solid #e6c78a50;border-radius:50%}
 .ritual-emblem span{position:absolute;width:30px;height:30px;left:12px;top:24px;background:url('/app/assets/moon-hero.png') center/contain no-repeat;filter:drop-shadow(0 0 7px #dbba7538)}
 body.inner .quick-actions{gap:16px;margin-top:22px}
-body.inner .quick-actions button{min-height:98px;font-weight:400;padding:15px 10px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:20px}
+body.inner .quick-actions button{min-height:98px;font-weight:400;padding:15px 10px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:var(--r-l)}
 body.inner .quick-actions button b{font-size:15px;font-weight:400;line-height:1.45}
-body.inner .quick-actions .ico{width:26px;height:26px;background-color:var(--gold-2)}
-body.inner #home-sky .moonline{padding:20px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:22px;box-shadow:var(--moon-shadow);gap:14px;margin-bottom:12px}
+body.inner .quick-actions .ico{width:24px;height:24px;background-color:var(--gold-2)}
+body.inner #home-sky .moonline{padding:20px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:var(--r-xl);box-shadow:var(--moon-shadow);gap:14px;margin-bottom:12px}
 body.inner #home-sky .moon-sm{width:50px;height:50px;flex-basis:50px}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:16px;line-height:1.6}
 body.inner #home-sky .moonline small{font-size:13px;line-height:1.6}
@@ -119,7 +119,7 @@ body.inner .wg-head h2{font-weight:600;font-size:24px}
 body.inner .wpane .practice-question{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:25px!important;font-weight:600;line-height:1.6}
 body.inner .answer-actions{background:var(--sheet)}
 body.inner #journal-card .answer-actions{background:var(--bg)}
-body.inner .timeline-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:20px;padding:28px;margin-bottom:18px;box-shadow:inset 0 1px 0 #fff2d20a}
+body.inner .timeline-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:var(--r-l);padding:28px;margin-bottom:18px;box-shadow:inset 0 1px 0 #fff2d20a}
 body.inner .timeline-kind{font-size:13px;color:var(--gold-2)}
 body.inner .timeline-day{margin:30px 0 14px}
 body.inner .timeline-empty{background:var(--moon-reader);border:1px solid var(--line);box-shadow:var(--moon-shadow)}
@@ -129,7 +129,7 @@ body.inner :is(.emotion-family,.quick-mood){border-color:var(--line);background:
 body.inner :is(.emotion-family.on,.quick-mood.on,.ritual-option[aria-pressed=true]){background:var(--selected);border-color:var(--gold)}
 body.inner .hb.on{border-color:color-mix(in srgb,var(--ok) 38%,transparent)}
 body.inner :is(.timeline-filters [aria-pressed=true],.chip.on,.chip[aria-pressed=true]){color:var(--gold-2);border-color:var(--gold);background:var(--selected)}
-html[data-theme] body.inner .app-nav{background:radial-gradient(180px circle at var(--glass-x,15%) var(--glass-y,0%),var(--moon-shine),transparent 80%),var(--moon-glass);border:1px solid var(--line);box-shadow:inset 0 1px 0 #fff3d92b,inset 0 -1px 0 #fff3d910,0 12px 34px #10091940;backdrop-filter:none;-webkit-backdrop-filter:none;border-radius:25px}
+html[data-theme] body.inner .app-nav{background:radial-gradient(180px circle at var(--glass-x,15%) var(--glass-y,0%),var(--moon-shine),transparent 80%),var(--moon-glass);border:1px solid var(--line);box-shadow:inset 0 1px 0 #fff3d92b,inset 0 -1px 0 #fff3d910,0 12px 34px #10091940;backdrop-filter:none;-webkit-backdrop-filter:none;border-radius:var(--r-xl)}
 html[data-theme] body.inner .app-nav button{font-size:14px;font-weight:400;color:var(--muted)}
 html[data-theme] body.inner .app-nav button.on{color:var(--gold-2);background:linear-gradient(130deg,#ebce9321,#e5bd7608);box-shadow:inset 0 1px 0 #efd29a25}
 html[data-theme] body.inner .app-nav .on .ico{background-color:var(--gold-2)}
@@ -185,7 +185,7 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
 @media(hover:hover) and (pointer:fine){
   body.inner :is(.wid,.quick-actions button):hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 14px 30px -20px #dab57670;transform:translateY(-2px)}
   body.inner .wid:hover::before{opacity:1}
-  body.inner .compact-links .wid:hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 12px 28px -20px #dab57660;transform:translateY(-1px)}
+  body.inner .compact-links .wid:hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 12px 28px -20px #dab57660;transform:translateY(-2px)}
   body.inner :is(.text-action,.back):hover{color:var(--gold-2)}
 }
 @media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-actions button):hover{transform:none}body.inner :is(.wid,.day-focus)::before{background:none}}
@@ -201,7 +201,7 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
 #v-hello .gift b{font-size:30px;font-weight:600;color:#f5f2ea;line-height:1.5}
 #v-hello .gift .ico{width:28px;height:28px;flex-basis:28px;margin-top:7px;background-color:#f0d79a;filter:drop-shadow(0 0 10px #f0d79a26)}
 #v-hello .cta{margin-top:48px;position:relative;isolation:isolate}
-#v-hello .cta .btn{position:relative;min-height:80px;padding:22px 30px;gap:24px;font-size:22px;font-weight:600;line-height:1.4;border-radius:24px;color:#f5f2ea}
+#v-hello .cta .btn{position:relative;min-height:80px;padding:22px 30px;gap:24px;font-size:22px;font-weight:600;line-height:1.4;border-radius:var(--r-xl);color:#f5f2ea}
 @media(min-width:760px) and (max-width:1050px){
   #v-hello .hello-stage{grid-template-columns:minmax(0,1fr) minmax(0,.6fr);gap:36px}
   #v-hello .gift b{font-size:28px}
@@ -258,7 +258,7 @@ body:not(.inner) #v-hello .trust{color:var(--muted);font-weight:500}
   border:1px solid transparent;background-clip:padding-box;background-color:var(--glass-base);
   box-shadow:var(--glass-shadow);
   --glass-x:50%;--glass-y:0%;--glass-edge:0;
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;
+  transition:transform var(--t) var(--sp),box-shadow var(--t) ease;
 }
 /* Explicit containing blocks keep reflections inside controls without backdrop-filter. */
 body.inner :is(.rem-summary,#home-sky .moonline,.wg-x,.quick-actions button){position:relative}
@@ -272,16 +272,16 @@ body.inner :is(.rem-summary,#home-sky .moonline,.wg-x,.quick-actions button){pos
 :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
   content:'';display:block;position:absolute;inset:-40%;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(circle at var(--glass-x) var(--glass-y),rgba(255,255,255,.28) 0%,rgba(244,223,168,.14) 18%,transparent 46%);
-  opacity:0;transition:opacity .35s ease;transform:none;animation:none;
+  opacity:0;transition:opacity var(--t-slow) ease;transform:none;animation:none;
 }
 @media(hover:hover) and (pointer:fine){
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):hover{
-    transform:translateY(-3px) scale(1.015);
+    transform:translateY(-2px);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.18),0 18px 44px -14px rgba(217,184,104,.4);
   }
 }
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.97)}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.98)}
 /* Daylight glass: a dense light base, white bevel and a violet shadow.
    Diary cards share the material but stay still while reading. */
 html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
@@ -302,7 +302,7 @@ html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-f
 html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(300px circle at var(--glass-x) var(--glass-y),#ffffff85,transparent 72%);
-  opacity:.28;transition:opacity .3s ease;transform:none;animation:none;
+  opacity:.28;transition:opacity var(--t) ease;transform:none;animation:none;
 }
 html[data-theme=light] body.inner :is(.ico,.app-nav .on .ico){background-color:var(--gold-2);filter:none}
 html[data-theme=light] body.inner :is(.eyebrow,.big,.avatar,.acct,.kw,.timeline-kind,.card-question h3,#h-set-question,.lunar-arrow,.app-nav button.on,.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true],.chip.on,.chip[aria-pressed=true]){color:var(--text)}
@@ -314,7 +314,7 @@ html[data-theme=light] body.inner :is(.timeline-filters [aria-pressed=true],.ent
 html[data-theme=light] body.inner .app-nav button.on{background:linear-gradient(135deg,#2a215020,#2a21500a);box-shadow:inset 0 1px 0 #fff9}
 html[data-theme=light] body.inner .compact-brand .mark{filter:none}
 html[data-theme=light] body.inner .compact-brand .moon-img{animation:none}
-html[data-theme=light] body.inner .wpane .msg.err{color:var(--text)!important;background:#e9e2f4;border-inline-start:3px solid #8272b4;padding:12px 16px;border-radius:12px}
+html[data-theme=light] body.inner .wpane .msg.err{color:var(--text)!important;background:#e9e2f4;border-inline-start:3px solid #8272b4;padding:12px 16px;border-radius:var(--r-s)}
 html[data-theme=light] body.inner .danger-zone .warn{color:var(--text);background:#e9e2f4;padding-inline:14px}
 html[data-theme=light] body.inner .bar{background:#2a215014}
 html[data-theme=light] body.inner .bar i{background:linear-gradient(90deg,#2a2150,#8272b4)}
