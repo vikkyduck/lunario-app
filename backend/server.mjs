@@ -529,13 +529,18 @@ function readBody(req, max = 32768) {
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
-function serveStatic(res, rel, cacheSec = 3600, headOnly = false) {
+function serveStatic(res, rel, cacheSec = 3600, headOnly = false, extra = {}) {
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const file = join(SITE_DIR, safe);
   if (!file.startsWith(normalize(SITE_DIR)) || !existsSync(file)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Не найдено'); }
-  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache' });
+  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache', ...extra });
   res.end(headOnly ? undefined : readFileSync(file));
 }
+/* Видимость для ИИ-агентов: заголовок Link со ссылками на карту сайта, политику, каталог API и описание (RFC 8288);
+   запрос с Accept: text/markdown получает описание приложения в markdown вместо HTML (llms.txt). */
+const AGENT_LINKS = ['</sitemap.xml>; rel="sitemap"', '</politika>; rel="privacy-policy"', '</soglasie>; rel="terms-of-service"',
+  '</.well-known/api-catalog>; rel="api-catalog"', '</app/llms.txt>; rel="describedby"; type="text/markdown"', '</.well-known/ai-catalog.json>; rel="ai-catalog"'].join(', ');
+const wantsMarkdown = (req) => /\btext\/markdown\b/.test(req.headers.accept || '') && !/\btext\/html\b/.test((req.headers.accept || '').split(',')[0]);
 
 /* ── маршруты ── */
 /* ── полочки: досье каждого человека — «Обо мне», «Мой день», «Истории».
@@ -1286,7 +1291,11 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400' });
       return res.end(req.method === 'HEAD' ? undefined : readFileSync(f));
     }
-    if (p === '/' || p === '/index.html') return serveStatic(res, 'index.html', 0);
+    if (p === '/' || p === '/index.html') {
+      if (wantsMarkdown(req)) return serveStatic(res, 'llms.txt', 3600, req.method === 'HEAD', { 'Content-Type': 'text/markdown; charset=utf-8', 'Vary': 'Accept', 'Link': AGENT_LINKS });
+      return serveStatic(res, 'index.html', 0, req.method === 'HEAD', { 'Vary': 'Accept', 'Link': AGENT_LINKS });
+    }
+    if (p === '/llms.txt') return serveStatic(res, 'llms.txt', 3600, req.method === 'HEAD', { 'Content-Type': 'text/markdown; charset=utf-8' });
     if (p === '/cabinet' || p === '/cabinet/') return serveStatic(res, 'cabinet.html', 0);
     if (p === '/manifest.webmanifest') return serveStatic(res, 'manifest.webmanifest', 0);
     if (p === '/sw.js') return serveStatic(res, 'sw.js', 0);

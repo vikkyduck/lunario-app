@@ -19,6 +19,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Лунарио">
 <link rel="manifest" href="/app/manifest.webmanifest">
+<link rel="ai-catalog" href="/.well-known/ai-catalog.json">
+<link rel="describedby" type="text/markdown" href="/app/llms.txt">
 <link rel="apple-touch-icon" href="/app/assets/apple-touch-icon.png?v=3">
 <link rel="icon" href="/app/assets/favicon.svg?v=3" type="image/svg+xml">
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
@@ -2835,6 +2837,20 @@ function lunarTopicLine(n){
   const d=LUN.days.find(x=>x.n===n),s=d&&(d.sections||[]).find(x=>x.key===content[0]),para=s&&s.blocks.find(b=>b.t==='p');
   if(!para)return '';const m=String(para.text).match(/^.+?[.!?…](\s|$)/);return s.title+': '+(m?m[0]:para.text).trim();
 }
+/* WebMCP: если браузер даёт агентам доступ к инструментам страницы (navigator.modelContext), объявляем два безопасных:
+   что за день сегодня и переход в раздел. Личные записи наружу не отдаются. */
+function registerWebMcp(){
+  try{
+    const mc=navigator.modelContext; if(!mc||typeof mc.provideContext!=='function')return;
+    mc.provideContext({tools:[
+      {name:'lunario_today',description:'Сегодня в Лунарио: дата, фаза Луны, лунный день и его рекомендация, установка дня. Без личных записей.',inputSchema:{type:'object',properties:{}},
+        execute:async()=>{const d=S.day||{};const l=d.lunar||{};return {date:d.date,moon:d.moon,lunarDay:l.n?{n:l.n,title:l.title,advice:l.advice,period:l.period}:null,setting:d.set?d.set.statement||'':'' };}},
+      {name:'lunario_open',description:'Открыть раздел или инструмент Лунарио: home, ask, history, account, news; или виджет card, mood, lunar, sky, natal, year, compat, topics.',
+        inputSchema:{type:'object',properties:{target:{type:'string'}},required:['target']},
+        execute:async({target})=>{const t=String(target||'');if(['home','ask','history','account','news'].includes(t)){go(t);return {ok:true,view:t};}if(WIDGETS[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
+    ]});
+  }catch(e){}
+}
 /* Виджет «Небо над вами»: место для созвездий — по устройству (только по нажатию), свой город или как в анкете */
 function paintSkyPlace(){
   const box=$('skyplace-box'),sky=window.LunarioSky;if(!box)return;
@@ -3525,6 +3541,7 @@ function startApp(){
     const r = await api('/me');
     S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;initExperience(r.preferences);
     try{ if(r.user&&r.user.lat!=null) window.LunarioSky?.setProfile({lat:r.user.lat,lon:r.user.lon,name:r.user.city||''}); }catch(e){}
+    registerWebMcp();
     try{ if(/[?&]app=1/.test(location.search)) localStorage.setItem('lun_app','1'); }catch(e){}
     if(isStaff(r.user) && !inApp()){ location.replace('/app/cabinet'); return; }
     track('app_open');
