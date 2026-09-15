@@ -217,12 +217,15 @@ try {
   console.log('PASS: all seven feature schedules, timezone, native lunar/sky plans, feature previews, device-specific test delivery and queue isolation.');
   qaDB.close();
   console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, 30/60/90/180/365 daily-only awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
-  if (process.argv.includes('--ui')) {
+  if (process.argv.includes('--ui') || process.argv.includes('--ui-repeat')) {
     // Optional Playwright checks use the same real backend and isolated database.
     const { chromium } = createRequire(import.meta.url)('playwright');
     const browser = await chromium.launch({ headless: true,
       ...(process.env.LUNARIO_CHROME_PATH ? { executablePath: process.env.LUNARIO_CHROME_PATH } : {}) });
     try {
+      const repeatOwner=account();await repeatOwner.json('/me');await repeatOwner.json('/profile','POST',{name:'Повторные действия',birth:'1990-01-01',city:'Москва',consent:true});
+      const {checkRepeatPractices}=await import('./check-repeat-practices.mjs');await checkRepeatPractices({browser,base,owner:repeatOwner});
+      if(!process.argv.includes('--ui-repeat')){
       const {checkNotificationUI}=await import('./check-notifications.mjs');
       await checkNotificationUI({browser,base,owner,other});
       const fourOwner=account();await fourOwner.json('/me');await fourOwner.json('/profile','POST',{name:'Четыре раздела',birth:'1990-01-01',city:'Москва',consent:true});
@@ -340,6 +343,7 @@ try {
       console.log('PASS: all four main sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');
       assert.deepEqual(errors, []);
       console.log('PASS: existing profile/wish photo uploads and reloads, habit/askesis navigation, saved notes, failed-request draft protection and visible feedback in the mobile UI.');
+      }
     } finally { await browser.close(); }
   }
 } finally {

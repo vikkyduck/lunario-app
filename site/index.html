@@ -1508,8 +1508,8 @@ function openWidget(k, title){
   if (k==='hentries') loadEntries();
   if (k==='week') loadWeek();
   if (k==='hmood') loadMoodReport();
-  if (k==='mood') paintMoodExtra();
-  if (k==='habits') loadHabits();
+  if (k==='mood'){moodUI.precision=false;moodUI.mode='families';renderMoods();paintMoodExtra();}
+  if (k==='habits'){habitView='today';hbEditing=null;habitFormOpen=false;if(HB)paintHabits();loadHabits();}
   if (k==='askesis') loadAskesis();
   if (k==='sky') loadSky();
   if (k==='lunar') paintLunarWidget();
@@ -3276,10 +3276,11 @@ async function loadHabits(){
   loadReminders().then(() => paintRem('habits')).catch(() => {});
 }
 let habitView='today',habitFormOpen=false,habitDraft={title:'',rule:''};
-const habitBusy=new Set();
+const habitBusy=new Set(),habitEditDrafts={};
 function habitTab(view){habitView=view;hbEditing=null;paintHabits();focusSelectedTab('Дневник привычек');}
-function habitEdit(id){habitView='all';hbEditing=id;paintHabits();$('hb-t-'+id)?.focus();}
-function habitNew(){habitFormOpen=!habitFormOpen;paintHabits();if(habitFormOpen)$('hb-new')?.focus();}
+function habitEdit(id){habitView='all';habitFormOpen=false;hbEditing=id;paintHabits();$('hb-t-'+id)?.focus();}
+function habitNew(){habitFormOpen=!habitFormOpen;if(habitFormOpen)hbEditing=null;paintHabits();if(habitFormOpen)$('hb-new')?.focus();}
+function habitCancelEdit(id){delete habitEditDrafts[id];hbEditing=null;paintHabits();}
 function paintHabits(){
   const box=$('hb-box'),today=S.day.date,due=HB.filter(h=>h.due),done=due.filter(h=>h.today).length;
   const id=HB.length?regRes({type:'habits',items:HB,day:today}):'';
@@ -3290,9 +3291,9 @@ function paintHabits(){
       ${h.daily && h.streak?`<small>${h.streak} ${plural(h.streak,'день','дня','дней')} подряд${h.next?' · до награды '+(h.next-h.streak):''}</small>`:''}
       ${h.awards.length?`<span class="hb-badge">${awardIcon(h.awards.at(-1),16)} ${h.awards.at(-1)} дней</span>`:''}
       ${habitView==='all'?`<div class="hd-row">${h.week.map(w=>`<button type="button" class="hd${w.done?' on':''}${w.day===today?' today':''}" onclick="habitMark(${h.id},'${w.day}')" aria-label="${fmtDay(w.day)}: ${w.done?'отмечено':'не отмечено'}" aria-pressed="${w.done}"><span>${WD_SHORT[wdIdx(w.day)]}</span></button>`).join('')}</div>`:''}
-      ${hbEditing===h.id?`<div class="hb-edit"><div class="field"><label for="hb-t-${h.id}">Название</label><input id="hb-t-${h.id}" value="${esc(h.title)}" maxlength="80"></div>
-        <div class="field"><label for="hb-r-${h.id}">Регулярность — своими словами</label><input id="hb-r-${h.id}" value="${esc(h.ruleText||h.ruleLabel)}" maxlength="60" list="rule-ideas"></div>
-        <button type="button" class="btn sm" onclick="habitSave(${h.id})">Сохранить</button><div class="utility-actions"><button type="button" class="text-action secondary" onclick="hbEditing=null;paintHabits()">Отмена</button><button type="button" class="text-action secondary" onclick="habitRemove(${h.id})">Убрать привычку</button></div></div>`:''}
+      ${hbEditing===h.id?`<div class="hb-edit"><div class="field"><label for="hb-t-${h.id}">Название</label><input id="hb-t-${h.id}" value="${esc(habitEditDrafts[h.id]?.title??h.title)}" maxlength="80" oninput="habitEditDrafts[${h.id}]=Object.assign(habitEditDrafts[${h.id}]||{},{title:this.value})"></div>
+        <div class="field"><label for="hb-r-${h.id}">Регулярность — своими словами</label><input id="hb-r-${h.id}" value="${esc(habitEditDrafts[h.id]?.rule??(h.ruleText||h.ruleLabel))}" maxlength="60" list="rule-ideas" oninput="habitEditDrafts[${h.id}]=Object.assign(habitEditDrafts[${h.id}]||{},{rule:this.value})"></div>
+        <button type="button" class="btn sm" onclick="habitSave(${h.id})">Сохранить</button><div class="utility-actions"><button type="button" class="text-action secondary" onclick="habitCancelEdit(${h.id})">Отмена</button><button type="button" class="text-action secondary" onclick="habitRemove(${h.id})">Убрать привычку</button></div></div>`:''}
     </div>${habitView==='all' && hbEditing!==h.id?`<button type="button" class="text-action icon-action" aria-label="Изменить: ${esc(h.title)}" onclick="habitEdit(${h.id})">✎</button>`:''}</div>`;
   box.innerHTML=`<div class="segmented" role="tablist" aria-label="Дневник привычек"><button type="button" role="tab" aria-controls="habit-list" aria-selected="${habitView==='today'}" onclick="habitTab('today')">Сегодня</button><button type="button" role="tab" aria-controls="habit-list" aria-selected="${habitView==='all'}" onclick="habitTab('all')">Все привычки</button></div>
     <div id="habit-list" role="tabpanel" aria-label="${habitView==='today'?'Сегодня':'Все привычки'}">
@@ -3318,7 +3319,7 @@ async function habitAdd(){
 }
 async function habitSave(id){
   const title = ($('hb-t-' + id).value || '').trim(), rule = ($('hb-r-' + id).value || '').trim();
-  try { const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, title, rule }) }); HB = r.items; hbEditing = null; hap(9); paintHabits(); }
+  try { const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, title, rule }) }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; hap(9); paintHabits(); toast('Привычка сохранена'); }
   catch (e) { toast('Не получилось сохранить'); }
 }
 async function habitMark(id, day){
@@ -3331,7 +3332,7 @@ async function habitMark(id, day){
 }
 async function habitRemove(id){
   if (!confirm('Убрать привычку из списка? Отметки сохранятся в истории.')) return;
-  try { const r = await api('/habits?id=' + id, { method: 'DELETE' }); HB = r.items; hbEditing = null; paintHabits(); } catch (e) { toast('Не получилось'); }
+  try { const r = await api('/habits?id=' + id, { method: 'DELETE' }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; paintHabits(); } catch (e) { toast('Не получилось'); }
 }
 /* награды: луна растёт вместе с серией — от молодого серпа до солнца */
 const AWARDS_FALLBACK = { 30: ['Молодая луна', 'Тридцать дней подряд. Привычка родилась — теперь ей есть на что опереться.'], 60: ['Растущая луна', 'Два месяца без пропуска. Это уже не усилие, а часть вашего дня.'],
@@ -3364,6 +3365,17 @@ async function loadAskesis(){
   loadReminders().then(() => paintRem('askesis')).catch(() => {});
 }
 const askNoteDrafts={},askNoteOpen={};
+function toggleAskPanel(event,summary,key){
+  event.preventDefault();const panel=summary.parentElement;panel.open=!panel.open;askPanelToggle(panel,key);
+}
+function askPanelToggle(el,key){
+  if(!el.isConnected)return;
+  if(el.open){
+    document.querySelectorAll('#as-box .observation,#as-box .practice-create').forEach(other=>{if(other!==el)other.open=false;});
+    Object.keys(askNoteOpen).forEach(id=>askNoteOpen[id]=false);askForm.open=false;
+  }
+  if(key==='new')askForm.open=el.open;else askNoteOpen[key]=el.open;
+}
 function paintAskesis(){
   const box=$('as-box'),today=S.day.date;
   const active=AS.active.map(a=>{
@@ -3374,8 +3386,8 @@ function paintAskesis(){
       <div class="bar" role="progressbar" aria-label="Срок аскезы" aria-valuemin="0" aria-valuemax="${a.total}" aria-valuenow="${a.done}"><i style="width:${Math.round(a.done/a.total*100)}%"></i></div>
       <p class="ask-support">${esc(a.support)}</p>
       ${a.today?`<div class="saved-state" role="status">Наблюдение сохранено · ${fmtDay(today)}</div><p class="entry-text">${esc(a.today.text)}</p>`:''}
-      <details class="observation" ${askNoteOpen[a.id]?'open':''} ontoggle="askNoteOpen[${a.id}]=this.open">
-        <summary>${a.today?'Изменить наблюдение':'Добавить наблюдение'}</summary>
+      <details class="observation" ${askNoteOpen[a.id]?'open':''} ontoggle="askPanelToggle(this,${a.id})">
+        <summary onclick="toggleAskPanel(event,this,${a.id})">${a.today?'Изменить наблюдение':'Добавить наблюдение'}</summary>
         <div class="field"><label for="as-note-${a.id}">Что заметила сегодня · необязательно</label><textarea id="as-note-${a.id}" maxlength="500" placeholder="Несколько слов о своём опыте…" oninput="askNoteDrafts[${a.id}]=this.value">${esc(askNoteDrafts[a.id]??a.today?.text??'')}</textarea></div>
         <button type="button" class="btn sm" onclick="askNote(${a.id})">Сохранить наблюдение</button>
       </details>
@@ -3388,7 +3400,7 @@ function paintAskesis(){
     <div class="field"><label for="as-title">От чего отказываюсь или что ограничиваю</label><input id="as-title" maxlength="80" placeholder="Например: без шоппинга" value="${esc(f.title)}" oninput="askForm.new=Object.assign(askForm.new||{},{title:this.value})"></div>
     <div class="field"><label for="as-until">До какого дня</label><input id="as-until" type="date" min="${today}" value="${esc(f.until)}" onchange="askForm.new=Object.assign(askForm.new||{},{until:this.value})"></div>
     <button type="button" class="btn" onclick="askStart()">Взять аскезу</button>`;
-  box.innerHTML=active+(AS.active.length<5?(AS.active.length?`<details class="practice-create" ${askForm.open?'open':''} ontoggle="askForm.open=this.open"><summary>Добавить аскезу</summary><div class="card practice-card">${form}</div></details>`:`<div class="card practice-card">${form}</div>`):'')+
+  box.innerHTML=active+(AS.active.length<5?(AS.active.length?`<details class="practice-create" ${askForm.open?'open':''} ontoggle="askPanelToggle(this,'new')"><summary onclick="toggleAskPanel(event,this,'new')">Добавить аскезу</summary><div class="card practice-card">${form}</div></details>`:`<div class="card practice-card">${form}</div>`):'')+
     (AS.past.length?`<span class="eyebrow" style="margin-top:24px">Прошлые</span><div class="list">${AS.past.map(a=>`<div class="item"><b>${esc(a.title)}</b><small>${fmtDay(a.started)} — ${fmtDay(a.finished||a.until)} · ${a.status==='done'?'пройдена до конца':'завершена досрочно'}</small>${a.notes.length?moreBlock(a.notes.map(n=>`<p><small>${fmtDay(n.day)}</small><br>${esc(n.text)}</p>`).join(''),'Мои наблюдения'):''}</div>`).join('')}</div>`:'');
   askesisHomeStatus(AS);paintRem('askesis');preparePending();
 }

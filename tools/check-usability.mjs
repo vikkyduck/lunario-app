@@ -29,7 +29,7 @@ export async function checkUsabilityUI({browser,base,owner}){
     await page.locator('#hb-new').fill('Черновик привычки');await page.locator('#hb-rule').fill('Каждые 5 дней');
     await page.getByRole('tab',{name:'Сегодня',exact:true}).click();
     assert.equal(await page.locator('#hb-rule').inputValue(),'Каждые 5 дней');
-    await close();await open('habits');await page.locator('#hb-new').waitFor();
+    await close();await open('habits');await page.getByRole('button',{name:'+ Добавить привычку',exact:true}).click();await page.locator('#hb-new').waitFor();
     assert.equal(await page.locator('#hb-new').inputValue(),'Черновик привычки');
     await page.getByRole('button',{name:'Добавить',exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('#hb-new-form').hidden);
