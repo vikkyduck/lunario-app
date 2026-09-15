@@ -538,7 +538,12 @@ function build() {
   r.SETS = [...new Map(setRows.map((s) => [s[1].trim().replace(/\s+/g, ' '), s])).values()];   // без повторов фразы
   if (r.SETS.length < 365) console.warn(`Тексты: установок дня ${r.SETS.length} — меньше 365, повторы у людей начнутся раньше года`);
   /* «Новое в приложении»: месяц | название | раздел:виджет | описание */
-  r.NEWS = (rows('новое.txt', 4) || []).map((c) => { const [view, widget] = c[2].split(':'); return { month: c[0], title: c[1], view: view.trim(), widget: (widget || '').trim(), text: c[3] }; });
+  /* «месяц | название | раздел:виджет | о чём» — новинка с переходом; «скоро | название | о чём» — анонс без перехода */
+  r.NEWS = (rows('новое.txt', 3) || []).flatMap((c) => {
+    if (c[0] === 'скоро') return [{ soon: true, title: c[1], text: c[2] }];
+    if (c.length < 4 || !c[3]) return [];
+    const [view, widget] = c[2].split(':'); return [{ month: c[0], title: c[1], view: view.trim(), widget: (widget || '').trim(), text: c[3] }];
+  });
 
   /* Круг эмоций: «лепесток | ключ | Название | цвет» и «ключ | название | лепесток | тон» в одном файле */
   const em = rows('эмоции.txt', 4);

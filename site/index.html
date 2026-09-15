@@ -743,10 +743,9 @@ body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer
 #home-sky .moonline::after{display:none}
 .profile-summary{margin-top:20px}.profile-summary h2{font-size:22px;margin-bottom:16px}.profile-summary>p{margin-top:14px;font-size:14px}
 .profile-detail{margin-top:12px;border-top:1px solid var(--line)}
-:is(.profile-detail,.upcoming,.lunar-period,.lunar-library)>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:14px;color:var(--muted)}
+:is(.profile-detail,.lunar-period,.lunar-library)>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:14px;color:var(--muted)}
 .profile-detail p{font-size:13px;margin:8px 0}
-body.inner .upcoming .wid{opacity:.7;min-height:64px}
-.upcoming{margin-top:20px}.upcoming .text-action{display:flex;justify-content:flex-start}
+.upcoming{margin-top:20px}
 .danger-zone{margin-top:44px}.danger-zone .warn{margin-top:20px}
 .question-entry{grid-template-columns:1fr}.question-entry .wid{min-height:100px}
 .quick-moods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -897,7 +896,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <section class="view" id="v-practice"><header class="practice-header"><button class="back" id="practice-back" type="button" onclick="practiceBack()">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div></section>
   <section class="view" id="v-news"><button class="back" onclick="go('account')">← Я</button>
     <span class="eyebrow" id="news-sub">За этот месяц</span><h1>Новое в приложении</h1><div class="wids" id="news-box"></div>
-    <section class="feature-group upcoming"><h2>Скоро</h2><p class="hint">Эти материалы ещё готовятся</p><div class="wids compact-links"><button class="wid" data-feature="tests" type="button" aria-label="Тесты" onclick="openWidget('tests')"><i class="ico list"></i><b>Тесты</b><span>Материалы готовятся</span></button></div></section>
+    <section class="feature-group upcoming" id="news-soon" hidden><h2>Скоро</h2><p class="hint">Эти материалы ещё готовятся</p><div class="list" id="news-soon-box"></div></section>
   </section>
   <section class="view" id="v-account"><span class="eyebrow" id="ac-mail">Мой профиль и приложение</span><h1>Я</h1>
     <div class="account-layout"><div class="account-personal">
@@ -914,8 +913,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="wid" type="button" onclick="openWidget('appinfo')"><i class="ico moon"></i><b>О приложении</b></button>
       <button class="wid" id="t-install" type="button" style="display:none" onclick="installApp()"><i class="ico star"></i><b>Установить на телефон</b></button></div></section>
     <section class="account-group"><h2>Приватность</h2><div class="wids compact-links"><button class="wid" data-feature="shelves" type="button" aria-label="Мои данные" onclick="openWidget('shelves')"><i class="ico list"></i><b>Мои данные</b><span>Что Лунарио знает о вас</span></button><button class="wid" type="button" onclick="exportPersonalData()"><i class="ico list"></i><b>Скачать мои данные</b><span>Профиль, фотографии, записи и история практик</span></button></div></section>
-    <section class="account-group"><h2>Помощь</h2><div class="wids compact-links"><button class="wid" data-feature="support" type="button" aria-label="Чат поддержки" onclick="openWidget('support')"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button class="wid" type="button" aria-label="Позвать подругу" data-feature="invite" onclick="openWidget('invite')"><i class="ico person"></i><b>Позвать подругу</b></button></div>
-      <details class="upcoming"><summary>Материалы готовятся</summary><button class="text-action secondary" onclick="openStub('С чего начать')">С чего начать</button><button class="text-action secondary" onclick="openStub('Вопросы и ответы')">Вопросы и ответы</button></details></section>
+    <section class="account-group"><h2>Помощь</h2><div class="wids compact-links"><button class="wid" data-feature="support" type="button" aria-label="Чат поддержки" onclick="openWidget('support')"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button class="wid" type="button" aria-label="Позвать подругу" data-feature="invite" onclick="openWidget('invite')"><i class="ico person"></i><b>Позвать подругу</b></button></div></section>
     <div class="rows danger-zone"><span class="eyebrow">Управление аккаунтом</span>
       <button class="rowbtn" type="button" onclick="logout()"><i class="ico exit"></i>Выйти на этом устройстве</button>
       <button class="rowbtn" type="button" onclick="wipe('data')"><i class="ico list"></i>Очистить историю</button>
@@ -985,7 +983,6 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div id="a-result" class="sec" style="display:none"></div>
   </div>
   <div class="wpane" id="w-year"><div class="list" id="w-year-box"></div></div>
-  <div class="wpane" id="w-tests"><p>Здесь появятся тесты, когда будут добавлены материалы</p></div>
   <div class="wpane" id="w-birthnum"><div class="list" id="w-birth-box"></div></div>
   <div class="wpane" id="w-compat">
     <div class="card">
@@ -1019,7 +1016,6 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
   <div class="wpane" id="w-appinfo"><p>Лунарио — пространство, где можно услышать себя: замечать настроение, записывать мысли и смотреть на вопрос иначе.</p><p class="material-note" data-material-note></p><button class="text-action" onclick="openWidget('terms')">Условия использования →</button></div>
   <div class="wpane" id="w-terms"><p>Карты, руны, астрологические и нумерологические интерпретации — материалы для размышления. Решения о своих действиях принимаете вы.</p><p class="material-note" data-material-note></p><p>Записи сохраняются, когда вы нажимаете кнопку сохранения. Напоминания включаются по вашему выбору. Скачать свои данные и управлять аккаунтом можно в разделе «Я».</p><p class="material-note"><a href="/politika" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/soglasie" target="_blank" rel="noopener">Обработка персональных данных</a></p></div>
-  <div class="wpane" id="w-stub"><p class="stubtext">Пока в разработке</p></div>
 </div>
 <div class="wg-bg" id="wg" onclick="closeWidget(event)">
   <div class="wg" role="dialog" aria-modal="true" aria-labelledby="wg-title">
@@ -1339,9 +1335,9 @@ const WIDGETS = {
   ask:['Свериться',''], year:['Я','Личный год'], birthnum:['Я','Нумерология'], compat:['Я','Совместимость'],
   lunar:['Луна и небо','Лунный день'], hmood:['Дневник','История настроений'], hentries:['Дневник','Мои вопросы и ответы'], week:['Дневник','Итоги недели'],
   invite:['Я','Позвать подругу'], remind:['Я','Уведомления'], edit:['Я','Изменить мои данные'], mail:['Я','Вход по почте'], shelves:['Я','Мои данные'],
-  support:['Я','Чат поддержки'], tests:['Я','Тесты'], natal:['Я','Натальная карта'],
+  support:['Я','Чат поддержки'], natal:['Я','Натальная карта'],
   ritual:['Сегодня','Мой ритуал'],appearance:['Я','Оформление'],practiceSettings:['','Уведомления'],askDate:['Взять аскезу','Передвинуть дату'],timelineEntry:['Дневник','Запись'],
-  appinfo:['Я','О приложении'], terms:['Я','Условия использования'],topics:['Я','Темы чтения'],skyplace:['Я','Небо над вами'],stub:['','']
+  appinfo:['Я','О приложении'], terms:['Я','Условия использования'],topics:['Я','Темы чтения'],skyplace:['Я','Небо над вами']
 };
 const WIDGET_REMINDERS={card:'card',mood:'mood',hmood:'moodreport',habits:'habits',askesis:'askesis',gratitude:'gratitude',lunar:'lunar',sky:'sky'};
 let wgOpen = null, wgFocus = null;
@@ -1382,7 +1378,6 @@ function closeWidget(e){
   if(wgFocus?.isConnected)wgFocus.focus({preventScroll:true});wgFocus=null;
   if(XP.page)refreshPracticeReminder();
 }
-function openStub(title){ openWidget('stub', title); }
 document.addEventListener('keydown',e=>{
   const tabs=e.target.closest('.segmented');
   if(tabs && ['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){
@@ -3386,8 +3381,7 @@ async function setPhoto(){
 }
 async function removePhoto(){ try { const r = await api('/photo', { method: 'DELETE' }); S.user = Object.assign(S.user, r.user); paintAvatar(); } catch (e) { toast('Не получилось'); } }
 
-/* ══════════ Новое в приложении: плитки ведут в сами разделы, дублировать нечего ══════════ */
-const APP_RELEASES = [{month:'2026-09', keys:['askesis','habits','gratitude','mood','worry','tone','wishes','account','around','birthnum','support']}];
+/* ══════════ Новое в приложении: плитки ведут в сами разделы, дублировать нечего. Список — content/новое.txt ══════════ */
 function featureRoot(key){
   if(!/^[a-z][a-z0-9-]*$/.test(key||''))return null;
   return document.querySelector('[data-feature="'+key+'"]')
@@ -3399,8 +3393,10 @@ async function paintNews(){
   try { await loadCatalog(); } catch(e) {}
   const month = S.day.date.slice(0,7);
   $('news-sub').textContent = monthName(month).replace(/^./,c=>c.toUpperCase());
-  const keys = new Set(APP_RELEASES.filter(n=>n.month===month).flatMap(n=>n.keys));
-  for(const n of (CAT?.news || []).filter(n=>n.month===month)) keys.add(n.widget || n.view);
+  const news = CAT?.news || [], keys = new Set(news.filter(n=>n.month===month).map(n=>n.widget || n.view));
+  const soon = news.filter(n=>n.soon);
+  $('news-soon').hidden = !soon.length;
+  $('news-soon-box').innerHTML = soon.map(n=>`<div class="item"><b>${esc(n.title)}</b><small>${esc(n.text)}</small></div>`).join('');
   box.replaceChildren();
   for(const key of keys){
     const root = featureRoot(key); if(!root) continue;

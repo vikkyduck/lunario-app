@@ -41,6 +41,7 @@ const PORT = Number(process.env.PORT || 5031);
 const HOST = process.env.HOST || '127.0.0.1';
 const SITE_DIR = process.env.SITE_DIR || join(__dirname, '..', 'site');
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, '..', 'data');
+if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });   /* до ключей пушей и шифрования — они пишут сюда при первом запуске */
 const BASE = process.env.BASE_PATH || '/app';
 /* Резервные копии: ночью — cron (тот же backup.mjs), днём — кнопка в кабинете админа */
 const BACKUP_DIR = process.env.BACKUP_DIR || join(__dirname, '..', 'backups');
@@ -58,7 +59,6 @@ const EVENT_TYPES = new Set([
   'reminder_on', 'reminder_off', 'reminder_test', 'habit_add', 'habit_mark', 'habit_award', 'askesis_start', 'askesis_mark', 'sky_view', 'lunar_view', 'moodreport_view',
   'gratitude_add', 'answer_add', 'news_view', 'wish_photo', 'photo_set', 'topics_set', 'topics_all', 'lunar_expand',
 ]);
-if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 const {seal, open:open_} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 

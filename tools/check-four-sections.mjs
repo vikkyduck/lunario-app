@@ -16,7 +16,7 @@ export async function checkFourSections({browser,base,owner}){
     assert.equal(await page.locator('#tone-box .practice-question').innerText(),initialDay.question);
     assert.equal(await page.locator('#tone-box > .hint').innerText(),initialDay.set.statement);
     await close();assert.equal(await page.evaluate(()=>document.activeElement.id),'h-set-question');
-    const routes={home:['card','day','tone','mood','habits','askesis','lunar','sky'],ask:['worry'],history:['journal','gratitude','wishes','hmood','hentries','week'],account:['natal','year','birthnum','compat','mail','remind','shelves','support','edit','invite'],news:['tests']};
+    const routes={home:['card','day','tone','mood','habits','askesis','lunar','sky'],ask:['worry'],history:['journal','gratitude','wishes','hmood','hentries','week'],account:['natal','year','birthnum','compat','mail','remind','shelves','support','edit','invite']};
     for(const [view,keys] of Object.entries(routes))for(const key of keys){
       await page.evaluate(v=>go(v),view);
       const root=page.locator(`#v-${view} [data-feature="${key}"]`);assert.equal(await root.count(),1,key+' canonical entry');
