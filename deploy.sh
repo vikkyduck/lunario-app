@@ -3,10 +3,16 @@
 # Своя папка /opt/lunario-app и свой порт 5031: с лендингом не пересекается.
 set -euo pipefail
 SERVER="${SERVER_USER:-root}@${SERVER_HOST:-5.129.198.180}"
+echo "==> проверка версии оболочки и справочника городов"
+node tools/bump-version.mjs >/dev/null || { echo "❌ версии ?v= расходятся — node tools/bump-version.mjs <N>"; exit 1; }
+# cities.db не в git: свежий клон без него не должен стереть серверный (rsync --delete)
+if ! ssh "$SERVER" 'test -s /opt/lunario-app/backend/cities.db' && [ ! -s backend/cities.db ]; then
+  echo "❌ нет backend/cities.db ни локально, ни на сервере — соберите: node tools/build-cities.mjs <дампы GeoNames>"; exit 1
+fi
 echo "==> site/ и backend/ → /opt/lunario-app"
 ssh "$SERVER" 'mkdir -p /opt/lunario-app/{site,backend,data} /opt/lunario-content/картинки'
 rsync -az --delete site/ "$SERVER:/opt/lunario-app/site/"
-rsync -az --delete backend/ "$SERVER:/opt/lunario-app/backend/"
+rsync -az --delete --exclude cities.db --exclude "*.db-wal" --exclude "*.db-shm" backend/ "$SERVER:/opt/lunario-app/backend/"
 # тексты и картинки — не код: они живут в /opt/lunario-content и выкладываются отдельно, ./обновить-тексты.sh
 echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app/backend/lunario-app.service /etc/systemd/system/lunario-app.service \
