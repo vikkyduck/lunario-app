@@ -321,7 +321,8 @@ const MOOD_FAMILIES_FALLBACK = { joy: ['Радость', '#f2c94c'], trust: ['Д
   sadness: ['Грусть', '#4c78c8'], disgust: ['Отвращение', '#8f5fb8'], anger: ['Злость', '#e0475c'], anticipation: ['Ожидание', '#f0932b'], dyad: ['На стыке', '#b9b2cf'] };
 /* прежние пять отметок — чтобы старая история читалась */
 export const LEGACY_MOODS = { joy: 'joy', calm: 'serenity', tired: 'pensiveness', anx: 'apprehension', sad: 'sadness' };
-export const moodInfo = (key) => (data.MOOD_BY_KEY[LEGACY_MOODS[key] || key]) || null;
+export const QUICK_MOODS = [M('quick:well','Хорошо','joy','+'),M('quick:calm','Спокойно','trust','+'),M('quick:tired','Устала','sadness','-'),M('quick:anxious','Тревожно','fear','-'),M('quick:heavy','Тяжело','sadness','-')];
+export const moodInfo = (key) => QUICK_MOODS.find(m=>m.key===key) || data.MOOD_BY_KEY[LEGACY_MOODS[key] || key] || null;
 /* Тексты напоминаний по функции — запасные, те же, что в content/напоминания.txt */
 const REMINDER_TEXTS_FALLBACK = {
   card: ['Лунарио', 'Ваша карта дня готова ✦'], mood: ['Как прошёл день?', 'Отметьте настроение — одно нажатие, и вечером станет яснее.'],

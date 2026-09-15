@@ -185,6 +185,7 @@ try {
   const deniedEdit=await other.raw('/journal','PATCH',{id:gratitude.id,text:'Чужая запись'});
   assert.equal(deniedEdit.status,404);
 
+  const bundle=await owner.json('/data/export');assert.equal(bundle.profile.photo,photo);assert.ok(bundle.wishes.some(w=>w.photo===photo));assert.ok(bundle.habits.some(h=>h.title==='Тест: прогулка вечером'));assert.ok(bundle.askesis.some(a=>a.observations.some(n=>n.note==='Тест: вечер прошёл спокойно')));assert.ok(!(await other.json('/data/export')).journal.some(j=>j.id===gratitude.id));
   assert.equal(reminders.notificationFor('gratitude',person),null,'Do not remind after gratitude is recorded');
   assert.equal(reminders.notificationFor('gratitude',person,Date.parse(day+'T20:59:00Z'),'Asia/Tokyo'),null,'Reminder suppression uses the same day as the diary');
   await owner.json('/journal','POST',{kind:'answer',title:me.day.question,text:'Сегодня я могу дать себе время'});
@@ -224,6 +225,8 @@ try {
     try {
       const {checkNotificationUI}=await import('./check-notifications.mjs');
       await checkNotificationUI({browser,base,owner,other});
+      const fourOwner=account();await fourOwner.json('/me');await fourOwner.json('/profile','POST',{name:'Четыре раздела',birth:'1990-01-01',city:'Москва',consent:true});
+      const {checkFourSections}=await import('./check-four-sections.mjs');await checkFourSections({browser,base,owner:fourOwner});
       const uxOwner=account();await uxOwner.json('/me');
       await uxOwner.json('/profile','POST',{name:'Тест интерфейса',birth:'1990-01-01',city:'Москва',consent:true});
       const {checkUsabilityUI}=await import('./check-usability.mjs');
@@ -246,7 +249,7 @@ try {
       await page.waitForFunction(() => document.querySelector('#toast').textContent.includes('Фото сохранено'));
       await page.reload(); await page.waitForSelector('#v-home.on');
       await page.waitForFunction(() => document.querySelector('#h-acct img')?.naturalWidth > 0);
-      await page.getByRole('button', { name: 'Мои желания', exact: true }).click();
+      await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
       await page.waitForFunction(() => document.querySelector('#m-wishes .wphoto')?.naturalWidth > 0);
       assert.ok((await page.locator('#m-wishes').innerText()).includes('Тест: поездка к морю'));
       // A failed request must not discard the draft or leave an unhandled rejection.
@@ -265,48 +268,48 @@ try {
       await (await wishChooser).setFiles({ name: 'test-wish.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
       await page.waitForFunction(() => document.querySelector('#m-wishes .wphoto')?.naturalWidth > 0 && document.querySelectorAll('#m-wishes .wphoto').length === 2);
       await page.locator('.wg-x').click();
-      await page.locator('#v-home .sqs').getByRole('button', {name:'Мой день',exact:true}).click();
+      await page.locator('.app-nav').getByRole('button', {name:'Сегодня',exact:true}).click();
       await page.getByRole('button', { name: /^Дневник привычек/ }).click();
       await page.getByText('Тест: прогулка вечером', { exact: true }).first().waitFor();
       await page.locator('.wg-x').click();
-      await page.locator('#v-today').getByRole('button', { name: /^Взять аскезу/ }).click();
+      await page.locator('#v-home').getByRole('button', { name: /^Взять аскезу/ }).click();
       await page.getByText('Тест: без вечернего скроллинга', { exact: true }).waitFor();
       assert.equal(await page.locator(`#as-note-${askesis.id}`).inputValue(), 'Тест: вечер прошёл спокойно');
       await page.reload(); await page.waitForSelector('#v-home.on');
-      await page.getByRole('button', { name: 'Мои желания', exact: true }).click();
+      await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
       await page.waitForFunction(() => document.querySelectorAll('#m-wishes .wphoto').length === 2);
       await page.locator('.wg-x').click();
-      assert.deepEqual(await page.locator('#v-home .sq b').allTextContents(), ['Мой день','Свериться','Обо мне','Внешний фон','Память','Новое в приложении']);
-      await page.locator('#v-home .sqs').getByRole('button',{name:'Мой день',exact:true}).click();
-      await page.locator('#v-today').getByRole('button',{name:/^Настроение дня/}).click();
-      await page.getByRole('tab',{name:'Все эмоции',exact:true}).click();
+      assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(t=>t.trim()), ['Сегодня','Свериться','Дневник','Я']);
+      await page.locator('.app-nav').getByRole('button',{name:'Сегодня',exact:true}).click();
+      await page.locator('#v-home').getByRole('button',{name:/^Отметить настроение/}).click();
+      await page.getByRole('button',{name:'Все эмоции',exact:true}).click();
       assert.equal(await page.locator('#t-moods .mchip').count(),32);
       await page.locator('#t-moods .mchip').filter({hasText:/^восхищение$/}).click();
       await page.waitForFunction(()=>document.querySelector('#t-moods .mpick').textContent.includes('восхищение'));
       await page.locator('.wg-x').click();
-      await page.locator('#v-today').getByRole('button',{name:/^Что вас сегодня беспокоит/}).click();
+      await page.locator('.app-nav [data-nav=ask]').click();await page.locator('#v-ask').getByRole('button',{name:'Разобрать вопрос',exact:true}).click();
       const question=await page.locator('#hub-chips .chip').first().innerText();
       await page.locator('#hub-chips .chip').first().click();
-      assert.equal(await page.locator('#hub-q').inputValue(),question);
+      assert.equal(await page.locator('#hub-q').inputValue(),'Что мне сейчас важно в отношениях?');
       await page.locator('#hub-q').fill(question+' Это касается моей работы.');
       assert.equal(await page.locator('#hub-opts .chip').count(),4);
       assert.ok(!(await page.locator('#hub-opts').innerText()).includes('Да / Нет'));
       await page.locator('.wg-x').click();
-      await page.locator('#v-today').getByRole('button',{name:/^Вопрос дня/}).click();
+      await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home').getByRole('button',{name:/^Вопрос дня/}).click();
       await page.locator('#tone-a').fill('Ответ из интерфейса');
       await page.getByRole('button',{name:'Отправить в дневник',exact:true}).click();
       await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('Записано в дневник'));
       await page.locator('.wg-x').click();
       await page.locator('.app-nav [data-nav=history]').click();
-      assert.equal(await page.locator('#v-history h1').innerText(),'Память');
-      await page.locator('#v-history').getByRole('button',{name:/^Дневник/}).click();
+      assert.equal(await page.locator('#v-history h1').innerText(),'Дневник');
+      await page.locator('#v-history [data-feature="journal"]').click();
       await page.locator('#w-journal').getByText('Ответ из интерфейса',{exact:true}).waitFor();
       await page.locator('.wg-x').click();
       await page.locator('.app-nav [data-nav=home]').click();
-      await page.locator('#v-home .sq').filter({hasText:'Новое в приложении'}).click();
+      await page.locator('.app-nav [data-nav=account]').click();await page.locator('#v-account [data-feature=news]').click();
       await page.locator('#news-box .wid').first().waitFor();
       // A root card edit is immediately reflected in News, with the same action.
-      await page.evaluate(()=>{document.querySelector('#v-today button[onclick="openWidget(\'askesis\')"] b').textContent='Взять аскезу · проверка';return paintNews();});
+      await page.evaluate(()=>{const root=document.querySelector('#v-home [data-feature=askesis]');root.querySelector('b').textContent='Взять аскезу · проверка';root.setAttribute('aria-label','Взять аскезу · проверка');return paintNews();});
       await page.locator('#news-box').getByRole('button',{name:/^Взять аскезу · проверка/}).click();
       await page.locator('#as-box').getByText('Тест: без вечернего скроллинга',{exact:true}).waitFor();
       await page.locator('.wg-x').click();
@@ -314,13 +317,13 @@ try {
         await page.setViewportSize({width,height});
         await page.locator('.app-nav [data-nav=home]').click();
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal overflow');
-        for(const button of await page.locator('#v-home .sq').all()) {
+        for(const button of await page.locator('#v-home .wid').all()) {
           await button.scrollIntoViewIfNeeded(); assert.ok(await button.isVisible());
-          const size=await button.boundingBox();assert.ok(size.height>=100);
+          const size=await button.boundingBox();assert.ok(size.height>=44);
         }
       }
       // Every surviving feature card opens the actual widget pane.
-      for(const [view,key] of [['today','card'],['today','mood'],['today','worry'],['today','day'],['today','tone'],['today','askesis'],['today','wishes'],['today','habits'],['today','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','tests'],['about','compat'],['around','lunar'],['around','sky'],['history','hmood'],['history','hwishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','shelves'],['account','support']]) {
+      for(const [view,key] of [['home','card'],['home','mood'],['ask','worry'],['home','day'],['home','tone'],['home','askesis'],['history','wishes'],['home','habits'],['history','gratitude'],['account','natal'],['account','year'],['account','birthnum'],['news','tests'],['account','compat'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','shelves'],['account','support']]) {
         await page.evaluate(v=>go(v),view);
         await page.locator(`#v-${view} button[onclick="openWidget('${key}')"]`).click();
         await page.waitForFunction(k=>document.querySelector('#wg-body #w-'+k)!==null,key);
@@ -328,12 +331,13 @@ try {
       }
       await page.evaluate(()=>go('account'));
       for(const title of ['С чего начать','Вопросы и ответы']) {
+        if(!(await page.locator('#v-account .upcoming').evaluate(el=>el.open)))await page.locator('#v-account .upcoming summary').click();
         await page.locator('#v-account').getByRole('button',{name:new RegExp('^'+title)}).click();
         assert.equal(await page.locator('#wg-title').innerText(),title);await page.locator('.wg-x').click();
       }
       await page.evaluate(()=>go('ask'));
-      assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Да / Нет','Руны','Таро']);
-      console.log('PASS: all six home sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');
+      assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Разобрать вопрос','Да / Нет','Руны','Таро']);
+      console.log('PASS: all four main sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');
       assert.deepEqual(errors, []);
       console.log('PASS: existing profile/wish photo uploads and reloads, habit/askesis navigation, saved notes, failed-request draft protection and visible feedback in the mobile UI.');
     } finally { await browser.close(); }

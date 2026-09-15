@@ -4,7 +4,7 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v10';
+const CACHE = 'lunario-app-v11';
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
 

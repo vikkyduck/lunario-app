@@ -37,9 +37,10 @@ export async function checkUsabilityUI({browser,base,owner}){
     assert.equal(await page.locator('.hb-columns').first().evaluate(el=>getComputedStyle(el).display),'grid');
     await capture('habits-mobile');await close();
 
-    await open('mood');await page.locator('.emotion-family').first().waitFor();
+    await open('mood');await page.getByRole('button',{name:'Назвать точнее',exact:true}).click();await page.locator('.emotion-family').first().waitFor();
     assert.equal(await page.locator('.emotion-family').count(),8);
     assert.equal(await page.locator('#t-moods .mchip').count(),0);
+    await page.getByRole('button',{name:'Своё слово',exact:true}).click();
     await page.locator('#mood-own').fill('Тихое любопытство');
     await page.locator('.emotion-family').first().click();
     assert.equal(await page.locator('#mood-shades .mchip').count(),3);

@@ -60,7 +60,7 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     assert.equal((await owner.json('/reminders')).items.find(r=>r.feature==='mood').weekday,5);
     assert.equal(await page.evaluate(()=>window.__pushQA.requests),0,'Existing subscription reconnects without another prompt');
     await page.locator('.wg-x').click();
-    const cases=[['today','habits','habits'],['history','hmood','moodreport'],['today','mood','mood'],['today','askesis','askesis'],['today','gratitude','gratitude'],['around','sky','sky'],['around','lunar','lunar']];
+    const cases=[['home','habits','habits'],['history','hmood','moodreport'],['home','mood','mood'],['home','askesis','askesis'],['history','gratitude','gratitude'],['home','sky','sky'],['home','lunar','lunar']];
     for(const [view,key,feature] of cases){
       await page.evaluate(v=>go(v),view);
       await page.locator(`#v-${view} button[onclick="openWidget('${key}')"]`).click();

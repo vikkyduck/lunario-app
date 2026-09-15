@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { vapidKeys } from './push.mjs';
 import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
 import * as C from './content.mjs';
+import { personalExport } from './personal-export.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak, HABIT_MILESTONES } from './practices.mjs';
@@ -694,7 +695,7 @@ const server = createServer(async (req, res) => {
     if (p === '/api/catalog' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
       return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS, lunarDays: [...C.LUNAR_DAYS], askesisIdeas: [...C.ASKESIS_IDEAS], habitIdeas: [...C.HABIT_IDEAS],
-        news: [...C.NEWS], moods: [...C.MOODS], moodFamilies: { ...C.MOOD_FAMILIES }, legacyMoods: C.LEGACY_MOODS,
+        news: [...C.NEWS], quickMoods: C.QUICK_MOODS, moods: [...C.MOODS], moodFamilies: { ...C.MOOD_FAMILIES }, legacyMoods: C.LEGACY_MOODS,
         worries: [...C.WORRIES], awards: [...C.AWARDS], reminderTexts: Object.fromEntries(['card', 'mood', 'moodreport', 'habits', 'askesis', 'gratitude', 'lunar', 'sky'].map((k) => [k, C.REMINDER_TEXTS[k]])) }));
     }
 
@@ -1055,6 +1056,8 @@ const server = createServer(async (req, res) => {
           },
         });
       }
+
+      if (p === '/api/data/export' && req.method === 'GET') return json(res,200,personalExport(db,u,open_));
 
       if (p === '/api/profile' && req.method === 'POST') {
         const b = await readBody(req);
