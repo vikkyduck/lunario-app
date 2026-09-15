@@ -1145,14 +1145,23 @@ const server = createServer(async (req, res) => {
       /* Дневник: обычная запись, благодарность («кому и за что я благодарна сегодня») или ответ на вопрос дня.
          Всё лежит в одной ленте, вид записи подписан. */
       if (p === '/api/journal') {
+        if (req.method === 'PATCH') {
+          const b = await readBody(req), text = clean(b.text, 2000);
+          const item = db.prepare("SELECT id, day FROM journal WHERE id=? AND user_id=? AND kind='gratitude'").get(Number(b.id) || 0, u.id);
+          if (!item) return json(res, 404, { ok: false, error: 'not_found' });
+          if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
+          db.prepare('UPDATE journal SET text=? WHERE id=? AND user_id=?').run(seal(text), item.id, u.id);
+          return json(res, 200, { ok: true, item: { ...item, text } });
+        }
         if (req.method === 'POST') {
           const b = await readBody(req);
           const text = clean(b.text, 2000);
           if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
           const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
-          db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(clean(b.title, 300)));
+          const title = clean(b.title, 300);
+          const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
           if (kind) db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, kind === 'gratitude' ? 'gratitude_add' : 'answer_add', '', ageBand(u.birth));
-          return json(res, 200, { ok: true, streak: touchStreak(u) });
+          return json(res, 200, { ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });
         }
         const kind = url.searchParams.get('kind');
         const rows = kind ? db.prepare('SELECT id, day, text, kind, title FROM journal WHERE user_id=? AND kind=? ORDER BY id DESC LIMIT 60').all(u.id, kind)

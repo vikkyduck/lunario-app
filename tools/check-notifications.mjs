@@ -45,7 +45,7 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     await mood.getByRole('switch').click();
     await page.waitForFunction(()=>document.querySelector('#rem-all [data-rem=mood] [role=switch]').getAttribute('aria-checked')==='true');
     assert.equal(await page.evaluate(()=>window.__pushQA.requests),2);
-    await mood.getByRole('button',{name:'Время и регулярность',exact:true}).click();
+    await mood.getByRole('button',{name:/Время и регулярность/}).click();
     await mood.getByLabel('Время уведомления').fill('19:47');await mood.getByLabel('Время уведомления').blur();
     await page.waitForFunction(()=>S.rem.mood.time==='19:47');
     await mood.getByRole('button',{name:'Раз в неделю',exact:true}).click();
@@ -64,9 +64,9 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     for(const [view,key,feature] of cases){
       await page.evaluate(v=>go(v),view);
       await page.locator(`#v-${view} button[onclick="openWidget('${key}')"]`).click();
-      const rem=page.locator(`#wg-body [data-rem=${feature}]`);
-      await rem.getByRole('button',{name:'Время и регулярность',exact:true}).waitFor();
-      await rem.getByRole('button',{name:'Время и регулярность',exact:true}).click();
+      const rem=page.locator(`#wg-tools [data-rem=${feature}]`);
+      await rem.getByRole('button',{name:/Время и регулярность/}).waitFor();
+      await rem.getByRole('button',{name:/Время и регулярность/}).click();
       await rem.getByLabel('Время уведомления').waitFor();
       await rem.getByRole('button',{name:'Отправить пробное',exact:true}).click();
       await page.waitForFunction(f=>window.__pushQA.tests.some(t=>t.feature===f),feature);
@@ -84,7 +84,7 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     for(const [,key,feature] of cases){
       await page.goto(base+'/?open='+feature);
       await page.waitForSelector('#wg.on #w-'+key);
-      await page.locator('#wg-body [data-rem='+feature+']').getByRole('button',{name:'Время и регулярность',exact:true}).waitFor();
+      await page.locator('#wg-tools [data-rem='+feature+']').getByRole('button',{name:/Время и регулярность/}).waitFor();
     }
     assert.deepEqual(errors,[]);
     // Another account/device having a subscription must not suppress a permission prompt.

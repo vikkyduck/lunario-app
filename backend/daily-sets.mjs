@@ -34,5 +34,7 @@ export function dailySet(db, user, day, sets) {
   }
   const name = String(user.name || '').trim();
   const text = name ? row.text.replaceAll('{Имя}', name) : row.text.replace(/,?\s*\{Имя\}/g, '');
-  return { n: row.idx + 1, text, question: row.question };
+  // Keep the issued source and personalized text intact; the calm daily card has no appended salutation.
+  const statement = row.text.replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim();
+  return { n: row.idx + 1, text, statement, question: row.question };
 }

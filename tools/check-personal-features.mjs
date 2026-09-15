@@ -178,6 +178,13 @@ try {
   await owner.json('/journal','POST',{kind:'gratitude',title:'Кому и за что я благодарна сегодня?',text:'Маме за звонок'});
   const gratitude=(await owner.json('/journal?kind=gratitude')).items[0];
   assert.equal(gratitude.day,day);assert.equal(gratitude.text,'Маме за звонок');
+  const beforeEdit=(await owner.json('/journal?kind=gratitude')).items.length;
+  const gratitudeEdited=await owner.json('/journal','PATCH',{id:gratitude.id,text:'Маме за звонок и поддержку'});
+  assert.equal(gratitudeEdited.item.id,gratitude.id);assert.equal(gratitudeEdited.item.day,day);
+  assert.equal((await owner.json('/journal?kind=gratitude')).items.length,beforeEdit,'Editing must not duplicate the entry');
+  const deniedEdit=await other.raw('/journal','PATCH',{id:gratitude.id,text:'Чужая запись'});
+  assert.equal(deniedEdit.status,404);
+
   assert.equal(reminders.notificationFor('gratitude',person),null,'Do not remind after gratitude is recorded');
   assert.equal(reminders.notificationFor('gratitude',person,Date.parse(day+'T20:59:00Z'),'Asia/Tokyo'),null,'Reminder suppression uses the same day as the diary');
   await owner.json('/journal','POST',{kind:'answer',title:me.day.question,text:'Сегодня я могу дать себе время'});
@@ -217,6 +224,10 @@ try {
     try {
       const {checkNotificationUI}=await import('./check-notifications.mjs');
       await checkNotificationUI({browser,base,owner,other});
+      const uxOwner=account();await uxOwner.json('/me');
+      await uxOwner.json('/profile','POST',{name:'Тест интерфейса',birth:'1990-01-01',city:'Москва',consent:true});
+      const {checkUsabilityUI}=await import('./check-usability.mjs');
+      await checkUsabilityUI({browser,base,owner:uxOwner});
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
       const [name, value] = owner.cookie.split('=');
       await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, secure: false, sameSite: 'Lax' }]);
@@ -268,6 +279,7 @@ try {
       assert.deepEqual(await page.locator('#v-home .sq b').allTextContents(), ['Мой день','Свериться','Обо мне','Внешний фон','Память','Новое в приложении']);
       await page.locator('#v-home .sqs').getByRole('button',{name:'Мой день',exact:true}).click();
       await page.locator('#v-today').getByRole('button',{name:/^Настроение дня/}).click();
+      await page.getByRole('tab',{name:'Все эмоции',exact:true}).click();
       assert.equal(await page.locator('#t-moods .mchip').count(),32);
       await page.locator('#t-moods .mchip').filter({hasText:/^восхищение$/}).click();
       await page.waitForFunction(()=>document.querySelector('#t-moods .mpick').textContent.includes('восхищение'));
@@ -288,7 +300,7 @@ try {
       await page.locator('.app-nav [data-nav=history]').click();
       assert.equal(await page.locator('#v-history h1').innerText(),'Память');
       await page.locator('#v-history').getByRole('button',{name:/^Дневник/}).click();
-      await page.getByText('Ответ из интерфейса',{exact:true}).waitFor();
+      await page.locator('#w-journal').getByText('Ответ из интерфейса',{exact:true}).waitFor();
       await page.locator('.wg-x').click();
       await page.locator('.app-nav [data-nav=home]').click();
       await page.locator('#v-home .sq').filter({hasText:'Новое в приложении'}).click();

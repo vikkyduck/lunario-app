@@ -11,7 +11,7 @@ const days=[], results=[];
 for(let i=0;i<731;i++){
   const day=new Date(Date.UTC(2027,0,1)+i*864e5).toISOString().slice(0,10);
   const result=dailySet(db,{id:1,name:'Анна'},day,source.sets);
-  assert.ok(result?.text); assert.ok(!result.text.includes('{Имя}'));
+  assert.ok(result?.text); assert.ok(result.statement); assert.ok(!result.statement.includes('{Имя}')&&!result.statement.includes('Анна')); assert.ok(!result.text.includes('{Имя}'));
   assert.ok(!results.slice(-364).some(s=>s.text===result.text),`Repeated phrase within a year: ${day}`);
   assert.deepEqual(dailySet(db,{id:1,name:'Анна'},day,[...source.sets].reverse()),result,'Reload/reorder must keep today unchanged');
   days.push(day);results.push(result);
