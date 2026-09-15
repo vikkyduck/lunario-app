@@ -298,7 +298,7 @@ try {
       assert.equal(await page.locator('#hub-opts .chip').count(),4);
       assert.ok(!(await page.locator('#hub-opts').innerText()).includes('Да / Нет'));
       await page.locator('.wg-x').click();
-      await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home').getByRole('button',{name:/^Вопрос дня/}).click();
+      await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home [data-feature="tone"]').click();
       await page.locator('#tone-a').fill('Ответ из интерфейса');
       await page.getByRole('button',{name:'Отправить в дневник',exact:true}).click();
       await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('Записано в дневник'));

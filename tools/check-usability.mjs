@@ -15,8 +15,8 @@ export async function checkUsabilityUI({browser,base,owner}){
   try{
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
     const data=await owner.json('/me');
-    assert.equal(await page.locator('#h-wish').innerText(),data.day.set.statement);
-    assert.ok(!(await page.locator('#h-wish').innerText()).includes(data.user.name));
+    assert.equal(await page.locator('#h-wish').innerText(),data.day.set.text);
+    assert.ok((await page.locator('#h-wish').innerText()).endsWith(', '+data.user.name));
     await page.waitForFunction(()=>document.querySelector('[data-status=habits]').textContent.includes('0 из 2'));
     await open('habits');await page.locator('#habit-list .hb-check').first().waitFor();
     assert.equal(await page.locator('#habit-list .hb-check').count(),2);
