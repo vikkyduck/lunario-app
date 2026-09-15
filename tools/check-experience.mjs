@@ -26,7 +26,7 @@ export async function checkExperience({browser,base,owner}){
     assert.equal(await page.locator('#tone-box .card').count(),0);
     // A shrunken viewport models the space left above a keyboard; no real iOS keyboard is claimed.
     await page.setViewportSize({width:390,height:420});await page.waitForFunction(()=>Math.abs(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--visible-height'))-420)<2);
-    const save=await page.locator('#tone-save').boundingBox();assert.ok(save.y>=0&&save.y+save.height<=420);
+    const save=await page.locator('#tone-save').boundingBox();await shot('question-keyboard');assert.ok(save.y>=0&&save.y+save.height<=420,JSON.stringify(save));
     await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
     await page.setViewportSize({width:390,height:844});await page.locator('#h-next').click();
     assert.ok(await page.locator('#v-practice.on #w-journal').count());assert.equal(await page.locator('#wg.on').count(),0);

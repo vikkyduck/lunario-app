@@ -101,7 +101,16 @@ async function openTimelineEntry(index){
 async function chooseWishPhoto(){const photo=await pickImage(1200,.82);if(!photo)return;XP.wishPhoto=photo;paintWishDraft();}
 function paintWishDraft(){const box=$('wish-preview');box.innerHTML=XP.wishPhoto?`<img src="${XP.wishPhoto}" alt="Фото нового желания"><button type="button" class="text-action" onclick="XP.wishPhoto='';paintWishDraft()">Убрать фото</button>`:'';$('wish-photo-pick').textContent=XP.wishPhoto?'Заменить фото':'Добавить фото';}
 function growTextarea(el){if(!el||el.tagName!=='TEXTAREA'||!el.getClientRects().length)return;el.style.height='auto';el.style.height=Math.max(160,el.scrollHeight+2)+'px';}
+function enhanceInterface(root){
+  // Labels and navigation cues follow the original controls when panes move or rerender.
+  if(root.nodeType!==1)return;
+  const fields=root.matches('.field')?[root]:[...root.querySelectorAll('.field')];
+  for(const field of fields){const label=field.querySelector('label:not([for])'),input=field.querySelector('input[id],textarea[id],select[id]');if(label&&input)label.htmlFor=input.id;}
+  const cards=root.matches('.wid')?[root]:[...root.querySelectorAll('.wid')];
+  for(const card of cards)if(!card.querySelector('.destination-arrow')){const arrow=document.createElement('span');arrow.className='destination-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='›';card.appendChild(arrow);}
+}
 document.addEventListener('input',e=>growTextarea(e.target));
-new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)if(n.nodeType===1){if(n.matches('textarea'))growTextarea(n);n.querySelectorAll('textarea').forEach(growTextarea);}}).observe(document.documentElement,{childList:true,subtree:true});
+enhanceInterface(document.documentElement);
+new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)if(n.nodeType===1){enhanceInterface(n);if(n.matches('textarea'))growTextarea(n);n.querySelectorAll('textarea').forEach(growTextarea);}}).observe(document.documentElement,{childList:true,subtree:true});
 function keyboardViewport(){const v=window.visualViewport;document.documentElement.style.setProperty('--visible-height',(v?.height||innerHeight)+'px');document.documentElement.style.setProperty('--keyboard-gap',Math.max(0,innerHeight-(v?.height||innerHeight)-(v?.offsetTop||0))+'px');}
 window.visualViewport?.addEventListener('resize',keyboardViewport);window.addEventListener('resize',keyboardViewport);keyboardViewport();

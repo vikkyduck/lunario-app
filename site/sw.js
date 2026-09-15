@@ -4,9 +4,9 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v19';
+const CACHE = 'lunario-app-v21';
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
-const SHELL = ['/app/', '/app/experience.css?v=19', '/app/experience.js?v=19', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
+const SHELL = ['/app/', '/app/experience.css?v=21', '/app/experience.js?v=21', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

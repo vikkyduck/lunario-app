@@ -804,7 +804,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=19">
+<link rel="stylesheet" href="/app/experience.css?v=21">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -917,7 +917,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     </div></div><div id="push-invite" hidden></div>
   </section>
   <section class="view" id="v-ask"><h1>Свериться</h1><p class="section-caption">Карты, руны, вопросы</p>
-    <div class="wids question-entry"><button class="wid" data-feature="worry" type="button" aria-label="Разобрать вопрос" onclick="openWidget('worry')"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения и отношение к себе</span></button></div><section class="feature-group"><h2>Выбрать способ</h2><div class="wids">
+    <div class="wids question-entry"><button class="wid" data-feature="worry" type="button" aria-label="Разобрать вопрос" onclick="openWidget('worry')"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения и отношение к себе</span></button></div><section class="feature-group"><h2>Выбрать способ</h2><div class="wids method-grid">
 <button class="wid" type="button" onclick="openAsk('yesno')"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ на конкретный вопрос, с пояснением</span></button><button class="wid" type="button" onclick="openAsk('rune')"><i class="ico rune"></i><b>Руны</b><span>Одна руна, три руны, крест, четыре стихии</span></button><button class="wid" type="button" onclick="openAsk('spread')"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест — два расклада в день</span></button></div></section></section>
   <section class="view" id="v-history"><h1>Дневник</h1>
     <div class="diary-actions"><button class="btn sm" data-feature="journal" type="button" aria-label="Записать мысль в дневник" onclick="openWidget('journal')">Записать мысль</button><button class="text-action" data-feature="gratitude" type="button" aria-label="Дневник благодарности" onclick="openWidget('gratitude')">Дневник благодарности</button></div>
@@ -930,11 +930,13 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <section class="feature-group upcoming"><h2>Скоро</h2><p class="hint">Эти материалы ещё готовятся</p><div class="wids compact-links"><button class="wid" data-feature="tests" type="button" aria-label="Тесты" onclick="openWidget('tests')"><i class="ico list"></i><b>Тесты</b><span>Материалы готовятся</span></button></div></section>
   </section>
   <section class="view" id="v-account"><span class="eyebrow" id="ac-mail">Мой профиль и приложение</span><h1>Я</h1>
+    <div class="account-layout"><div class="account-personal">
     <section class="profile-summary card"><h2 id="ac-name"></h2><div id="ac-photo"></div><p id="profile-summary"></p>
       <button class="text-action secondary" data-feature="edit" type="button" onclick="openWidget('edit')">Изменить мои данные</button>
       <details class="profile-detail"><summary>Данные для расчётов</summary><p id="m-sign"></p><p class="geo" id="m-geo"></p></details>
     </section>
     <section class="feature-group"><h2 id="m-name">Обо мне</h2><div class="wids"><button class="wid" data-feature="natal" type="button" aria-label="Натальная карта" onclick="openWidget('natal')"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button><button class="wid" data-feature="year" type="button" aria-label="Личный год" onclick="openWidget('year')"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button class="wid" data-feature="birthnum" type="button" aria-label="Нумерология" onclick="openWidget('birthnum')"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button class="wid" data-feature="compat" type="button" aria-label="Совместимость" onclick="openWidget('compat')"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></button></div></section>
+    </div><div class="account-settings">
     <section class="account-group"><h2>Приложение</h2><div class="wids compact-links"><button class="wid" data-feature="remind" type="button" aria-label="Уведомления" onclick="openWidget('remind')"><i class="ico bell"></i><b>Уведомления</b><span>Включить, выбрать время и регулярность</span></button><button class="wid" data-feature="mail" type="button" aria-label="Вход по почте" onclick="openWidget('mail')"><i class="ico mail"></i><b>Вход по почте</b><span>Сохранённые записи доступны на других устройствах</span></button><button class="wid" type="button" aria-label="Новое в приложении" data-feature="news" onclick="go('news')"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
       <button class="wid" type="button" onclick="openWidget('appearance')"><i class="ico moon"></i><b>Оформление</b><span>Светлая и тёмная темы</span></button>
       <button class="wid" type="button" onclick="openWidget('appinfo')"><i class="ico moon"></i><b>О приложении</b></button>
@@ -946,6 +948,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="rowbtn" type="button" onclick="logout()"><i class="ico exit"></i>Выйти на этом устройстве</button>
       <button class="rowbtn" type="button" onclick="wipe('data')"><i class="ico list"></i>Очистить историю</button>
       <button class="rowbtn warn" type="button" onclick="wipe('account')"><i class="ico exit"></i>Удалить аккаунт</button></div>
+    </div></div>
   </section>
 </div>
 
@@ -961,6 +964,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <div class="wpane" id="w-ritual"><div id="ritual-box"></div></div>
   <div class="wpane" id="w-appearance"><div id="appearance-box"></div></div>
   <div class="wpane" id="w-practiceSettings"><div id="practice-settings-box"></div></div>
+  <div class="wpane" id="w-askDate"><div class="field"><label for="ask-date">До какого дня</label><input id="ask-date" type="date" aria-describedby="ask-date-msg"></div><button class="btn" id="ask-date-save" type="button" onclick="saveAskDate()">Сохранить дату</button><p class="msg" id="ask-date-msg" role="status"></p></div>
   <div class="wpane" id="w-timelineEntry"><div id="timeline-entry-box"></div></div>
   <div class="wpane" id="w-card">
     <div class="daycard glow" id="t-card" onclick="flipCard()">
@@ -1054,7 +1058,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div class="wg-body" id="wg-body"></div>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="pc-bg" id="pc" onclick="if(event.target===this)hidePostcard()">
   <img id="pc-img" alt="Открытка">
   <p id="pc-hint" style="text-align:center;font-size:14.5px;color:#ded8ee">Зажмите картинку и выберите «Сохранить в Фото»</p>
@@ -1395,7 +1399,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script src="/app/experience.js?v=19"></script>
+<script src="/app/experience.js?v=21"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1465,7 +1469,7 @@ function go(v){
   document.body.classList.toggle('hello', v==='hello');                // большая луна в фоне — только на приветствии
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
   const navFor = {home:'home',today:'home',around:'home',ask:'ask',history:'history',account:'account',about:'account',news:'account'}[v];
-  document.querySelectorAll('.app-nav button').forEach(b=>b.classList.toggle('on', b.dataset.nav===navFor));
+  document.querySelectorAll('.app-nav button').forEach(b=>{const on=b.dataset.nav===navFor;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();}
@@ -1502,7 +1506,7 @@ const WIDGETS = {
   hentries:['Дневник','Мои вопросы и ответы'], week:['Дневник','Итоги недели'],
   invite:['Я','Позвать подругу'], remind:['Я','Уведомления'], edit:['Я','Изменить мои данные'], mail:['Я','Вход по почте'], shelves:['Я','Мои данные'],
   support:['Я','Чат поддержки'], tests:['Я','Тесты'], natal:['Я','Натальная карта'],
-  ritual:['Сегодня','Мой ритуал'],appearance:['Я','Оформление'],practiceSettings:['','Уведомления'],timelineEntry:['Дневник','Запись'],
+  ritual:['Сегодня','Мой ритуал'],appearance:['Я','Оформление'],practiceSettings:['','Уведомления'],askDate:['Взять аскезу','Передвинуть дату'],timelineEntry:['Дневник','Запись'],
   appinfo:['Я','О приложении'], terms:['Я','Условия использования'],stub:['','']
 };
 const WIDGET_REMINDERS={card:'card',mood:'mood',hmood:'moodreport',habits:'habits',askesis:'askesis',gratitude:'gratitude',lunar:'lunar',sky:'sky'};
@@ -1517,7 +1521,7 @@ function openWidget(k, title){
   const feature=WIDGET_REMINDERS[k];
   $('wg-tools').innerHTML=feature?remBox(feature):'';
   if(feature){remEditing[feature]=false;loadReminders().then(()=>paintRem(feature)).catch(()=>{if(wgOpen===k)$('wg-tools').innerHTML='<button type="button" class="text-action" onclick="openWidget(\'remind\')">Проверить уведомления →</button>';});}
-  $('wg').classList.add('on'); document.body.classList.add('wg-open');
+  $('wg').dataset.kind=k;$('wg').classList.add('on'); document.body.classList.add('wg-open');
   requestAnimationFrame(()=>{revealCommands(pane);document.querySelector('.wg-x')?.focus({preventScroll:true});});
   document.querySelector('#wg .wg').scrollTop = 0; hap(9);
   loadWidgetContent(k);
@@ -1552,6 +1556,7 @@ function closeWidget(e){
   if (e && e.target !== $('wg')) return;
   if (!wgOpen) return;
   if(wgOpen==='journal'&&journalSpeech)stopJournalDictation();
+  if(wgOpen==='support'){rememberSupportDraft();supStop();}
   $('wg-store').appendChild($('w-'+wgOpen)); wgOpen = null;
   $('wg').classList.remove('on'); document.body.classList.remove('wg-open');$('wg-tools').innerHTML='';
   if(wgFocus?.isConnected)wgFocus.focus({preventScroll:true});wgFocus=null;
@@ -1632,12 +1637,14 @@ async function loadNatal(){
 
 /* ── чат с поддержкой: список обращений, новое обращение, переписка ── */
 let supTimer = null, supTicket = null;
+const supportDrafts={};
+function rememberSupportDraft(){if(supTicket!==null&&$('sup-reply'))supportDrafts[supTicket]=$('sup-reply').value;}
 function supStop(){ clearTimeout(supTimer); supTimer = null; supTicket = null; }
 async function supOpen(){
-  supStop(); const box = $('sup-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
+  rememberSupportDraft();supStop(); const box = $('sup-box'); box.innerHTML = '<p class="hint">Загружаем…</p>';
   try{
     const r = await api('/support/tickets');
-    box.innerHTML = `<p style="font-size:14.5px">Напишите нам — ответ появится здесь и на главной загорится точка у «Чата». Обычно отвечаем в течение получаса днём.</p>
+    box.innerHTML = `<p style="font-size:14.5px">Напишите нам — ответ появится в этом чате. О новом ответе сообщит точка у «Чата поддержки».</p>
       <div class="card sec" style="margin-top:12px"><div class="field"><label>Тема</label><select id="sup-topic">${r.topics.map((t)=>`<option>${esc(t)}</option>`).join('')}</select></div>
         <div class="field" style="margin-bottom:8px"><label>Сообщение</label><textarea id="sup-text" maxlength="2000" placeholder="Что случилось или что хотите спросить"></textarea></div>
         <button class="btn" onclick="supCreate()">Отправить</button><p class="msg" id="sup-msg"></p></div>
@@ -1655,22 +1662,32 @@ async function supCreate(){
   }catch(e){ msg.classList.add('err'); msg.textContent='Не отправилось.'; }
 }
 async function supThread(id){
-  supStop(); supTicket = id; const box = $('sup-box');
+  rememberSupportDraft();supStop(); supTicket = id; const box = $('sup-box');
   try{
     const t = await api('/support/ticket?id='+id);
+    if(supTicket!==id||wgOpen!=='support')return;
+    // Refresh messages only while typing: keep the textarea, caret and keyboard intact.
+    const messages=t.messages.map((m)=>`<div class="m ${m.who}"><small>${m.who==='support'?'поддержка':'вы'} · ${supWhen(m.ts)}</small>${esc(m.text)}</div>`).join('');
+    const existing=$('sup-thread');
+    if(existing&&existing.dataset.ticket===String(id)){
+      const atEnd=existing.scrollHeight-existing.scrollTop-existing.clientHeight<32;
+      existing.innerHTML=messages;if(atEnd)existing.scrollTop=existing.scrollHeight;
+      $('sup-thread-state').textContent=t.statusName;
+      supTimer=setTimeout(()=>{if(supTicket===id&&wgOpen==='support')supThread(id);},15000);return;
+    }
     box.innerHTML = `<button class="back" onclick="supOpen()">← Все обращения</button>
-      <p style="font-size:15px;color:#ded8ee;margin-top:6px"><b>${esc(t.subject)}</b></p><p class="hint" style="margin-top:2px">${esc(t.topic)} · <span class="sup-status">${esc(t.statusName)}</span></p>
-      <div class="thread" id="sup-thread">${t.messages.map((m)=>`<div class="m ${m.who}"><small>${m.who==='support'?'поддержка':'вы'} · ${supWhen(m.ts)}</small>${esc(m.text)}</div>`).join('')}</div>
-      <div class="field" style="margin:12px 0 0"><textarea id="sup-reply" maxlength="2000" placeholder="${t.status==='resolved'?'Обращение закрыто — напишите, если вопрос остался':'Ваше сообщение'}"></textarea></div>
+      <p style="font-size:15px;color:#ded8ee;margin-top:6px"><b>${esc(t.subject)}</b></p><p class="hint" style="margin-top:2px">${esc(t.topic)} · <span class="sup-status" id="sup-thread-state">${esc(t.statusName)}</span></p>
+      <div class="thread" id="sup-thread" data-ticket="${id}">${messages}</div>
+      <div class="field" style="margin:12px 0 0"><label for="sup-reply">Ваше сообщение</label><textarea id="sup-reply" maxlength="2000" placeholder="${t.status==='resolved'?'Обращение закрыто — напишите, если вопрос остался':'Ваше сообщение'}" oninput="supportDrafts[${id}]=this.value">${esc(supportDrafts[id]||'')}</textarea></div>
       <button class="btn" style="margin-top:8px" onclick="supSend(${id})">Отправить</button><p class="msg" id="sup-msg2"></p>`;
     const th = $('sup-thread'); th.scrollTop = th.scrollHeight;
     $('h-supdot').hidden = true;
     supTimer = setTimeout(()=>{ if(supTicket===id && wgOpen==='support') supThread(id); }, 15000);   /* пока чат открыт — обновляем раз в 15 секунд */
-  }catch(e){ box.innerHTML = '<p class="msg err">Не получилось открыть обращение.</p>'; }
+  }catch(e){ if(supTicket!==id||wgOpen!=='support')return;const msg=$('sup-msg2');if(msg)msg.textContent='Не удалось обновить сообщения. Ваш текст сохранён в поле';else box.innerHTML='<p class="msg err">Не получилось открыть обращение. <button class="text-action" onclick="supThread('+id+')">Повторить</button></p>'; }
 }
 async function supSend(id){
   const text = $('sup-reply').value.trim(), msg = $('sup-msg2'); msg.className='msg'; if(!text) return;
-  try{ const r = await api('/support/ticket?id='+id,{method:'POST',body:JSON.stringify({text})}); if(!r.ok) throw new Error(r.error); hap([0,12]); supThread(id); }
+  try{ const r = await api('/support/ticket?id='+id,{method:'POST',body:JSON.stringify({text})}); if(!r.ok) throw new Error(r.error); if(supTicket===id&&$('sup-reply')?.value.trim()===text){$('sup-reply').value='';supportDrafts[id]='';growTextarea($('sup-reply'));}hap([0,12]); supThread(id); }
   catch(e){ msg.classList.add('err'); msg.textContent='Не отправилось.'; }
 }
 
@@ -3230,8 +3247,8 @@ function paintTone(){
   $('tone-box').innerHTML=`${st?`<p class="hint" style="margin-bottom:18px">${esc(st.statement||st.text)}</p>`:''}
     <p class="practice-question">${esc(d.question)}</p>
     ${toneSaved?`<div class="saved-state" role="status">Сохранено в дневнике · ${fmtDay(toneSaved.day)}</div><p class="entry-text">${esc(toneSaved.text)}</p>`:''}
-    <div class="answer-form"><div class="field"><textarea id="tone-a" aria-label="Ответ на вопрос дня" maxlength="2000" placeholder="Пара строк — как есть…" oninput="toneDraft=this.value;growTextarea(this)">${esc(toneDraft)}</textarea></div>
-    <div class="answer-actions"><button id="tone-save" type="button" class="btn sm" onclick="saveAnswer()" ${toneSaving?'disabled':''}>${toneSaving?'Сохраняем…':'Отправить в дневник'}</button></div></div>`;
+    <div class="answer-form"><div class="field"><textarea id="tone-a" aria-label="Ответ на вопрос дня" maxlength="2000" placeholder="Пара строк — как есть…" oninput="toneDraft=this.value;growTextarea(this)">${esc(toneDraft)}</textarea></div></div>
+    <div class="answer-actions"><button id="tone-save" type="button" class="btn sm" onclick="saveAnswer()" ${toneSaving?'disabled':''}>${toneSaving?'Сохраняем…':'Отправить в дневник'}</button></div>`;
   requestAnimationFrame(()=>growTextarea($('tone-a')));
 }
 async function saveAnswer(){
@@ -3436,9 +3453,17 @@ async function askNote(id){
   try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, note }) }); delete askNoteDrafts[id];askNoteOpen[id]=false;track('askesis_mark'); hap([0, 12]); toast('Заметка сохранена'); paintAskesis(); }
   catch (e) { toast('Не получилось сохранить'); }
 }
-async function askMove(id, cur){
-  const until = prompt('До какого дня? Формат ГГГГ-ММ-ДД', cur); if (!until) return;
-  try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, until }) }); paintAskesis(); refreshNativeAskesis(); } catch (e) { toast(e.code === 'bad_until' ? 'Дата должна быть не раньше сегодня' : 'Не получилось'); }
+let askDateId=null;
+function askMove(id,cur){
+  askDateId=id;openWidget('askDate');$('ask-date').value=cur;$('ask-date').min=S.day.date;$('ask-date-msg').textContent='';$('ask-date').removeAttribute('aria-invalid');
+}
+async function saveAskDate(){
+  const input=$('ask-date'),msg=$('ask-date-msg'),button=$('ask-date-save'),id=askDateId,until=input.value;
+  if(!until||until<S.day.date){msg.textContent='Выберите дату не раньше сегодня';input.setAttribute('aria-invalid','true');input.focus();return;}
+  if(button.disabled)return;button.disabled=true;button.textContent='Сохраняем…';input.removeAttribute('aria-invalid');
+  try{AS=await api('/askesis',{method:'PATCH',body:JSON.stringify({id,until})});paintAskesis();refreshNativeAskesis();if(wgOpen==='askDate'&&askDateId===id)closeWidget();toast('Дата сохранена');}
+  catch(e){msg.textContent=e.code==='bad_until'?'Дата должна быть не раньше сегодня':'Не удалось сохранить. Выбранная дата осталась в поле';}
+  finally{button.disabled=false;button.textContent='Сохранить дату';}
 }
 async function askStop(id){
   if (!confirm('Завершить аскезу досрочно? Она останется в прошлых.')) return;
