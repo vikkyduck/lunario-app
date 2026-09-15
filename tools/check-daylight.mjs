@@ -23,11 +23,11 @@ export async function checkDaylight({browser,base,owner}) {
         const entry=document.querySelector('.timeline-entry'),cs=getComputedStyle(entry);
         return {position:s.position,navBottom:r.bottom,navTop:r.top,height:innerHeight,
           text:getComputedStyle(document.body).color,icons:[...nav.querySelectorAll('.ico')].map(e=>getComputedStyle(e).backgroundColor),
-          glass:cs.backdropFilter,fill:cs.backgroundImage,shadow:cs.boxShadow,edge:getComputedStyle(entry,'::before').backgroundImage};
+          base:cs.backgroundColor,navBase:s.backgroundColor,glass:cs.backdropFilter,fill:cs.backgroundImage,shadow:cs.boxShadow,edge:getComputedStyle(entry,'::before').backgroundImage};
       });
       assert.equal(state.position,'fixed');assert.ok(state.navBottom<=height&&state.navTop>=0,'Navigation stays in view');
       assert.equal(state.text,'rgb(29, 23, 56)');assert.ok(state.icons.every(c=>c==='rgb(42, 33, 80)'));
-      assert.match(state.glass,/blur\(16px\)/);assert.match(state.fill,/0\.12/);assert.match(state.edge,/conic-gradient/);assert.notEqual(state.shadow,'none');
+      assert.equal(state.base,'rgb(245, 242, 234)');assert.equal(state.navBase,state.base);assert.equal(state.glass,'none');assert.match(state.fill,/0\.96/);assert.equal((state.fill.match(/linear-gradient/g)||[]).length,2);assert.match(state.edge,/conic-gradient/);assert.notEqual(state.shadow,'none');
     }
     const pixels=async()=>page.locator('.section-brand canvas').evaluate(cv=>{
       const ctx=cv.getContext('2d'),p=ctx.getImageData(0,0,cv.width,cv.height).data;
@@ -47,6 +47,6 @@ export async function checkDaylight({browser,base,owner}) {
     assert.ok(nightStill.alpha>lightStill.alpha*2,'Theme switches redraw even with animation disabled');
     await page.evaluate(()=>applyTheme('light'));
     assert.equal(await page.locator('.timeline-entry').first().evaluate(e=>getComputedStyle(e,'::after').display),'none');
-    console.log('PASS: lilac/indigo contrast, fixed navigation and readable icons, transparent diary glass, full-moon cutout, immediate theme redraw under reduced motion.');
+    console.log('PASS: lilac/indigo contrast, fixed navigation and readable icons, dense two-layer diary glass without blur, full-moon cutout, immediate theme redraw under reduced motion.');
   } finally {await context.close();}
 }

@@ -78,8 +78,8 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(await page.locator('.heromoon img').evaluate(e=>e.complete&&e.naturalWidth>0));
       assert.ok(await page.locator('.heromoon').evaluate(e=>e.getBoundingClientRect().width<=650));
       const button=await page.locator('#v-hello .cta .btn').evaluate(e=>({color:getComputedStyle(e).color,glass:getComputedStyle(e).backdropFilter}));
-      assert.equal(button.color,'rgb(245, 242, 234)');assert.match(button.glass,/blur/);
-      assert.match(button.glass,/blur\(22px\) saturate\(1\.6\) brightness\(1\.08\)/,'Use the landing optical material');
+      assert.equal(button.color,'rgb(245, 242, 234)');assert.equal(button.glass,'none');
+      assert.match(await page.locator('#v-hello .cta .btn').evaluate(e=>getComputedStyle(e).backgroundImage),/0\.78/,'Dense welcome glass without backdrop filtering');
       const typography=await page.locator('#v-hello .gift b').first().evaluate(e=>({size:parseFloat(getComputedStyle(e).fontSize),weight:getComputedStyle(e).fontWeight}));
       assert.equal(typography.weight,'600');assert.ok(typography.size>=24,'Benefits stay readable on the narrowest phone');
       assert.ok(await page.locator('.welcome-primary').evaluate(e=>getComputedStyle(e,'::before').backgroundImage.startsWith('conic-gradient')));

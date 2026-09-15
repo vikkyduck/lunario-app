@@ -35,7 +35,7 @@
   --line:rgba(245,242,234,.09);--card:rgba(245,242,234,.05);--card-2:rgba(245,242,234,.08);
   --gold:#d9b868;--gold-2:#f0d79a;--ok:#9fe6bd;--warn:#ffb3b3;
   --sp:cubic-bezier(.2,.85,.3,1);
-  --glass-bg:linear-gradient(145deg,rgba(255,255,255,.115),rgba(255,255,255,.035) 42%,rgba(174,157,229,.055) 70%,rgba(255,255,255,.075));
+  --glass-bg:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
   --glass-shadow:inset 0 1px 0 rgba(255,255,255,.24),inset 1px 0 0 rgba(255,255,255,.08),inset 0 -1px 0 rgba(4,3,12,.28),0 14px 38px -18px rgba(0,0,0,.62);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -83,7 +83,7 @@ h2{font-size:22px;line-height:1.2}
 .wordmark{font-family:"Comfortaa",ui-rounded,Onest,system-ui,sans-serif;font-weight:300;letter-spacing:.01em;font-size:37px;line-height:1.16}
 p{margin:0;color:var(--muted);line-height:1.62;font-size:15.5px}
 .eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:var(--gold);display:block}
-.card{background:var(--glass-bg);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:var(--glass-shadow);backdrop-filter:blur(18px) saturate(1.14);-webkit-backdrop-filter:blur(18px) saturate(1.14)}
+.card{background:var(--glass-bg);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:var(--glass-shadow);backdrop-filter:none;-webkit-backdrop-filter:none}
 .card+.card{margin-top:12px}
 .sec{margin-top:26px}
 .row{display:flex;align-items:center;gap:12px}
@@ -139,11 +139,11 @@ input::placeholder,textarea::placeholder{color:#8f87ad}
   border:1px solid var(--line);font-size:12.5px;color:#d3cde6}
 .big{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:52px;line-height:1;text-align:center;color:var(--gold);margin:6px 0}
 .list{display:grid;gap:9px}
-.item{padding:14px 16px;border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid var(--line);box-shadow:inset 0 1px rgba(255,255,255,.09),inset 0 -1px rgba(3,2,10,.2);backdrop-filter:blur(12px) saturate(1.1);-webkit-backdrop-filter:blur(12px) saturate(1.1)}
+.item{padding:14px 16px;border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid var(--line);box-shadow:inset 0 1px rgba(255,255,255,.09),inset 0 -1px rgba(3,2,10,.2);backdrop-filter:none;-webkit-backdrop-filter:none}
 .item b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
 .item small{color:#8f87ad;font-size:12.5px}
 .toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:300;
-  background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);backdrop-filter:blur(18px);
+  background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   padding:11px 18px;border-radius:999px;font-size:13.5px;opacity:0;transition:.3s var(--sp);pointer-events:none;max-width:90vw}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -347,7 +347,7 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .acc-opt.on{background:rgba(217,184,104,.14);border-color:rgba(217,184,104,.5)}
 .acc-res{display:none;margin-top:10px}
 /* виджет: на телефоне во весь экран, на широком — панель по центру */
-.wg-bg{position:fixed;inset:0;z-index:150;display:none;background:rgba(11,10,20,.8);backdrop-filter:blur(14px)}
+.wg-bg{position:fixed;inset:0;z-index:150;display:none;background:rgba(11,10,20,.8);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .wg-bg.on{display:block}
 @keyframes wgin{from{opacity:0}to{opacity:1}}
 .wg{position:absolute;inset:0;overflow:auto;padding:calc(16px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom));animation:wgin .3s var(--sp)}
@@ -357,7 +357,7 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .w-big{font-size:24px;line-height:1.4;color:#fff;text-align:center;margin-top:28px}
 body.wg-open{overflow:hidden}
 body.inner{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
-.app-nav{position:fixed;z-index:120;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:62px;padding:5px;display:none;grid-template-columns:repeat(4,1fr);gap:3px;border:1px solid rgba(255,255,255,.13);border-radius:23px;background:rgba(19,16,34,.78);box-shadow:inset 0 1px rgba(255,255,255,.15),0 16px 48px rgba(0,0,0,.45);backdrop-filter:blur(24px) saturate(1.25);-webkit-backdrop-filter:blur(24px) saturate(1.25)}
+.app-nav{position:fixed;z-index:120;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:62px;padding:5px;display:none;grid-template-columns:repeat(4,1fr);gap:3px;border:1px solid rgba(255,255,255,.13);border-radius:23px;background:rgba(19,16,34,.78);box-shadow:inset 0 1px rgba(255,255,255,.15),0 16px 48px rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
 body.inner .app-nav{display:grid}
 .app-nav button{border:0;border-radius:18px;background:transparent;color:#938ba9;font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
 .app-nav button .ico{width:21px;height:21px;background:#938ba9}
@@ -368,7 +368,7 @@ body.inner .app-nav{display:grid}
 .day-focus .next{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px;color:var(--gold-2);font-weight:650}
 .quick-title{margin-top:24px;font-size:12px;color:#aaa2be;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
 .quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
-.quick-actions button{min-height:104px;padding:13px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px solid var(--line);border-radius:20px;background:var(--glass-bg);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.quick-actions button{min-height:104px;padding:13px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px solid var(--line);border-radius:20px;background:var(--glass-bg);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;backdrop-filter:none;-webkit-backdrop-filter:none}
 .quick-actions .ico{width:27px;height:27px}
 .home-links{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:16px}
 .home-links button{min-height:40px;padding:0 13px;border:0;background:transparent;color:#aaa2be;font:inherit;font-size:12.5px;cursor:pointer}
@@ -595,7 +595,7 @@ body.inner .app-nav{display:grid}
   -webkit-tap-highlight-color:transparent;touch-action:manipulation
 }
 :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood){
-  backdrop-filter:blur(16px) saturate(1.16);-webkit-backdrop-filter:blur(16px) saturate(1.16);
+  backdrop-filter:none;-webkit-backdrop-filter:none;
   box-shadow:var(--glass-shadow),inset 0 0 0 .5px rgba(255,255,255,.07)
 }
 :is(.sq,.wid,.mini button,.acc-head,.acc-opt,.mood)::before{
@@ -695,7 +695,7 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 .rem-status{font-size:12.5px;line-height:1.55;color:var(--muted)}
 .rem-actions{gap:6px 16px;flex-wrap:wrap}
 .rem-head small{line-height:1.45}
-body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150px circle at var(--light-x,25%) var(--light-y,0%),rgba(255,255,255,.14),transparent 70%),rgba(40,35,60,.84);backdrop-filter:blur(16px) saturate(1.08);-webkit-backdrop-filter:blur(16px) saturate(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 0 rgba(255,255,255,.04)}
+body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150px circle at var(--light-x,25%) var(--light-y,0%),rgba(255,255,255,.14),transparent 70%),rgba(40,35,60,.84);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 0 rgba(255,255,255,.04)}
 .practice-question{font-size:21px;line-height:1.45;color:var(--text);margin:16px 0;font-weight:500}
 .practice-card{margin-top:16px}
 .practice-card h3.practice-question{margin:0 0 12px;font-size:21px;line-height:1.45;font-weight:500;color:var(--text);text-transform:none;letter-spacing:normal}
@@ -744,7 +744,7 @@ body.inner{--line:rgba(236,231,249,.09)}
 #v-home.on{display:block;min-height:0}
 #v-home .hdr h1{margin-top:5px;font-size:27px}
 #v-home .today-layout{margin-top:22px}
-body.inner .day-focus{background:radial-gradient(260px circle at var(--light-x,20%) var(--light-y,0%),rgba(255,255,255,.11),transparent 80%),linear-gradient(140deg,rgba(64,53,92,.9),rgba(27,24,44,.94));border:1px solid rgba(255,255,255,.17);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 #ffffff20;padding:24px;margin:0;cursor:default}
+body.inner .day-focus{background:radial-gradient(260px circle at var(--light-x,20%) var(--light-y,0%),rgba(255,255,255,.11),transparent 80%),linear-gradient(140deg,rgba(64,53,92,.9),rgba(27,24,44,.94));border:1px solid rgba(255,255,255,.17);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:inset 0 1px 0 #ffffff20;padding:24px;margin:0;cursor:default}
 .day-focus h2{font-size:22px;line-height:1.45}
 .day-focus .daily-statement{margin:0 0 16px}
 .day-focus .daily-statement #h-wish{font-size:22px;line-height:1.45;letter-spacing:0;font-weight:500;margin:0}
@@ -804,8 +804,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=34">
-<link rel="stylesheet" href="/app/moon-glass.css?v=34">
+<link rel="stylesheet" href="/app/experience.css?v=36">
+<link rel="stylesheet" href="/app/moon-glass.css?v=36">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -1258,9 +1258,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=34"></script>
+<script type="module" src="/app/sky.js?v=36"></script>
 
-<script src="/app/experience.js?v=34"></script>
+<script src="/app/experience.js?v=36"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';

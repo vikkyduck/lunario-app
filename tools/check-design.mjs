@@ -22,10 +22,17 @@ export async function checkDesign({browser,base,owner}){
       return {page:document.documentElement.scrollWidth<=innerWidth+1,scope:scope.scrollWidth<=scope.clientWidth+1,
         unlabeled:[...scope.querySelectorAll('.field label')].filter(l=>l.getClientRects().length&&!l.control).map(l=>l.textContent)};
     });
+    const forbiddenBlur=await page.evaluate(()=>[...document.querySelectorAll('*')].filter(e=>e.getClientRects().length&&!e.matches('.toast,.wg-bg')).flatMap(e=>['', '::before', '::after'].filter(p=>{
+      const s=getComputedStyle(e,p||null);return s.backdropFilter!=='none'||(s.webkitBackdropFilter&&s.webkitBackdropFilter!=='none');
+    }).map(p=>e.tagName+'.'+e.className+p)));
+    assert.deepEqual(forbiddenBlur,[],label+' backdrop blur is reserved for toast and widget scrim');
+    if(!result.page||!result.scope){await shot('overflow-'+label.replaceAll(' ','-'));console.log('OVERFLOW',label,await page.evaluate(()=>{const scope=document.querySelector('#wg.on .wg')||document.querySelector('.view.on');return {viewport:innerWidth,page:document.documentElement.scrollWidth,scope:scope.scrollWidth,width:scope.clientWidth,elements:[...scope.querySelectorAll('*')].filter(e=>e.getClientRects().length&&e.getBoundingClientRect().right>innerWidth).map(e=>({element:e.tagName+'.'+e.className,box:e.getBoundingClientRect().toJSON()}))};}));}
     assert.ok(result.page&&result.scope,label+' horizontal overflow');assert.deepEqual(result.unlabeled,[],label+' label association');coverage.push(label);
   };
   try{
     await page.goto(base+'/');await page.locator('#v-home.on').waitFor();
+    assert.equal(await page.locator('.toast').evaluate(e=>getComputedStyle(e).backdropFilter),'blur(18px)');
+    assert.equal(await page.locator('.wg-bg').evaluate(e=>getComputedStyle(e).backdropFilter),'blur(14px)');
     await page.evaluate(()=>openWidget('askesis'));await page.locator('#as-box .observation').waitFor();
     await page.getByRole('button',{name:'Передвинуть дату',exact:true}).click();await page.locator('#ask-date').waitFor();
     assert.equal(await page.locator('#ask-date').inputValue(),until);

@@ -5,7 +5,10 @@
   --line:rgba(245,242,234,.12);--focus:#f0d79a;--control-border:rgba(217,184,104,.55);
   --hover:#2a2150;--accent-soft:#211b35;
   --moon-ground:linear-gradient(180deg,#141126 0%,#0b0a14 70%);
-  --moon-panel:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
+  --night-glass-bg:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
+  --night-glass-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 12px 34px -14px rgba(0,0,0,.55);
+  --glass-base:#141126;--glass-bg:var(--night-glass-bg);--glass-shadow:var(--night-glass-shadow);
+  --moon-panel:var(--glass-bg);
   --moon-edge:linear-gradient(135deg,#f0d79a99 0%,#d9b86847 35%,#b98f3e38 65%,#f0d79a66 100%);
   --moon-shine:rgba(240,215,154,.12);--moon-shadow:inset 0 1px 0 #fff6dd24,0 12px 26px -18px #000b;
   --moon-control:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);--moon-glass:rgba(20,17,38,.80);
@@ -19,13 +22,18 @@
   --line:rgba(42,33,80,.18);--focus:#2a2150;--control-border:rgba(42,33,80,.40);
   --hover:#eae4f6;--accent-soft:#e9e3f4;
   --moon-ground:radial-gradient(ellipse at 100% 0%,#e4ddf4 0%,transparent 58%),radial-gradient(ellipse at 0% 72%,#f5f2ea 0%,transparent 65%),#f0edf8;
-  --moon-panel:linear-gradient(135deg,rgba(255,255,255,.48),rgba(245,242,234,.12) 45%,rgba(255,255,255,.30));
+  /* A denser light base hides the sky under dark type without a live backdrop texture. */
+  --glass-base:#f5f2ea;
+  --glass-bg:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.04) 45%,rgba(255,255,255,.07)),linear-gradient(rgba(245,242,234,.96),rgba(245,242,234,.96));
+  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(42,33,80,.11),0 14px 32px -18px rgba(42,33,80,.32);
+  --moon-panel:var(--glass-bg);
   --moon-edge:linear-gradient(135deg,#ffffffee,#ffffff38 40%,#2a215033 70%,#ffffffcc);
   --moon-shine:rgba(255,255,255,.80);--moon-shadow:inset 0 1px 0 #fff,0 12px 26px -20px #2a215045;
   --moon-control:linear-gradient(135deg,#494067,#2a2150 65%,#1d1738);--moon-glass:rgba(245,242,234,.28);
   --moon-reader:#f5f2ea;--moon-fade:#f0edf8;--moon-empty:#e8e1f4;
   --emotion-anger:#8272b4;--emotion-anticipation:#b3a0d5;
 }
+body:not(.inner){--glass-base:#141126;--glass-bg:var(--night-glass-bg);--glass-shadow:var(--night-glass-shadow)}
 html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed;--muted:inherit;--line:inherit}
 /* Soft light sits behind the content, including the email/code screens. */
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(217,184,104,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,215,154,.07),transparent 100%)}
@@ -38,7 +46,7 @@ body.inner .wrap{max-width:1240px}
 body.inner .view>h1,body.inner .practice-header h1{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
 body.inner :is(.feature-group,.account-group)>h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
 body.inner :is(.wid,.sq,.quick-actions button,.question-entry .wid,.profile-summary,.wish-card){
-  background:var(--moon-panel) padding-box,var(--moon-edge) border-box;
+  background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);
   border:1px solid transparent;box-shadow:var(--moon-shadow);
 }
 body.inner :is(.wid,.sq,.quick-actions button){backdrop-filter:none;-webkit-backdrop-filter:none}
@@ -121,7 +129,7 @@ body.inner :is(.emotion-family,.quick-mood){border-color:var(--line);background:
 body.inner :is(.emotion-family.on,.quick-mood.on,.ritual-option[aria-pressed=true]){background:var(--selected);border-color:var(--gold)}
 body.inner .hb.on{border-color:color-mix(in srgb,var(--ok) 38%,transparent)}
 body.inner :is(.timeline-filters [aria-pressed=true],.chip.on,.chip[aria-pressed=true]){color:var(--gold-2);border-color:var(--gold);background:var(--selected)}
-html[data-theme] body.inner .app-nav{background:radial-gradient(180px circle at var(--light-x,15%) var(--light-y,0%),var(--moon-shine),transparent 80%),var(--moon-glass);border:1px solid var(--line);box-shadow:inset 0 1px 0 #fff3d92b,inset 0 -1px 0 #fff3d910,0 12px 34px #10091940;backdrop-filter:blur(24px) saturate(1.15);-webkit-backdrop-filter:blur(24px) saturate(1.15);border-radius:25px}
+html[data-theme] body.inner .app-nav{background:radial-gradient(180px circle at var(--light-x,15%) var(--light-y,0%),var(--moon-shine),transparent 80%),var(--moon-glass);border:1px solid var(--line);box-shadow:inset 0 1px 0 #fff3d92b,inset 0 -1px 0 #fff3d910,0 12px 34px #10091940;backdrop-filter:none;-webkit-backdrop-filter:none;border-radius:25px}
 html[data-theme] body.inner .app-nav button{font-size:14px;font-weight:400;color:var(--muted)}
 html[data-theme] body.inner .app-nav button.on{color:var(--gold-2);background:linear-gradient(130deg,#ebce9321,#e5bd7608);box-shadow:inset 0 1px 0 #efd29a25}
 html[data-theme] body.inner .app-nav .on .ico{background-color:var(--gold-2)}
@@ -240,21 +248,20 @@ body:not(.inner) :is(#v-onb,#v-login) .btn{font-size:20px;font-weight:600}
 body:not(.inner) #v-hello .hello-login{font-size:18px;font-weight:600}
 body:not(.inner) #v-hello .trust{color:#cdc6e2;font-weight:500}
 
-/* Optical material copied from https://lunario.online/ (.glass), 15 September 2026.
-   Identical gradient, 22px blur, saturation, brightness, edge colors, highlight and shadows.
-   Only scope, CSS variable names and content stacking adapt to the app's components.
-   Long reading surfaces and fields keep their dense background. */
+/* Glass follows the brief without backdrop filtering: a highlight over a dense base.
+   Edge reflections and shadows provide depth; only toast and widget scrim may blur. */
 :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
   isolation:isolate;overflow:hidden;
-  background:linear-gradient(135deg,rgba(245,242,234,.10) 0%,rgba(245,242,234,.04) 45%,rgba(245,242,234,.07) 100%);
-  backdrop-filter:blur(22px) saturate(160%) brightness(1.08);
-  -webkit-backdrop-filter:blur(22px) saturate(160%) brightness(1.08);
-  border:1px solid transparent;background-clip:padding-box;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 12px 34px -14px rgba(0,0,0,.55);
+  background:var(--glass-bg);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  border:1px solid transparent;background-clip:padding-box;background-color:var(--glass-base);
+  box-shadow:var(--glass-shadow);
   --glass-x:50%;--glass-y:0%;--glass-edge:0;
   transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .3s ease;
 }
-body.inner :is(.rem-summary,#home-sky .moonline){position:relative}
+/* Explicit containing blocks keep reflections inside controls without backdrop-filter. */
+body.inner :is(.rem-summary,#home-sky .moonline,.wg-x,.quick-actions button){position:relative}
 :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;
   background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),rgba(255,255,255,.75) 0deg,rgba(244,223,168,.55) 40deg,rgba(255,255,255,.08) 110deg,rgba(255,255,255,.05) 220deg,rgba(244,223,168,.35) 300deg,rgba(255,255,255,.75) 360deg);
@@ -275,14 +282,14 @@ body.inner :is(.rem-summary,#home-sky .moonline){position:relative}
   }
 }
 :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.97)}
-/* Daylight glass: a transparent center, white bevel and a violet shadow.
+/* Daylight glass: a dense light base, white bevel and a violet shadow.
    Diary cards share the material but stay still while reading. */
 html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
   isolation:isolate;
-  background:var(--moon-panel);background-clip:padding-box;
+  background:var(--moon-panel);background-clip:padding-box;background-color:var(--glass-base);
   border:1px solid rgba(255,255,255,.75);
-  backdrop-filter:blur(16px) saturate(135%);-webkit-backdrop-filter:blur(16px) saturate(135%);
-  box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #2a21501c,inset 0 0 14px #ffffff5c,0 14px 32px -18px #2a215052,0 2px 6px #2a215008;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:var(--glass-shadow);
   --glass-x:30%;--glass-y:0%;--glass-edge:0;
 }
 html[data-theme=light] body.inner :is(.timeline-entry,.timeline-empty,.profile-summary,.wish-card){position:relative;overflow:hidden}
@@ -302,8 +309,8 @@ html[data-theme=light] body.inner :is(.eyebrow,.big,.avatar,.acct,.kw,.timeline-
 html[data-theme=light] body.inner .btn:not(.ghost){color:#f5f2ea;border-color:#ffffff70;box-shadow:inset 0 1px 0 #ffffff66,0 8px 22px -12px #2a215080}
 html[data-theme=light] body.inner .btn:not(.ghost) :is(span,.ico){color:#f5f2ea}
 html[data-theme=light] body.inner .btn:not(.ghost) .ico{background-color:#f5f2ea}
-html[data-theme=light] body.inner :is(.timeline-filters .chip,.entries-tabs button,.btn.ghost){background:linear-gradient(135deg,#ffffff50,#ffffff0d);box-shadow:inset 0 1px 0 #ffffffb3;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-html[data-theme=light] body.inner :is(.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:var(--selected);border-color:var(--text)}
+html[data-theme=light] body.inner :is(.timeline-filters .chip,.entries-tabs button,.btn.ghost){background:var(--glass-bg);background-color:var(--glass-base);box-shadow:inset 0 1px 0 #ffffffb3;backdrop-filter:none;-webkit-backdrop-filter:none}
+html[data-theme=light] body.inner :is(.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#e7e0f5;border-color:var(--text)}
 html[data-theme=light] body.inner .app-nav button.on{background:linear-gradient(135deg,#2a215020,#2a21500a);box-shadow:inset 0 1px 0 #fff9}
 html[data-theme=light] body.inner .compact-brand .mark{filter:none}
 html[data-theme=light] body.inner .compact-brand .moon-img{animation:none}
