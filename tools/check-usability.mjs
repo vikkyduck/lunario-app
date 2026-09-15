@@ -9,8 +9,8 @@ export async function checkUsabilityUI({browser,base,owner}){
   const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
   await ctx.addCookies([{name,value,domain:'127.0.0.1',path:'/app',httpOnly:true,sameSite:'Lax'}]);
   const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const close=()=>page.locator('.wg-x').click();
-  const open=async key=>{await page.evaluate(k=>openWidget(k),key);await page.locator('#wg-body #w-'+key).waitFor();};
+  const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
+  const open=async key=>{await page.evaluate(k=>openWidget(k),key);await page.locator(':is(#wg-body,#practice-body) #w-'+key).waitFor();};
   const capture=async label=>{if(process.env.LUNARIO_QA_SHOTS){await page.waitForFunction(()=>!document.getAnimations().some(a=>a.playState==='running'&&a.effect?.target?.classList?.contains('command-enter')));await mkdir(process.env.LUNARIO_QA_SHOTS,{recursive:true});await page.screenshot({path:join(process.env.LUNARIO_QA_SHOTS,label+'.png'),fullPage:false});}};
   try{
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
@@ -106,7 +106,7 @@ export async function checkUsabilityUI({browser,base,owner}){
     assert.ok(await page.evaluate(()=>document.querySelector('#wg').contains(document.activeElement)));
     await close();
     await page.getByRole('button',{name:'Дневник привычек',exact:true}).click();
-    await page.keyboard.press('Escape');
+    await close();
     assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Дневник привычек');
 
     for(const [width,height] of [[320,568],[390,844],[844,390],[1440,900]]){
@@ -114,10 +114,10 @@ export async function checkUsabilityUI({browser,base,owner}){
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
       await capture('home-'+width);
       for(const key of ['mood','habits','gratitude','askesis']){
-        await open(key);await page.locator('#wg-tools .rem-summary').waitFor();
-        assert.ok(await page.locator('#wg-tools .rem-body').isHidden());
+        await open(key);await page.locator(':is(#wg-tools,#practice-tools) .rem-summary').waitFor();
+        assert.equal(await page.locator(':is(#wg-tools,#practice-tools) .rem-body:visible').count(),0);
         assert.equal(await page.locator('#wg-body [data-rem]').count(),0);
-        assert.ok(await page.evaluate(()=>{const el=document.querySelector('.wg');return el.scrollWidth<=el.clientWidth+1;}),key+' modal overflow');
+        assert.ok(await page.evaluate(()=>{const el=document.querySelector('#v-practice.on')||document.querySelector('.wg');return el.scrollWidth<=el.clientWidth+1;}),key+' modal overflow');
         await close();
       }
     }

@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import {mkdir} from 'node:fs/promises';
+import {join} from 'node:path';
+export async function checkExperience({browser,base,owner}){
+  const [name,value]=owner.cookie.split('='),day=(await owner.json('/me')).day.date;
+  await owner.json('/habits','POST',{title:'Стакан воды',rule:'каждый день'});
+  await owner.json('/askesis','POST',{title:'Без покупок',until:new Date(Date.parse(day)+90*864e5).toISOString().slice(0,10)});
+  const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+  await ctx.addCookies([{name,value,domain:'127.0.0.1',path:'/app',httpOnly:true,sameSite:'Lax'}]);
+  const page=await ctx.newPage(),errors=[];page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+  const shot=async label=>{if(process.env.LUNARIO_QA_SHOTS){await page.waitForFunction(()=>!document.getAnimations().some(a=>a.playState==='running'&&a.effect?.getComputedTiming().iterations!==Infinity));await mkdir(process.env.LUNARIO_QA_SHOTS,{recursive:true});await page.screenshot({path:join(process.env.LUNARIO_QA_SHOTS,label+'.png'),fullPage:false});}};
+  const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
+  try{
+    await page.goto(base+'/');await page.waitForSelector('#v-home.on');
+    await page.getByRole('button',{name:'Выбрать практики',exact:true}).click();
+    for(const title of ['Карта дня','Настроение дня','Дневник благодарности'])await page.locator('#ritual-box').getByRole('button',{name:title}).click();
+    assert.ok(await page.locator('#ritual-save').isDisabled());
+    for(const title of ['Вопрос дня','Дневник'])await page.locator('#ritual-box .ritual-option').filter({hasText:new RegExp('^'+title+'[＋0-9]$')}).click();
+    await page.locator('#ritual-save').click();await page.locator('#wg').waitFor({state:'hidden'});
+    assert.deepEqual((await owner.json('/preferences')).preferences.ritual,['tone','journal']);
+    await page.reload();await page.waitForSelector('#v-home.on');
+    assert.equal(await page.locator('#h-next').innerText(),'Ответить на вопрос дня →');
+    await page.locator('#h-next').click();await page.locator('#tone-a').fill('Длинный ответ для проверки чтения и поля. '.repeat(30));
+    assert.ok(await page.locator('#tone-a').evaluate(e=>e.clientHeight>300&&e.scrollHeight<=e.clientHeight+2));
+    assert.equal(await page.locator('#tone-a').evaluate(e=>getComputedStyle(e).fontSize),'18px');
+    assert.equal(await page.locator('#tone-box .card').count(),0);
+    // A shrunken viewport models the space left above a keyboard; no real iOS keyboard is claimed.
+    await page.setViewportSize({width:390,height:420});await page.waitForFunction(()=>Math.abs(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--visible-height'))-420)<2);
+    const save=await page.locator('#tone-save').boundingBox();assert.ok(save.y>=0&&save.y+save.height<=420);
+    await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
+    await page.setViewportSize({width:390,height:844});await page.locator('#h-next').click();
+    assert.ok(await page.locator('#v-practice.on #w-journal').count());assert.equal(await page.locator('#wg.on').count(),0);
+    await page.locator('#j-text').fill('Сегодня я нашла время для себя');await page.getByRole('button',{name:'Сохранить запись',exact:true}).click();await page.locator('#journal-saved').waitFor();await close();
+    await page.locator('.app-nav [data-nav=home]').click();assert.ok(await page.locator('#h-next').isHidden());assert.equal(await page.locator('#h-progress').innerText(),'Ритуал на сегодня завершён');
+    await shot('ritual-complete-light');await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>document.querySelector('#h-next').hidden);
+    await page.locator('.app-nav [data-nav=history]').click();await page.locator('.timeline-entry').first().waitFor();
+    assert.ok((await page.locator('#timeline-list').innerText()).includes('Сегодня я нашла время для себя'));
+    await page.locator('#timeline-filters').getByRole('button',{name:'Вопрос дня',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-kind').length===1);
+    assert.ok((await page.locator('#timeline-list').innerText()).includes('Длинный ответ'));assert.ok(!(await page.locator('#timeline-list').innerText()).includes('Сегодня я нашла'));
+    await page.locator('#timeline-filters').getByRole('button',{name:'Все',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-entry').length>=2);await shot('diary-light');
+    await page.locator('#v-history [data-feature=journal]').scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);await page.locator('#v-history [data-feature=journal]').click();await page.locator('#j-text').fill('Несохранённая мысль');await close();
+    await page.waitForFunction(y=>Math.abs(scrollY-y)<5,before);await page.locator('#v-history [data-feature=journal]').click();assert.equal(await page.locator('#j-text').inputValue(),'Несохранённая мысль');await close();
+    await owner.json('/mood','POST',{mood:'joy'});await page.locator('[data-feature=hmood]').click();await page.locator('.mr-day').last().click();await page.locator('#timeline-date').waitFor();assert.ok((await page.locator('#timeline-date').innerText()).includes(day.split('-').reverse().join('.')));await page.getByRole('button',{name:'Все даты ×',exact:true}).click();
+    await page.locator('[data-feature=wishes]').click();await page.locator('#w-text').fill('Поездка к морю');
+    const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9fUAAAAASUVORK5CYII=';
+    const chooser=page.waitForEvent('filechooser');await page.locator('#wish-photo-pick').click();await(await chooser).setFiles({name:'sea.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+    await page.locator('#wish-preview img').waitFor();await page.locator('#wish-save').click();await page.locator('#m-wishes .wish-picture img').waitFor();
+    assert.equal((await owner.json('/wishes')).items[0].photo,true);assert.equal((await owner.json('/wishes')).items.length,1);
+    await page.getByRole('button',{name:'Сбылось',exact:true}).click();await page.getByRole('button',{name:'✓ Сбылось · отменить отметку',exact:true}).waitFor();assert.notEqual(await page.getByRole('button',{name:'✓ Сбылось · отменить отметку',exact:true}).evaluate(e=>getComputedStyle(e).color),'rgb(255, 255, 255)');await shot('wishes-light');await close();
+    for(let i=0;i<8;i++)await owner.json('/habits','POST',{title:'Привычка '+i,rule:'каждый день'});
+    for(const key of ['habits','askesis']){
+      await page.locator('.app-nav [data-nav=home]').click();await page.locator('[data-feature='+key+']').click();await page.locator('#v-practice.on #w-'+key).waitFor();
+      await page.locator('#practice-tools .rem-summary').click();await page.locator('#practice-settings-box input[type=time]').waitFor();await close();assert.ok(await page.locator('#v-practice.on #w-'+key).count());await shot(key+'-page-light');if(key==='habits'){await page.evaluate(()=>window.scrollTo(0,400));const position=await page.evaluate(()=>scrollY);await page.locator('.app-nav [data-nav=account]').click();await page.locator('.app-nav [data-nav=home]').click();await page.locator('[data-feature=habits]').click();await page.waitForFunction(y=>Math.abs(scrollY-y)<5,position);}await page.reload();await page.locator('#v-practice.on #w-'+key).waitFor();await close();
+    }
+    await page.locator('.app-nav [data-nav=account]').click();await page.getByRole('button',{name:/Оформление/}).click();await page.getByRole('button',{name:/Тёмная/}).click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');await close();
+    await page.reload();await page.waitForSelector('#v-home.on');assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');await shot('home-dark');
+    for(const theme of ['light','dark'])for(const [width,height] of [[320,568],[390,844],[844,390],[1440,900]]){
+      await page.evaluate(t=>applyTheme(t),theme);await page.setViewportSize({width,height});
+      for(const view of ['home','history','account']){await page.evaluate(v=>go(v),view);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),theme+' '+view+' '+width);}
+      for(const key of ['habits','askesis','journal','tone','wishes']){await page.evaluate(k=>openWidget(k),key);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),key+' '+width);await close();}
+      if(width===1440){await page.evaluate(()=>go('home'));await shot('home-desktop-'+theme);}
+    }
+    await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('#h-next').evaluate(e=>getComputedStyle(e).animationName),'none');
+    assert.deepEqual(errors,[]);console.log('PASS: selected 2-step ritual with durable completion; growing answer and keyboard-sized viewport; real practice pages/back/drafts; direct filtered timeline/mood day; atomic wish image and completion; persistent themes; four widths in both themes.');
+  }finally{await ctx.close();}
+}

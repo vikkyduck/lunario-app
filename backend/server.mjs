@@ -11,6 +11,7 @@ import { vapidKeys } from './push.mjs';
 import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
 import * as C from './content.mjs';
 import { personalExport } from './personal-export.mjs';
+import { preferences, validPreferences, timeline } from './experience.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak, HABIT_MILESTONES } from './practices.mjs';
@@ -255,6 +256,7 @@ function wipePersonal(userId) {
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email <> \'\'');
 }
 
+if (!db.prepare('PRAGMA table_info(users)').all().some(c=>c.name==='preferences')) db.exec("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT ''");
 const {habitList, askesisList} = createPractices(db, open_);
 initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
 initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
@@ -995,7 +997,9 @@ const server = createServer(async (req, res) => {
           existing = db.prepare('SELECT * FROM users WHERE id = ?').get(existing.id);
         }
         const empty = !u.email && !db.prepare('SELECT 1 FROM entries WHERE user_id = ? LIMIT 1').get(u.id)
-          && !db.prepare('SELECT 1 FROM journal WHERE user_id = ? LIMIT 1').get(u.id);
+          && !db.prepare('SELECT 1 FROM journal WHERE user_id = ? LIMIT 1').get(u.id)
+          && !u.photo && !u.preferences
+          && !['wishes','habits','askesis','moods'].some(table=>db.prepare(`SELECT 1 FROM ${table} WHERE user_id=? LIMIT 1`).get(u.id));
         if (empty) {                              // пустой анонимный профиль этого устройства не копим
           db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
           db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
@@ -1039,7 +1043,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/me' && req.method === 'GET') {
         const used = db.prepare('SELECT spreads FROM usage WHERE user_id = ? AND day = ?').get(u.id, d);
         return json(res, 200, {
-          user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(),
+          user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(), preferences: preferences(u.preferences),
           mood: (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d) || {}).mood || null,
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
           limits: { spreadsLeft: Math.max(0, spreadLimit(u) - (used ? used.spreads : 0)), spreadsTotal: spreadLimit(u) },
@@ -1058,6 +1062,18 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/data/export' && req.method === 'GET') return json(res,200,personalExport(db,u,open_));
+
+      if (p === '/api/preferences') {
+        if (req.method === 'POST') {
+          const b = await readBody(req);
+          if (!validPreferences(b)) return json(res,400,{error:'bad_preferences'});
+          const value = {theme:b.theme,ritual:b.ritual};
+          db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify(value),u.id);
+          return json(res,200,{preferences:value});
+        }
+        return json(res,200,{preferences:preferences(u.preferences)});
+      }
+      if (p === '/api/timeline' && req.method === 'GET') return json(res,200,timeline(db,u.id,url.searchParams,open_));
 
       if (p === '/api/profile' && req.method === 'POST') {
         const b = await readBody(req);
@@ -1206,10 +1222,12 @@ const server = createServer(async (req, res) => {
 
       if (p === '/api/wishes') {
         if (req.method === 'POST') {
-          const b = await readBody(req);
+          const b = await readBody(req, 1024 * 1024);
           const text = clean(b.text, 200);
           if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
-          db.prepare('INSERT INTO wishes (user_id, ts, text) VALUES (?,?,?)').run(u.id, nowISO(), seal(text));
+          const photo=b.photo ? dataUrlOk(b.photo,600*1024) : '';
+          if (b.photo && !photo) return json(res,400,{error:'bad_photo'});
+          db.prepare('INSERT INTO wishes (user_id, ts, text, photo, photo_ts) VALUES (?,?,?,?,?)').run(u.id, nowISO(), seal(text),photo,photo?nowISO():'');
         } else if (req.method === 'PATCH') {
           const b = await readBody(req);
           db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), Number(b.id) || 0, u.id);
@@ -1218,7 +1236,7 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/entries' && req.method === 'GET')
-        return json(res, 200, { items: db.prepare('SELECT id, day, kind, question, title, body, data FROM entries WHERE user_id=? ORDER BY id DESC LIMIT 100').all(u.id)
+        return json(res, 200, { items: db.prepare('SELECT id, day, kind, question, title, body, data FROM entries WHERE user_id=? AND (?=0 OR id=?) ORDER BY id DESC LIMIT 100').all(u.id,Number(url.searchParams.get('id'))||0,Number(url.searchParams.get('id'))||0)
           .map((r) => ({ ...r, question: open_(r.question), data: parseData(r.data) })) });
 
       /* Оплата: создаём заказ (подписка или консультация) и отправляем на страницу оплаты. */
@@ -1316,7 +1334,8 @@ const server = createServer(async (req, res) => {
         const month = d.slice(0, 7);
         const stats = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day LIKE ? GROUP BY mood ORDER BY c DESC').all(u.id, month + '%');
         const total = db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ?').get(u.id).c;
-        return json(res, 200, { week, month: { key: month, stats, days: stats.reduce((s, m) => s + m.c, 0) }, total, summary: w.summary, labels: MOOD_RU });
+        const monthEntries=db.prepare('SELECT day,mood FROM moods WHERE user_id=? AND day LIKE ? ORDER BY day').all(u.id,month+'%');
+        return json(res, 200, { week, month: { key: month, stats, entries:monthEntries, days: stats.reduce((s, m) => s + m.c, 0) }, total, summary: w.summary, labels: MOOD_RU });
       }
 
       /* ── напоминания по функциям ── */

@@ -9,9 +9,9 @@ export async function checkRepeatPractices({browser,base,owner}){
   const ctx=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
   const [name,value]=owner.cookie.split('=');await ctx.addCookies([{name,value,domain:'127.0.0.1',path:'/app',httpOnly:true,sameSite:'Lax'}]);
   const page=await ctx.newPage(),errors=[],gaps=[];page.on('pageerror',e=>errors.push(e.message));
-  const open=async key=>{await page.evaluate(k=>openWidget(k),key);await page.locator('#wg.on #w-'+key).waitFor();};
-  const close=()=>page.locator('.wg-x').click();
-  const primary=()=>page.locator('#wg-body .btn:not(.ghost):visible').count();
+  const open=async key=>{await page.evaluate(k=>openWidget(k),key);await page.locator(':is(#wg.on,#v-practice.on) #w-'+key).waitFor();};
+  const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
+  const primary=()=>page.locator(':is(#wg-body,#practice-body) .btn:not(.ghost):visible').count();
   try{
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
     await open('habits');await page.locator('#habit-list .hb-check').first().waitFor();

@@ -73,27 +73,29 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     for(const [view,key,feature] of cases){
       await page.evaluate(v=>go(v),view);
       await page.locator(`#v-${view} button[onclick="openWidget('${key}')"]`).click();
-      const rem=page.locator(`#wg-tools [data-rem=${feature}]`);
+      const full=['habits','askesis'].includes(key);
+      if(full)await page.locator('#practice-tools .rem-summary').click();
+      const rem=page.locator(`${full?'#practice-settings-box':'#wg-tools'} [data-rem=${feature}]`);
       await rem.getByRole('button',{name:/Время и регулярность/}).waitFor();
-      await rem.getByRole('button',{name:/Время и регулярность/}).click();
+      if(!full)await rem.getByRole('button',{name:/Время и регулярность/}).click();
       await rem.getByLabel('Время уведомления').waitFor();
       await rem.getByRole('button',{name:'Отправить пробное',exact:true}).click();
       await page.waitForFunction(f=>window.__pushQA.tests.some(t=>t.feature===f),feature);
-      const share=page.locator('#wg-body').getByRole('button',{name:'Поделиться',exact:true}).first();
-      await share.click();
-      assert.ok((await page.evaluate(()=>window.__pushQA.shared.at(-1))).includes('Лунарио'));
+
       for(const [width,height] of [[320,568],[844,390],[1440,900]]){
         await page.setViewportSize({width,height});
         await rem.getByLabel('Время уведомления').scrollIntoViewIfNeeded();
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
         assert.ok(await rem.getByLabel('Время уведомления').isVisible());
       }
-      await page.locator('.wg-x').click();
+      if(full)await page.locator('.wg-x').click();
+      const share=page.locator(full?'#practice-body':'#wg-body').getByRole('button',{name:'Поделиться',exact:true}).first();await share.click();assert.ok((await page.evaluate(()=>window.__pushQA.shared.at(-1))).includes('Лунарио'));
+      if(full){await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}else await page.locator('.wg-x').click();
     }
     for(const [,key,feature] of cases){
       await page.goto(base+'/?open='+feature);
-      await page.waitForSelector('#wg.on #w-'+key);
-      await page.locator('#wg-tools [data-rem='+feature+']').getByRole('button',{name:/Время и регулярность/}).waitFor();
+      await page.waitForSelector(':is(#wg.on,#v-practice.on) #w-'+key);
+      await page.locator(['habits','askesis'].includes(key)?'#practice-tools':'#wg-tools [data-rem='+feature+']').getByRole('button',{name:/Время и регулярность/}).waitFor();
     }
     assert.deepEqual(errors,[]);
     // Another account/device having a subscription must not suppress a permission prompt.

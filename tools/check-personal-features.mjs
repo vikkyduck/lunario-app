@@ -99,11 +99,30 @@ try {
   assert.equal((await other.raw('/habits', 'PATCH', { id: habit.id, day })).status, 404);
   assert.equal((await other.raw('/askesis', 'PATCH', { id: askesis.id, note: 'Чужая запись' })).status, 404);
 
+  const prefs={theme:'dark',ritual:['tone','journal']};
+  await owner.json('/preferences','POST',prefs);
+  assert.deepEqual((await owner.json('/me')).preferences,prefs);
+  assert.equal((await other.json('/preferences')).preferences.theme,'system');
+  for(const ritual of [[],['tone'],['tone','tone'],['tone','unknown'],['card','mood','tone','journal']])assert.equal((await owner.raw('/preferences','POST',{theme:'dark',ritual})).status,400);
+  const wishesBefore=(await owner.json('/wishes')).items.length;
+  assert.equal((await owner.raw('/wishes','POST',{text:'Неверное фото',photo:'not-an-image'})).status,400);
+  assert.equal((await owner.json('/wishes')).items.length,wishesBefore,'No orphan wish when its photo is invalid');
+  const timelineOwner=account();await timelineOwner.json('/me');
+  for(let i=0;i<65;i++)await timelineOwner.json('/journal','POST',{text:'Строка '+i,kind:i%2?'answer':'gratitude'});
+  const first=(await timelineOwner.json('/timeline'));const second=(await timelineOwner.json('/timeline?offset='+first.next));
+  assert.equal(first.items.length,60);assert.equal(second.items.length,5);assert.equal(second.next,null);
+  assert.equal(new Set([...first.items,...second.items].map(i=>i.id)).size,65);
+  assert.ok((await timelineOwner.json('/timeline?kind=answer')).items.every(i=>i.kind==='answer'));
+  assert.equal((await other.json('/timeline')).items.length,0);
+  const ownTimeline=await owner.json('/timeline?day='+day);assert.ok(ownTimeline.items.some(i=>i.body==='Тест: запись в дневнике'));
+  assert.ok(ownTimeline.items.some(i=>i.source==='askesis'));assert.ok(ownTimeline.items.some(i=>i.source==='habit'));
+  console.log('PASS: validated account preferences; private filtered/paginated timeline; invalid photo creates no wish.');
+
   // A real process restart also verifies that session and encryption keys survive.
   await stop(); await start();
   const me = await owner.json('/me');
   assert.equal(me.user.name, 'Проверка сохранения'); assert.equal(me.user.photo, true);
-  assert.equal(me.mood, 'joy');
+  assert.equal(me.mood, 'joy');assert.deepEqual(me.preferences,prefs);assert.deepEqual((await owner.json('/data/export')).preferences,prefs);
   const savedWish = (await owner.json('/wishes')).items.find(x => x.id === wish.id);
   assert.equal(savedWish.text, 'Тест: поездка к морю'); assert.equal(savedWish.done, 1); assert.equal(savedWish.photo, true);
   for (const path of ['/photo', `/wishes/photo?id=${wish.id}`]) {
@@ -217,12 +236,14 @@ try {
   console.log('PASS: all seven feature schedules, timezone, native lunar/sky plans, feature previews, device-specific test delivery and queue isolation.');
   qaDB.close();
   console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, 30/60/90/180/365 daily-only awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
-  if (process.argv.includes('--ui') || process.argv.includes('--ui-repeat')) {
+  if (process.argv.includes('--ui') || process.argv.includes('--ui-repeat') || process.argv.includes('--ui-experience')) {
     // Optional Playwright checks use the same real backend and isolated database.
     const { chromium } = createRequire(import.meta.url)('playwright');
     const browser = await chromium.launch({ headless: true,
       ...(process.env.LUNARIO_CHROME_PATH ? { executablePath: process.env.LUNARIO_CHROME_PATH } : {}) });
     try {
+      if(process.argv.includes('--ui')||process.argv.includes('--ui-experience')){const xpOwner=account();await xpOwner.json('/me');await xpOwner.json('/profile','POST',{name:'Новый интерфейс',birth:'1990-01-01',city:'Москва',consent:true});const {checkExperience}=await import('./check-experience.mjs');await checkExperience({browser,base,owner:xpOwner});}
+      if(!process.argv.includes('--ui-experience')){
       const repeatOwner=account();await repeatOwner.json('/me');await repeatOwner.json('/profile','POST',{name:'Повторные действия',birth:'1990-01-01',city:'Москва',consent:true});
       const {checkRepeatPractices}=await import('./check-repeat-practices.mjs');await checkRepeatPractices({browser,base,owner:repeatOwner});
       if(!process.argv.includes('--ui-repeat')){
@@ -237,7 +258,7 @@ try {
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
       const [name, value] = owner.cookie.split('=');
       await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, secure: false, sameSite: 'Lax' }]);
-      const page = await ctx.newPage(); const errors = [];
+      const page = await ctx.newPage(); const errors = [];const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
       page.on('pageerror', e => errors.push(e.message));
       await page.goto(base + '/', { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('#v-home.on');
@@ -253,35 +274,35 @@ try {
       await page.reload(); await page.waitForSelector('#v-home.on');
       await page.waitForFunction(() => document.querySelector('#h-acct img')?.naturalWidth > 0);
       await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
-      await page.waitForFunction(() => document.querySelector('#m-wishes .wphoto')?.naturalWidth > 0);
+      await page.waitForFunction(() => document.querySelector('#m-wishes .wish-picture img')?.naturalWidth > 0);
       assert.ok((await page.locator('#m-wishes').innerText()).includes('Тест: поездка к морю'));
       // A failed request must not discard the draft or leave an unhandled rejection.
       await page.route('**/api/wishes', route => route.request().method() === 'POST'
         ? route.fulfill({ status: 503, json: { error: 'test_unavailable' } }) : route.continue());
       await page.locator('#w-text').fill('Тест: сохранить мой черновик');
-      await page.locator('#w-wishes button.btn').click();
+      await page.locator('#wish-save').click();
       await page.waitForFunction(() => document.querySelector('#toast').textContent.includes('Текст остался'));
       assert.equal(await page.locator('#w-text').inputValue(), 'Тест: сохранить мой черновик');
       assert.ok(await page.evaluate(() => Number(getComputedStyle(document.querySelector('#toast')).zIndex) > Number(getComputedStyle(document.querySelector('#wg')).zIndex)));
       await page.unroute('**/api/wishes');
-      await page.locator('#w-wishes button.btn').click();
+      await page.locator('#wish-save').click();
       await page.waitForFunction(() => document.querySelector('#m-wishes').textContent.includes('Тест: сохранить мой черновик'));
       const wishChooser = page.waitForEvent('filechooser');
-      await page.locator('#m-wishes .wphoto-add').first().click();
+      await page.locator('#m-wishes .wish-picture:not(:has(img))').first().click();
       await (await wishChooser).setFiles({ name: 'test-wish.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
-      await page.waitForFunction(() => document.querySelector('#m-wishes .wphoto')?.naturalWidth > 0 && document.querySelectorAll('#m-wishes .wphoto').length === 2);
-      await page.locator('.wg-x').click();
+      await page.waitForFunction(() => document.querySelector('#m-wishes .wish-picture img')?.naturalWidth > 0 && document.querySelectorAll('#m-wishes .wish-picture img').length === 2);
+      await close();
       await page.locator('.app-nav').getByRole('button', {name:'Сегодня',exact:true}).click();
       await page.getByRole('button', { name: /^Дневник привычек/ }).click();
-      await page.getByText('Тест: прогулка вечером', { exact: true }).first().waitFor();
-      await page.locator('.wg-x').click();
+      await page.locator('#habit-list').getByText('Тест: прогулка вечером', { exact: true }).waitFor();
+      await close();
       await page.locator('#v-home').getByRole('button', { name: /^Взять аскезу/ }).click();
-      await page.getByText('Тест: без вечернего скроллинга', { exact: true }).waitFor();
+      await page.locator('#as-box').getByText('Тест: без вечернего скроллинга', { exact: true }).waitFor();
       assert.equal(await page.locator(`#as-note-${askesis.id}`).inputValue(), 'Тест: вечер прошёл спокойно');
-      await page.reload(); await page.waitForSelector('#v-home.on');
+      await close();await page.reload(); await page.waitForSelector('#v-home.on');
       await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
-      await page.waitForFunction(() => document.querySelectorAll('#m-wishes .wphoto').length === 2);
-      await page.locator('.wg-x').click();
+      await page.waitForFunction(() => document.querySelectorAll('#m-wishes .wish-picture img').length === 2);
+      await close();
       assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(t=>t.trim()), ['Сегодня','Свериться','Дневник','Я']);
       await page.locator('.app-nav').getByRole('button',{name:'Сегодня',exact:true}).click();
       await page.locator('#v-home').getByRole('button',{name:/^Отметить настроение/}).click();
@@ -289,7 +310,7 @@ try {
       assert.equal(await page.locator('#t-moods .mchip').count(),32);
       await page.locator('#t-moods .mchip').filter({hasText:/^восхищение$/}).click();
       await page.waitForFunction(()=>document.querySelector('#t-moods .mpick').textContent.includes('восхищение'));
-      await page.locator('.wg-x').click();
+      await close();
       await page.locator('.app-nav [data-nav=ask]').click();await page.locator('#v-ask').getByRole('button',{name:'Разобрать вопрос',exact:true}).click();
       const question=await page.locator('#hub-chips .chip').first().innerText();
       await page.locator('#hub-chips .chip').first().click();
@@ -297,17 +318,17 @@ try {
       await page.locator('#hub-q').fill(question+' Это касается моей работы.');
       assert.equal(await page.locator('#hub-opts .chip').count(),4);
       assert.ok(!(await page.locator('#hub-opts').innerText()).includes('Да / Нет'));
-      await page.locator('.wg-x').click();
+      await close();
       await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home [data-feature="tone"]').click();
       await page.locator('#tone-a').fill('Ответ из интерфейса');
       await page.getByRole('button',{name:'Отправить в дневник',exact:true}).click();
       await page.waitForFunction(()=>document.querySelector('#toast').textContent.includes('Записано в дневник'));
-      await page.locator('.wg-x').click();
+      await close();
       await page.locator('.app-nav [data-nav=history]').click();
       assert.equal(await page.locator('#v-history h1').innerText(),'Дневник');
       await page.locator('#v-history [data-feature="journal"]').click();
       await page.locator('#w-journal').getByText('Ответ из интерфейса',{exact:true}).waitFor();
-      await page.locator('.wg-x').click();
+      await close();
       await page.locator('.app-nav [data-nav=home]').click();
       await page.locator('.app-nav [data-nav=account]').click();await page.locator('#v-account [data-feature=news]').click();
       await page.locator('#news-box .wid').first().waitFor();
@@ -315,7 +336,7 @@ try {
       await page.evaluate(()=>{const root=document.querySelector('#v-home [data-feature=askesis]');root.querySelector('b').textContent='Взять аскезу · проверка';root.setAttribute('aria-label','Взять аскезу · проверка');return paintNews();});
       await page.locator('#news-box').getByRole('button',{name:/^Взять аскезу · проверка/}).click();
       await page.locator('#as-box').getByText('Тест: без вечернего скроллинга',{exact:true}).waitFor();
-      await page.locator('.wg-x').click();
+      await close();
       for(const [width,height] of [[390,844],[320,568],[844,390],[1440,900]]) {
         await page.setViewportSize({width,height});
         await page.locator('.app-nav [data-nav=home]').click();
@@ -329,20 +350,21 @@ try {
       for(const [view,key] of [['home','card'],['home','mood'],['ask','worry'],['home','day'],['home','tone'],['home','askesis'],['history','wishes'],['home','habits'],['history','gratitude'],['account','natal'],['account','year'],['account','birthnum'],['news','tests'],['account','compat'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','shelves'],['account','support']]) {
         await page.evaluate(v=>go(v),view);
         await page.locator(`#v-${view} [data-feature="${key}"]`).click();
-        await page.waitForFunction(k=>document.querySelector('#wg-body #w-'+k)!==null,key);
-        await page.locator('.wg-x').click();
+        await page.waitForFunction(k=>document.querySelector(':is(#wg-body,#practice-body) #w-'+k)!==null,key);
+        await close();
       }
       await page.evaluate(()=>go('account'));
       for(const title of ['С чего начать','Вопросы и ответы']) {
         if(!(await page.locator('#v-account .upcoming').evaluate(el=>el.open)))await page.locator('#v-account .upcoming summary').click();
         await page.locator('#v-account').getByRole('button',{name:new RegExp('^'+title)}).click();
-        assert.equal(await page.locator('#wg-title').innerText(),title);await page.locator('.wg-x').click();
+        assert.equal(await page.locator('#wg-title').innerText(),title);await close();
       }
       await page.evaluate(()=>go('ask'));
       assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Разобрать вопрос','Да / Нет','Руны','Таро']);
       console.log('PASS: all four main sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');
       assert.deepEqual(errors, []);
       console.log('PASS: existing profile/wish photo uploads and reloads, habit/askesis navigation, saved notes, failed-request draft protection and visible feedback in the mobile UI.');
+      }
       }
     } finally { await browser.close(); }
   }

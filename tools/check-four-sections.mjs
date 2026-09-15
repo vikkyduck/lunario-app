@@ -6,7 +6,7 @@ export async function checkFourSections({browser,base,owner}){
   const lunarDays=Array.from({length:30},(_,i)=>({n:i+1,theme:'Тема '+(i+1),symbol:'Символ',image:'/app/icon-192.png',blocks:[{t:'p',text:'Вступление '+(i+1)},{t:'h',text:'Подробности'},{t:'p',text:'Полная глава '+(i+1)}]}));
   await ctx.route('**/api/lunar-days*',route=>route.fulfill({json:{days:lunarDays,reference:null}}));
   const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const close=()=>page.locator('.wg-x').click();
+  const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
   try{
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
     assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.trim()),['Сегодня','Свериться','Дневник','Я']);
@@ -20,7 +20,7 @@ export async function checkFourSections({browser,base,owner}){
     for(const [view,keys] of Object.entries(routes))for(const key of keys){
       await page.evaluate(v=>go(v),view);
       const root=page.locator(`#v-${view} [data-feature="${key}"]`);assert.equal(await root.count(),1,key+' canonical entry');
-      await root.click();await page.locator(`#wg.on #w-${key}`).waitFor();await close();
+      await root.click();await page.locator(`:is(#wg.on,#v-practice.on) #w-${key}`).waitFor();await close();
     }
     for(const mode of ['yesno','rune','spread']){await page.evaluate(()=>go('ask'));await page.locator(`#v-ask button[onclick="openAsk('${mode}')"]`).click();await page.locator('#w-ask').waitFor();assert.ok(await page.locator('#a-go').evaluate(el=>!el.classList.contains('ghost')));await close();}
     for(const [alias,target] of [['today','home'],['around','home'],['about','account']]){await page.evaluate(v=>go(v),alias);assert.ok(await page.locator('#v-'+target).evaluate(el=>el.classList.contains('on')));}
@@ -35,9 +35,9 @@ export async function checkFourSections({browser,base,owner}){
     await page.getByRole('button',{name:'Все эмоции',exact:true}).click();assert.equal(await page.locator('.mchip').count(),32);await close();
     assert.equal(await page.locator('#h-next').innerText(),'Записать благодарность →');
     await page.locator('#h-next').click();assert.ok(await page.locator('#v-history.on').count());await page.locator('#gr-text').fill('Себе за внимательность к себе');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await page.locator('#gr-box .saved-state').waitFor();await close();
-    await page.locator('.app-nav [data-nav=home]').click();assert.equal(await page.locator('#h-next').innerText(),'Ответить на вопрос дня →');
-    await page.locator('#h-next').click();await page.locator('#tone-a').fill('Я заметила свои потребности');await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();assert.equal(await page.locator('#h-next').innerText(),'Записать мысль →');
-    await page.locator('#h-next').click();await page.locator('#j-text').fill('Мой текст.');await page.locator('#j-dictate').click();
+    await page.locator('.app-nav [data-nav=home]').click();assert.ok(await page.locator('#h-next').isHidden());assert.equal(await page.locator('#h-progress').innerText(),'Ритуал на сегодня завершён');
+    await page.locator('#h-set-question').click();await page.locator('#tone-a').fill('Я заметила свои потребности');await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();assert.ok(await page.locator('#h-next').isHidden());
+    await page.evaluate(()=>{go('history');openWidget('journal');});await page.locator('#j-text').fill('Мой текст.');await page.locator('#j-dictate').click();
     await page.evaluate(()=>window.__speechQA.rec.onresult({resultIndex:0,results:[Object.assign([{transcript:'Продиктованное продолжение'}],{isFinal:true})]}));
     assert.equal(await page.locator('#j-text').inputValue(),'Мой текст. Продиктованное продолжение');await close();assert.equal(await page.evaluate(()=>window.__speechQA.aborts),1);assert.equal(await page.locator('#j-dictate').getAttribute('aria-pressed'),'false');assert.ok(await page.evaluate(()=>window.__speechQA.rec.onresult===null&&window.__speechQA.rec.onerror===null&&window.__speechQA.rec.onend===null));
     await page.locator('#v-history [data-feature=journal]').click();assert.equal(await page.locator('#j-text').inputValue(),'Мой текст. Продиктованное продолжение');
