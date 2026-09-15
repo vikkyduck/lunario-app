@@ -38,7 +38,7 @@ function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.them
 function applyTheme(mode){
   const theme=mode==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;
   document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;
-  document.querySelector('meta[name="theme-color"]').content=theme==='light'?'#f7f3ec':'#0b0a14';
+  document.querySelector('meta[name="theme-color"]').content=theme==='light'?'#f0edf8':'#0b0a14';
   window.LunarioSky?.refresh();
   try{localStorage.setItem('lun_theme',mode);}catch{}
 }

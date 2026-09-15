@@ -12,22 +12,23 @@
   --moon-reader:#141126;--moon-fade:#0b0a14;--moon-empty:#1d1738;
 }
 :root[data-theme=light]{
-  --bg:#f7f3ec;--surface:#fffbf7;--sheet:#faf6f2;--field:#fffcf9;--selected:#e6e1f1;
-  --text:#292447;--muted:#625b76;--gold:#b38b49;--gold-2:#805f2f;
-  --line:rgba(167,128,69,.32);--focus:#896225;--control-border:#a58960;
-  --hover:#f1e5ee;--accent-soft:#f0e7ee;
-  --moon-ground:radial-gradient(ellipse at 100% 0%,#e8dfcf 0%,transparent 54%),radial-gradient(ellipse at 0% 72%,#f2e9d8 0%,transparent 65%),#f7f3ec;
-  --moon-panel:linear-gradient(130deg,#fffdf9fa,#f2e9f0f5 65%,#f9f1eafa);
-  --moon-edge:linear-gradient(135deg,#b58c49bf,#d8bc8d78 40%,#c5a76c99 80%,#b08a54a6);
-  --moon-shine:rgba(255,255,255,.56);--moon-shadow:inset 0 1px 0 #fff,0 12px 26px -20px #6a416547;
-  --moon-control:linear-gradient(120deg,#f0dba8,#d7b578);--moon-glass:rgba(248,240,242,.89);
-  --moon-reader:#fffcf8;--moon-fade:#f7f3ec;--moon-empty:#f1e6ee;
+  --bg:#f0edf8;--surface:#faf8ff;--sheet:#f5f2fc;--field:#fdfbff;--selected:#e7e0f5;
+  --text:#303039;--muted:#5e5d69;--gold:#d4b34f;--gold-2:#dfc365;
+  --line:rgba(109,96,145,.20);--focus:#716183;--control-border:#a79bbf;
+  --hover:#eae4f6;--accent-soft:#e9e3f4;
+  --moon-ground:radial-gradient(ellipse at 100% 0%,#e4ddf4 0%,transparent 58%),radial-gradient(ellipse at 0% 72%,#f8f5ff 0%,transparent 65%),#f0edf8;
+  --moon-panel:linear-gradient(130deg,#fdfbfffa,#eee8faf5 65%,#f7f3fffa);
+  --moon-edge:linear-gradient(135deg,#f2dfa0ee,#d4b34f88 40%,#ffffffb3 70%,#dfc365bb);
+  --moon-shine:rgba(255,255,255,.70);--moon-shadow:inset 0 1px 0 #fff,0 12px 26px -20px #352d5140;
+  --moon-control:linear-gradient(120deg,#f5e5ab,#e7ca6d 58%,#d4b34f);--moon-glass:rgba(246,242,255,.88);
+  --moon-reader:#faf8ff;--moon-fade:#f0edf8;--moon-empty:#e8e1f4;
+  --emotion-anger:#8272b4;--emotion-anticipation:#b3a0d5;
 }
 html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed;--muted:inherit;--line:inherit}
 /* Soft light sits behind the content, including the email/code screens. */
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(217,184,104,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,215,154,.07),transparent 100%)}
 body.hello::before{z-index:0;background:radial-gradient(ellipse 30% 24% at 26% 72%,rgba(240,215,154,.28),rgba(217,184,104,.10) 48%,transparent 100%),radial-gradient(ellipse 36% 42% at 100% 63%,rgba(240,215,154,.21),transparent 100%);mix-blend-mode:screen}
-html[data-theme=light] body.inner::before{opacity:.55}
+html[data-theme=light] body.inner::before{opacity:1;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(182,163,224,.12),transparent 100%),radial-gradient(ellipse 28% 24% at 4% 18%,rgba(239,216,132,.07),transparent 100%)}
 body.inner .bg .orb{opacity:.24}body.inner .bg .cloud{opacity:.14}
 body.inner .sky.on{display:block;opacity:.48}body.hello .sky.on{opacity:.72}
 html[data-theme=light] body.inner .sky.on{opacity:.22}
@@ -123,9 +124,9 @@ html[data-theme] body.inner .app-nav button{font-size:14px;font-weight:400;color
 html[data-theme] body.inner .app-nav button.on{color:var(--gold-2);background:linear-gradient(130deg,#ebce9321,#e5bd7608);box-shadow:inset 0 1px 0 #efd29a25}
 html[data-theme] body.inner .app-nav .on .ico{background-color:var(--gold-2)}
 html[data-theme] body.inner :is(.rem-summary,.wg-x){background:var(--moon-glass);border-color:var(--line);box-shadow:inset 0 1px 0 #fff0d31a;color:var(--muted)}
-body.inner .theme-option.light>span{background:linear-gradient(135deg,#fffcf7,#eadee8)}
+body.inner .theme-option.light>span{background:linear-gradient(135deg,#faf8ff,#e4ddf4)}
 body.inner .theme-option.dark>span{background:linear-gradient(135deg,#141126,#0b0a14)}
-body.inner .theme-option.system>span{background:linear-gradient(90deg,#f7f3ec 50%,#141126 50%)}
+body.inner .theme-option.system>span{background:linear-gradient(90deg,#f0edf8 50%,#141126 50%)}
 html[data-theme=light] .home-moon{opacity:.55}
 body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 0 #f6ddb723,0 18px 42px #0d081a54;background:linear-gradient(135deg,#1d1738,#141126)}
 
@@ -272,8 +273,26 @@ body.inner :is(.rem-summary,#home-sky .moonline){position:relative}
   }
 }
 :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.97)}
-/* On a light backdrop the same optics get a translucent white substrate for legibility. */
-html[data-theme=light] :is(body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background-color:rgba(255,253,249,.72)}
+/* Lilac glass keeps the optical edge, with a cool substrate and soft graphite shadows. */
+html[data-theme=light] :is(body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
+  background:linear-gradient(135deg,rgba(255,255,255,.70),rgba(244,239,255,.62) 45%,rgba(249,246,255,.76));
+  box-shadow:inset 0 1px 0 #ffffffeb,inset 0 -1px 0 #a99bc32e,0 12px 34px -16px #39304640;
+}
+html[data-theme=light] body.inner :is(.eyebrow,.big,.avatar,.acct,.kw,.timeline-kind,.card-question h3,#h-set-question,.lunar-arrow,.app-nav button.on,.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true],.chip.on,.chip[aria-pressed=true]){color:var(--text)}
+html[data-theme=light] body.inner .btn:not(.ghost){color:var(--text);border-color:#f5e5ab;box-shadow:inset 0 1px 0 #fff8d9,0 6px 22px -12px #d4b34f70}
+html[data-theme=light] body.inner .app-nav button.on{background:linear-gradient(135deg,#f5e5ab66,#e7e0f580);box-shadow:inset 0 1px 0 #fff9}
+html[data-theme=light] body.inner .wpane .msg.err{color:var(--text)!important;background:#e9e2f4;border-inline-start:3px solid #8272b4;padding:12px 16px;border-radius:12px}
+html[data-theme=light] body.inner input.bad{border-color:#8272b4}
+html[data-theme=light] body.inner .danger-zone .warn{color:var(--text);background:#e9e2f4;padding-inline:14px}
+html[data-theme=light] body.inner .rowbtn.warn .ico{background-color:#8272b4}
+html[data-theme=light] body.inner .bar{background:#e3dcef}
+html[data-theme=light] body.inner .bar i{background:linear-gradient(90deg,#d4b34f,#f5e5ab)}
+html[data-theme=light] body.inner .ritual-emblem{border-color:#dfc365;box-shadow:0 5px 16px #352d5130,inset 0 0 0 4px #211b35,inset 0 0 0 5px #dfc36566}
+html[data-theme=light] body.inner .ritual-emblem::before{border-color:#dfc36580}
+@media(hover:hover) and (pointer:fine){
+  html[data-theme=light] body.inner :is(.wid,.sq,.quick-actions button,.rem-summary):hover{box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 #a99bc32e,0 18px 36px -18px #8e7cb957,0 8px 24px -16px #e7ca6d80}
+  html[data-theme=light] body.inner :is(.text-action,.back):hover{color:var(--text)}
+}
 @media(prefers-reduced-motion:reduce){
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary){transition:none}
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner .sq,body.inner .quick-actions button,body.inner .rem-summary):is(:hover,:active){transform:none}

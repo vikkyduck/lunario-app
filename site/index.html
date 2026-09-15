@@ -804,8 +804,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=30">
-<link rel="stylesheet" href="/app/moon-glass.css?v=30">
+<link rel="stylesheet" href="/app/experience.css?v=31">
+<link rel="stylesheet" href="/app/moon-glass.css?v=31">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -1247,9 +1247,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=30"></script>
+<script type="module" src="/app/sky.js?v=31"></script>
 
-<script src="/app/experience.js?v=30"></script>
+<script src="/app/experience.js?v=31"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -3054,7 +3054,8 @@ function moodInfo(key){ const quick=quickMoods().find(m=>m.key===key);if(quick)r
 const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : String(k); } });
 const moodFace = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return 'anticipation'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
 const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || FAM_FALLBACK.dyad)[1]; };
-const moodSvg = (mood, size) => `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" style="color:${moodColor(mood)}"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/><path d="${MOUTH[moodFace(mood)]}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+const moodUiColor = key => `var(--emotion-${moodInfo(key)?.family==='own'?'own':moodFace(key)},${moodColor(key)})`;
+const moodSvg = (mood, size) => `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" style="color:${moodUiColor(mood)}"><circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="1.4" fill="currentColor"/><circle cx="20" cy="13" r="1.4" fill="currentColor"/><path d="${MOUTH[moodFace(mood)]}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
 const QUICK_MOOD_FALLBACK=[{key:'quick:well',label:'Хорошо',family:'joy'},{key:'quick:calm',label:'Спокойно',family:'trust'},{key:'quick:tired',label:'Устала',family:'sadness'},{key:'quick:anxious',label:'Тревожно',family:'fear'},{key:'quick:heavy',label:'Тяжело',family:'sadness'}];
 const quickMoods=()=>CAT?.quickMoods?.length?CAT.quickMoods:QUICK_MOOD_FALLBACK;
 const moodUI={mode:'families',family:null,own:null,ownOpen:false,precision:false};
@@ -3065,7 +3066,7 @@ function moodOwn(){moodUI.ownOpen=true;renderMoods();$('mood-own').focus();}
 async function quickMood(key){const m=quickMoods().find(m=>m.key===key);if(!m)return;moodUI.family=m.family;moodUI.precision=false;await pickMood(key);}
 function renderMoods(){
   const fams=moodFams(),list=moodList(),cur=moodInfo(S.mood),selected=moodUI.family;
-  const chip=m=>`<button type="button" class="chip mchip${cur?.key===m.key?' on':''}" aria-pressed="${cur?.key===m.key}" style="--c:${moodColor(m.key)}" onclick="pickMood('${m.key}')">${esc(m.label)}</button>`;
+  const chip=m=>`<button type="button" class="chip mchip${cur?.key===m.key?' on':''}" aria-pressed="${cur?.key===m.key}" style="--c:${moodUiColor(m.key)}" onclick="pickMood('${m.key}')">${esc(m.label)}</button>`;
   const familyKeys=Object.keys(fams).filter(f=>f!=='dyad'&&list.some(m=>m.family===f));
   $('t-moods').className='mood-picker';
   $('t-moods').innerHTML=`<p class="practice-question">Как вы сейчас?</p>
@@ -3076,7 +3077,7 @@ function renderMoods(){
     <div id="mood-detail" ${moodUI.precision?'':'hidden'}><div class="segmented" role="tablist" aria-label="Выбор эмоций"><button role="tab" aria-selected="${moodUI.mode==='families'}" onclick="moodMode('families')">Основные эмоции</button><button role="tab" aria-selected="${moodUI.mode==='all'}" onclick="moodMode('all')">Все эмоции</button></div>
     ${moodUI.mode==='families'?`
       <div id="mood-shades" class="mood-shades" ${selected?'':'hidden'}><p>${selected?esc(fams[selected][0]):''} · что ближе?</p><div class="chips flow">${list.filter(m=>m.family===selected).map(chip).join('')}</div></div>
-      <div class="emotion-families">${familyKeys.map(f=>`<button type="button" class="emotion-family${selected===f?' on':''}" style="--c:${fams[f][1]}" aria-expanded="${selected===f}" onclick="moodFamily('${f}')">${moodSvg(f,28)}<span>${esc(fams[f][0])}</span><span aria-hidden="true">⌄</span></button>`).join('')}</div>
+      <div class="emotion-families">${familyKeys.map(f=>`<button type="button" class="emotion-family${selected===f?' on':''}" style="--c:var(--emotion-${f},${fams[f][1]})" aria-expanded="${selected===f}" onclick="moodFamily('${f}')">${moodSvg(f,28)}<span>${esc(fams[f][0])}</span><span aria-hidden="true">⌄</span></button>`).join('')}</div>
       <button class="text-action secondary" type="button" onclick="moodFamily('dyad')">Сочетания эмоций</button><p class="hint">Оттенки по кругу Плутчика</p>`:
       Object.keys(fams).filter(f=>list.some(m=>m.family===f)).map(f=>`<div class="mfam"><span class="fname">${esc(fams[f][0])}</span><div class="chips flow">${list.filter(m=>m.family===f).map(chip).join('')}</div></div>`).join('')}
     </div>`;
