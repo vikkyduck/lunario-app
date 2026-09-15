@@ -71,7 +71,7 @@ export async function checkBrand({browser,base,owner}) {
     await page.emulateMedia({reducedMotion:'reduce'});await ready();await page.waitForTimeout(100);
     const still=await c.evaluate(e=>e.toDataURL());await page.waitForTimeout(1100);assert.equal(await c.evaluate(e=>e.toDataURL()),still);
     await shot('question');await page.evaluate(()=>closeWidget());await page.emulateMedia({reducedMotion:'no-preference'});
-    for(const [width,height] of [[1440,900],[390,844],[320,568],[844,390]]) {
+    for(const [width,height] of [[1440,900],[1050,900],[887,920],[768,1024],[600,900],[390,844],[320,568],[844,390]]) {
       await page.setViewportSize({width,height});await page.evaluate(()=>go('hello'));await ready();
       assert.ok(await page.locator('.heromoon img').evaluate(e=>e.complete&&e.naturalWidth>0));
       assert.ok(await page.locator('.heromoon').evaluate(e=>e.getBoundingClientRect().width<=650));
@@ -80,6 +80,11 @@ export async function checkBrand({browser,base,owner}) {
       assert.equal(await page.locator('#v-hello .gift b').first().textContent(),'Замечать свое настроение');
       assert.ok(await page.locator('#v-hello .cta .btn').evaluate(e=>e.getBoundingClientRect().height>=70));
       assert.ok(await page.locator('#v-hello .gift b').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=22));
+      const layout=await page.evaluate(()=>{
+        const text=document.querySelector('#v-hello .hello-content').getBoundingClientRect(),moon=document.querySelector('#v-hello .heromoon').getBoundingClientRect();
+        return {separate:text.right+24<=moon.left||moon.bottom+24<=text.top,overflow:document.documentElement.scrollWidth>innerWidth+1};
+      });
+      assert.ok(layout.separate,'Welcome moon must not collide with copy or the main action at '+width);assert.equal(layout.overflow,false);
       await shot('welcome-'+width);
     }
     // Exercise both login steps without sending email. Catch the input/button collision from the screenshot.
@@ -101,6 +106,18 @@ export async function checkBrand({browser,base,owner}) {
         assert.ok(await page.locator('#l-box .auth-submit').isVisible());
         await shot('login-'+step+'-'+width);
       }
+    }
+    // Registration has a separate code panel. It must receive the same spacing as returning-user login.
+    for(const [width,height] of [[887,920],[390,844],[320,568],[844,390]]){
+      await page.setViewportSize({width,height});
+      await page.evaluate(async()=>{openForm();obEmail='registration@example.test';await obSendCode();});
+      await page.locator('#o-codebox').waitFor();await ready();
+      const panel=await page.locator('#o-codebox').evaluate(e=>{
+        const input=e.querySelector('input').getBoundingClientRect(),button=e.querySelector('.auth-submit').getBoundingClientRect();
+        return {gap:button.top-input.bottom,border:parseFloat(getComputedStyle(e).borderWidth),overflow:document.documentElement.scrollWidth>innerWidth+1};
+      });
+      assert.ok(panel.gap>=32,'Registration code input and action should be separate');assert.equal(panel.border,0);assert.equal(panel.overflow,false);
+      await shot('registration-code-'+width);
     }
     await page.unroute(base+'/api/auth/request');
     await page.evaluate(()=>go('hello'));await ready();

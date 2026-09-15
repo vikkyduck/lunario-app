@@ -26,7 +26,7 @@
 html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed;--muted:inherit;--line:inherit}
 /* Soft light sits behind the content, including the email/code screens. */
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(235,191,96,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,211,146,.07),transparent 100%)}
-body.hello::before{z-index:1;background:radial-gradient(ellipse 34% 28% at 28% 75%,rgba(240,203,116,.17),transparent 100%),radial-gradient(ellipse 38% 46% at 96% 64%,rgba(234,190,95,.13),transparent 100%)}
+body.hello::before{z-index:0;background:radial-gradient(ellipse 30% 24% at 26% 72%,rgba(255,231,153,.28),rgba(251,207,104,.10) 48%,transparent 100%),radial-gradient(ellipse 36% 42% at 100% 63%,rgba(255,227,145,.21),transparent 100%);mix-blend-mode:screen}
 html[data-theme=light] body.inner::before{opacity:.55}
 body.inner .bg .orb{opacity:.24}body.inner .bg .cloud{opacity:.14}
 body.inner .sky.on{display:block;opacity:.48}body.hello .sky.on{opacity:.72}
@@ -44,10 +44,10 @@ body.inner .wid{border-radius:22px;padding:26px;min-height:158px;gap:12px}
 body.inner .wid b{font-size:17px;font-weight:600}
 body.inner .wid .ico{width:30px;height:30px;background-color:var(--gold-2);filter:drop-shadow(0 0 7px #d8b96b24)}
 body.inner .wid>span.destination-arrow{color:var(--gold-2);opacity:.8}
-body.inner .compact-links{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:22px}
-body.inner .compact-links .wid{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:24px;min-height:96px}
-body.inner .compact-links .wid:last-child{border-bottom:0}
-body.inner .compact-links .wid::before{display:none}
+body.inner .compact-links{gap:14px;background:none;border:0;box-shadow:none;border-radius:0;overflow:visible}
+body.inner .compact-links .wid{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:22px;box-shadow:var(--moon-shadow);padding:24px;min-height:100px}
+body.inner .compact-links .wid:last-child{border-bottom:1px solid transparent}
+body.inner .compact-links .wid::before{display:block}
 body.inner .compact-links .wid .ico{width:26px;height:26px}
 body.inner :is(.btn,.btn.sm){font-weight:600;border-radius:16px}
 html[data-theme] body.inner .btn:not(.ghost){background:var(--moon-control);border:1px solid #f7e3b54d;color:#1c1430;box-shadow:inset 0 1px 0 #fff7df8c,0 6px 22px -12px #e2bd6970}
@@ -174,35 +174,46 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
 @media(hover:hover) and (pointer:fine){
   body.inner :is(.wid,.quick-actions button):hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 14px 30px -20px #dab57670;transform:translateY(-2px)}
   body.inner .wid:hover::before{opacity:1}
-  body.inner .compact-links .wid:hover{background:color-mix(in srgb,var(--gold) 6%,transparent);border-color:var(--line);box-shadow:none;transform:none}
+  body.inner .compact-links .wid:hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 12px 28px -20px #dab57660;transform:translateY(-1px)}
   body.inner :is(.text-action,.back):hover{color:var(--gold-2)}
 }
 @media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-actions button):hover{transform:none}body.inner :is(.wid,.day-focus)::before{background:none}}
 @media(prefers-reduced-transparency:reduce){html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}}
 
-/* The welcome composition keeps the approved copy, with a smaller moon and one lit glass action. */
-body.hello .heromoon{width:clamp(300px,68vw,620px);height:auto;aspect-ratio:1;left:auto;right:-70px;top:50%;transform:translateY(-50%);opacity:.94}
-#v-hello .hello-content{max-width:510px;padding-block:56px}
-#v-hello .gifts{margin-top:0;gap:28px}
+/* A real layout gives the moon its own space at every width, including narrow desktop windows. */
+#v-hello .hello-stage{flex:1;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);align-items:center;gap:clamp(32px,5vw,72px);padding-block:64px}
+#v-hello .hello-content{width:100%;max-width:530px;margin:0;padding:0;min-width:0}
+#v-hello .heromoon{display:block;position:relative;order:2;left:auto;right:auto;top:auto;bottom:auto;transform:none;width:100%;max-width:400px;height:auto;aspect-ratio:1;justify-self:end;opacity:.94}
+#v-hello .heromoon img{filter:drop-shadow(0 0 32px #f2d18d24)}
+#v-hello .gifts{margin:0;gap:32px}
 #v-hello .gift{gap:20px;align-items:flex-start}
-#v-hello .gift .ico{width:28px;height:28px;flex-basis:28px;margin-top:5px;background-color:#f0d79a;filter:drop-shadow(0 0 10px #f0d79a26)}
-#v-hello .cta{margin-top:44px}
-#v-hello .cta .btn{position:relative;isolation:isolate;min-height:76px;padding:20px 30px;gap:22px;font-size:21px;line-height:1.4;border:1px solid rgba(245,242,255,.38);border-radius:26px;color:#f5f2ea;background:radial-gradient(ellipse at 6% 0%,rgba(255,255,255,.21),transparent 70%),linear-gradient(125deg,rgba(199,190,217,.17),rgba(72,61,105,.34) 55%,rgba(168,157,193,.16));box-shadow:inset 0 1px 0 #ffffff59,inset 0 -1px 0 #ffffff12,0 16px 40px -22px #edc67670,0 8px 24px #08061133;backdrop-filter:blur(22px) saturate(1.15);-webkit-backdrop-filter:blur(22px) saturate(1.15);transition:box-shadow .2s,border-color .2s,transform .16s}
-#v-hello .cta .btn:hover{border-color:rgba(245,242,255,.6);box-shadow:inset 0 1px 0 #ffffff80,inset 0 -1px 0 #ffffff20,0 20px 48px -24px #edc67680,0 8px 24px #08061133}
-@media(min-width:900px){body.hello .heromoon{width:clamp(390px,32vw,500px);right:max(36px,calc((100vw - 1180px)/2));top:51%}}
-@media(max-width:599px){body.hello .heromoon{width:320px;right:-120px;top:36%;opacity:.70}.home-moon{align-self:start;margin-top:8px}}
-@media(max-height:600px) and (min-width:600px){body.hello .heromoon{width:330px;right:0}}
-@media(prefers-reduced-motion:reduce){.compact-brand .moon-img{animation:none!important}}
-@media(prefers-reduced-transparency:reduce){#v-hello .cta .btn{background:#302742;backdrop-filter:none;-webkit-backdrop-filter:none}}
-
-#v-hello .gift b{font-size:22px;font-weight:600;color:#f5f2ea;line-height:1.5}
-@media(min-width:900px){#v-hello .gift b{font-size:26px}}
-@media(max-width:599px){
-  #v-hello .hello-content{padding-block:48px}
-  #v-hello .gifts{gap:26px}
-  #v-hello .gift{gap:14px}
-  #v-hello .gift .ico{width:24px;height:24px;flex-basis:24px;margin-top:4px}
-  #v-hello .cta .btn{min-height:70px;padding:19px 24px;font-size:20px;border-radius:24px}
-  body.hello::before{background:radial-gradient(ellipse 80% 28% at 20% 72%,rgba(240,203,116,.15),transparent 100%),radial-gradient(ellipse 68% 44% at 110% 34%,rgba(234,190,95,.1),transparent 100%)}
+#v-hello .gift b{font-size:28px;font-weight:500;color:#f5f2ea;line-height:1.5}
+#v-hello .gift .ico{width:28px;height:28px;flex-basis:28px;margin-top:7px;background-color:#f0d79a;filter:drop-shadow(0 0 10px #f0d79a26)}
+#v-hello .cta{margin-top:48px;position:relative;isolation:isolate}
+#v-hello .cta .btn{position:relative;isolation:isolate;overflow:hidden;min-height:80px;padding:22px 30px;gap:24px;font-size:22px;line-height:1.4;border:1px solid transparent;border-radius:24px;color:#f5f2ea;background:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.035) 45%,rgba(245,242,234,.07));box-shadow:inset 0 1px 0 #ffffff38,inset 0 -1px 0 #08061140,0 18px 42px -24px #f7d37899;backdrop-filter:blur(22px) saturate(1.5) brightness(1.08);-webkit-backdrop-filter:blur(22px) saturate(1.5) brightness(1.08);transition:box-shadow .25s,transform .2s}
+#v-hello .cta .btn>span{position:relative;z-index:1}
+#v-hello .cta .btn::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;background:linear-gradient(125deg,#ffffffb3,rgba(255,255,255,.06) 36%,rgba(255,255,255,.06) 62%,#ffffff59);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#v-hello .cta .btn::after{content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(200px circle at var(--light-x,10%) var(--light-y,0%),#ffffff24,transparent 80%);opacity:.35;transition:opacity .25s}
+@media(hover:hover) and (pointer:fine){#v-hello .cta .btn:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 #ffffff50,0 20px 44px -24px #f7d378b3}#v-hello .cta .btn:hover::after{opacity:1}}
+#v-hello .cta .btn:active{transform:scale(.985)}
+@media(min-width:760px) and (max-width:1050px){
+  #v-hello .hello-stage{grid-template-columns:minmax(0,1fr) minmax(0,.6fr);gap:36px}
+  #v-hello .gift b{font-size:26px}
+  #v-hello .gift{gap:16px}
 }
-@media(max-height:600px){#v-hello .hello-content{padding-block:32px}#v-hello .gifts{gap:20px}#v-hello .cta{margin-top:32px}}
+@media(max-width:759px){
+  #v-hello .hello-stage{grid-template-columns:minmax(0,1fr);gap:28px;align-content:center;padding-block:32px}
+  #v-hello .heromoon{order:-1;width:clamp(140px,43vw,200px);justify-self:end;margin-right:8px}
+  #v-hello .hello-content{max-width:none}
+  #v-hello .gifts{gap:24px}
+  #v-hello .gift{gap:16px}
+  #v-hello .gift b{font-size:24px;line-height:1.45}
+  #v-hello .gift .ico{width:24px;height:24px;flex-basis:24px;margin-top:5px}
+  #v-hello .cta{margin-top:36px}
+  #v-hello .cta .btn{min-height:74px;padding:20px 24px;font-size:21px}
+  body.hello::before{background:radial-gradient(ellipse 90% 25% at 20% 76%,rgba(255,231,153,.25),transparent 100%),radial-gradient(ellipse 70% 32% at 110% 24%,rgba(255,227,145,.16),transparent 100%)}
+}
+@media(max-width:370px){#v-hello .gift b{font-size:22px}#v-hello .gift{gap:14px}#v-hello .cta .btn{font-size:20px;gap:18px}}
+@media(max-height:700px){#v-hello .hello-stage{padding-block:24px}#v-hello .gifts{gap:22px}#v-hello .cta{margin-top:32px}}
+@media(prefers-reduced-motion:reduce){.compact-brand .moon-img{animation:none!important}#v-hello .cta .btn{transition:none}#v-hello .cta .btn::after{display:none}#v-hello .cta .btn:hover{transform:none}}
+@media(prefers-reduced-transparency:reduce){#v-hello .cta .btn{background:#302742;backdrop-filter:none;-webkit-backdrop-filter:none}}

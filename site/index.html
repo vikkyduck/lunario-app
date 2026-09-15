@@ -804,16 +804,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
 </script>
-<link rel="stylesheet" href="/app/experience.css?v=26">
-<link rel="stylesheet" href="/app/moon-glass.css?v=26">
+<link rel="stylesheet" href="/app/experience.css?v=27">
+<link rel="stylesheet" href="/app/moon-glass.css?v=27">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
   <div class="orb orb-1"></div><div class="orb orb-2"></div>
   <div class="cloud cloud-1"></div><div class="cloud cloud-2"></div>
   <canvas class="sky" id="sky"></canvas>
-  <!-- Луна входа — самостоятельное изображение; текущая фаза рисуется внутри приложения. -->
-  <div class="heromoon"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" fetchpriority="high" decoding="async"></div>
 </div>
 <div class="wrap">
   <div class="wordmark compact-brand section-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div>
@@ -824,6 +822,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <h1 class="wordmark hero" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
       <button class="hello-login" id="hello-login" type="button" aria-label="Войти по почте" style="display:none" onclick="openLogin()">Войти</button>
     </header>
+    <div class="hello-stage">
     <div class="hello-content">
       <ul class="gifts">
         <li class="gift"><i class="ico smile" aria-hidden="true"></i><span><b>Замечать свое настроение</b></span></li>
@@ -831,8 +830,10 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
         <li class="gift"><i class="ico question" aria-hidden="true"></i><span><b>Посмотреть на вопрос иначе</b></span></li>
       </ul>
       <div class="cta">
-        <button class="btn" onclick="openForm()">Создать профиль <span aria-hidden="true">→</span></button>
+        <button class="btn welcome-primary" onclick="openForm()"><span>Создать профиль</span><span aria-hidden="true">→</span></button>
       </div>
+    </div>
+    <div class="heromoon" aria-hidden="true"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" fetchpriority="high" decoding="async"></div>
     </div>
     <p class="trust">Записи хранятся в России<br>и видны только вам.</p>
   </section>
@@ -854,8 +855,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
   <section class="view" id="v-onb">
     <button class="back" onclick="go('hello')">← Назад</button>
     <div class="onb-head">
-      <img src="/app/assets/brand/logo-mark.svg" width="44" height="44" alt="" style="filter:drop-shadow(0 6px 26px rgba(217,184,104,.35))">
-      <h1 class="wordmark">Лунарио</h1>
+      <h1 class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></h1>
       <p>Чтобы подсказки были про вас, расскажите немного о себе.</p>
     </div>
     <div class="card sec" id="o-form">
@@ -878,12 +878,12 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="btn" id="o-go">Открыть мой день</button>
       <p class="msg" id="o-msg"></p>
     </div>
-    <div class="card sec" id="o-codebox" style="display:none">
-      <p style="font-size:15px;color:#ded8ee">Код отправлен на <b id="o-codemail"></b></p>
-      <div class="field" style="margin:12px 0 0"><label>Код из письма</label>
+    <div class="card sec auth-flow" id="o-codebox" style="display:none">
+      <p class="auth-sent">Код отправлен на <b id="o-codemail"></b></p>
+      <div class="field"><label>Код из письма</label>
         <input id="o-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
-      <button class="btn" style="margin-top:10px" onclick="obFinish()">Открыть мой день</button>
-      <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="obResend()">Прислать код</button>
+      <button class="btn auth-submit" onclick="obFinish()">Открыть мой день</button>
+      <button class="btn ghost sm auth-secondary" onclick="obResend()">Прислать код</button>
       <p class="msg" id="o-codemsg"></p>
     </div>
     <div class="card sec" id="o-back" style="display:none">
@@ -1247,9 +1247,9 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
 })();
 </script>
 
-<script type="module" src="/app/sky.js?v=26"></script>
+<script type="module" src="/app/sky.js?v=27"></script>
 
-<script src="/app/experience.js?v=26"></script>
+<script src="/app/experience.js?v=27"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const API = '/app/api';
@@ -1292,7 +1292,7 @@ document.addEventListener('pointerdown', (e) => {
 let lightFrame=0, lightTarget=null, lightEvent=null;
 document.addEventListener('pointermove',(e)=>{
   if(e.pointerType==='touch' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.day-focus,.wid,.quick-actions button'); lightEvent=e;
+  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.day-focus,.wid,.quick-actions button,.welcome-primary'); lightEvent=e;
   if(lightFrame) return;
   lightFrame=requestAnimationFrame(()=>{
     if(lightTarget&&lightEvent){const r=lightTarget.getBoundingClientRect();lightTarget.style.setProperty('--light-x',`${lightEvent.clientX-r.left}px`);lightTarget.style.setProperty('--light-y',`${lightEvent.clientY-r.top}px`)}
@@ -1336,6 +1336,7 @@ function obMount(target){
 }
 function openForm(){
   obMount('o-auth'); obStep='idle';
+  $('v-onb').classList.remove('verifying-email');
   $('o-form').style.display=''; $('o-codebox').style.display='none';
   $('o-mailfield').style.display = S.mailReady ? '' : 'none';
   if (S.mailReady && $('o-back') && $('o-back').style.display !== 'none') renderObAuth();
@@ -2018,6 +2019,7 @@ async function obSendCode(){
   try{
     await api('/auth/request',{method:'POST',body:JSON.stringify({email:obEmail})});
     $('o-codemail').textContent=obEmail; $('o-form').style.display='none'; $('o-codebox').style.display=''; if($('o-back')) $('o-back').style.display='none';
+    $('v-onb').classList.add('verifying-email');
     window.scrollTo(0,0); setTimeout(()=>$('o-code').focus(),80); track('login_code_sent');
   }catch(e){
     // код не ушёл — не держим человека на пороге: открываем главную, почту можно привязать в аккаунте
