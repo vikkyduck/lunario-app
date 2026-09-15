@@ -325,7 +325,7 @@ try {
       // Every surviving feature card opens the actual widget pane.
       for(const [view,key] of [['home','card'],['home','mood'],['ask','worry'],['home','day'],['home','tone'],['home','askesis'],['history','wishes'],['home','habits'],['history','gratitude'],['account','natal'],['account','year'],['account','birthnum'],['news','tests'],['account','compat'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','shelves'],['account','support']]) {
         await page.evaluate(v=>go(v),view);
-        await page.locator(`#v-${view} button[onclick="openWidget('${key}')"]`).click();
+        await page.locator(`#v-${view} [data-feature="${key}"]`).click();
         await page.waitForFunction(k=>document.querySelector('#wg-body #w-'+k)!==null,key);
         await page.locator('.wg-x').click();
       }

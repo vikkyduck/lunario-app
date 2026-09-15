@@ -11,6 +11,11 @@ export async function checkFourSections({browser,base,owner}){
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
     assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.trim()),['Сегодня','Свериться','Дневник','Я']);
     assert.equal(await page.locator('#v-home .sqs,#v-home .mini,#v-today,#v-about,#v-around').count(),0,'No obsolete menu or orphan category');
+    const initialDay=(await owner.json('/me')).day;
+    await page.locator('#h-set-question').click();
+    assert.equal(await page.locator('#tone-box .practice-question').innerText(),initialDay.question);
+    assert.equal(await page.locator('#tone-box > .hint').innerText(),initialDay.set.statement);
+    await close();assert.equal(await page.evaluate(()=>document.activeElement.id),'h-set-question');
     const routes={home:['card','day','tone','mood','habits','askesis','lunar','sky'],ask:['worry'],history:['journal','gratitude','wishes','hmood','hentries','week'],account:['natal','year','birthnum','compat','mail','remind','shelves','support','edit','invite'],news:['tests']};
     for(const [view,keys] of Object.entries(routes))for(const key of keys){
       await page.evaluate(v=>go(v),view);

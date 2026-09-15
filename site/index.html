@@ -747,11 +747,12 @@ body.inner{--line:rgba(236,231,249,.09)}
 body.inner .day-focus{background:radial-gradient(260px circle at var(--light-x,20%) var(--light-y,0%),rgba(255,255,255,.11),transparent 80%),linear-gradient(140deg,rgba(64,53,92,.9),rgba(27,24,44,.94));border:1px solid rgba(255,255,255,.17);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 #ffffff20;padding:24px;margin:0;cursor:default}
 .day-focus h2{font-size:22px;line-height:1.45}
 .day-focus .daily-statement{margin:20px 0 16px}
-.day-focus .daily-statement #h-wish{font-size:19px;line-height:1.5;letter-spacing:0;margin:7px 0 0}
+.day-focus .daily-statement #h-wish{font-size:18px;line-height:1.5;letter-spacing:0;margin:7px 0 0}
 .day-focus .practice-progress{font-size:12.5px;margin:16px 0}
 body.inner .quick-actions button{min-height:88px;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(33,29,47,.62);border-color:var(--line);border-radius:16px;font-weight:500;font-size:12px}
 .quick-actions button b{font-weight:500;line-height:1.45}
 .quick-actions .ico{width:22px;height:22px}
+.section-caption{margin-top:8px;font-size:14px;color:var(--muted);line-height:1.5}
 .feature-group,.account-group{margin-top:30px}
 .feature-group>h2,.account-group>h2{font-size:18px;line-height:1.4;font-weight:600}
 .feature-group>.wids,.account-group>.wids{margin-top:12px}
@@ -788,7 +789,7 @@ body.inner .upcoming .wid{opacity:.7;min-height:64px}
 #ln-preview{padding-top:8px}
 #journal-saved{margin-top:20px}
 body.inner .utility-actions .text-action{color:var(--muted)}
-@media(min-width:900px){.today-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(290px,.85fr);gap:32px}.today-side>.feature-group:first-child{margin-top:0}.day-focus .daily-statement #h-wish{font-size:22px}.practice-links{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-summary{max-width:660px}.account-group .compact-links{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}}
+@media(min-width:900px){.today-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(290px,.85fr);gap:32px}.today-side>.feature-group:first-child{margin-top:0}.day-focus .daily-statement #h-wish{font-size:20px}.practice-links{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-summary{max-width:660px}.account-group .compact-links{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}}
 @media(max-width:370px){.day-focus{padding:18px!important}.quick-mood{padding:12px;font-size:14px}.quick-actions{gap:6px}.quick-actions button{padding:12px 5px!important;font-size:11px!important}.practice-links{grid-template-columns:1fr}.app-nav button{font-size:11px}}
 @media(hover:hover) and (pointer:fine){body.inner .wid:hover,.quick-mood:hover{border-color:rgba(217,184,104,.5)}.quick-actions button:hover{border-color:rgba(217,184,104,.4)}}
 
@@ -892,7 +893,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
       <button class="acct" id="h-acct" type="button" onclick="go('account')" aria-label="Я — мой профиль">✦</button></div>
     <div class="today-layout"><div class="today-main">
       <section class="day-focus card" aria-label="Мой день"><h2 id="h-greeting"></h2>
-        <div class="daily-statement"><span class="eyebrow">Установка дня</span><p id="h-wish"></p></div>
+        <div class="daily-statement"><span class="eyebrow">Установка дня</span><p id="h-wish"></p><button class="text-action secondary" id="h-set-question" type="button" onclick="openWidget('tone')">Вопрос к установке <span aria-hidden="true">→</span></button></div>
         <p id="h-progress" class="practice-progress" aria-live="polite"></p>
         <button class="btn" id="h-next" type="button" onclick="continueDay()">Продолжить мой день</button>
       </section>
@@ -909,10 +910,10 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
         <div class="wids compact-links"><button class="wid" data-feature="lunar" type="button" aria-label="Лунный день" onclick="openWidget('lunar')"><i class="ico moon"></i><b id="ar-lunar">Лунный день</b><span id="ar-period"></span></button><button class="wid" data-feature="sky" type="button" aria-label="На небе" onclick="openWidget('sky')"><i class="ico star"></i><b>На небе</b><span>Фазы Луны, затмения, ретроградные планеты</span></button></div></section>
     </div></div><div id="push-invite" hidden></div>
   </section>
-  <section class="view" id="v-ask"><span class="eyebrow">Посмотреть на вопрос иначе</span><h1>Свериться</h1>
+  <section class="view" id="v-ask"><h1>Свериться</h1><p class="section-caption">Карты, руны, вопросы</p>
     <div class="wids question-entry"><button class="wid" data-feature="worry" type="button" aria-label="Разобрать вопрос" onclick="openWidget('worry')"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения и отношение к себе</span></button></div><section class="feature-group"><h2>Выбрать способ</h2><div class="wids">
 <button class="wid" type="button" onclick="openAsk('yesno')"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ на конкретный вопрос, с пояснением</span></button><button class="wid" type="button" onclick="openAsk('rune')"><i class="ico rune"></i><b>Руны</b><span>Одна руна, три руны, крест, четыре стихии</span></button><button class="wid" type="button" onclick="openAsk('spread')"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест — два расклада в день</span></button></div></section></section>
-  <section class="view" id="v-history"><span class="eyebrow">То, что хочется сохранить</span><h1>Дневник</h1>
+  <section class="view" id="v-history"><h1>Дневник</h1><p class="section-caption">Записи, желания и история</p>
     <section class="feature-group"><h2>Мои записи</h2><div class="wids"><button class="wid" data-feature="journal" type="button" aria-label="Дневник" onclick="openWidget('journal')"><i class="ico journal"></i><b>Дневник</b><span>Записи шифруются — видите только вы</span></button><button class="wid" data-feature="gratitude" type="button" aria-label="Дневник благодарности" onclick="openWidget('gratitude')"><i class="ico list"></i><b>Дневник благодарности</b><span data-status="gratitude">Кому и за что я благодарна сегодня?</span></button><button class="wid" data-feature="wishes" type="button" aria-label="Мои желания" onclick="openWidget('wishes')"><i class="ico heart"></i><b>Мои желания</b><span data-status="wishes">Список того, что хочется, с напоминанием</span></button></div></section>
     <section class="feature-group"><h2>История и итоги</h2><div class="wids"><button class="wid" data-feature="hmood" type="button" aria-label="История настроений" onclick="openWidget('hmood')"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button><button class="wid" data-feature="hentries" type="button" aria-label="Мои вопросы и ответы" onclick="openWidget('hentries')"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b></button><button class="wid" data-feature="week" type="button" aria-label="Итоги недели" onclick="openWidget('week')"><i class="ico calendar"></i><b>Итоги недели</b><span>Что повторялось в настроении и вопросах</span></button></div></section></section>
   <section class="view" id="v-news"><button class="back" onclick="go('account')">← Я</button>
@@ -2687,23 +2688,18 @@ function loadReminders(force){
 }
 const remBox = (f, full=false) => `<div class="rem" data-rem="${f}" data-full="${full}"></div>`;
 const remText = (r) => r.freq === 'events' ? 'когда что-то происходит, в ' + r.time : r.time + ' · ' + (r.freq === 'weekly' ? WD_ON[r.weekday - 1] : FREQ_LABEL[r.freq].toLowerCase());
+function remDeviceReady(){
+  return IOS_SHELL ? IOS_BRIDGE>=4 && S.nativePermission==='granted' : PUSH_OK && Notification.permission==='granted' && S.pushOn;
+}
 function remStatus(f, r){
-  if (IOS_SHELL) {
-    if (IOS_BRIDGE < 4) return 'Для проверки уведомлений на этом устройстве обновите приложение';
-    if (S.nativePermission === 'denied') return 'Уведомления выключены в настройках iPhone → Лунарио → Уведомления';
-    if (r.enabled && S.nativePermission!=='granted') return 'Расписание сохранено. Подключите уведомления на этом iPhone';
-    if (S.nativeStates && r.enabled && S.nativeStates[f] === false) return 'На этом телефоне напоминание не включено';
-    return r.enabled ? 'Напоминание включено на телефоне · ' + remText(r) : 'Нажмите переключатель — iPhone спросит разрешение на уведомления';
-  }
-  if (!PUSH_OK) return IS_IOS ? 'На iPhone добавьте Лунарио на экран «Домой» через меню «Поделиться», откройте оттуда и включите уведомления' : 'Этот браузер не поддерживает пуш-уведомления';
-  if (Notification.permission === 'denied') return 'Уведомления заблокированы. Разрешите их в настройках сайта в браузере';
-  if (!S.pushOn) return r.enabled ? 'Расписание сохранено. Подключите уведомления на этом устройстве' : 'При включении браузер спросит разрешение на уведомления';
-  if (!r.enabled) return 'Устройство подключено. Включите уведомления для этой функции';
+  if(!r.enabled)return 'Выключены для этой функции';
+  if(!remDeviceReady())return 'Расписание сохранено. Доставка на это устройство не подключена';
+  if(IOS_SHELL)return S.nativeStates?.[f]===false?'На этом телефоне напоминание не включено':'Напоминание включено на телефоне · '+remText(r);
   return r.nextAt ? 'Следующее напоминание: ' + new Date(r.nextAt).toLocaleString('ru-RU', {weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}) : 'Уведомления включены';
 }
 function paintDeviceStatus(){
   const box=$('rem-device-status');if(!box)return;
-  box.textContent=IOS_SHELL?(S.nativePermission==='granted'?'Уведомления разрешены на этом iPhone':S.nativePermission==='denied'?'Уведомления выключены в настройках iPhone → Лунарио → Уведомления':'При первом включении iPhone спросит разрешение')
+  box.textContent=IOS_SHELL?(IOS_BRIDGE<4?'Обновите приложение, чтобы проверить разрешение на уведомления':S.nativePermission==='granted'?'Уведомления разрешены на этом iPhone':S.nativePermission==='denied'?'Уведомления выключены в настройках iPhone → Лунарио → Уведомления':'При первом включении iPhone спросит разрешение')
     :!PUSH_OK?(IS_IOS?'На iPhone добавьте Лунарио на экран «Домой», откройте оттуда и включите уведомления':'Этот браузер не поддерживает пуш-уведомления')
     :Notification.permission==='denied'?'Уведомления заблокированы. Разрешите их в настройках сайта в браузере'
     :S.pushOn?'Это устройство подключено':'При первом включении браузер спросит разрешение. Если расписание уже включено, подключите это устройство';
@@ -2719,7 +2715,7 @@ function paintRem(f){
     const actions=`<div class="rem-actions">${reconnect?`<button type="button" class="text-action" ${busy?'disabled':''} onclick="remConnect('${f}')">Подключить это устройство</button>`:''}${r.enabled&&(PUSH_OK||IOS_BRIDGE>=4)?`<button type="button" class="text-action" ${busy?'disabled':''} onclick="remTest('${f}')">Отправить пробное</button>`:''}</div>`;
     box.innerHTML=`${full?toggle:''}<button type="button" class="rem-summary text-action" aria-label="${full?'Время и регулярность':esc('Уведомления · '+state+'. Время и регулярность')}" aria-expanded="${edit}" aria-controls="${panel}" onclick="remEdit('${f}')">${full?'Время и регулярность':`<i class="ico bell"></i><span>Уведомления · ${esc(state)}</span>`}<span aria-hidden="true">${edit?'−':'⌄'}</span></button>
       ${full?actions:''}<div id="${panel}" class="rem-body" ${edit?'':'hidden'}>
-        ${full?'':toggle+`<p class="rem-status" role="status">${esc(remStatus(f,r))}</p>`+actions}
+        ${full?'':toggle+`<p class="rem-status" role="status">${esc(remStatus(f,r))}</p>`+(!remDeviceReady()?`<button type="button" class="text-action secondary" onclick="openWidget('remind')">Разрешения уведомлений →</button>`:'')+actions}
         <div class="rem-row"><label for="${panel}-time">Время</label><input id="${panel}-time" aria-label="Время уведомления" type="time" value="${r.time}" onchange="remSave('${f}',{time:this.value})"></div>
         <div class="chips flow" style="margin-top:10px" aria-label="Регулярность">${(f === 'sky' ? ['events','daily','weekdays','weekly'] : ['daily','weekdays','weekly']).map(k => `<button type="button" class="chip${r.freq === k ? ' on' : ''}" aria-pressed="${r.freq===k}" onclick="remSave('${f}',{freq:'${k}'})">${FREQ_LABEL[k]}</button>`).join('')}</div>
         ${r.freq === 'weekly' ? `<div class="chips flow" style="margin-top:8px" aria-label="День недели">${WD_SHORT.map((w,i) => `<button type="button" class="chip${r.weekday === i+1 ? ' on' : ''}" aria-pressed="${r.weekday===i+1}" onclick="remSave('${f}',{weekday:${i+1}})">${w}</button>`).join('')}</div>` : ''}

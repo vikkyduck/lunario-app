@@ -41,6 +41,15 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     await mood.getByRole('switch').click();
     await page.waitForFunction(()=>window.__pushQA.requests===1 && !document.querySelector('#rem-all [data-rem=mood] [role=switch]').disabled);
     assert.equal((await owner.json('/reminders')).items.find(r=>r.feature==='mood').enabled,false,'Denied permission must not enable schedule');
+    assert.match(await page.locator('#rem-device-status').innerText(),/заблокированы/);
+    await page.locator('.wg-x').click();await page.locator('.app-nav [data-nav=home]').click();
+    await page.locator('#v-home [data-feature=card]').click();
+    await page.locator('#wg-tools .rem-summary').click();
+    assert.doesNotMatch(await page.locator('#wg-tools .rem-status').innerText(),/браузер|заблокированы|iPhone/);
+    await page.getByRole('button',{name:'Разрешения уведомлений →',exact:true}).click();
+    await page.locator('#rem-device-status').waitFor();
+    assert.match(await page.locator('#rem-device-status').innerText(),/заблокированы/);
+    assert.equal(await page.evaluate(()=>window.__pushQA.requests),1,'Opening permission help must not request permission again');
     await page.evaluate(()=>window.__pushQA.result='granted');
     await mood.getByRole('switch').click();
     await page.waitForFunction(()=>document.querySelector('#rem-all [data-rem=mood] [role=switch]').getAttribute('aria-checked')==='true');
