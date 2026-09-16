@@ -343,7 +343,7 @@ body.inner .habit-calendar-key{font-size:15px!important;color:var(--muted);margi
    с рядами по 64px и тонкими разделителями; «Управление аккаунтом» — такая же группа. Ряды не «взлетают» при наведении,
    а подсвечиваются; раскрытие «Данных для расчётов» и вход на экран — по общему ритму движения (--t, --sp) ── */
 #v-account>.back{margin:-14px 0 0 -2px;padding:6px 2px;min-height:40px}
-#v-account>.eyebrow{margin:8px 0 4px}
+#v-account>.eyebrow{margin:6px 0 2px}
 body.inner #v-account>h1{margin-bottom:0}
 #v-account .account-layout{margin-top:18px}
 /* профиль */
@@ -369,6 +369,7 @@ body.inner #v-account .profile-detail[open]>p{animation:in var(--t) var(--sp) bo
 /* группы */
 body.inner #v-account .account-group{margin-top:28px}
 body.inner #v-account .account-group>h2{margin:0 0 10px 2px;font-size:18px;line-height:1.3}
+#v-account .profile-block>h2{display:none}
 body.inner #v-account :is(.compact-links,.rows){display:grid;grid-template-columns:1fr;gap:0;margin:0;padding:0;overflow:hidden;border-radius:var(--r-xl);background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow)}
 body.inner #v-account :is(.compact-links .wid,.rowbtn){position:relative;overflow:visible;display:grid;grid-template-columns:22px minmax(0,1fr) 14px;column-gap:14px;row-gap:2px;align-items:center;width:100%;min-height:64px;margin:0;padding:12px 18px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;box-shadow:none;transform:none;color:var(--text);font-size:17px;text-align:left;transition:background-color var(--t-fast) ease}
 body.inner #v-account :is(.compact-links .wid,.rowbtn):last-child{border-bottom:0}
@@ -391,7 +392,13 @@ body.inner #v-account .danger-zone{padding-top:0;border-top:0}
 }
 @media(min-width:900px){
   #v-account .account-group .compact-links,#v-account .rows{grid-template-columns:1fr;column-gap:0;gap:0;margin-top:0}
-  #v-account .account-layout{margin-top:26px}
-  body.inner #v-account .account-settings>.account-group:first-child{margin-top:0}
+  #v-account .account-layout{margin-top:20px}
+  #v-account .profile-block>h2{display:block}
+  body.inner #v-account .account-group{margin-top:0}
 }
 @media(prefers-reduced-motion:reduce){body.inner #v-account .profile-detail>summary::after{transition:none}body.inner #v-account .profile-detail[open]>p{animation:none}}
+@media(min-width:1180px){
+  #v-account .account-layout{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr);gap:28px 28px;grid-template-areas:"profile app side" "manage app side"}
+  #v-account .account-side{display:block;grid-area:side;min-width:0}
+  body.inner #v-account .account-side>.account-group+.account-group{margin-top:28px}
+}
