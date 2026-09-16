@@ -10,11 +10,11 @@ html[data-theme=light] body.inner .sky.on{opacity:.22}
 body.inner .wrap{max-width:1240px}
 body.inner .view>h1,body.inner .practice-header h1{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
 body.inner :is(.feature-group,.account-group)>h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
-body.inner :is(.wid,.quick-actions button,.question-entry .wid,.profile-summary,.wish-card){
+body.inner :is(.wid,.question-entry .wid,.profile-summary,.wish-card){
   background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);
   border:1px solid transparent;box-shadow:var(--moon-shadow);
 }
-body.inner :is(.wid,.quick-actions button){backdrop-filter:none;-webkit-backdrop-filter:none}
+body.inner :is(.wid){backdrop-filter:none;-webkit-backdrop-filter:none}
 body.inner :is(.wid)::before{display:block;opacity:.4;background:radial-gradient(220px circle at var(--glass-x,15%) var(--glass-y,0%),var(--moon-shine),transparent 75%);box-shadow:inset 1px 1px 0 #ffecc617,inset -1px -1px 0 #b59ed113}
 body.inner .wid{border-radius:var(--r-xl);padding:26px;min-height:158px;gap:12px}
 body.inner .wid b{font-size:17px;font-weight:600}
@@ -60,10 +60,6 @@ body.inner .home-intro #h-wish{font-family:Onest,ui-sans-serif,system-ui,sans-se
 body.inner #h-set-question{color:var(--gold-2);font-size:15px;margin-top:14px;gap:12px}
 body.inner #h-set-question span{margin-left:8px}
 .today-layout{position:relative;z-index:1}
-body.inner .quick-actions{gap:16px;margin-top:22px}
-body.inner .quick-actions button{min-height:98px;font-weight:400;padding:15px 10px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:var(--r-l)}
-body.inner .quick-actions button b{font-size:15px;font-weight:400;line-height:1.45}
-body.inner .quick-actions .ico{width:24px;height:24px;background-color:var(--gold-2)}
 body.inner #home-sky .moonline{padding:20px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:var(--r-xl);box-shadow:var(--moon-shadow);gap:14px;margin-bottom:12px}
 body.inner #home-sky .moon-sm{width:50px;height:50px;flex-basis:50px}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:16px;line-height:1.6}
@@ -122,20 +118,18 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   body.inner .wrap{padding-inline:16px}
   .home-intro{grid-template-columns:minmax(0,1fr) 82px;gap:12px}
   body.inner .home-intro #h-wish{font-size:24px}
-  body.inner .quick-actions{grid-template-columns:1fr;gap:10px}
-  body.inner .quick-actions button{min-height:56px}
   body.inner .wid{min-height:135px}
   body.inner .compact-links .wid{min-height:80px}
   body.inner #home-sky .moonline{padding:16px;gap:10px}
   body.inner #home-sky .moon-sm{width:38px;height:38px;flex-basis:38px}
 }
 @media(hover:hover) and (pointer:fine){
-  body.inner :is(.wid,.quick-actions button):hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 14px 30px -20px #dab57670;transform:translateY(-2px)}
+  body.inner :is(.wid):hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 14px 30px -20px #dab57670;transform:translateY(-2px)}
   body.inner .wid:hover::before{opacity:1}
   body.inner .compact-links .wid:hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 12px 28px -20px #dab57660;transform:translateY(-2px)}
   body.inner :is(.text-action,.back):hover{color:var(--gold-2)}
 }
-@media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-actions button):hover{transform:none}body.inner :is(.wid)::before{background:none}}
+@media(prefers-reduced-motion:reduce){body.inner :is(.wid):hover{transform:none}body.inner :is(.wid)::before{background:none}}
 @media(prefers-reduced-transparency:reduce){html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}}
 
 /* A real layout gives the moon its own space at every width, including narrow desktop windows. */
@@ -180,7 +174,6 @@ body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.field labe
 body.inner :is(.field label,.text-action,.back,.rem-summary,.segmented button,.emotion-family,.mchip,.chip,.observation>summary,.practice-create>summary){font-size:17px;font-weight:600;color:var(--text)}
 body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.ln-text,.histbody p,textarea){font-weight:500}
 body.inner .wpane :is(.hint,.msg){font-size:17px!important}
-body.inner .quick-actions button b{font-size:17px;font-weight:600}
 body.inner #h-set-question{font-size:18px;font-weight:600}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:18px;color:var(--text)}
 body.inner #home-sky .moonline b{font-weight:600}
@@ -196,7 +189,7 @@ body:not(.inner) #v-hello .trust{color:var(--muted);font-weight:500}
 
 /* Glass follows the brief without backdrop filtering: a highlight over a dense base.
    Edge reflections and shadows provide depth; only toast and widget scrim may blur. */
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
   isolation:isolate;overflow:hidden;
   background:var(--glass-bg);
   backdrop-filter:none;
@@ -207,30 +200,30 @@ body:not(.inner) #v-hello .trust{color:var(--muted);font-weight:500}
   transition:transform var(--t) var(--sp),box-shadow var(--t) ease;
 }
 /* Explicit containing blocks keep reflections inside controls without backdrop-filter. */
-body.inner :is(.rem-summary,#home-sky .moonline,.wg-x,.quick-actions button){position:relative}
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
+body.inner :is(.rem-summary,#home-sky .moonline,.wg-x){position:relative}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;
   background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),rgba(255,255,255,.75) 0deg,rgba(244,223,168,.55) 40deg,rgba(255,255,255,.08) 110deg,rgba(255,255,255,.05) 220deg,rgba(244,223,168,.35) 300deg,rgba(255,255,255,.75) 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude;
   pointer-events:none;opacity:1;box-shadow:none;transform:none;animation:none;
 }
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
   content:'';display:block;position:absolute;inset:-40%;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(circle at var(--glass-x) var(--glass-y),rgba(255,255,255,.28) 0%,rgba(244,223,168,.14) 18%,transparent 46%);
   opacity:0;transition:opacity var(--t-slow) ease;transform:none;animation:none;
 }
 @media(hover:hover) and (pointer:fine){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):hover{
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .rem-summary):hover{
     transform:translateY(-2px);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.18),0 18px 44px -14px rgba(217,184,104,.4);
   }
 }
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.98)}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .rem-summary):active{transform:scale(.98)}
 /* Daylight glass: a dense light base, white bevel and a violet shadow.
    Diary cards share the material but stay still while reading. */
-html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
+html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
   isolation:isolate;
   background:var(--moon-panel);background-clip:padding-box;background-color:var(--glass-base);
   border:1px solid rgba(255,255,255,.75);
@@ -239,13 +232,13 @@ html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-s
   --glass-x:30%;--glass-y:0%;--glass-edge:0;
 }
 html[data-theme=light] body.inner :is(.timeline-entry,.timeline-empty,.profile-summary,.wish-card){position:relative;overflow:hidden}
-html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{
+html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:2px;z-index:-1;pointer-events:none;
   background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),#fff 0deg,#ffffffa6 55deg,#ffffff0a 120deg,#2a215033 210deg,#ffffff66 285deg,#fff 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
   opacity:1;box-shadow:none;transform:none;animation:none;
 }
-html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
+html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(300px circle at var(--glass-x) var(--glass-y),#ffffff85,transparent 72%);
   opacity:.28;transition:opacity var(--t) ease;transform:none;animation:none;
@@ -265,23 +258,23 @@ html[data-theme=light] body.inner .danger-zone .warn{color:var(--text);backgroun
 html[data-theme=light] body.inner .bar{background:#2a215014}
 html[data-theme=light] body.inner .bar i{background:linear-gradient(90deg,#2a2150,#8272b4)}
 @media(hover:hover) and (pointer:fine){
-  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.profile-summary,.wish-card):hover::after{opacity:.72}
-  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.rem-summary):hover{box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #2a21501c,0 18px 36px -18px #2a215057}
+  html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.profile-summary,.wish-card):hover::after{opacity:.72}
+  html[data-theme=light] body.inner :is(.wid,.rem-summary):hover{box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #2a21501c,0 18px 36px -18px #2a215057}
   html[data-theme=light] body.inner :is(.text-action,.back):hover{color:var(--text)}
 }
 @media(prefers-reduced-motion:reduce){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary){transition:none}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):is(:hover,:active){transform:none}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{display:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .rem-summary){transition:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .rem-summary):is(:hover,:active){transform:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{display:none}
 }
 @media(prefers-reduced-transparency:reduce){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 @media(prefers-reduced-motion:reduce){
-  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{display:none}
+  html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{display:none}
 }
 @media(prefers-reduced-transparency:reduce){
-  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+  html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 /* The account status dot lives outside the avatar and must not be clipped by the glass. */
 html[data-theme] body.inner #h-acct{overflow:visible}

@@ -74,7 +74,7 @@ export async function checkDesign({browser,base,owner}){
     assert.ok(await page.locator('#o-form .field label').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=15));await shot('onboarding');
     await page.evaluate(()=>go('hello'));await ready();await fit('welcome');assert.ok(await page.locator('.heromoon img').evaluate(e=>e.complete&&e.naturalWidth>0));await shot('welcome');
     await page.evaluate(()=>openLogin());await ready();await fit('email login');await shot('login');
-    await page.evaluate(()=>go('home'));await page.emulateMedia({reducedMotion:'reduce'});await page.locator('[data-feature=habits]').hover();assert.equal(await page.locator('[data-feature=habits]').evaluate(e=>getComputedStyle(e).transform),'none');
+    await page.evaluate(()=>go('history'));await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#v-history [data-feature=habits]').hover();assert.equal(await page.locator('[data-feature=habits]').evaluate(e=>getComputedStyle(e).transform),'none');
     assert.deepEqual(errors,[]);
     if(folder)await writeFile(join(folder,'design-coverage.json'),JSON.stringify({coverage,errors},null,2));
     console.log('PASS: '+coverage.length+' design screens in both themes; associated labels, no horizontal overflow, short settings, editable askesis date, support draft/caret across refresh and failure, all original destinations, reduced motion.');

@@ -15,8 +15,6 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "toggleTool-a0": function (event) { toggleTool(this.dataset.a0) },
   "previewTool-a0": function (event) { previewTool(this.dataset.a0) },
   "openWidget-mood": function (event) { openWidget('mood') },
-  "go-history-openWidget-journal": function (event) { go('history');openWidget('journal') },
-  "go-ask-openWidget-worry": function (event) { go('ask');openWidget('worry') },
   "openWidget-habits": function (event) { openWidget('habits') },
   "openWidget-askesis": function (event) { openWidget('askesis') },
   "openWidget-card": function (event) { openWidget('card') },

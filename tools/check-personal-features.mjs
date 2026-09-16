@@ -123,13 +123,13 @@ try {
   assert.equal((await other.json('/preferences')).preferences.theme,'dark');
   for(const ritual of [[],['tone'],['tone','tone'],['tone','unknown'],['card','mood','tone','journal']])assert.equal((await owner.raw('/preferences','POST',{theme:'dark',ritual})).status,400);
   /* Инструменты: каталог отдаёт список со стартовым набором; выбор хранится в настройках, чужие ключи отбрасываются, не-массив — ошибка */
-  const catTools=(await (await fetch(base+'/api/catalog')).json()).tools;assert.ok(Array.isArray(catTools)&&catTools.some(t=>t.key==='lunar'&&t.start)&&catTools.some(t=>t.key==='askesis'&&!t.start),'tools catalog with a start set');
+  const catTools=(await (await fetch(base+'/api/catalog')).json()).tools;assert.ok(Array.isArray(catTools)&&catTools.some(t=>t.key==='gratitude'&&t.start)&&catTools.some(t=>t.key==='askesis'&&!t.start)&&catTools.every(t=>t.section==='history'),'tools catalog: diary only, with a start set');
   assert.equal((await owner.json('/preferences')).preferences.tools,undefined,'no choice yet — client shows the start set');
-  await owner.json('/preferences','POST',{...prefs,tools:['askesis','nope','askesis','lunar']});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','lunar']);
-  await owner.json('/preferences','POST',{...prefs,topics:[]});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','lunar'],'saving other preferences keeps the tools');
-  assert.equal((await owner.raw('/preferences','POST',{...prefs,tools:'lunar'})).status,400);
+  await owner.json('/preferences','POST',{...prefs,tools:['askesis','nope','askesis','wishes']});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','wishes']);
+  await owner.json('/preferences','POST',{...prefs,topics:[]});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','wishes'],'saving other preferences keeps the tools');
+  assert.equal((await owner.raw('/preferences','POST',{...prefs,tools:'wishes'})).status,400);
   await owner.json('/preferences','POST',{...prefs,tools:[]});assert.deepEqual((await owner.json('/preferences')).preferences.tools,[]);
-  await owner.json('/preferences','POST',{...prefs,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']});   /* дальше UI-сценарии открывают плитки с главной */
+  await owner.json('/preferences','POST',{...prefs,tools:['gratitude','habits','askesis','wishes','hmood']});   /* дальше UI-сценарии открывают плитки с главной */
   const wishesBefore=(await owner.json('/wishes')).items.length;
   assert.equal((await owner.raw('/wishes','POST',{text:'Неверное фото',photo:'not-an-image'})).status,400);
   assert.equal((await owner.json('/wishes')).items.length,wishesBefore,'No orphan wish when its photo is invalid');
@@ -634,7 +634,7 @@ try {
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
       const [name, value] = owner.cookie.split('=');
       await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, secure: false, sameSite: 'Lax' }]);
-      { const pr=(await owner.json('/preferences')).preferences; await owner.json('/preferences','POST',{...pr,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']}); }   /* сценарии ниже открывают все плитки */
+      { const pr=(await owner.json('/preferences')).preferences; await owner.json('/preferences','POST',{...pr,tools:['gratitude','habits','askesis','wishes','hmood']}); }   /* сценарии ниже открывают все плитки */
       const page = await ctx.newPage(); const errors = [];const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
       page.on('pageerror', e => errors.push(e.message));
       await page.goto(base + '/', { waitUntil: 'domcontentloaded' });
@@ -676,7 +676,7 @@ try {
       await page.getByRole('button', { name: /^Дневник привычек/ }).click();
       await page.locator('#habit-list').getByText('Тест: прогулка вечером', { exact: true }).waitFor();
       await close();
-      await page.locator('#v-home').getByRole('button', { name: /^Взять аскезу/ }).click();
+      await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: /^Взять аскезу/ }).click();
       await page.locator('#as-box').getByText('Тест: без вечернего скроллинга', { exact: true }).waitFor();
       assert.equal(await page.locator(`#as-note-${askesis.id}`).inputValue(), 'Тест: вечер прошёл спокойно');
       await close();await page.reload(); await page.waitForSelector('#v-home.on');
@@ -686,7 +686,7 @@ try {
       /* пробелы нормализуем: в подписи вкладки неразрывный пробел, чтобы «с собой» не разрывалось на узком экране */
       assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(t=>t.replace(/\s+/g,' ').trim()), ['Сегодня','Свериться с собой','Дневник','Обо мне']);
       await page.locator('.app-nav').getByRole('button',{name:'Сегодня',exact:true}).click();
-      await page.locator('#v-home').getByRole('button',{name:/^Отметить настроение/}).click();
+      await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button',{name:/^Отметить настроение/}).click();
       await page.getByRole('button',{name:'Все эмоции',exact:true}).click();
       assert.equal(await page.locator('#t-moods .mchip').count(),32);
       await page.locator('#t-moods .mchip').filter({hasText:/^восхищение$/}).click();
@@ -714,7 +714,7 @@ try {
       await page.locator('#h-acct').click();await page.locator('#v-account [data-feature=news]').click();
       await page.locator('#news-box .wid').first().waitFor();
       // A root card edit is immediately reflected in News, with the same action.
-      await page.evaluate(()=>{const root=document.querySelector('#v-home [data-feature=askesis]');root.querySelector('b').textContent='Взять аскезу · проверка';root.setAttribute('aria-label','Взять аскезу · проверка');return paintNews();});
+      await page.evaluate(()=>{const root=document.querySelector('#v-history [data-feature=askesis]');root.querySelector('b').textContent='Взять аскезу · проверка';root.setAttribute('aria-label','Взять аскезу · проверка');return paintNews();});
       await page.locator('#news-box').getByRole('button',{name:/^Взять аскезу · проверка/}).click();
       await page.locator('#as-box').getByText('Тест: без вечернего скроллинга',{exact:true}).waitFor();
       await close();
@@ -728,7 +728,7 @@ try {
         }
       }
       // Every surviving feature card opens the actual widget pane.
-      for(const [view,key] of [['home','card'],['home','mood'],['ask','worry'],['home','day'],['home','tone'],['home','askesis'],['history','wishes'],['home','habits'],['history','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','compat'],['about','tests'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','support']]) {
+      for(const [view,key] of [['home','card'],['history','mood'],['ask','worry'],['home','day'],['home','tone'],['history','askesis'],['history','wishes'],['history','habits'],['history','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','compat'],['about','tests'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['ask','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','support']]) {
         await page.evaluate(v=>go(v),view);
         await page.locator(`#v-${view} [data-feature="${key}"]`).click();
         await page.waitForFunction(k=>document.querySelector(':is(#wg-body,#practice-body) #w-'+k)!==null,key);

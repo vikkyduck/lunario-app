@@ -62,13 +62,13 @@ function toolsVisible(){
 }
 function applyTools(){
   const vis=toolsVisible(),keys=new Set(toolCatalog().map(t=>t.key));
-  document.querySelectorAll('#v-home [data-feature],#v-history [data-feature]').forEach(el=>{const k=el.dataset.feature;if(keys.has(k))el.hidden=!vis.has(k);});
+  document.querySelectorAll('#v-history [data-feature]').forEach(el=>{const k=el.dataset.feature;if(keys.has(k))el.hidden=!vis.has(k);});
   /* группа без единой видимой плитки прячется вместе с заголовком */
-  document.querySelectorAll('#v-home .feature-group,#v-history .diary-library').forEach(g=>{const tiles=[...g.querySelectorAll('[data-feature]')].filter(el=>keys.has(el.dataset.feature));if(tiles.length)g.hidden=tiles.every(el=>el.hidden);});
+  document.querySelectorAll('#v-history .feature-group,#v-history .diary-library').forEach(g=>{const tiles=[...g.querySelectorAll('[data-feature]')];if(tiles.some(el=>keys.has(el.dataset.feature)))g.hidden=tiles.every(el=>el.hidden);});   /* «Итоги недели» и другие постоянные плитки держат группу открытой */
 }
 function paintTools(){
   const box=$('tools-box');if(!box)return;
-  const vis=toolsVisible(),sections=[['today','Сегодня'],['history','Дневник']];
+  const vis=toolsVisible(),sections=[['history','Дневник']];
   box.innerHTML=sections.map(([sec,name])=>{const items=toolCatalog().filter(t=>t.section===sec);if(!items.length)return '';
     return `<section class="tools-group"><h3>${name}</h3>${items.map(t=>`<div class="tool-card${vis.has(t.key)?' on':''}"><b>${esc(t.title)}</b><p>${esc(t.text)}</p><div class="tool-actions"><button data-on="click:previewTool-a0" data-a0="${t.key}" class="text-action secondary" type="button">Посмотреть</button><button data-on="click:toggleTool-a0" data-a0="${t.key}" class="text-action" type="button" aria-pressed="${vis.has(t.key)}">${vis.has(t.key)?'Убрать':'Добавить'}</button></div></div>`).join('')}</section>`;}).join('');
 }

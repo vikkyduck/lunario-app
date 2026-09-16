@@ -33,7 +33,7 @@ export async function checkRestoration({browser,base,owner}){
     await page.locator('#hub-go').click();await page.locator('#hub-res .card').first().waitFor();
     assert.ok((await owner.json('/entries?kind=questions')).items.some(i=>i.question===edited));
     await shot('topics-and-questions');await close();
-    await page.evaluate(()=>go('history'));await page.locator('[data-feature=hentries]').click();await page.locator('#m-entries .hist').first().waitFor();
+    await page.evaluate(()=>go('ask'));await page.locator('[data-feature=hentries]').click();await page.locator('#m-entries .hist').first().waitFor();
     assert.ok((await page.locator('#m-entries').innerText()).includes(q));
     assert.ok((await page.locator('#m-entries').innerText()).includes(edited));
     assert.ok(!(await page.locator('#m-entries').innerText()).includes('Карта дня'));

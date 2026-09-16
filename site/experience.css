@@ -5,7 +5,6 @@ body.inner :is(.card,.item,.wid){background:var(--surface);border-color:var(--li
 body.inner :is(input,textarea,select){background:var(--field);color:var(--text);border-color:var(--line);font-size:17px}
 body.inner :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
 body.inner textarea{font-size:18px;line-height:1.65;min-height:160px;resize:none;overflow:hidden}
-body.inner .quick-actions button{background:var(--surface);font-size:15px!important;min-height:100px}
 body.inner .wid b{font-size:17px;line-height:1.4}
 body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.histbody p){font-size:var(--read-size)!important;line-height:1.7;color:var(--text)}
 body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.wid>span,.field label,.text-action,.rem-summary,.segmented button,.emotion-family,.mchip,.mood-own-row label,.hb-rule,.chip,.btn.sm,.observation>summary,.practice-create>summary){font-size:16px;line-height:1.5}
@@ -33,7 +32,8 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 #practice-tools .rem-body{display:none}
 #w-journal>.eyebrow{display:none}
 #w-journal #m-journal{margin-top:40px}
-/* Каталог инструментов: карточки по разделам, у каждой «Посмотреть» и «Добавить/Убрать» */
+/* Каталог инструментов: карточки по разделам, у каждой «Посмотреть» и «Добавить/Убрать»; вход — обычная плитка внизу Дневника */
+.tools-link{margin-top:28px}
 .tools-group{margin-top:22px}.tools-group:first-child{margin-top:16px}
 .tools-group h3{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
 .tool-card{padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);margin-top:8px}
@@ -43,9 +43,6 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 .tool-actions{display:flex;justify-content:space-between;gap:12px;margin-top:4px}
 .tool-actions .text-action{min-height:40px;padding:6px 0;font-size:15px}
 .tool-card.on .tool-actions .text-action:not(.secondary){color:var(--muted)}
-.tools-link{margin:22px 0 0;text-align:center}
-.tools-link .text-action{color:var(--muted);font-size:15px}
-.tools-link .ico{width:18px;height:18px;background-color:currentColor}
 .diary-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:24px 0}
 .diary-actions .text-action{padding:8px}
 .diary-actions .btn{width:auto}
@@ -156,9 +153,6 @@ body.inner .compact-links .wid>span:empty{display:none}
 body.inner .compact-links .wid .dot{position:absolute;right:43px;top:22px}
 
 /* Today: one focal card, then quick actions and personal practices. */
-body.inner .quick-actions{margin-top:14px;gap:10px}
-body.inner .quick-actions button{min-height:102px;padding:14px 8px;border:0;background:var(--accent-soft);border-radius:var(--r-l)}
-body.inner .quick-actions .ico{width:24px;height:24px}
 body.inner #home-sky .moonline{padding:20px 0;margin-bottom:12px;align-items:flex-start;gap:14px}
 body.inner #home-sky .moon-sm{margin-top:4px}
 body.inner #home-sky .lunar-arrow{align-self:center}
@@ -277,7 +271,7 @@ body:not(.inner) #v-onb #o-back{background:none;border:0;padding-inline:0}
 body:not(.inner) #v-hello .trust{font-size:14px}
 body:not(.inner):not(.hello) .bg{display:none}
 @media(hover:hover) and (pointer:fine){
-  body.inner :is(.wid,.quick-actions button,.quick-mood,.emotion-family):hover{background:var(--hover);border-color:var(--control-border);transform:translateY(-2px)}
+  body.inner :is(.wid,.quick-mood,.emotion-family):hover{background:var(--hover);border-color:var(--control-border);transform:translateY(-2px)}
   body.inner .compact-links .wid:hover{transform:none}
   body.inner :is(.btn,.text-action,.back):hover{filter:brightness(1.04)}
   body.inner .text-action:hover{color:var(--text)}
@@ -303,9 +297,6 @@ body:not(.inner):not(.hello) .bg{display:none}
 }
 @media(max-width:370px){
   body.inner .wrap{padding-inline:16px}
-  body.inner .quick-actions{grid-template-columns:1fr;gap:8px}
-  body.inner .quick-actions button{min-height:56px;padding:12px 16px!important;flex-direction:row;justify-content:flex-start;gap:14px}
-  body.inner .quick-actions button b{font-size:15px}
   body.inner .wid{padding:18px}
   body.inner .wg{padding-inline:16px}
   body.inner .wg-head h2{font-size:23px}
@@ -314,7 +305,7 @@ body:not(.inner):not(.hello) .bg{display:none}
   body.inner .hb{padding:14px;gap:10px}
   body.inner .profile-summary{padding:20px}
 }
-@media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-actions button,.quick-mood,.emotion-family):hover{transform:none}}
+@media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-mood,.emotion-family):hover{transform:none}}
 @media(prefers-reduced-transparency:reduce){body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
 
 /* Each form step has its own space; the shared auth flow also serves the profile. */

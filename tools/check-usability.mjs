@@ -14,8 +14,8 @@ export async function checkUsabilityUI({browser,base,owner}){
   const capture=async label=>{if(process.env.LUNARIO_QA_SHOTS){await page.waitForFunction(()=>!document.getAnimations().some(a=>a.playState==='running'&&a.effect?.target?.classList?.contains('command-enter')));await mkdir(process.env.LUNARIO_QA_SHOTS,{recursive:true});await page.screenshot({path:join(process.env.LUNARIO_QA_SHOTS,label+'.png'),fullPage:false});}};
   try{
     /* плитки инструментов на главной видны только по выбору — включаем все, сценарий открывает их по названию */
-    { const pr=(await owner.json('/preferences')).preferences; await owner.json('/preferences','POST',{...pr,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']}); }
-    await page.goto(base+'/');await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&!document.querySelector('#v-home [data-feature=habits]').hidden);
+    { const pr=(await owner.json('/preferences')).preferences; await owner.json('/preferences','POST',{...pr,tools:['gratitude','habits','askesis','wishes','hmood']}); }
+    await page.goto(base+'/');await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&!document.querySelector('#v-history [data-feature=habits]').hidden);
     const data=await owner.json('/me');
     assert.equal(await page.locator('#h-wish').innerText(),data.day.set.text);
     assert.ok((await page.locator('#h-wish').innerText()).endsWith(', '+data.user.name));
@@ -113,7 +113,7 @@ export async function checkUsabilityUI({browser,base,owner}){
     await page.locator('.wg-x').focus();await page.keyboard.press('Shift+Tab');
     assert.ok(await page.evaluate(()=>document.querySelector('#wg').contains(document.activeElement)));
     await close();
-    await page.getByRole('button',{name:'Дневник привычек',exact:true}).click();
+    await page.evaluate(()=>go('history'));await page.locator('#v-history').getByRole('button',{name:'Дневник привычек',exact:true}).click();
     await close();
     assert.equal(await page.evaluate(()=>document.activeElement.getAttribute('aria-label')),'Дневник привычек');
 

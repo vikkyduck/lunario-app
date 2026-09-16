@@ -24,7 +24,7 @@ function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on')
 /* Строка состояния под формой: пустая, подсказка или ошибка — одно место вместо className/classList в каждой форме */
 const showMsg=(el,text='',err=false)=>{ if(!el)return; el.className='msg'+(err?' err':''); el.textContent=text; };
 const LOADING='<p class="hint">Загружаем…</p>', LOAD_ERR='<p class="msg err">Не получилось загрузить.</p>';
-const COMMAND_SELECTOR = '.wid,.quick-actions button,.app-nav button,.moonline';
+const COMMAND_SELECTOR = '.wid,.app-nav button,.moonline';
 function revealCommands(root=document){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   root.querySelectorAll(COMMAND_SELECTOR).forEach((el) => {
@@ -42,7 +42,7 @@ document.addEventListener('pointerdown', (e) => {
 let lightFrame=0, lightTarget=null, lightEvent=null;
 document.addEventListener('pointermove',(e)=>{
   if(e.pointerType==='touch' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.wid,.moonline,.quick-actions button,.welcome-primary,.timeline-entry,.timeline-empty,.profile-summary,.wish-card'); lightEvent=e;
+  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.wid,.moonline,.welcome-primary,.timeline-entry,.timeline-empty,.profile-summary,.wish-card'); lightEvent=e;
   if(lightFrame) return;
   lightFrame=requestAnimationFrame(()=>{
     if(lightTarget&&lightEvent){
@@ -107,14 +107,14 @@ function openLogin(){
 /* ── реестр функций: раздел и название панели, где живёт (view), полноэкранная практика (page), ключ напоминания (reminder).
    Отсюда — заголовки, строка уведомлений под заголовком, полный экран и переход по ?open= из уведомления. ── */
 const FEATURES = {
-  card:{sec:'Ваш ритуал',title:'Карта дня',view:'home',reminder:'card'}, mood:{sec:'Сегодня',title:'Настроение дня',view:'home',reminder:'mood'},
-  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'home'},
-  habits:{sec:'Сегодня',title:'Дневник привычек',view:'home',page:true,reminder:'habits'}, askesis:{sec:'Сегодня',title:'Взять аскезу',view:'home',page:true,reminder:'askesis'},
-  lunar:{sec:'Луна и небо',title:'Лунный день',view:'home',reminder:'lunar'}, sky:{sec:'Луна и небо',title:'На небе',view:'home',reminder:'sky'},
+  card:{sec:'Ваш ритуал',title:'Карта дня',view:'home',reminder:'card'}, mood:{sec:'Дневник',title:'Настроение дня',view:'history',reminder:'mood'},
+  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'history'},
+  habits:{sec:'Дневник',title:'Дневник привычек',view:'history',page:true,reminder:'habits'}, askesis:{sec:'Дневник',title:'Взять аскезу',view:'history',page:true,reminder:'askesis'},
+  lunar:{sec:'Луна и планеты',title:'Лунный день',view:'home',reminder:'lunar'}, sky:{sec:'Луна и планеты',title:'Влияние планет на сегодня',view:'home',reminder:'sky'},
   worry:{sec:'Свериться с собой',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
   journal:{sec:'Дневник',title:'Дневник',view:'history',page:true}, gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history',reminder:'gratitude'},
   wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history',reminder:'moodreport'},
-  hentries:{sec:'Дневник',title:'Мои вопросы и ответы',view:'history'}, week:{sec:'Дневник',title:'Итоги недели',view:'history'}, timelineEntry:{sec:'Дневник',title:'Запись',view:'history'},
+  hentries:{sec:'Свериться с собой',title:'Мои вопросы и ответы',view:'ask'}, week:{sec:'Дневник',title:'Итоги недели',view:'history'}, timelineEntry:{sec:'Дневник',title:'Запись',view:'history'},
   natal:{sec:'Обо мне',title:'Натальная карта',view:'about'}, year:{sec:'Обо мне',title:'Личный год',view:'about'}, birthnum:{sec:'Обо мне',title:'Нумерология',view:'about'}, compat:{sec:'Обо мне',title:'Совместимость',view:'about'},
   tests:{sec:'Обо мне',title:'Тесты',view:'about'},
   remind:{sec:'Аккаунт',title:'Уведомления',view:'account'}, mail:{sec:'Аккаунт',title:'Вход по почте',view:'account'}, edit:{sec:'Аккаунт',title:'Изменить мои данные',view:'account'},
