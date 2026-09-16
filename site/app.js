@@ -767,7 +767,7 @@ async function installApp(){ if(!deferred) return; track('installed'); deferred.
    а не из копий справочников в коде — источник у контента один, content.mjs. */
 const catalogFrom = (c) => ({ cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
   news: c.news || [], quickMoods: c.quickMoods || [], moods: c.moods || [], moodFamilies: c.moodFamilies || {}, legacyMoods: c.legacyMoods || {},
-  worries: c.worries || [], awards: c.awards || [], tools: c.tools || [], reminderTexts: c.reminderTexts || {} });
+  awards: c.awards || [], tools: c.tools || [], reminderTexts: c.reminderTexts || {} });
 let CAT = null, catPromise = null;
 try { const cached = localStorage.getItem('lun_catalog'); if (cached) CAT = catalogFrom(JSON.parse(cached)); } catch (e) {}
 function loadCatalog(){
@@ -1793,40 +1793,29 @@ function pcSmiley(ctx, mood, cx, cy, size){
   ctx.stroke(new Path2D(MOUTH[moodFace(mood)])); ctx.restore();
 }
 
-/* ══════════ «Что вас сегодня беспокоит?»: свой запрос или плашка, потом — как получить ответ ══════════ */
-const HUB_TOPICS=[['Отношения','Что мне сейчас важно в отношениях?'],['Работа и деньги','Что мне важно понять о работе или деньгах?'],['Решение','Какое решение мне сейчас подходит?'],['Тревога','Что вызывает мою тревогу и как я могу себя поддержать?'],['Отношение к себе','Как я сейчас отношусь к себе и что хочу изменить?'],['Другое','']];
+/* ══════════ «Разобрать вопрос»: тема или свой вопрос своими словами, инструмент ответа выбирается тут же ══════════ */
+const HUB_TOPICS=[['Отношения','Что мне сейчас важно в отношениях?'],['Работа и деньги','Что мне важно понять о работе или деньгах?'],['Решение','Какое решение мне сейчас подходит?'],['Тревога','Что стоит за моей тревогой сейчас?'],['Отношение к себе','Что мне сейчас важно услышать о себе?'],['Другое','Что мне важно понять сейчас?']];
 const HUB_OPTS=[['rune','rune','Руна','one'],['runes3','rune','Три руны','three'],['spread','tarot','Три карты','three'],['fork','tarot','Выбор','fork']];
 const hubDraft={text:'',topic:null,kind:'rune'};
+const hubReady=(q)=>q.length>=10&&/\s/.test(q);   /* тот же порог, что на сервере: ответ приходит на конкретный вопрос, а не на слово */
 function renderHub(){
   const w=$('t-worry');if(!w)return;
   w.innerHTML=`<div class="card hubq"><p>Темы</p><div class="chips flow" id="hub-chips">${HUB_TOPICS.map(([label],i)=>`<button data-on="click:hubTopic-a0" data-a0="${i}" type="button" class="chip${hubDraft.topic===i?' on':''}" aria-pressed="${hubDraft.topic===i}">${label}</button>`).join('')}</div>
-    <div class="field"><label for="hub-q">Что именно сейчас не даёт покоя?</label><textarea data-on="input:hubDraft-text-value-hubCheck" id="hub-q" maxlength="300" placeholder="Опишите своими словами…">${esc(hubDraft.text)}</textarea></div>
-    <section class="hub-questions"><h3>Вопросы</h3><div class="chips flow" id="hub-questions"></div></section>
-    <div id="hub-opts" hidden><span class="eyebrow">Как получить ответ</span><div class="chips flow">${HUB_OPTS.map(([key,,label])=>`<button data-on="click:hubMethod-a0" data-a0="${key}" type="button" class="chip${hubDraft.kind===key?' on':''}" data-kind="${key}" aria-pressed="${hubDraft.kind===key}">${label}</button>`).join('')}</div>
+    <div class="field"><label for="hub-q">Что именно сейчас не даёт покоя?</label><textarea data-on="input:hubDraft-text-value-hubCheck" id="hub-q" maxlength="300" placeholder="Опишите своими словами…">${esc(hubDraft.text)}</textarea><p class="hint" id="hub-hint" role="status"></p></div>
+    <div id="hub-opts"><span class="eyebrow">Как получить ответ</span><div class="chips flow">${HUB_OPTS.map(([key,,label])=>`<button data-on="click:hubMethod-a0" data-a0="${key}" type="button" class="chip${hubDraft.kind===key?' on':''}" data-kind="${key}" aria-pressed="${hubDraft.kind===key}">${label}</button>`).join('')}</div>
     <button data-on="click:hubAsk" type="button" class="btn" id="hub-go">Получить ответ</button></div></div><div id="hub-res" hidden></div>`;
-  hubCheck();loadHubQuestions();
-}
-function loadHubQuestions(){
-  if(CAT){renderHubQuestions();return;}
-  $('hub-questions').innerHTML='<p class="hint">Загружаем вопросы…</p>';
-  loadCatalog().then(renderHubQuestions).catch(()=>{const box=$('hub-questions');if(box)box.innerHTML='<button data-on="click:loadHubQuestions" type="button" class="text-action">Загрузить вопросы</button>';});
-}
-function renderHubQuestions(){
-  const box=$('hub-questions');if(!box)return;
-  box.innerHTML=(CAT?.worries||[]).map(text=>`<button data-on="click:hubPick-this" type="button" class="chip">${esc(text)}</button>`).join('');
-}
-function hubPick(button){
-  hubDraft.text=button.textContent;$('hub-q').value=hubDraft.text;hubCheck();growTextarea($('hub-q'));$('hub-q').focus();
+  hubCheck();
 }
 function hubTopic(index){
   const previous=HUB_TOPICS[hubDraft.topic]?.[1];
-  if(!hubDraft.text.trim()||hubDraft.text===previous)hubDraft.text=HUB_TOPICS[index][1];
+  if(!hubReady(hubDraft.text.trim())||hubDraft.text===previous)hubDraft.text=HUB_TOPICS[index][1];   /* пустое или слишком короткое своё — заменяем вопросом темы */
   hubDraft.topic=index;renderHub();$('hub-q').focus();
 }
 function hubMethod(kind){hubDraft.kind=kind;document.querySelectorAll('#hub-opts .chip').forEach(b=>{const on=b.dataset.kind===kind;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
-function hubCheck(){const v=$('hub-q').value.trim();$('hub-opts').hidden=!(v.length>=10&&/\s/.test(v));}
+/* инструменты видны всегда; пока вопрос короче нескольких слов — кнопка ждёт и подсказывает, что дописать */
+function hubCheck(){const v=$('hub-q').value.trim(),ok=hubReady(v);$('hub-go').disabled=!ok;$('hub-hint').textContent=ok||!v?'':'Допишите вопрос в несколько слов — ответ приходит на конкретный, а не на общий';}
 async function hubAsk(){
-  if(hubAsk.busy)return;const q=$('hub-q').value.trim();if(q.length<10||!(/\s/.test(q)))return;
+  if(hubAsk.busy)return;const q=$('hub-q').value.trim();if(!hubReady(q)){hubCheck();return;}
   const out=$('hub-res'),button=$('hub-go');hubAsk.busy=true;button.disabled=true;button.textContent='Получаем ответ…';out.hidden=false;out.innerHTML='<p class="msg">Смотрим…</p>';
   const opt=HUB_OPTS.find(o=>o[0]===hubDraft.kind);track('worry_pick',hubDraft.kind);
   try{await runAsk(opt[1]==='rune'?'rune':'spread',q,out,null,opt[3]);out.scrollIntoView({behavior:'smooth',block:'start'});}

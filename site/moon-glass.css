@@ -281,9 +281,6 @@ html[data-theme] body.inner #h-acct{overflow:visible}
 html[data-theme] body.inner #h-acct::after{inset:0;clip-path:circle(50%)}
 
 /* Restored prompts stay readable; history separates questions from daily cards. */
-body.inner .hub-questions{margin:28px 0}
-body.inner .hub-questions h3{margin-bottom:14px;font-size:18px}
-body.inner #hub-questions .chip{max-width:100%;min-width:0;text-align:left;font-size:17px;line-height:1.6;white-space:normal;overflow-wrap:anywhere}
 body.inner .card-question{margin:28px 0;padding:0}
 body.inner .card-question h3{color:var(--gold-2);font-size:18px;margin-bottom:10px}
 body.inner .entries-tabs{margin:0 0 24px;display:flex;flex-wrap:wrap;gap:6px;background:none}

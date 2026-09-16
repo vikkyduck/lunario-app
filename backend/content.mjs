@@ -367,8 +367,6 @@ const ASKESIS_SUPPORT_FALLBACK = ['Вы держитесь — и это уже 
   'Сила не шумит — она продолжает. Как вы сегодня.'];
 const AWARDS_FALLBACK = [[30, 'Молодая луна', 'Тридцать дней подряд. Привычка родилась — теперь ей есть на что опереться.'], [60, 'Растущая луна', 'Два месяца без пропуска. Это уже не усилие, а часть вашего дня.'],
   [90, 'Почти полная', 'Девяносто дней. Так рождается характер — тихо и каждый день.'], [180, 'Полнолуние', 'Полгода. Привычка стала вашей — как чистить зубы, только важнее.'], [365, 'Солнце', 'Год без пропуска. Это уже не привычка, а вы.']];
-const WORRIES_FALLBACK = ['Я не чувствую себя желанной', 'Как снизить тревогу во время беременности?', 'Силы на открытие своего бизнеса', 'Практики для принятия себя и своей внешности',
-  'Как поднять свою самоценность', 'Как выйти из грусти от потери', 'Беспокоит бессонница', 'Как перестать бояться идти своим путём'];
 
 /* ── Установки дня: запасной набор на случай отсутствия файла ── */
 const SETS_FALLBACK = [
@@ -571,7 +569,6 @@ function build() {
   r.ASKESIS_SUPPORT = lines('поддержка-аскезы.txt') || ASKESIS_SUPPORT_FALLBACK;
   const aw = rows('награды.txt', 3);
   r.AWARDS = aw ? aw.map((c) => [num(c[0], 0), c[1], c[2]]).filter((a) => a[0] > 0) : AWARDS_FALLBACK;
-  r.WORRIES = lines('запросы.txt') || WORRIES_FALLBACK;
   /* Тексты неба: тип | ключ | … — в объект по типам; чего нет в файле, то возьмёт sky.mjs из своих запасных */
   const sk = rows('небо.txt', 3) || [];
   const sky = { phase: {}, eclipse: {}, retro: {}, season: {} };
@@ -621,7 +618,6 @@ export const MOOD_FAMILIES = new Proxy({}, { get: (_, k) => Reflect.get(data.MOO
 export const REMINDER_TEXTS = new Proxy({}, { get: (_, k) => Reflect.get(data.REMINDER_TEXTS, k) });
 export const ASKESIS_SUPPORT = new Proxy([], { get: (_, k) => Reflect.get(data.ASKESIS_SUPPORT, k) });
 export const AWARDS = new Proxy([], { get: (_, k) => Reflect.get(data.AWARDS, k) });
-export const WORRIES = new Proxy([], { get: (_, k) => Reflect.get(data.WORRIES, k) });
 export const SKY = new Proxy({}, { get: (_, k) => Reflect.get(data.SKY, k) });
 export const NEWS = new Proxy([], { get: (_, k) => Reflect.get(data.NEWS, k) });
 export const ASKESIS_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.ASKESIS_IDEAS, k) });

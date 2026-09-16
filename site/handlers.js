@@ -129,8 +129,6 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "hubDraft-text-value-hubCheck": function (event) { hubDraft.text=this.value;hubCheck() },
   "hubMethod-a0": function (event) { hubMethod(this.dataset.a0) },
   "hubAsk": function (event) { hubAsk() },
-  "loadHubQuestions": function (event) { loadHubQuestions() },
-  "hubPick-this": function (event) { hubPick(this) },
   "toneDraft-value-growTextarea-this": function (event) { toneDraft=this.value;growTextarea(this) },
   "saveAnswer": function (event) { saveAnswer() },
   "editGratitude-a0": function (event) { editGratitude(JSON.parse(this.dataset.a0)) },
