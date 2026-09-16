@@ -36,7 +36,9 @@ import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
 import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, askesisNativePlan, skyNativePlan, previewNotification } from './reminders.mjs';
 import { CLIENT_EVENTS } from './events.mjs';
-import { clearHistory, deleteAccount } from './account-data.mjs';
+import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs';
+import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
+import { createReportRunner } from './report-runner.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -55,82 +57,10 @@ const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replac
 const {seal, open:open_} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
-db.exec(`
-  PRAGMA journal_mode = WAL;
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at TEXT NOT NULL,
-    last_seen TEXT NOT NULL,
-    name TEXT DEFAULT '', birth TEXT DEFAULT '', birth_time TEXT DEFAULT '', city TEXT DEFAULT '',
-    email TEXT DEFAULT '',
-    consent_version TEXT DEFAULT '', consent_ts TEXT DEFAULT '',
-    streak INTEGER DEFAULT 0, streak_date TEXT DEFAULT '',
-    onboarded INTEGER DEFAULT 0
-  );
-  CREATE TABLE IF NOT EXISTS sessions (
-    token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
-    created_at TEXT NOT NULL, last_seen TEXT NOT NULL, ua TEXT DEFAULT ''
-  );
-  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
-  CREATE TABLE IF NOT EXISTS login_codes (
-    email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL, attempts INTEGER DEFAULT 0, sent INTEGER DEFAULT 1
-  );
-  CREATE TABLE IF NOT EXISTS entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-    ts TEXT NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL,
-    question TEXT DEFAULT '', title TEXT DEFAULT '', body TEXT DEFAULT ''
-  );
-  CREATE INDEX IF NOT EXISTS idx_entries_user ON entries (user_id, id DESC);
-  CREATE TABLE IF NOT EXISTS moods (
-    user_id INTEGER NOT NULL, day TEXT NOT NULL, mood TEXT NOT NULL,
-    PRIMARY KEY (user_id, day)
-  );
-  CREATE TABLE IF NOT EXISTS journal (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-    ts TEXT NOT NULL, day TEXT NOT NULL, text TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS wishes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-    ts TEXT NOT NULL, text TEXT NOT NULL, done INTEGER DEFAULT 0, done_ts TEXT DEFAULT ''
-  );
-  /* Дневник привычек: привычка и отметки по дням */
-  CREATE TABLE IF NOT EXISTS habits (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT NOT NULL,
-    created_at TEXT NOT NULL, archived INTEGER DEFAULT 0
-  );
-  CREATE TABLE IF NOT EXISTS habit_marks (habit_id INTEGER NOT NULL, day TEXT NOT NULL, PRIMARY KEY (habit_id, day));
-  /* Аскеза: обещание себе на срок, отметки по дням с парой слов */
-  CREATE TABLE IF NOT EXISTS askesis (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT NOT NULL, days INTEGER NOT NULL,
-    started TEXT NOT NULL, status TEXT DEFAULT 'active', finished_at TEXT DEFAULT ''
-  );
-  CREATE TABLE IF NOT EXISTS askesis_days (askesis_id INTEGER NOT NULL, day TEXT NOT NULL, kept INTEGER DEFAULT 1, note TEXT DEFAULT '', PRIMARY KEY (askesis_id, day));
-  /* Награды за непрерывные ежедневные привычки: 30, 60, 90, 180, 365 дней — каждая показывается один раз */
-  CREATE TABLE IF NOT EXISTS habit_awards (habit_id INTEGER NOT NULL, days INTEGER NOT NULL, ts TEXT NOT NULL, PRIMARY KEY (habit_id, days));
-  /* Установка дня: какая выпала человеку в какой день — чтобы за год не повторяться */
-  CREATE TABLE IF NOT EXISTS daily_sets (user_id INTEGER NOT NULL, day TEXT NOT NULL, idx INTEGER NOT NULL, PRIMARY KEY (user_id, day));
-  CREATE TABLE IF NOT EXISTS usage (
-    user_id INTEGER NOT NULL, day TEXT NOT NULL, spreads INTEGER DEFAULT 0,
-    PRIMARY KEY (user_id, day)
-  );
-  /* События продукта. Текстов вопросов здесь нет и быть не должно —
-     только факт, тип и когорта, чтобы понимать поведение, не читая личное. */
-  CREATE TABLE IF NOT EXISTS events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts TEXT NOT NULL, day TEXT NOT NULL,
-    user_id INTEGER NOT NULL,
-    type TEXT NOT NULL, detail TEXT DEFAULT '',
-    age_band TEXT DEFAULT ''
-  );
-  CREATE INDEX IF NOT EXISTS idx_events_day ON events (day, type);
-  /* Кому слать напоминание про карту дня. */
-  CREATE TABLE IF NOT EXISTS push_subs (
-    endpoint TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
-    created_at TEXT NOT NULL, last_ok TEXT DEFAULT ''
-  );
-  /* Интерес к тому, чего ещё нет: подписка, эксперт, безлимит, артефакты. */
-`);
+/* Схема и её история — в schema.mjs: шаги по номерам, каждый в своей транзакции;
+   порт слушается только после того, как миграции прошли и обязательные колонки на месте */
+migrate(db);
+verifySchema(db);
 
 const wishList = (userId) => db.prepare("SELECT id, text, done, ts, photo <> '' AS hasPhoto, photo_ts FROM wishes WHERE user_id=? ORDER BY done, id DESC").all(userId)
   .map((r) => ({ id: r.id, text: open_(r.text), done: r.done, ts: r.ts, photo: !!r.hasPhoto, photoTs: r.photo_ts || '' }));
@@ -146,81 +76,13 @@ function sendDataUrl(res, dataUrl) {
   return res.end(buf);
 }
 
-/* Приглашения: свой код у каждого и запись, кто кого привёл. */
-{
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (!cols.includes('ref_code')) db.exec("ALTER TABLE users ADD COLUMN ref_code TEXT DEFAULT ''");
-  if (!cols.includes('invited_by')) db.exec('ALTER TABLE users ADD COLUMN invited_by INTEGER');
-  if (!cols.includes('bonus_until')) db.exec("ALTER TABLE users ADD COLUMN bonus_until TEXT DEFAULT ''");
-}
-
-/* Дневник: вид записи (благодарность, ответ на вопрос дня) и заголовок; аскеза — до даты, а не на число дней;
-   привычки — со своей регулярностью; фото у желаний и у аккаунта */
-{
-  const add = (table, col, def) => { const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name); if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); };
-  add('journal', 'kind', "TEXT DEFAULT ''"); add('journal', 'title', "TEXT DEFAULT ''");
-  add('askesis', 'until', "TEXT DEFAULT ''");
-  db.exec("UPDATE askesis SET until = date(started, '+' || (days - 1) || ' days') WHERE until = ''");
-  add('habits', 'rule', "TEXT DEFAULT 'daily'"); add('habits', 'rule_text', "TEXT DEFAULT ''");
-  add('wishes', 'photo', "TEXT DEFAULT ''"); add('wishes', 'photo_ts', "TEXT DEFAULT ''");
-  add('users', 'photo', "TEXT DEFAULT ''"); add('users', 'photo_ts', "TEXT DEFAULT ''");
-}
-
-/* История хранит не только текст, но и коды выпавших карт и рун — по ним расклад открывается заново */
-{
-  const cols = db.prepare('PRAGMA table_info(entries)').all().map((c) => c.name);
-  if (!cols.includes('data')) db.exec("ALTER TABLE entries ADD COLUMN data TEXT DEFAULT ''");
-}
-
-/* Координаты нужны натальной карте — добавляем к уже созданным базам */
-{
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  for (const [col, def] of [['lat', 'REAL'], ['lon', 'REAL'], ['tz', "TEXT DEFAULT ''"], ['city_region', "TEXT DEFAULT ''"]])
-    if (!cols.includes(col)) db.exec(`ALTER TABLE users ADD COLUMN ${col} ${def}`);
-}
-
-/* Раньше кука была самим аккаунтом — переносим её в сессии, чтобы один
-   аккаунт мог открываться на нескольких устройствах. Данные не теряются. */
-{
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (cols.includes('token_hash')) {
-    const moved = db.prepare(`INSERT OR IGNORE INTO sessions (token_hash, user_id, created_at, last_seen)
-      SELECT token_hash, id, created_at, last_seen FROM users WHERE token_hash <> ''`).run();
-    if (moved.changes) console.log(`перенесено сессий из старых аккаунтов: ${moved.changes}`);
-    // UNIQUE на token_hash не даёт завести второй анонимный профиль — пересобираем таблицу.
-    // Все остальные колонки (в том числе добавленные выше миграциями) переезжают как есть — иначе они бы пропали.
-    const info = db.prepare('PRAGMA table_info(users)').all().filter((c) => c.name !== 'token_hash');
-    const base = new Set(['id', 'created_at', 'last_seen', 'name', 'birth', 'birth_time', 'city', 'email', 'consent_version', 'consent_ts', 'streak', 'streak_date', 'onboarded']);
-    db.exec('BEGIN');
-    db.exec(`CREATE TABLE users_new (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, last_seen TEXT NOT NULL,
-      name TEXT DEFAULT '', birth TEXT DEFAULT '', birth_time TEXT DEFAULT '', city TEXT DEFAULT '',
-      email TEXT DEFAULT '', consent_version TEXT DEFAULT '', consent_ts TEXT DEFAULT '',
-      streak INTEGER DEFAULT 0, streak_date TEXT DEFAULT '', onboarded INTEGER DEFAULT 0)`);
-    for (const c of info) if (!base.has(c.name)) db.exec(`ALTER TABLE users_new ADD COLUMN ${c.name} ${c.type || 'TEXT'}${c.dflt_value !== null ? ' DEFAULT ' + c.dflt_value : ''}`);
-    const keep = info.map((c) => c.name).join(', ');
-    db.exec(`INSERT INTO users_new (${keep}) SELECT ${keep} FROM users`);
-    db.exec('DROP TABLE users');
-    db.exec('ALTER TABLE users_new RENAME TO users');
-    db.exec('COMMIT');
-    console.log('таблица users пересобрана без token_hash');
-  }
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email <> \'\'');
-}
-
-if (!db.prepare('PRAGMA table_info(users)').all().some(c=>c.name==='preferences')) db.exec("ALTER TABLE users ADD COLUMN preferences TEXT DEFAULT ''");
-/* Индексы по человеку: лента, желания, привычки, аскезы и события ищутся по user_id, а не полным просмотром */
-db.exec(`CREATE INDEX IF NOT EXISTS idx_events_user ON events (user_id, day, type);
-  CREATE INDEX IF NOT EXISTS idx_journal_user ON journal (user_id, id);
-  CREATE INDEX IF NOT EXISTS idx_journal_user_day ON journal (user_id, day);
-  CREATE INDEX IF NOT EXISTS idx_wishes_user ON wishes (user_id, id);
-  CREATE INDEX IF NOT EXISTS idx_habits_user ON habits (user_id);
-  CREATE INDEX IF NOT EXISTS idx_askesis_user ON askesis (user_id);`);
 const {habitList, askesisList} = createPractices(db, open_);
 initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
-initCabinet(db);   /* таблицы кабинетов и колонка email_at — после миграций users */
+initCabinet(db);   /* таблицы кабинетов; колонки users ведёт schema.mjs */
 initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
+/* Отчёты и дашборд кабинета — в отдельном потоке: SQLite синхронна, и один отчёт не должен задерживать запросы приложения */
+const Reports = createReportRunner({ dataDir: DATA_DIR, inline: { overview, report } });
 
 /* ── утилиты ── */
 const today = () => dayIn();                    // YYYY-MM-DD по Москве
@@ -299,7 +161,10 @@ if (mailReady()) {
 } else console.log('SMTP: не настроен — вход по почте скрыт');
 const mailLive = () => smtpOk;
 
-const codeRate = new Map();
+const codeRate = new Map(), codeRateEmail = new Map(), codeRateAll = { n: 0, t: 0 }, verifyRate = new Map(), anonRate = new Map();
+/* Сколько анонимных аккаунтов заводим с одного адреса за окно и сколько записей принимаем от одного аккаунта:
+   людям этого хватает с запасом, а скрипту не даёт раздуть базу. ANON_RATE — для проверок. */
+const ANON_RATE = Number(process.env.ANON_RATE || 30), DAILY_WRITES = 100, WISHES_MAX = 300;
 const RATE_WINDOW_MS = 10 * 60000;
 function allowRate(map, key, max) {
   const now = Date.now();
@@ -309,9 +174,15 @@ function allowRate(map, key, max) {
   if (map.size > 5000) for (const [k, r] of map) if (now - r.t > RATE_WINDOW_MS) map.delete(k);
   return rec.n <= max;
 }
+/* Адрес клиента для лимитов. За nginx (слушаем 127.0.0.1) настоящий адрес — ПОСЛЕДНИЙ в X-Forwarded-For: его дописывает
+   сам nginx (proxy_add_x_forwarded_for), а первые элементы мог прислать клиент, чтобы обойти лимит одним заголовком.
+   Без прокси (прямое подключение не с loopback) заголовку не верим вовсе. */
+const LOOPBACK = /^(::1|127\.\d+\.\d+\.\d+|::ffff:127\.\d+\.\d+\.\d+)$/;
 function clientIp(req) {
+  const peer = req.socket.remoteAddress || '';
   const xff = req.headers['x-forwarded-for'];
-  return xff ? String(xff).split(',')[0].trim() : (req.socket.remoteAddress || '');
+  if (xff && LOOPBACK.test(peer)) { const last = String(xff).split(',').pop().trim(); if (last) return last; }
+  return peer;
 }
 
 /* ── астро/числа ── */
@@ -421,6 +292,7 @@ function skyCached(tz) {
   return skyMemo.get(key);
 }
 const testRate = new Map();
+const PUSH_DEVICES = 10;   /* сколько ячеек уведомлений держим у одного аккаунта */
 const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : String(k); } });
 const moodTone = (k) => { const m = C.moodInfo(k); return m ? m.tone : '0'; };
 /* Неделя по отметкам настроения — для «Итогов недели» и отчёта по настроениям */
@@ -449,13 +321,16 @@ function weekSummary(u) {
 const validEndDate = (value, today) => ISO_DAY.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value && value >= today;
 
 /* ── пользователь ── */
-/* Фото — картинка до 300 КБ; в объект аккаунта берём только признак, саму картинку читает /api/photo */
-const USER_COLS = "*, (photo <> '') AS photo";
+/* Фото — картинка до 300 КБ; в объект аккаунта берём только признак, саму картинку читает /api/photo.
+   Колонки перечислены явно (после всех миграций), чтобы SELECT не поднимал и не декодировал фото на каждом запросе */
+const USER_COLS = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name).filter((c) => c !== 'photo').join(', ') + ", (photo <> '') AS photo";
 const userById = (id) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id);
 const userByEmail = (email) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`).get(email);
 const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').get(id) || {}).photo || '';
-/* Сессия живёт год с выдачи и полгода без входа; пользование отмечаем не чаще раза в 10 минут */
+/* Сессия живёт год с выдачи и полгода без входа; у сотрудников (доступ к кабинету) — 90 дней и 30 без входа;
+   пользование отмечаем не чаще раза в 10 минут */
 const SESSION_MAX_MS = 365 * 864e5, SESSION_IDLE_MS = 180 * 864e5, SEEN_STEP_MS = 10 * 60000;
+const STAFF_MAX_MS = 90 * 864e5, STAFF_IDLE_MS = 30 * 864e5;
 function parseCookies(req) {
   const out = {};
   for (const p of String(req.headers.cookie || '').split(';')) {
@@ -479,15 +354,18 @@ function getUser(req, res, create = true) {
   if (tok) {
     const h = sha(tok), sess = db.prepare('SELECT user_id, created_at, last_seen FROM sessions WHERE token_hash = ?').get(h);
     if (sess) {
-      const now = Date.now();
-      if (now - Date.parse(sess.created_at) > SESSION_MAX_MS || now - Date.parse(sess.last_seen) > SESSION_IDLE_MS) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(h);
-      else {
-        const u = userById(sess.user_id);
-        if (u) {
-          if (now - Date.parse(sess.last_seen) > SEEN_STEP_MS) db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), h);
-          if (now - Date.parse(u.last_seen) > SEEN_STEP_MS) db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
-          return u;
-        }
+      const now = Date.now(), age = now - Date.parse(sess.created_at), idle = now - Date.parse(sess.last_seen);
+      const u = userById(sess.user_id);
+      /* Порог у сотрудников короче. Проверку роли (запрос к staff) делаем только когда она способна изменить исход —
+         сессия уже старше сотруднического порога, но ещё в пределах пользовательского; свежие сессии её не касаются. */
+      const overStaff = age > STAFF_MAX_MS || idle > STAFF_IDLE_MS;
+      const overUser = age > SESSION_MAX_MS || idle > SESSION_IDLE_MS;
+      const expired = overUser || (overStaff && u && u.email && rolesFor(u.email).length);
+      if (expired) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(h);
+      else if (u) {
+        if (idle > SEEN_STEP_MS) db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), h);
+        if (now - Date.parse(u.last_seen) > SEEN_STEP_MS) db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
+        return u;
       }
     }
   }
@@ -517,21 +395,26 @@ const publicUser = (u) => ({
   roles: rolesFor(u.email),   /* сотрудники после входа попадают в кабинет */
 });
 
+/* Тело больше max — не читаем дальше, но соединение не рвём: сначала человеку уходит 413 (см. catch внизу), потом сокет закрывается */
 function readBody(req, max = 32768) {
   return new Promise((resolve, reject) => {
-    let size = 0; const chunks = [];
-    req.on('data', (c) => { size += c.length; if (size > max) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
-    req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { reject(new Error('bad_json')); } });
-    req.on('error', reject);
+    let size = 0, done = false; const chunks = [];
+    req.on('data', (c) => { if (done) return; size += c.length; if (size > max) { done = true; chunks.length = 0; req.pause(); reject(new Error('too_big')); } else chunks.push(c); });
+    req.on('end', () => { if (done) return; done = true; try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { reject(new Error('bad_json')); } });
+    req.on('error', (e) => { if (!done) { done = true; reject(e); } });
   });
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
+/* Страницам — защита от встраивания в чужой сайт (кликджекинг), от подмены <base> и плагинов; статике — nosniff.
+   Инлайн-скрипты и обработчики в index.html делают полный CSP невозможным без переписывания фронтенда. */
+const HTML_HEADERS = { 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'", 'Referrer-Policy': 'strict-origin-when-cross-origin' };
 function serveStatic(res, rel, cacheSec = 3600, headOnly = false, extra = {}) {
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const file = join(SITE_DIR, safe);
   if (!file.startsWith(normalize(SITE_DIR)) || !existsSync(file)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Не найдено'); }
-  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache', ...extra });
+  const type = MIME[extname(file)] || 'application/octet-stream';
+  res.writeHead(200, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache', ...(type.startsWith('text/html') ? HTML_HEADERS : {}), ...extra });
   res.end(headOnly ? undefined : readFileSync(file));
 }
 /* Видимость для ИИ-агентов: заголовок Link со ссылками на карту сайта, политику, каталог API и описание (RFC 8288);
@@ -558,15 +441,28 @@ function natalFor(u) {
   return chart;
 }
 const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalFor, MOOD_RU, nowISO });
-/* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку */
-const SHELF_TOUCH = new Set(['/api/profile', '/api/card', '/api/ask', '/api/spread', '/api/mood', '/api/journal', '/api/wishes', '/api/habits', '/api/askesis', '/api/compat', '/api/data', '/api/preferences']);
-/* Серия действий подряд (отметки привычек) пересобирает полки один раз, а не на каждое; «Мои данные» дожидаются отложенной сборки */
+/* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку; у каждого маршрута — только те полки,
+   которых он касается: анкета меняет «Обо мне» (с натальной картой) и «Мой день», карта дня и вопросы — день и «Истории»,
+   настроение, дневник, желания и практики — только «Мой день» */
+const SHELF_TOUCH = {
+  '/api/profile': ['about', 'day'], '/api/preferences': ['about'], '/api/data': ['about', 'day', 'history'],
+  '/api/card': ['day', 'history'], '/api/ask': ['day', 'history'], '/api/spread': ['day', 'history'],
+  '/api/mood': ['day'], '/api/journal': ['day'], '/api/wishes': ['day'], '/api/habits': ['day'], '/api/askesis': ['day'],
+};
+/* Серия действий подряд (отметки привычек) пересобирает полки один раз, а не на каждое, полки копятся;
+   «Мои данные» дожидаются отложенной сборки */
 const shelfTimers = new Map();
-function scheduleShelves(uid, d) {
-  clearTimeout(shelfTimers.get(uid));
-  shelfTimers.set(uid, setTimeout(() => { shelfTimers.delete(uid); Shelves.refresh(uid, d); }, 500));
+function scheduleShelves(uid, d, shelves) {
+  const prev = shelfTimers.get(uid);
+  if (prev) clearTimeout(prev.timer);
+  const only = [...new Set([...(prev ? prev.only : []), ...shelves])];
+  shelfTimers.set(uid, { only, timer: setTimeout(() => { shelfTimers.delete(uid); Shelves.refresh(uid, d, only); }, 500) });
 }
-function flushShelves(uid, d) { if (shelfTimers.has(uid)) { clearTimeout(shelfTimers.get(uid)); shelfTimers.delete(uid); Shelves.refresh(uid, d); } }
+function flushShelves(uid, d) { const p = shelfTimers.get(uid); if (p) { clearTimeout(p.timer); shelfTimers.delete(uid); Shelves.refresh(uid, d, p.only); } }
+/* Заброшенные анонимные аккаунты (без почты, записей и захода 90 дней) убираются раз в сутки — правило в account-data.mjs */
+const sweep = () => { try { const n = sweepAbandoned(db); if (n) console.log(`Аккаунты: убрано заброшенных анонимных — ${n}`); } catch (e) { console.log('Аккаунты: уборка не прошла —', e.message); } };
+setTimeout(sweep, 60000).unref();
+setInterval(sweep, 24 * 3600 * 1000).unref();
 /* У тех, кто пришёл раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
 setTimeout(() => {
   const ids = db.prepare('SELECT id FROM users WHERE onboarded = 1 AND id NOT IN (SELECT user_id FROM shelves)').all().map((r) => r.id);
@@ -584,7 +480,7 @@ const server = createServer(async (req, res) => {
     if (p.startsWith(BASE)) p = p.slice(BASE.length) || '/';
     if (p === '' ) p = '/';
 
-    if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app' });
+    if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app', schema: SCHEMA_VERSION });
 
     /* Каталог карт и рун: тексты, картинки, расклады. Личного здесь нет, поэтому кэшируется на 10 минут —
        правки в content/ доедут до людей не позже. */
@@ -608,14 +504,19 @@ const server = createServer(async (req, res) => {
 
     /* ── API ── */
     if (p.startsWith('/api/')) {
-      /* Анонимный аккаунт заводится только там, где начинается работа; остальным без сессии — 401, а не новый пользователь */
-      const u = getUser(req, res, p === '/api/me' || p === '/api/auth/request');
+      /* Анонимный аккаунт заводится только там, где начинается работа, и не чаще ANON_RATE с адреса за окно;
+         остальным без сессии — 401, а не новый пользователь */
+      let u = getUser(req, res, false);
+      if (!u && (p === '/api/me' || p === '/api/auth/request')) {
+        if (!allowRate(anonRate, clientIp(req), ANON_RATE)) return json(res, 429, { ok: false, error: 'too_often' });
+        u = getUser(req, res, true);
+      }
       const d = today();
       if (!u) {
         if (p === '/api/cabinet/me') { const cfg = getConfig(); return json(res, 200, { email: '', name: '', roles: [], isAdmin: false, mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom }); }
         return json(res, 401, { ok: false, error: 'no_session' });
       }
-      if (req.method !== 'GET' && SHELF_TOUCH.has(p)) { const uid = u.id; res.once('finish', () => scheduleShelves(uid, d)); }
+      if (req.method !== 'GET' && SHELF_TOUCH[p]) { const uid = u.id; res.once('finish', () => scheduleShelves(uid, d, SHELF_TOUCH[p])); }
 
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
       if (p.startsWith('/api/cabinet/')) {
@@ -634,12 +535,12 @@ const server = createServer(async (req, res) => {
         }
         if (p === '/api/cabinet/dashboard') {
           if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-          return json(res, 200, overview(Object.fromEntries(url.searchParams)));
+          return json(res, 200, await Reports.overview(Object.fromEntries(url.searchParams)));
         }
         if (p === '/api/cabinet/report') {
           const kind = url.searchParams.get('kind') || '';
           if (!allowed(kind)) return json(res, 403, { ok: false, error: 'no_access' });
-          const r = report(kind, Object.fromEntries(url.searchParams));
+          const r = await Reports.report(kind, Object.fromEntries(url.searchParams));
           if (!r) return json(res, 404, { ok: false, error: 'not_found' });
           if (kind === 'content') r.files = contentFiles();
           return json(res, 200, r);
@@ -782,6 +683,11 @@ const server = createServer(async (req, res) => {
         const email = clean(b.email, 200).toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) return json(res, 400, { ok: false, error: 'bad_email' });
         if (!allowRate(codeRate, clientIp(req), 5)) return json(res, 429, { ok: false, error: 'too_often' });
+        /* на один адрес — не больше 3 кодов за окно, а всего с сервера — не больше 200: чужую почту не бомбим,
+           репутацию отправителя не сжигаем, даже если адрес клиента подменён */
+        if (!allowRate(codeRateEmail, email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
+        if (Date.now() - codeRateAll.t > RATE_WINDOW_MS) { codeRateAll.n = 0; codeRateAll.t = Date.now(); }
+        if (++codeRateAll.n > 200) return json(res, 429, { ok: false, error: 'too_often' });
         if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
         const code = issueLoginCode(email);
         try {
@@ -796,6 +702,7 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/auth/verify' && req.method === 'POST') {
+        if (!allowRate(verifyRate, clientIp(req), 60)) return json(res, 429, { ok: false, error: 'too_often' });   /* перебор кодов по многим почтам с одного адреса */
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
         const code = clean(b.code, 6);
@@ -809,17 +716,19 @@ const server = createServer(async (req, res) => {
         }
         db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);
 
+        /* личность подтверждена — токен устройства меняется в любом случае: старый, даже если утёк, больше не действует */
+        const rotate = (userId) => { db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(parseCookies(req).lunario_app || '')); newSession(userId, res, req.headers['user-agent']); };
         let existing = userByEmail(email);
         if (!existing) {
           // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся
           db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), u.id);
+          rotate(u.id);
           return json(res, 200, { ok: true, merged: false, user: publicUser(userById(u.id)) });
         }
-        if (existing.id === u.id) return json(res, 200, { ok: true, merged: false, user: publicUser(existing) });
+        if (existing.id === u.id) { rotate(u.id); return json(res, 200, { ok: true, merged: false, user: publicUser(existing) }); }
 
         // аккаунт с этой почтой уже есть — переключаем устройство на него; прежний токен устройства отзываем
-        db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(parseCookies(req).lunario_app || ''));
-        newSession(existing.id, res, req.headers['user-agent']);
+        rotate(existing.id);
         if (u.onboarded && !existing.onboarded) {   // анкету только что заполнили на этом устройстве — она едет в найденный аккаунт
           db.prepare(`UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
                       consent_version=?, consent_ts=? WHERE id=?`)
@@ -842,6 +751,12 @@ const server = createServer(async (req, res) => {
         if (tok) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(tok));
         clearSessionCookie(res);
         return json(res, 200, { ok: true });
+      }
+      /* «Выйти на всех устройствах»: отзыв всех сессий аккаунта — если телефон потерян или токен утёк */
+      if (p === '/api/auth/logout-all' && req.method === 'POST') {
+        const gone = db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id).changes;
+        clearSessionCookie(res);
+        return json(res, 200, { ok: true, devices: gone });
       }
 
       if (p === '/api/cities' && req.method === 'GET')
@@ -922,6 +837,7 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const q = clean(b.question, 300);
         if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
+        if (db.prepare('SELECT COUNT(*) c FROM entries WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many' });
         const kind = b.kind === 'rune' ? 'rune' : 'yesno';
         const topic = topicOf(q);
         let title, body, extra = {}, stored = kind, data = '';
@@ -992,6 +908,7 @@ const server = createServer(async (req, res) => {
           const b = await readBody(req);
           const text = cleanText(b.text, 2000);
           if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
+          if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many' });
           const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
           const title = clean(b.title, 300);
           const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
@@ -1041,6 +958,7 @@ const server = createServer(async (req, res) => {
           const b = await readBody(req, 1024 * 1024);
           const text = clean(b.text, 200);
           if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
+          if (db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(u.id).c >= WISHES_MAX) return json(res, 429, { ok: false, error: 'too_many' });
           const photo=b.photo ? dataUrlOk(b.photo,600*1024) : '';
           if (b.photo && !photo) return json(res,400,{error:'bad_photo'});
           db.prepare('INSERT INTO wishes (user_id, ts, text, photo, photo_ts) VALUES (?,?,?,?,?)').run(u.id, nowISO(), seal(text),photo,photo?nowISO():'');
@@ -1066,6 +984,8 @@ const server = createServer(async (req, res) => {
         const fresh = !db.prepare('SELECT 1 FROM push_subs WHERE endpoint = ?').get(endpoint);
         db.prepare('INSERT INTO push_subs (endpoint, user_id, created_at) VALUES (?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id')
           .run(endpoint, u.id, nowISO());
+        /* устройств у аккаунта — не больше PUSH_DEVICES: лишние (самые старые) ячейки уходят, чтобы сервер не рассылал в тысячи адресов с одного аккаунта */
+        db.prepare(`DELETE FROM push_subs WHERE user_id = ? AND endpoint NOT IN (SELECT endpoint FROM push_subs WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ${PUSH_DEVICES})`).run(u.id, u.id);
         if (fresh) track(u, 'push_on', '');
         return json(res, 200, { ok: true });
       }
@@ -1315,8 +1235,10 @@ const server = createServer(async (req, res) => {
     if ((req.method === 'GET' || req.method === 'HEAD') && !p.includes('..')) return serveStatic(res, p, url.search.includes('v=') ? 31536000 : 86400, req.method === 'HEAD');
     res.writeHead(404); res.end();
   } catch (e) {
-    if (e.message !== 'bad_json') { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
-    json(res, e.message === 'bad_json' ? 400 : 500, { ok: false, error: e.message || 'server_error' });
+    const known = e.message === 'bad_json' ? 400 : e.message === 'too_big' ? 413 : 0;   /* ошибки запроса — человеку по имени; внутренние — только в журнал */
+    if (!known) { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
+    if (known === 413) { res.setHeader('Connection', 'close'); res.once('finish', () => req.destroy()); }   /* недочитанное тело не тянем — закрываем после ответа */
+    json(res, known || 500, { ok: false, error: known ? e.message : 'server_error' });
   }
 });
 server.listen(PORT, HOST, () => console.log(`lunario-app: http://${HOST}:${PORT}${BASE} · site=${SITE_DIR} · db=${DATA_DIR}/app.db`));

@@ -606,7 +606,7 @@ function tableCard(t, kind) {
   const rows = t.rows || [];
   let body;
   if (kind === 'economy' && t.headers[t.headers.length - 1] === '') {
-    body = rows.map((r) => `<tr>${r.slice(0, -1).map((c) => `<td class="${isNum(c) ? 'num' : ''}">${fmt(c)}</td>`).join('')}<td class="num">${S.me.isAdmin ? `<button class="btn sm warn" onclick="costDel(${r[r.length - 1]})">Убрать</button>` : ''}</td></tr>`).join('');
+    body = rows.map((r) => `<tr>${r.slice(0, -1).map((c) => `<td class="${isNum(c) ? 'num' : ''}">${esc(fmt(c))}</td>`).join('')}<td class="num">${S.me.isAdmin ? `<button class="btn sm warn" onclick="costDel(${Number(r[r.length - 1]) || 0})">Убрать</button>` : ''}</td></tr>`).join('');
   } else body = rows.map((r) => `<tr>${r.map((c) => `<td class="${isNum(c) ? 'num' : ''}">${esc(fmt(c))}</td>`).join('')}</tr>`).join('');
   return `<div class="tbl"><h3>${esc(t.title)}</h3><div class="scroll"><table><thead><tr>${t.headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${body || `<tr><td colspan="${t.headers.length}" class="empty">Нет данных для выбранных условий.</td></tr>`}</tbody></table></div>${t.note ? `<p class="note">${esc(t.note)}</p>` : ''}</div>`;
 }

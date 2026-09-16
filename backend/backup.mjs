@@ -6,9 +6,11 @@
    и показывает список копий. Хранится 14 копий каждого вида, папка — BACKUP_DIR
    (на сервере /opt/lunario-app-backups; приложению она разрешена на запись в systemd). */
 import { DatabaseSync, backup as sqliteBackup } from 'node:sqlite';
-import { existsSync, mkdirSync, readdirSync, statSync, readFileSync, writeFileSync, copyFileSync, unlinkSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { gzipSync } from 'node:zlib';
+import { existsSync, mkdirSync, readdirSync, statSync, copyFileSync, unlinkSync, createReadStream, createWriteStream } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { pipeline } from 'node:stream/promises';
+import { createGzip } from 'node:zlib';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,13 +40,14 @@ export function createBackup({ dataDir, contentDir, backupDir }) {
       const tmp = join(backupDir, `app-${stamp}.db`);
       const src = new DatabaseSync(dbFile, { readOnly: true });
       try { await sqliteBackup(src, tmp); } finally { src.close(); }
-      writeFileSync(tmp + '.gz', gzipSync(readFileSync(tmp)));
+      /* сжимаем потоком: копия по кнопке из кабинета не должна держать всю базу в памяти и блокировать сервер */
+      await pipeline(createReadStream(tmp), createGzip(), createWriteStream(tmp + '.gz'));
       unlinkSync(tmp);
       out.files.push(`app-${stamp}.db.gz`);
       for (const k of ['secret.key', 'push-keys.json']) if (existsSync(join(dataDir, k))) copyFileSync(join(dataDir, k), join(backupDir, k));   // без ключа база не читается
     }
     if (existsSync(contentDir)) {
-      execFileSync('tar', ['-czf', join(backupDir, `content-${stamp}.tar.gz`), '-C', dirname(contentDir), basename(contentDir)]);
+      await promisify(execFile)('tar', ['-czf', join(backupDir, `content-${stamp}.tar.gz`), '-C', dirname(contentDir), basename(contentDir)]);
       out.files.push(`content-${stamp}.tar.gz`);
     }
     for (const kind of ['app-', 'content-']) {   // старше четырнадцати — убираем

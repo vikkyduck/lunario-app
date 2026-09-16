@@ -1,40 +1,5 @@
 /* Lunario's material layer. Layout, forms and saved data remain in experience.*. */
-:root{
-  --bg:#0b0a14;--surface:#1d1738;--sheet:#141126;--field:#141126;--selected:rgba(217,184,104,.16);
-  --text:#f5f2ea;--muted:#cdc6e2;--gold:#d9b868;--gold-2:#f0d79a;
-  --line:rgba(245,242,234,.12);--focus:#f0d79a;--control-border:rgba(217,184,104,.55);
-  --hover:#2a2150;--accent-soft:#211b35;
-  --moon-ground:linear-gradient(180deg,#141126 0%,#0b0a14 70%);
-  --night-glass-bg:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
-  --night-glass-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 12px 34px -14px rgba(0,0,0,.55);
-  --glass-base:#141126;--glass-bg:var(--night-glass-bg);--glass-shadow:var(--night-glass-shadow);
-  --moon-panel:var(--glass-bg);
-  --moon-edge:linear-gradient(135deg,#f0d79a99 0%,#d9b86847 35%,#b98f3e38 65%,#f0d79a66 100%);
-  --moon-shine:rgba(240,215,154,.12);--moon-shadow:inset 0 1px 0 #fff6dd24,0 12px 26px -18px #000b;
-  --moon-control:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);--moon-glass:rgba(20,17,38,.80);
-  --moon-reader:#141126;--moon-fade:#0b0a14;--moon-empty:#1d1738;
-}
-:root[data-theme=light]{
-  /* Light surfaces use the brief's #f5f2ea, with the requested pale-lilac ground.
-     Night surfaces #1d1738 / #2a2150 become text and functional accents. */
-  --bg:#f0edf8;--surface:#f5f2ea;--sheet:#f5f2ea;--field:#faf8ff;--selected:rgba(42,33,80,.10);
-  --text:#1d1738;--muted:#5d5574;--gold:#2a2150;--gold-2:#2a2150;
-  --line:rgba(42,33,80,.18);--focus:#2a2150;--control-border:rgba(42,33,80,.40);
-  --hover:#eae4f6;--accent-soft:#e9e3f4;
-  --moon-ground:radial-gradient(ellipse at 100% 0%,#e4ddf4 0%,transparent 58%),radial-gradient(ellipse at 0% 72%,#f5f2ea 0%,transparent 65%),#f0edf8;
-  /* A denser light base hides the sky under dark type without a live backdrop texture. */
-  --glass-base:#f5f2ea;
-  --glass-bg:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.04) 45%,rgba(255,255,255,.07)),linear-gradient(rgba(245,242,234,.96),rgba(245,242,234,.96));
-  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(42,33,80,.11),0 14px 32px -18px rgba(42,33,80,.32);
-  --moon-panel:var(--glass-bg);
-  --moon-edge:linear-gradient(135deg,#ffffffee,#ffffff38 40%,#2a215033 70%,#ffffffcc);
-  --moon-shine:rgba(255,255,255,.80);--moon-shadow:inset 0 1px 0 #fff,0 12px 26px -20px #2a215045;
-  --moon-control:linear-gradient(135deg,#494067,#2a2150 65%,#1d1738);--moon-glass:rgba(245,242,234,.28);
-  --moon-reader:#f5f2ea;--moon-fade:#f0edf8;--moon-empty:#e8e1f4;
-  --emotion-anger:#8272b4;--emotion-anticipation:#b3a0d5;
-}
-body:not(.inner){--glass-base:#141126;--glass-bg:var(--night-glass-bg);--glass-shadow:var(--night-glass-shadow)}
-html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed;--muted:inherit;--line:inherit}
+html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed}
 /* Soft light sits behind the content, including the email/code screens. */
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(217,184,104,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,215,154,.07),transparent 100%)}
 body.hello::before{z-index:0;background:radial-gradient(ellipse 30% 24% at 26% 72%,rgba(240,215,154,.28),rgba(217,184,104,.10) 48%,transparent 100%),radial-gradient(ellipse 36% 42% at 100% 63%,rgba(240,215,154,.21),transparent 100%);mix-blend-mode:screen}

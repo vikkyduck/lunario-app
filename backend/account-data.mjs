@@ -51,6 +51,19 @@ export const clearHistory = (db, user) => run(db, user, 'history');
 /* «Удалить аккаунт»: всё личное, включая переписку с поддержкой; остаётся только обезличенная статистика */
 export const deleteAccount = (db, user) => run(db, user, 'account');
 
+/* Заброшенные анонимные аккаунты: без почты, без единой личной записи и без захода days дней — таким не о чем помнить.
+   Уходят той же политикой, что при удалении аккаунта (сессии, устройства, напоминания). Возвращает, сколько убрано. */
+export function sweepAbandoned(db, days = 90, limit = 500) {
+  const before = new Date(Date.now() - days * 864e5).toISOString();
+  const ids = db.prepare(`SELECT id FROM users WHERE email = '' AND last_seen < ? AND photo = '' AND preferences = ''
+    AND NOT EXISTS (SELECT 1 FROM entries WHERE user_id = users.id) AND NOT EXISTS (SELECT 1 FROM journal WHERE user_id = users.id)
+    AND NOT EXISTS (SELECT 1 FROM moods WHERE user_id = users.id) AND NOT EXISTS (SELECT 1 FROM wishes WHERE user_id = users.id)
+    AND NOT EXISTS (SELECT 1 FROM habits WHERE user_id = users.id) AND NOT EXISTS (SELECT 1 FROM askesis WHERE user_id = users.id)
+    AND NOT EXISTS (SELECT 1 FROM tickets WHERE user_id = users.id) LIMIT ${Math.max(1, Math.trunc(limit))}`).all(before).map((r) => r.id);
+  for (const id of ids) deleteAccount(db, { id, email: '' });
+  return ids.length;
+}
+
 /* Таблицы базы, у которых есть user_id, — для проверки полноты политики */
 export function tablesWithUser(db) {
   return db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all().map((r) => r.name)

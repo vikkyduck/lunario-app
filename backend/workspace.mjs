@@ -52,8 +52,7 @@ export function initWorkspace(database, dataDir, sealFn, openFn) {
   if (!mcols.includes('archived')) db.exec("ALTER TABLE media ADD COLUMN archived INTEGER DEFAULT 0");
   if (!mcols.includes('archived_at')) db.exec("ALTER TABLE media ADD COLUMN archived_at TEXT DEFAULT ''");
   if (!existsSync(join(UPLOADS, 'archive'))) mkdirSync(join(UPLOADS, 'archive'), { recursive: true });
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  for (const c of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'first_ref']) if (!cols.includes(c)) db.exec(`ALTER TABLE users ADD COLUMN ${c} TEXT DEFAULT ''`);
+  /* колонки users.utm_* и first_ref (первый источник человека) добавляет миграция в schema.mjs */
 }
 
 const now = () => new Date().toISOString();

@@ -32,14 +32,7 @@ export function initCabinet(database) {
     );
     CREATE INDEX IF NOT EXISTS idx_errors_day ON errors (day);
   `);
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (!cols.includes('email_at')) {
-    db.exec("ALTER TABLE users ADD COLUMN email_at TEXT DEFAULT ''");
-    // у тех, кто уже с почтой, момент подтверждения берём из события входа, иначе — из даты создания
-    db.exec(`UPDATE users SET email_at = COALESCE(
-      (SELECT MIN(ts) FROM events e WHERE e.user_id = users.id AND e.type = 'login_done'), created_at)
-      WHERE email <> '' AND email_at = ''`);
-  }
+  /* колонка users.email_at — момент подтверждения почты — добавляется миграцией в schema.mjs */
 }
 
 const dayMSK = (d = new Date()) => dayIn(MSK, d.getTime());

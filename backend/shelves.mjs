@@ -143,14 +143,29 @@ export function createShelves(deps) {
     };
   }
 
-  /* Пересобрать все три полки и положить в базу. u — строка users или её id. */
-  function rebuild(uOrId, d) {
+  const BUILD = { about: buildAbout, day: buildDay, history: buildHistory };
+  /* Пересобрать полки и положить в базу. u — строка users или её id; only — какие полки (по умолчанию все три).
+     Частичная пересборка возможна, только если остальные полки уже сегодняшние и нужной формы —
+     иначе собирается всё: полки за вчера или старого формата дособирать нельзя. */
+  function rebuild(uOrId, d, only = SHELVES) {
     const u = typeof uOrId === 'object' ? uOrId : userById.get(uOrId);
     if (!u) return null;
-    const out = { about: buildAbout(u, d), day: buildDay(u, d), history: buildHistory(u, d) };
+    const rest = SHELVES.filter((s) => !only.includes(s));
+    const kept = rest.length ? fresh(u.id, d, rest) : {};
+    const list = kept ? only : SHELVES;
+    const out = { ...(kept || {}) };
+    for (const s of list) out[s] = BUILD[s](u, d);
     const ts = nowISO();
-    for (const s of SHELVES) put.run(u.id, s, seal(JSON.stringify({ v: SHELF_VERSION, ...out[s] })), d, ts);
+    for (const s of list) put.run(u.id, s, seal(JSON.stringify({ v: SHELF_VERSION, ...out[s] })), d, ts);
     return { ...out, updated: ts };
+  }
+  /* Полки из базы за день d нужной формы — или null, если хоть одной из names нет или она устарела */
+  function fresh(userId, d, names) {
+    const rows = get.all(userId).filter((r) => names.includes(r.shelf) && r.day === d);
+    if (rows.length !== names.length) return null;
+    const out = {};
+    for (const r of rows) { try { out[r.shelf] = JSON.parse(open(r.json)); } catch { return null; } if (!out[r.shelf] || out[r.shelf].v !== SHELF_VERSION) return null; }
+    return out;
   }
 
   /* Прочитать полки; если их нет или они со вчерашнего дня — собрать заново. */
@@ -164,8 +179,9 @@ export function createShelves(deps) {
     return out;
   }
 
-  /* После любого действия человека — обновить его полки. Ошибка здесь не должна ломать ответ. */
-  function refresh(userId, d) { try { rebuild(userId, d); } catch (e) { console.log('Полочки: не пересобрались для', userId, e.message); } }
+  /* После действия человека — обновить его полки: только те, которых действие касается (натальная карта в «Обо мне»
+     не пересчитывается после каждой отметки настроения). Ошибка здесь не должна ломать ответ. */
+  function refresh(userId, d, only = SHELVES) { try { rebuild(userId, d, only); } catch (e) { console.log('Полочки: не пересобрались для', userId, e.message); } }
   function wipe(userId) { db.prepare('DELETE FROM shelves WHERE user_id = ?').run(userId); }
 
   /* Досье текстом — для ИИ-разборов, гороскопов и раскладов. Без почты и служебных полей. */

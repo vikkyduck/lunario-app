@@ -536,7 +536,7 @@ function build() {
   const setRows = rows('установки.txt', 3) || SETS_FALLBACK;
   r.LEGACY_SETS = setRows;
   r.SETS = [...new Map(setRows.map((s) => [s[1].trim().replace(/\s+/g, ' '), s])).values()];   // без повторов фразы
-  if (r.SETS.length < 365) console.warn(`Тексты: установок дня ${r.SETS.length} — меньше 365, повторы у людей начнутся раньше года`);
+  if (r.SETS.length < 365 && !process.env.LUNARIO_QUIET) console.warn(`Тексты: установок дня ${r.SETS.length} — меньше 365, повторы у людей начнутся раньше года`);
   /* «Новое в приложении»: месяц | название | раздел:виджет | описание */
   /* «месяц | название | раздел:виджет | о чём» — новинка с переходом; «скоро | название | о чём» — анонс без перехода */
   r.NEWS = (rows('новое.txt', 3) || []).flatMap((c) => {
@@ -631,4 +631,5 @@ try {
   }
 } catch { /* нет прав на слежение — тексты просто читаются при старте */ }
 
-console.log(`Тексты: карт ${data.ARCANA.length}, знаков ${data.SIGNS.length}, тонов дня ${data.DAY_TONES.length}, рун ${data.RUNES.length}`);
+/* Поток отчётов подключает этот же модуль — ему в журнал повторять не нужно (LUNARIO_QUIET) */
+if (!process.env.LUNARIO_QUIET) console.log(`Тексты: карт ${data.ARCANA.length}, знаков ${data.SIGNS.length}, тонов дня ${data.DAY_TONES.length}, рун ${data.RUNES.length}`);

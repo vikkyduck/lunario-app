@@ -27,8 +27,11 @@ const daysBetween = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.pa
 const seriesDays = (from, to) => { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; };
 const fill = (days, rows, key = 'n') => { const m = Object.fromEntries(rows.map((r) => [r.day, r[key]])); return days.map((d) => ({ x: d, y: m[d] || 0 })); };
 const mask = (e) => String(e || '').replace(/^(.).*(@.*)$/, '$1***$2');
-const hourMSK = (ts) => Number(new Date(ts).toLocaleTimeString('en-GB', { timeZone: MSK, hour: '2-digit', hour12: false }).slice(0, 2));
-const wdMSK = (ts) => (new Date(ts).toLocaleDateString('en-GB', { timeZone: MSK, weekday: 'short' }));
+/* один форматтер на все события: toLocale*String создавал бы его заново на каждый из тысяч вызовов тепловой карты */
+const HOUR_MSK = new Intl.DateTimeFormat('en-GB', { timeZone: MSK, hour: '2-digit', hourCycle: 'h23' });
+const WD_MSK = new Intl.DateTimeFormat('en-GB', { timeZone: MSK, weekday: 'short' });
+const hourMSK = (ts) => Number(HOUR_MSK.format(new Date(ts)).slice(0, 2));
+const wdMSK = (ts) => WD_MSK.format(new Date(ts));
 
 export function periodOf(q) {
   const to = /^\d{4}-\d{2}-\d{2}$/.test(q.to || '') ? q.to : dayMSK();
@@ -148,14 +151,38 @@ function registered(from, to) {
   return all(`SELECT id, email, name, city, city_region, tz, birth, invited_by, onboarded, utm_source, utm_medium, utm_campaign, utm_content, substr(email_at,1,10) day, created_at, last_seen FROM users
     WHERE email <> '' AND email_at <> '' AND substr(email_at,1,10) BETWEEN ? AND ?`, from, to);
 }
-const firstFunc = (id) => one(`SELECT type, ts FROM events WHERE user_id = ? AND type IN (${inList(FUNC)}) ORDER BY ts LIMIT 1`, id);
+/* Кэш на время одного отчёта. Когорты перебираются в циклах (человек × окно), и раньше на каждого уходил
+   свой запрос; теперь активные дни, первое действие, отметки настроения и подписки читаются одним запросом
+   на всех и дальше ищутся в памяти. Живёт только внутри overview()/report(): следующий отчёт видит свежие данные. */
+let memo = null;
+const withMemo = (fn) => (...a) => { const outer = memo; if (!outer) memo = new Map(); try { return fn(...a); } finally { memo = outer; } };
+function memoized(key, load) {
+  if (!memo) return load();
+  if (!memo.has(key)) memo.set(key, load());
+  return memo.get(key);
+}
+/* дни с действиями из types по каждому человеку: Map(user_id → [день, …]) */
+const daysOf = (types) => memoized('days:' + types.join(','), () => {
+  const m = new Map();
+  for (const r of all(`SELECT DISTINCT user_id, day FROM events WHERE type IN (${inList(types)})`)) { let d = m.get(r.user_id); if (!d) m.set(r.user_id, d = []); d.push(r.day); }
+  return m;
+});
+const daysBetweenOf = (id, a, b, types) => (daysOf(types).get(id) || []).filter((x) => x >= a && x <= b).length;
+/* первое содержательное действие человека: тип и момент */
+function firstFunc(id) {
+  if (!memo) return one(`SELECT type, ts FROM events WHERE user_id = ? AND type IN (${inList(FUNC)}) ORDER BY ts LIMIT 1`, id);
+  return memoized('first', () => new Map(all(`SELECT user_id, type, MIN(ts) ts FROM events WHERE type IN (${inList(FUNC)}) GROUP BY user_id`).map((r) => [r.user_id, r]))).get(id) || null;
+}
 /* то же для когорты — один проход по индексу вместо запроса на каждого */
 function firstFuncs(ids) {
   const m = new Map(); if (!ids.length) return m;
   for (const r of all(`SELECT user_id, type, MIN(ts) ts FROM events WHERE user_id IN (${ids.map(() => '?').join(',')}) AND type IN (${inList(FUNC)}) GROUP BY user_id`, ...ids)) m.set(r.user_id, r);
   return m;
 }
-const actedBetween = (id, a, b, types = ACTIVE) => !!one(`SELECT 1 FROM events WHERE user_id = ? AND type IN (${inList(types)}) AND day BETWEEN ? AND ? LIMIT 1`, id, a, b);
+const actedBetween = (id, a, b, types = ACTIVE) => (memo ? daysBetweenOf(id, a, b, types) > 0
+  : !!one(`SELECT 1 FROM events WHERE user_id = ? AND type IN (${inList(types)}) AND day BETWEEN ? AND ? LIMIT 1`, id, a, b));
+const hasPush = (id) => memoized('push', () => new Set(all('SELECT DISTINCT user_id FROM push_subs').map((r) => r.user_id))).has(id);
+const moodDaysBetween = (id, a, b) => (memoized('moods', () => { const m = new Map(); for (const r of all('SELECT user_id, day FROM moods')) { let d = m.get(r.user_id); if (!d) m.set(r.user_id, d = []); d.push(r.day); } return m; }).get(id) || []).filter((x) => x >= a && x <= b).length;
 const activeUsers = (a, b, types = ACTIVE) => one(`SELECT COUNT(DISTINCT user_id) c FROM events WHERE type IN (${inList(types)}) AND day BETWEEN ? AND ?`, a, b).c;
 const dauSeries = (days, from, to, types = ACTIVE) => fill(days, all(`SELECT day, COUNT(DISTINCT user_id) n FROM events WHERE type IN (${inList(types)}) AND day BETWEEN ? AND ? GROUP BY day`, from, to));
 const staffEmails = () => new Set([...all('SELECT email FROM staff').map((r) => r.email)]);
@@ -262,11 +289,7 @@ function loginCodes(from, to) {
 
 function scatterFreq(today) {
   const users = all("SELECT id, substr(email_at,1,10) day FROM users WHERE email <> '' AND email_at <> '' AND substr(email_at,1,10) <= ?", addDays(today, -30)).slice(-300);
-  return users.map((u) => {
-    const w1 = one(`SELECT COUNT(DISTINCT day) c FROM events WHERE user_id = ? AND type IN (${inList(FUNC)}) AND day BETWEEN ? AND ?`, u.id, u.day, addDays(u.day, 6)).c;
-    const d30 = one(`SELECT COUNT(DISTINCT day) c FROM events WHERE user_id = ? AND type IN (${inList(FUNC)}) AND day BETWEEN ? AND ?`, u.id, u.day, addDays(u.day, 29)).c;
-    return [w1, d30];
-  });
+  return users.map((u) => [daysBetweenOf(u.id, u.day, addDays(u.day, 6), FUNC), daysBetweenOf(u.id, u.day, addDays(u.day, 29), FUNC)]);
 }
 const SECTION_OF = Object.fromEntries(FEATURES.map((f) => [f[0], f[1]]));
 function sectionReach(from, to) {
@@ -279,16 +302,16 @@ function sectionReach(from, to) {
 function firstWeekBehaviour(today) {
   const users = all("SELECT id, substr(email_at,1,10) day FROM users WHERE email <> '' AND email_at <> '' AND substr(email_at,1,10) <= ?", addDays(today, -31));
   const groups = {
-    'Настроение ≥ 3 раз в первую неделю': (u) => one("SELECT COUNT(*) c FROM moods WHERE user_id = ? AND day BETWEEN ? AND ?", u.id, u.day, addDays(u.day, 6)).c >= 3,
+    'Настроение ≥ 3 раз в первую неделю': (u) => moodDaysBetween(u.id, u.day, addDays(u.day, 6)) >= 3,
     'Открыли карту дня в первую неделю': (u) => actedBetween(u.id, u.day, addDays(u.day, 6), ['card_open']),
-    'Включили напоминание': (u) => !!one('SELECT 1 FROM push_subs WHERE user_id = ? LIMIT 1', u.id),
+    'Включили напоминание': (u) => hasPush(u.id),
     'Позвали подругу': (u) => actedBetween(u.id, u.day, addDays(u.day, 6), ['invite_copy']),
   };
   return Object.entries(groups).map(([name, f]) => { const g = users.filter(f); const back = g.filter((u) => actedBetween(u.id, addDays(u.day, 30), addDays(u.day, 30), FUNC)).length; return [name, g.length ? `${pct(back, g.length)}%` : '—', `${back} из ${g.length}`]; });
 }
 
 /* ── единый дашборд ── */
-export function overview(q) {
+export const overview = withMemo(function overview(q) {
   const cfg = getConfig();
   const P = periodOf(q), today = dayMSK(), days = seriesDays(P.from, P.to);
   const nu = registered(P.from, P.to).length, nuP = registered(P.prevFrom, P.prevTo).length;
@@ -330,7 +353,7 @@ export function overview(q) {
     week,
     blocks: cfg.blocks.map((k) => allBlocks.find((b) => b.key === k)).filter(Boolean),
   };
-}
+});
 function problems(from, to) {
   const lc = loginCodes(from, to);
   const errs = all('SELECT path, COUNT(*) n FROM errors WHERE day BETWEEN ? AND ? GROUP BY path ORDER BY n DESC', from, to);
@@ -356,7 +379,7 @@ function featuresTable(from, to) {
 }
 
 /* ── отчёты ── */
-export function report(kind, q) {
+export const report = withMemo(function report(kind, q) {
   const P = periodOf(q), today = dayMSK(), days = seriesDays(P.from, P.to);
   const meta = REPORT_META[kind]; if (!meta) return null;
   const named = getConfig().reports[kind] || meta;
@@ -364,7 +387,7 @@ export function report(kind, q) {
   const B = builders[kind]; if (!B) return R;
   B(R, { P, today, days, q });
   return R;
-}
+});
 const builders = {
   acquisition(R, { P, days, q, today }) {
     const plat = userPlatforms();
@@ -540,7 +563,7 @@ const builders = {
   cohorts(R, { P, today }) {
     const plat = userPlatforms();
     const users = all("SELECT id, invited_by, substr(email_at,1,10) day FROM users WHERE email <> '' AND email_at <> '' AND substr(email_at,1,10) <= ?", P.to);
-    const groups = { 'Источник': (u) => sourceOf(u), 'Платформа': (u) => plat[u.id] || 'Неизвестно', 'Первая функция': (u) => { const f = firstFunc(u.id); return f ? FNAME[f.type] || f.type : 'без функций'; }, 'Приглашение': (u) => (u.invited_by ? 'Приглашённые' : 'Остальные'), 'Напоминания': (u) => (one('SELECT 1 FROM push_subs WHERE user_id = ? LIMIT 1', u.id) ? 'С напоминаниями' : 'Без') };
+    const groups = { 'Источник': (u) => sourceOf(u), 'Платформа': (u) => plat[u.id] || 'Неизвестно', 'Первая функция': (u) => { const f = firstFunc(u.id); return f ? FNAME[f.type] || f.type : 'без функций'; }, 'Приглашение': (u) => (u.invited_by ? 'Приглашённые' : 'Остальные'), 'Напоминания': (u) => (hasPush(u.id) ? 'С напоминаниями' : 'Без') };
     const rows = [];
     for (const [g, f] of Object.entries(groups)) {
       const m = {}; for (const u of users) { const k = f(u); (m[k] = m[k] || []).push(u); }

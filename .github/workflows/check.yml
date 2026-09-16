@@ -1,0 +1,28 @@
+# Проверки перед выпуском — те же, что запускает deploy.sh. Без Playwright, без секретов, без настоящих данных:
+# check-personal-features поднимает настоящий сервер во временной папке с крошечным справочником городов.
+name: Проверки
+on:
+  push:
+    branches: [main, desktop]
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Синтаксис бэкенда и инструментов
+        run: for f in backend/*.mjs tools/*.mjs; do node --check "$f"; done
+      - name: Версии статических файлов согласованы
+        run: node tools/bump-version.mjs
+      - name: Установки дня и история записей
+        run: |
+          node tools/check-daily-sets.mjs
+          node tools/check-entry-history.mjs
+      - name: Интеграционная проверка (настоящий сервер, временная база)
+        run: node tools/check-personal-features.mjs

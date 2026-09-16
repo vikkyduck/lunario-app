@@ -22,13 +22,16 @@ probe.listen(0, '127.0.0.1'); await once(probe, 'listening');
 const port = probe.address().port;
 await new Promise(resolve => probe.close(resolve));
 const base = `http://127.0.0.1:${port}/app`;
+const adminMail = 'admin@example.test';
 let server, log = '';
+/* модули бэкенда, которые проверка подключает напрямую, читают папку контента и ключ из окружения — как сервер */
+process.env.CONTENT_DIR = join(fixture, 'content'); process.env.LUNARIO_QUIET = '1';
 
 async function start() {
   server = spawn(process.execPath, [join(fixture, 'backend/server.mjs')], {
     env: { PATH: process.env.PATH, PORT: String(port), HOST: '127.0.0.1', BASE_PATH: '/app',
       DATA_DIR: join(fixture, 'data'), CONTENT_DIR: join(fixture, 'content'),
-      BACKUP_DIR: join(fixture, 'backups'), SITE_DIR: join(repo, 'site'), PUBLIC_BASE: `http://127.0.0.1:${port}` },
+      BACKUP_DIR: join(fixture, 'backups'), SITE_DIR: join(repo, 'site'), PUBLIC_BASE: `http://127.0.0.1:${port}`, ADMIN_EMAILS: adminMail, ANON_RATE: '40' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   server.stdout.on('data', data => { log += data; });
@@ -44,13 +47,17 @@ async function stop() {
   if (!server || server.exitCode !== null) return;
   const exit = once(server, 'exit'); server.kill('SIGTERM'); await exit;
 }
-function account() {
+let clientSeq = 0;
+/* Каждый синтетический аккаунт — свой адрес клиента (сервер за прокси берёт последний элемент X-Forwarded-For),
+   иначе десятки аккаунтов проверки с одного loopback упрутся в лимит на создание анонимных аккаунтов */
+function account(ip = `203.0.113.${1 + (clientSeq++ % 250)}`) {
   let cookie = '';
   return {
     get cookie() { return cookie; },
-    async raw(path, method = 'GET', data) {
+    ip,
+    async raw(path, method = 'GET', data, headers = {}) {
       const r = await fetch(base + '/api' + path, { method,
-        headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+        headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': ip, ...headers },
         ...(data === undefined ? {} : { body: JSON.stringify(data) }),
       });
       const set = r.headers.get('set-cookie'); if (set) cookie = set.split(';')[0];
@@ -330,6 +337,168 @@ try {
   assert.equal((await expiring.raw('/timeline?kind=&day=&offset=0')).status, 401, 'A year-old session is rejected');
   assert.notEqual((await expiring.json('/me')).user.id, expId, 'After expiry /me starts a fresh session');
   console.log('PASS: push endpoints are validated, task status respects role scope, sessions expire and stray API calls create no accounts.');
+
+  // ── Загрузки кабинета: SVG не принимается, файлы отдаются в sandbox без исполнения ──
+  const mediaOf = (type) => staff.json('/cabinet/media', 'POST', { name: 'Проба', type, data: 'data:' + type + ';base64,' + png });
+  assert.equal((await mediaOf('image/svg+xml')).error, 'bad_type', 'SVG upload is rejected: it would run scripts on the app origin');
+  const uploaded = await mediaOf('image/png'); assert.ok(uploaded.ok && uploaded.url.startsWith('/app/uploads/'));
+  const served = await fetch(base + uploaded.url.slice('/app'.length));
+  assert.equal(served.status, 200);
+  assert.match(served.headers.get('content-security-policy') || '', /sandbox/, 'Uploads are served with a sandbox CSP');
+  assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
+  console.log('PASS: cabinet uploads reject SVG and are served under a sandbox CSP with nosniff.');
+
+  // ── Одна модель Луны: дневной пакет, «На небе» и досье считают фазу одной функцией lunar.mjs ──
+  const { moonState, moonPhaseName, MOON_NAMES } = await import(pathToFileURL(join(fixture, 'backend/lunar.mjs')).href);
+  const meMoon = await evt.json('/me');
+  const noon = moonState(Date.parse(meMoon.day.date + 'T12:00:00Z'));
+  assert.equal(meMoon.day.moon, noon.name, 'Day pack phase name comes from lunar.moonState');
+  assert.equal(meMoon.day.moonPct, noon.illumination, 'Day pack illumination comes from lunar.moonState');
+  assert.equal(Math.abs(meMoon.day.moonPhase - noon.cycle) < 0.001, true);
+  const sky = await evt.json('/sky'); const nowMoon = moonState(Date.now());
+  assert.equal(sky.moon.phase, nowMoon.name, 'Sky screen names the phase by the same rule');
+  assert.ok(Math.abs(sky.moon.illumination - nowMoon.illumination) <= 1);
+  assert.ok(MOON_NAMES.includes(meMoon.day.moon) && MOON_NAMES.includes(sky.moon.phase));
+  for (const [cycle, name] of [[0, 'Новолуние'], [0.06, 'Новолуние'], [0.07, 'Растущий серп'], [0.25, 'Первая четверть'], [0.5, 'Полнолуние'], [0.75, 'Последняя четверть'], [0.9, 'Старая Луна'], [0.95, 'Новолуние']]) assert.equal(moonPhaseName(cycle), name, `phase name at ${cycle}`);
+  for (const at of ['2026-09-15T12:00:00Z', '2026-09-18T12:00:00Z', '2026-09-26T12:00:00Z']) { const m = moonState(Date.parse(at)); assert.ok(MOON_NAMES.includes(m.name) && m.illumination >= 0 && m.illumination <= 100, at); }
+  const shelvesDay = (await evt.json('/shelves')).day;
+  assert.equal(shelvesDay.moon, meMoon.day.moon, 'Dossier shows the same phase as the day pack');
+  console.log('PASS: day pack, sky screen and dossier share one moon model and one naming rule.');
+
+  // ── Досье аскезы читает актуальный контракт: те же поля, что у практик, в тексте нет undefined ──
+  const askOwner = account(); await askOwner.json('/me'); await askOwner.json('/profile', 'POST', { name: 'Аскеза', birth: '1988-08-08', city: 'Москва', consent: true });
+  const askDay = (await askOwner.json('/me')).day.date, askUntil = new Date(Date.parse(askDay) + 29 * 864e5).toISOString().slice(0, 10);
+  const started = (await askOwner.json('/askesis', 'POST', { title: 'Без сладкого', until: askUntil })).active[0];
+  assert.deepEqual([started.total, started.done, started.left], [30, 1, 29]);
+  const dossierAsk = (await askOwner.json('/shelves')).day.askesis[0];
+  for (const k of ['title', 'done', 'total', 'left', 'until', 'notes']) assert.ok(k in dossierAsk, `Dossier askesis carries ${k}`);
+  assert.deepEqual([dossierAsk.done, dossierAsk.total, dossierAsk.left, dossierAsk.until], [started.done, started.total, started.left, started.until]);
+  const dossierText = (await askOwner.json('/shelves/context')).text;
+  assert.ok(dossierText.includes('Без сладкого — день 1 из 30'), 'Context text uses the current askesis fields: ' + dossierText.split('\n').find((l) => l.startsWith('Аскезы')));
+  assert.ok(!/undefined|NaN/.test(dossierText), 'No undefined in dossier text');
+  console.log('PASS: dossier and context text use the same askesis contract as the practices model.');
+
+  // ── Лимит раскладов: одна политика для /api/me и /api/spread ──
+  const limits = (await askOwner.json('/me')).limits; assert.equal(limits.spreadsLeft, limits.spreadsTotal);
+  for (let i = 0; i < limits.spreadsTotal; i++) {
+    const r = await askOwner.json('/spread', 'POST', { question: 'Что мне важно понять про эту неделю?', layout: 'three' });
+    assert.equal(r.left, limits.spreadsTotal - i - 1); assert.equal((await askOwner.json('/me')).limits.spreadsLeft, r.left, 'Reported quota matches the check');
+  }
+  assert.equal((await askOwner.raw('/spread', 'POST', { question: 'Что мне важно понять про эту неделю?', layout: 'three' })).status, 429, 'Quota check uses the same limit the API reports');
+  console.log('PASS: spread quota is enforced by the same rule the API reports.');
+
+  // ── Досье пересобирается частями: отметка настроения не трогает «Обо мне» с натальной картой ──
+  const shelfRows = (uid) => Object.fromEntries(qaDB.prepare('SELECT shelf, json, updated_at FROM shelves WHERE user_id=?').all(uid).map((r) => [r.shelf, r]));
+  const askId = (await askOwner.json('/me')).user.id;
+  const rowsBefore = shelfRows(askId); assert.equal(Object.keys(rowsBefore).length, 3);
+  await delay(20); await askOwner.json('/mood', 'POST', { mood: 'trust' }); await askOwner.json('/shelves');
+  const rowsAfter = shelfRows(askId);
+  assert.equal(rowsAfter.about.json, rowsBefore.about.json, 'Mood does not rebuild «Обо мне»'); assert.equal(rowsAfter.about.updated_at, rowsBefore.about.updated_at);
+  assert.notEqual(rowsAfter.day.updated_at, rowsBefore.day.updated_at, 'Mood rebuilds «Мой день»');
+  assert.equal((await askOwner.json('/shelves')).day.moodRu.toLowerCase(), 'доверие');
+  await askOwner.json('/profile', 'POST', { name: 'Аскеза-2', birth: '1988-08-08', city: 'Москва', consent: true }); await askOwner.json('/shelves');
+  assert.notEqual(shelfRows(askId).about.updated_at, rowsAfter.about.updated_at, 'Profile rebuilds «Обо мне»');
+  assert.equal((await askOwner.json('/shelves')).about.name, 'Аскеза-2');
+  console.log('PASS: dossier shelves are rebuilt only where the action touches them.');
+
+  // ── Отчёты кабинета считаются в отдельном потоке и совпадают с расчётом в основном ──
+  qaDB.prepare('INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts) VALUES (?,?,?,?,0)').run(adminMail, createHash('sha256').update(code + adminMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+  const adminAcc = account(); await adminAcc.json('/me'); await adminAcc.json('/auth/verify', 'POST', { email: adminMail, code });
+  assert.equal((await adminAcc.json('/cabinet/me')).isAdmin, true);
+  const { privateText } = await import(pathToFileURL(join(fixture, 'backend/private-text.mjs')).href);
+  const Wsp = await import(pathToFileURL(join(fixture, 'backend/workspace.mjs')).href);
+  const Rep = await import(pathToFileURL(join(fixture, 'backend/reports.mjs')).href);
+  const keys = privateText(join(fixture, 'data'), { create: false }); Wsp.initWorkspace(qaDB, join(fixture, 'data'), keys.seal, keys.open); Rep.initReports(qaDB, join(fixture, 'data'));
+  const strip = (o) => JSON.parse(JSON.stringify(o, (k, v) => (k === 'today' ? undefined : v)));
+  assert.deepEqual(strip(await adminAcc.json('/cabinet/dashboard?period=30d')), strip(Rep.overview({ period: '30d' })), 'Dashboard from the worker equals the in-process calculation');
+  for (const kind of ['activity', 'retention', 'activation', 'features', 'cohorts', 'events']) assert.deepEqual(strip(await adminAcc.json('/cabinet/report?kind=' + kind + '&period=30d')), strip(Rep.report(kind, { period: '30d' })), 'Report ' + kind);
+  assert.equal((await adminAcc.raw('/cabinet/report?kind=nope')).status, 404, 'Unknown report kind');
+  assert.ok(!/считаю в основном потоке|поток отчётов упал/.test(log), 'Reports were served by the worker thread, not the inline fallback');
+  console.log('PASS: cabinet dashboard and reports come from the worker thread with the same numbers as the in-process functions.');
+
+  // ── Сессии: вход по коду меняет токен устройства; выход со всех устройств; у сотрудников срок короче ──
+  const rot = account(); await rot.json('/me'); const rotCookieBefore = rot.cookie;
+  const rotMail = 'rotate@example.test';
+  qaDB.prepare('INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts) VALUES (?,?,?,?,0)').run(rotMail, createHash('sha256').update(code + rotMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+  await rot.json('/auth/verify', 'POST', { email: rotMail, code });
+  assert.notEqual(rot.cookie, rotCookieBefore, 'Confirming the e-mail rotates the device token');
+  assert.equal((await fetch(base + '/api/timeline', { headers: { Cookie: rotCookieBefore } })).status, 401, 'The pre-login token is revoked');
+  const rotId = (await rot.json('/me')).user.id;
+  qaDB.prepare("INSERT INTO sessions (token_hash, user_id, created_at, last_seen) VALUES ('other-device', ?, ?, ?)").run(rotId, new Date().toISOString(), new Date().toISOString());
+  assert.equal((await rot.json('/auth/logout-all', 'POST')).devices, 2, 'Logout everywhere revokes every session of the account');
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM sessions WHERE user_id=?').get(rotId).c, 0);
+  const staffId = qaDB.prepare('SELECT user_id FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email=?)').get(staffMail).user_id;
+  const monthAgo = new Date(Date.now() - 31 * 864e5).toISOString();
+  qaDB.prepare('UPDATE sessions SET last_seen=? WHERE user_id=?').run(monthAgo, staffId);
+  assert.equal((await staff.raw('/cabinet/tasks')).status, 401, 'A staff session idle for a month expires');
+  assert.equal((await staff.json('/cabinet/me')).email, '', 'Cabinet sees no one after the staff session expired');
+  const plainId = (await askOwner.json('/me')).user.id;
+  qaDB.prepare('UPDATE sessions SET last_seen=? WHERE user_id=?').run(monthAgo, plainId);
+  assert.equal((await askOwner.json('/me')).user.id, plainId, 'An ordinary session survives a month without visits');
+  console.log('PASS: login rotates the session token, logout-all revokes every device, staff sessions expire sooner.');
+
+  // ── Устройств для уведомлений у аккаунта — не больше десяти, остаются новые ──
+  const pusher = account(); await pusher.json('/me'); const pusherId = (await pusher.json('/me')).user.id;
+  for (let i = 1; i <= 12; i++) { await pusher.json('/push', 'POST', { endpoint: 'https://push.example.com/many/' + i }); await delay(2); }
+  const endpoints = qaDB.prepare('SELECT endpoint FROM push_subs WHERE user_id=? ORDER BY created_at').all(pusherId).map((r) => r.endpoint);
+  assert.equal(endpoints.length, 10, 'At most ten push endpoints per account');
+  assert.ok(endpoints.includes('https://push.example.com/many/12') && !endpoints.includes('https://push.example.com/many/1'), 'The oldest endpoints are dropped first');
+  console.log('PASS: push endpoints per account are capped, newest kept.');
+
+  // ── Заброшенные анонимные аккаунты убираются; с почтой или записями — остаются ──
+  const { sweepAbandoned } = await import(pathToFileURL(join(fixture, 'backend/account-data.mjs')).href);
+  const ghost = account(); const ghostId = (await ghost.json('/me')).user.id;
+  const ghostWithData = account(); const ghostDataId = (await ghostWithData.json('/me')).user.id; await ghostWithData.json('/mood', 'POST', { mood: 'joy' });
+  const longAgo = new Date(Date.now() - 100 * 864e5).toISOString();
+  qaDB.prepare('UPDATE users SET last_seen=? WHERE id IN (?,?,?)').run(longAgo, ghostId, ghostDataId, rotId);
+  assert.equal(sweepAbandoned(qaDB), 1, 'Only the empty anonymous account is swept');
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users WHERE id=?').get(ghostId).c, 0);
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users WHERE id IN (?,?)').get(ghostDataId, rotId).c, 2, 'Accounts with a mood or an e-mail stay');
+  assert.equal((await ghost.raw('/timeline')).status, 401, 'The swept account\'s session is gone too');
+  console.log('PASS: abandoned anonymous accounts are swept by the same lifecycle policy; anything with data or e-mail stays.');
+
+  // ── Адрес клиента и лимиты: подменить X-Forwarded-For нельзя, коды на почту и аккаунты ограничены ──
+  const req = (xff, email) => fetch(base + '/api/auth/request', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': xff }, body: JSON.stringify({ email }) }).then((r) => r.status);
+  for (let i = 0; i < 5; i++) assert.equal(await req(`10.0.0.${i}, 198.51.100.1`, `p${i}@example.test`), 503, 'Rate check passes, mail is off in tests');
+  assert.equal(await req('10.0.0.99, 198.51.100.1', 'p9@example.test'), 429, 'A spoofed first X-Forwarded-For entry does not reset the per-address limit');
+  assert.equal(await req('10.0.0.99, 198.51.100.2', 'p9@example.test'), 503, 'A different real (last) address is a different client');
+  for (let i = 0; i < 3; i++) assert.equal(await req(`198.51.100.${10 + i}`, 'victim@example.test'), 503);
+  assert.equal(await req('198.51.100.13', 'victim@example.test'), 429, 'One mailbox gets at most three codes per window whatever the address');
+  const verifyIp = '198.51.100.50';
+  for (let i = 0; i < 60; i++) assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '000000' }) })).status, 400);
+  assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '000000' }) })).status, 429, 'Code guessing across mailboxes is throttled per address');
+  const anonIp = '198.51.100.77';
+  for (let i = 0; i < 40; i++) assert.equal((await fetch(base + '/api/me', { headers: { 'X-Forwarded-For': anonIp } })).status, 200);
+  assert.equal((await fetch(base + '/api/me', { headers: { 'X-Forwarded-For': anonIp } })).status, 429, 'Anonymous account creation is capped per address');
+  assert.equal((await fetch(base + '/api/me', { headers: { Cookie: evt.cookie, 'X-Forwarded-For': anonIp } })).status, 200, 'An existing session from the same address still works');
+  console.log('PASS: the client address is the proxy-appended one, login codes are capped per address, per mailbox and globally, anonymous sign-ups are capped.');
+
+  // ── Бюджет записей: скрипт не раздует базу, человеку хватает с запасом ──
+  const writer = account(); await writer.json('/me');
+  for (let i = 0; i < 100; i++) await writer.json('/ask', 'POST', { question: `Стоит ли мне сегодня ${i} раз подумать об этом?`, kind: 'yesno' });
+  assert.equal((await writer.raw('/ask', 'POST', { question: 'Стоит ли мне ещё раз спросить о том же?', kind: 'yesno' })).status, 429, 'Readings per day are capped');
+  for (let i = 0; i < 100; i++) await writer.json('/journal', 'POST', { text: 'Запись номер ' + i });
+  assert.equal((await writer.raw('/journal', 'POST', { text: 'Сто первая запись' })).status, 429, 'Diary entries per day are capped');
+  for (let i = 0; i < 300; i++) await writer.json('/wishes', 'POST', { text: 'Желание ' + i });
+  assert.equal((await writer.raw('/wishes', 'POST', { text: 'Триста первое' })).status, 429, 'Wishes per account are capped');
+  assert.equal((await writer.raw('/journal', 'POST', 'x'.repeat(40000))).status, 413, 'Oversized body is refused by name');
+  assert.equal((await fetch(base + '/api/journal', { method: 'POST', headers: { Cookie: writer.cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': writer.ip }, body: '{bad' })).status, 400);
+  console.log('PASS: per-account write budget and request-size errors are explicit; internals stay in the log.');
+
+  // ── Заголовки страниц: кликджекинг и подмена типа ──
+  for (const path of ['/', '/cabinet']) {
+    const h = (await fetch(base + path)).headers;
+    assert.equal(h.get('x-frame-options'), 'SAMEORIGIN', path + ' X-Frame-Options');
+    assert.match(h.get('content-security-policy') || '', /frame-ancestors 'self'/, path + ' CSP frame-ancestors');
+    assert.equal(h.get('x-content-type-options'), 'nosniff', path + ' nosniff');
+  }
+  assert.equal((await fetch(base + '/sw.js')).headers.get('x-content-type-options'), 'nosniff');
+  console.log('PASS: HTML pages carry anti-clickjacking and nosniff headers.');
+
+  // ── Схема: версия базы записана, повторный запуск ничего не меняет, health её показывает ──
+  const { SCHEMA_VERSION } = await import(pathToFileURL(join(fixture, 'backend/schema.mjs')).href);
+  assert.equal(qaDB.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION, 'user_version tracks the last applied migration');
+  assert.equal((await (await fetch(base + '/api/health')).json()).schema, SCHEMA_VERSION);
   qaDB.close();
   console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, 30/60/90/180/365 daily-only awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
   if (process.argv.includes('--ui-recovery') || process.argv.includes('--ui-restoration') || process.argv.includes('--ui') || process.argv.includes('--ui-repeat') || process.argv.includes('--ui-experience') || process.argv.includes('--ui-design') || process.argv.includes('--ui-regression') || process.argv.includes('--ui-brand')) {
@@ -480,8 +649,19 @@ try {
   assert.ok(!cols.includes('token_hash'));
   const legacy = migrated.prepare("SELECT ref_code, photo FROM users WHERE name='Старый'").get();
   assert.equal(legacy.ref_code, 'ref123'); assert.ok(legacy.photo.startsWith('data:image/png'));
+  assert.equal(migrated.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION, 'Legacy base ends on the current schema version');
+  const schemaSnapshot = () => migrated.prepare("SELECT name, sql FROM sqlite_master ORDER BY name").all();
+  const snap1 = schemaSnapshot();
+  await stop(); await start();
+  assert.deepEqual(schemaSnapshot(), snap1, 'A restart on a current base changes nothing in the schema');
+  await stop();
+  migrated.exec('PRAGMA user_version = 999');   // откат выпуска: код старее базы — миграции только добавляют, прежний код работает как есть
+  log = ''; await start();
+  assert.match(log, /новее кода/, 'Older code on a newer base says so and keeps the version untouched');
+  assert.equal(migrated.prepare('PRAGMA user_version').get().user_version, 999);
+  assert.equal((await (await fetch(base + '/api/health')).json()).ok, true);
   migrated.close();
-  console.log('PASS: legacy token_hash schema migrates without losing later columns or their values.');
+  console.log('PASS: legacy token_hash schema migrates without losing later columns or their values; migrations are versioned, idempotent on restart and safe for a rolled-back release.');
 } finally {
   await stop();
   await rm(fixture, { recursive: true, force: true });
