@@ -10,6 +10,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { vapidKeys, pushEndpointOk } from './push.mjs';
 import * as C from './content.mjs';
 import { personalExport } from './personal-export.mjs';
+import { personalExportPdf } from './personal-export-pdf.mjs';
 import { preferences, validPreferences, timeline } from './experience.mjs';
 import { entryPage } from './entries.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
@@ -76,6 +77,8 @@ function dataUrlOk(v, max) {
   const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(v || ''));
   return m && m[2].length <= max * 1.37 ? String(v) : null;
 }
+let exportHeaderPng = null;   /* логотип с Луной для обложки PDF — та же картинка, что в письмах */
+const exportHeader = () => { if (exportHeaderPng === null) { try { exportHeaderPng = readFileSync(join(SITE_DIR, 'assets/mail/header.png')); } catch { exportHeaderPng = false; } } return exportHeaderPng || null; };
 function sendDataUrl(res, dataUrl) {
   const m = /^data:(image\/[a-z]+);base64,(.+)$/.exec(dataUrl);
   const buf = Buffer.from(m[2], 'base64');
@@ -612,6 +615,16 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/data/export' && req.method === 'GET') return json(res,200,personalExport(db,u,open_));
+      /* Читаемая выгрузка: те же данные, что в JSON, но PDF в стиле Лунарио — для человека, а не для переноса */
+      if (p === '/api/data/export.pdf' && req.method === 'GET') {
+        const pdf = personalExportPdf(personalExport(db, u, open_), {
+          moodName: (m) => MOOD_RU[m], topicTitle: (k) => (C.READING_TOPICS.find((t) => t.key === k) || {}).title || k,
+          reminderTitle: (k) => (REMINDER_FEATURES[k] || {}).title || k, headerPng: exportHeader(),
+        });
+        const name = `lunario-${d}.pdf`;
+        res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Content-Disposition': `attachment; filename="${name}"`, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' });
+        return res.end(pdf);
+      }
 
       if (p === '/api/preferences') {
         if (req.method === 'POST') {

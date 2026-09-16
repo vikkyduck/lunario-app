@@ -13,6 +13,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
+import { inflateSync } from 'node:zlib';
 import { versionMismatch } from './bump-version.mjs';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -222,6 +223,14 @@ try {
   assert.equal(deniedEdit.status,404);
 
   const bundle=await owner.json('/data/export');assert.equal(bundle.profile.photo,photo);assert.ok(bundle.wishes.some(w=>w.photo===photo));assert.ok(bundle.habits.some(h=>h.title==='Тест: прогулка вечером'));assert.ok(bundle.askesis.some(a=>a.observations.some(n=>n.note==='Тест: вечер прошёл спокойно')));assert.ok(!(await other.json('/data/export')).journal.some(j=>j.id===gratitude.id));
+  /* Читаемая выгрузка: настоящий PDF, со шрифтом, текстами дневника и без чужих записей — те же данные, что в JSON */
+  { const r=await owner.raw('/data/export.pdf');assert.equal(r.status,200);assert.equal(r.headers.get('content-type'),'application/pdf');assert.match(r.headers.get('content-disposition')||'',/^attachment; filename="lunario-\d{4}-\d{2}-\d{2}\.pdf"$/);
+    const pdf=Buffer.from(await r.arrayBuffer());assert.ok(pdf.subarray(0,5).toString('latin1')==='%PDF-','PDF header');assert.ok(pdf.includes('/FontFile2') && pdf.includes('/Identity-H'),'embedded TrueType font');assert.ok(pdf.includes('/Subtype /Image'),'cover image');assert.ok(pdf.length>50000);
+    const {personalExportPdf}=await import(pathToFileURL(join(fixture,'backend/personal-export-pdf.mjs')).href);
+    const text=(buf)=>{let out='';const re=/stream\r?\n/g;let m;while((m=re.exec(buf.toString('latin1')))){const start=m.index+m[0].length,end=buf.indexOf('endstream',start);try{out+=inflateSync(buf.subarray(start,end)).toString('latin1');}catch{}}return out;};
+    const hexOf=(buf)=>{const cmap=text(buf);const map=new Map();for(const mm of cmap.matchAll(/<([0-9a-f]{4})> <([0-9a-f]{4})>/g))map.set(mm[1],String.fromCharCode(parseInt(mm[2],16)));let s='';for(const mm of cmap.matchAll(/<([0-9a-f]+)> Tj/g))s+=mm[1].match(/.{4}/g).map((g)=>map.get(g)||'').join('')+'\n';return s;};
+    const mine=hexOf(personalExportPdf(bundle));assert.ok(mine.includes('Тест: прогулка вечером'),'habit title in PDF text');assert.ok(mine.includes('Тест: вечер прошёл спокойно'),'askesis note in PDF text');
+    assert.ok(!hexOf(personalExportPdf(await other.json('/data/export'))).includes('Тест: прогулка вечером'),'other account gets its own PDF'); }
   assert.equal(reminders.notificationFor('gratitude',person),null,'Do not remind after gratitude is recorded');
   assert.equal(reminders.notificationFor('gratitude',person,Date.parse(day+'T20:59:00Z'),'Asia/Tokyo'),null,'Reminder suppression uses the same day as the diary');
   await owner.json('/journal','POST',{kind:'answer',title:me.day.question,text:'Сегодня я могу дать себе время'});

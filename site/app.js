@@ -280,8 +280,9 @@ function showForecastNote(){
 function dismissForecastNote(){try{localStorage.setItem('lun_forecast_note_'+S.user.id,'1');}catch(e){}$('forecast-note').replaceChildren();}
 async function exportPersonalData(){
   if(exportPersonalData.busy)return;exportPersonalData.busy=true;
-  try{const data=await api('/data/export'),blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob);
-    const link=document.createElement('a');link.href=url;link.download='lunario-'+S.day.date+'.json';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Файл с вашими данными подготовлен');
+  try{const r=await fetch(API+'/data/export.pdf');if(r.status===401){location.reload();return;}if(!r.ok)throw new Error('export');
+    const blob=await r.blob(),url=URL.createObjectURL(blob);   /* читаемый PDF в стиле Лунарио; JSON для переноса — GET /api/data/export */
+    const link=document.createElement('a');link.href=url;link.download='lunario-'+S.day.date+'.pdf';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Файл с вашими данными подготовлен');
   }catch(e){toast('Не удалось скачать данные. Попробуйте ещё раз');}finally{exportPersonalData.busy=false;}
 }
 
