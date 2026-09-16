@@ -81,6 +81,7 @@ function go(v){
   document.querySelectorAll('.app-nav button').forEach(b=>{const on=b.dataset.nav===v;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   window.refreshMoonLogos?.();window.LunarioSky?.refresh();
+  if(v==='account')XP.scroll.account=0;   /* открывается по кружку с любой вкладки — начинаем с шапки, а не с прошлой прокрутки */
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();}
   if(v==='history') loadHistory();
@@ -2168,8 +2169,9 @@ const photoUrl = (u) => u && u.photo ? `/app/api/photo?t=${encodeURIComponent(u.
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
   document.querySelectorAll('.acct').forEach(el=>{el.innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot" hidden aria-hidden="true"></i>`;}); paintNewsDot();
-  const box = $('ac-photo'); if (box) box.innerHTML = `<div class="row top"><div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>
-    <div class="grow"><button data-on="click:setPhoto" class="btn ghost sm" type="button">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? `<button data-on="click:removePhoto" type="button" class="linkbtn left mt-2">Убрать</button>` : '<p class="hint mt-2">Покажем в кружке на главной.</p>'}</div></div>`;
+  const box = $('ac-photo'); if (box) box.innerHTML = `<div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>`;
+  const actions = $('ac-photo-actions'); if (actions) actions.innerHTML = `<button data-on="click:setPhoto" class="text-action" type="button">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? '<button data-on="click:removePhoto" class="text-action secondary" type="button">Убрать фото</button>' : ''}`;
+  const note = $('ac-photo-note'); if (note) note.hidden = !!u.photo;
 }
 async function setPhoto(){
   const photo = await pickImage(320, 0.85); if (!photo) return;
