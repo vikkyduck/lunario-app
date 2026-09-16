@@ -1632,6 +1632,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 const AUTH_ERRORS = {
   send: { too_often: 'Слишком часто. Попробуйте через несколько минут.', mail_off: 'Отправка почты ещё не настроена.', send_failed: 'Письмо не ушло. Проверьте адрес или попробуйте позже.', _: 'Не получилось отправить код.' },
   verify: { wrong_code: 'Код не подошёл. Проверьте письмо.', expired: 'Код истёк — запросите новый.', too_many: 'Слишком много попыток. Запросите новый код.', _: 'Не получилось войти.' },
+  /* тот же код, но другое дело: здесь отказ означает, что аккаунт остался на месте */
+  del: { wrong_code: 'Код не подошёл — аккаунт не удалён.', expired: 'Код истёк — начните удаление заново.', too_many: 'Слишком много попыток. Начните удаление заново.', no_code: 'Код не найден — начните удаление заново.', _: 'Не получилось удалить аккаунт.' },
 };
 const authErrorText = (e, step) => AUTH_ERRORS[step][e && e.code] || AUTH_ERRORS[step]._;
 /* сотрудник: кабинет открывается по умолчанию, пока человек не нажал «В приложение» — выбор запоминается на устройстве */
@@ -1927,10 +1929,23 @@ async function saveProfile(){
     showMsg(msg, e.code==='bad_birth' ? 'Проверьте дату рождения.' : 'Не получилось сохранить. Попробуйте ещё раз.', true);
   }
 }
+/* Удаление необратимо, поэтому у аккаунта с почтой оно подтверждается кодом из письма — как и вход.
+   Аккаунту без почты подтверждать нечем: остаётся только вопрос на экране. */
 async function wipe(what){
   const isAcc=what==='account';
   if(!confirm(isAcc?'Удалить аккаунт и все данные? Это необратимо.':'Очистить всю историю вопросов, дневник и желания?')) return;
-  await api('/'+(isAcc?'account':'data'),{method:'DELETE'});
+  let code='';
+  if(isAcc && S.user && S.user.email){
+    let sent;
+    try{ sent=await api('/account/delete-code',{method:'POST'}); }
+    catch(e){ toast(authErrorText(e,'send')); return; }
+    if(sent.sent){
+      code=(prompt(`Код подтверждения отправлен на ${S.user.email}. Введите его, чтобы удалить аккаунт — после этого записи не восстановить.`)||'').trim();
+      if(!code) return;
+    }
+  }
+  try{ await api('/'+(isAcc?'account':'data'),{method:'DELETE',...(code?{body:JSON.stringify({code})}:{})}); }
+  catch(e){ toast(isAcc?authErrorText(e,'del'):'Не получилось очистить историю.'); return; }
   if(isAcc){ location.reload(); return; }
   toast('История очищена'); loadHistory();
 }

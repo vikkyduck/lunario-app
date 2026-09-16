@@ -428,13 +428,15 @@ try {
   assert.equal((await rot.json('/auth/logout-all', 'POST')).devices, 2, 'Logout everywhere revokes every session of the account');
   assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM sessions WHERE user_id=?').get(rotId).c, 0);
   const staffId = qaDB.prepare('SELECT user_id FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email=?)').get(staffMail).user_id;
-  const monthAgo = new Date(Date.now() - 31 * 864e5).toISOString();
+  const monthAgo = new Date(Date.now() - 31 * 864e5).toISOString(), longAgoStaff = new Date(Date.now() - 46 * 864e5).toISOString();
   qaDB.prepare('UPDATE sessions SET last_seen=? WHERE user_id=?').run(monthAgo, staffId);
-  assert.equal((await staff.raw('/cabinet/tasks')).status, 401, 'A staff session idle for a month expires');
+  assert.equal((await staff.raw('/cabinet/tasks')).status, 200, 'A staff member who looks in monthly stays signed in');
+  qaDB.prepare('UPDATE sessions SET last_seen=? WHERE user_id=?').run(longAgoStaff, staffId);
+  assert.equal((await staff.raw('/cabinet/tasks')).status, 401, 'A staff session idle past the limit expires');
   assert.equal((await staff.json('/cabinet/me')).email, '', 'Cabinet sees no one after the staff session expired');
   const plainId = (await askOwner.json('/me')).user.id;
-  qaDB.prepare('UPDATE sessions SET last_seen=? WHERE user_id=?').run(monthAgo, plainId);
-  assert.equal((await askOwner.json('/me')).user.id, plainId, 'An ordinary session survives a month without visits');
+  qaDB.prepare('UPDATE sessions SET last_seen=? WHERE user_id=?').run(longAgoStaff, plainId);
+  assert.equal((await askOwner.json('/me')).user.id, plainId, 'An ordinary session survives a month and a half without visits');
   console.log('PASS: login rotates the session token, logout-all revokes every device, staff sessions expire sooner.');
 
   // ── Устройств для уведомлений у аккаунта — не больше десяти, остаются новые ──
@@ -494,6 +496,58 @@ try {
   }
   assert.equal((await fetch(base + '/sw.js')).headers.get('x-content-type-options'), 'nosniff');
   console.log('PASS: HTML pages carry anti-clickjacking and nosniff headers.');
+
+  // ── Удаление аккаунта подтверждается отдельным кодом; код входа для этого не годится ──
+  const doomed = account(); await doomed.json('/me');
+  const doomedMail = 'doomed@example.test';
+  const putCode = (email, purpose) => qaDB.prepare("INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0, purpose=excluded.purpose")
+    .run(email, createHash('sha256').update(code + email).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString(), purpose);
+  putCode(doomedMail, 'login');
+  await doomed.json('/auth/verify', 'POST', { email: doomedMail, code });
+  const doomedId = (await doomed.json('/me')).user.id;
+  await doomed.json('/journal', 'POST', { text: 'Эта запись должна исчезнуть только по коду' });
+  assert.equal((await doomed.raw('/account', 'DELETE')).status, 400, 'Deletion without a code is refused');
+  putCode(doomedMail, 'login');
+  assert.equal((await doomed.raw('/account', 'DELETE', { code })).status, 400, 'A login code does not delete the account');
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users WHERE id=?').get(doomedId).c, 1, 'The account is still there after refused attempts');
+  putCode(doomedMail, 'delete');
+  assert.equal((await doomed.raw('/account', 'DELETE', { code: '000000' })).status, 400, 'A wrong code does not delete the account');
+  putCode(doomedMail, 'delete');
+  assert.equal((await doomed.raw('/auth/verify', 'POST', { email: doomedMail, code })).status, 400, 'A deletion code does not open a login');
+  putCode(doomedMail, 'delete');
+  assert.equal((await doomed.raw('/account', 'DELETE', { code })).status, 200, 'The right deletion code deletes the account');
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users WHERE id=?').get(doomedId).c, 0);
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM journal WHERE user_id=?').get(doomedId).c, 0);
+  const anon = account(); const anonId = (await anon.json('/me')).user.id;
+  assert.equal((await anon.raw('/account', 'DELETE')).status, 200, 'An account without an e-mail has nothing to confirm with');
+  assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users WHERE id=?').get(anonId).c, 0);
+  console.log('PASS: account deletion is confirmed by a separate e-mail code; login and deletion codes are not interchangeable.');
+
+  // ── Скользящая сессия: кука продлевается при использовании, входить заново не нужно ──
+  const roll = account(); await roll.json('/me');
+  const rollId = (await roll.json('/me')).user.id;
+  qaDB.prepare("UPDATE sessions SET last_seen = ? WHERE user_id = ?").run(new Date(Date.now() - 40 * 60000).toISOString(), rollId);
+  const r1 = await roll.raw('/me');
+  assert.ok(r1.headers.get('set-cookie'), 'A session in use is re-issued with a fresh Max-Age');
+  assert.match(r1.headers.get('set-cookie'), /Max-Age=31536000/);
+  assert.equal((await roll.json('/me')).user.id, rollId, 'The rolling cookie keeps the same account');
+  assert.equal((await roll.raw('/me')).headers.get('set-cookie'), null, 'A freshly seen session is not re-issued on every request');
+  console.log('PASS: an active session rolls its cookie forward instead of quietly expiring in the browser.');
+
+  // ── Копии: с BACKUP_SECRET в папке только шифротекст, ключ едет внутрь архива ──
+  const { createBackup, decryptBuffer } = await import(pathToFileURL(join(fixture, 'backend/backup.mjs')).href);
+  const bkDir = join(fixture, 'bk-enc');
+  const B = createBackup({ dataDir: join(fixture, 'data'), contentDir: join(fixture, 'content'), backupDir: bkDir, secret: 'пароль-копий' });
+  const made = await B.run(true);
+  assert.ok(made.files.every((f) => f.endsWith('.enc')), 'Every archive is encrypted: ' + made.files.join(', '));
+  const inDir = (await import('node:fs')).readdirSync(bkDir);
+  assert.ok(!inDir.includes('secret.key') && !inDir.includes('push-keys.json'), 'The app key is not lying next to the database: ' + inDir.join(', '));
+  const enc = (await import('node:fs')).readFileSync(join(bkDir, made.files.find((f) => f.startsWith('app-'))));
+  assert.ok(!enc.includes(Buffer.from('SQLite format')), 'The archive body is not readable');
+  assert.throws(() => decryptBuffer(enc, 'другой-пароль'), /authenticate|state/, 'A wrong password does not decrypt');
+  const tarBuf = decryptBuffer(enc, 'пароль-копий');
+  assert.ok(tarBuf.includes(Buffer.from('secret.key')) && tarBuf.includes(Buffer.from('.db.gz')), 'The key travels inside the encrypted archive');
+  console.log('PASS: backups are encrypted with a separate secret and the app key no longer sits beside the database.');
 
   // ── Схема: версия базы записана, повторный запуск ничего не меняет, health её показывает ──
   const { SCHEMA_VERSION } = await import(pathToFileURL(join(fixture, 'backend/schema.mjs')).href);

@@ -158,6 +158,9 @@ export const MIGRATIONS = [
   } },
   /* Отчёты ищут первое действие человека и активность по дням; (user_id, ts) закрывает MIN(ts) по индексу */
   { v: 11, name: 'индекс событий по человеку и времени', up: (db) => db.exec('CREATE INDEX IF NOT EXISTS idx_events_user_ts ON events (user_id, ts)') },
+  /* Код на почту выдаётся для разных дел: вход и подтверждение удаления аккаунта.
+     Без явной цели код, присланный «подтвердите удаление», годился бы и для входа. */
+  { v: 12, name: 'цель кода на почту (вход или удаление аккаунта)', up: (db) => addColumn(db, 'login_codes', 'purpose', "TEXT NOT NULL DEFAULT 'login'") },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
@@ -166,7 +169,7 @@ const REQUIRED = {
   users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
   entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text'], wishes: ['photo', 'photo_ts'],
-  events: ['user_id', 'day', 'type', 'age_band'], push_subs: ['endpoint', 'user_id'],
+  events: ['user_id', 'day', 'type', 'age_band'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],
 };
 
 /* Провести базу до текущей версии. Возвращает номер версии; бросает ошибку, если шаг не прошёл. */

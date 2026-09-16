@@ -25,7 +25,7 @@ const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.t
   return { name, lines, size: text.length, mtime: statSync(join(CONTENT_DIR, name)).mtime.toISOString().slice(0, 16).replace('T', ' ') };
 });
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
-import { sendMail, mailReady, loginMail, staffMail, verifySmtp } from './mailer.mjs';
+import { sendMail, mailReady, loginMail, staffMail, deleteMail, verifySmtp } from './mailer.mjs';
 import { lunarDay, lunarPeriodText, moonState } from './lunar.mjs';
 import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
@@ -91,15 +91,27 @@ const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().sl
 /* Многострочные тексты (дневник, заметки, обращения): переносы строк — часть текста, убираем только прочие управляющие символы */
 const cleanText = (s, max) => String(s ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b-\x1f]/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const sha = (s) => createHash('sha256').update(s).digest('hex');
-// код действует 15 минут; используется и на обычном входе, и при выдаче доступа сотруднику
-function issueLoginCode(email) {
+/* Код действует 15 минут. purpose — для чего он: 'login' (вход и выдача доступа сотруднику) или
+   'delete' (подтверждение удаления аккаунта). Код одной цели не подходит для другой: письмо
+   «подтвердите удаление» не должно открывать вход. У почты в каждый момент один код — новый заменяет прежний. */
+function issueLoginCode(email, purpose = 'login') {
   const code = String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
-  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts)
-    VALUES (?,?,?,?,0) ON CONFLICT(email) DO UPDATE SET
+  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
+    VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET
     code_hash = excluded.code_hash, created_at = excluded.created_at,
-    expires_at = excluded.expires_at, attempts = 0`)
-    .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString());
+    expires_at = excluded.expires_at, attempts = 0, purpose = excluded.purpose`)
+    .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString(), purpose);
   return code;
+}
+/* Проверка кода: та же для входа и для удаления. Возвращает причину отказа или null, если код подошёл (и погашен). */
+function checkLoginCode(email, code, purpose = 'login') {
+  const rec = db.prepare('SELECT * FROM login_codes WHERE email = ?').get(email);
+  if (!rec || (rec.purpose || 'login') !== purpose) return 'no_code';
+  if (rec.attempts >= 5) return 'too_many';
+  if (new Date(rec.expires_at) < new Date()) return 'expired';
+  if (rec.code_hash !== sha(code + email)) { db.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').run(email); return 'wrong_code'; }
+  db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);
+  return null;
 }
 // сотруднику, которому только что назначили роль, шлём код входа сразу — не нужно самому запрашивать
 async function notifyStaffAccess(email, roleKeys) {
@@ -178,10 +190,13 @@ function allowRate(map, key, max) {
    сам nginx (proxy_add_x_forwarded_for), а первые элементы мог прислать клиент, чтобы обойти лимит одним заголовком.
    Без прокси (прямое подключение не с loopback) заголовку не верим вовсе. */
 const LOOPBACK = /^(::1|127\.\d+\.\d+\.\d+|::ffff:127\.\d+\.\d+\.\d+)$/;
+let warnedNoXff = false;
 function clientIp(req) {
   const peer = req.socket.remoteAddress || '';
   const xff = req.headers['x-forwarded-for'];
   if (xff && LOOPBACK.test(peer)) { const last = String(xff).split(',').pop().trim(); if (last) return last; }
+  /* За прокси без этого заголовка все люди считаются одним клиентом и делят один лимит на коды входа — говорим об этом вслух */
+  if (!xff && LOOPBACK.test(peer) && !warnedNoXff) { warnedNoXff = true; console.log('ВНИМАНИЕ: запрос с loopback без X-Forwarded-For — лимиты считаются на весь сервер. В nginx нужен proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;'); }
   return peer;
 }
 
@@ -330,7 +345,10 @@ const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').ge
 /* Сессия живёт год с выдачи и полгода без входа; у сотрудников (доступ к кабинету) — 90 дней и 30 без входа;
    пользование отмечаем не чаще раза в 10 минут */
 const SESSION_MAX_MS = 365 * 864e5, SESSION_IDLE_MS = 180 * 864e5, SEEN_STEP_MS = 10 * 60000;
-const STAFF_MAX_MS = 90 * 864e5, STAFF_IDLE_MS = 30 * 864e5;
+/* Сотруднику кабинет открывает аналитику и карточки людей, поэтому его токен не живёт вечно: не дольше 90 дней
+   с выдачи и 45 дней без захода. Кука при этом скользящая, так что заново вводить код нужно раз в 90 дней, а не при
+   каждом заходе. */
+const STAFF_MAX_MS = 90 * 864e5, STAFF_IDLE_MS = 45 * 864e5;
 function parseCookies(req) {
   const out = {};
   for (const p of String(req.headers.cookie || '').split(';')) {
@@ -363,7 +381,12 @@ function getUser(req, res, create = true) {
       const expired = overUser || (overStaff && u && u.email && rolesFor(u.email).length);
       if (expired) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(h);
       else if (u) {
-        if (idle > SEEN_STEP_MS) db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), h);
+        if (idle > SEEN_STEP_MS) {
+          db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), h);
+          /* Скользящая сессия: пока человек пользуется приложением, кука продлевается. Иначе она однажды
+             истекала бы в браузере при живой сессии на сервере — и код пришлось бы вводить заново. */
+          if (res) setSessionCookie(res, tok);
+        }
         if (now - Date.parse(u.last_seen) > SEEN_STEP_MS) db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
         return u;
       }
@@ -706,15 +729,8 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
         const code = clean(b.code, 6);
-        const rec = db.prepare('SELECT * FROM login_codes WHERE email = ?').get(email);
-        if (!rec) return json(res, 400, { ok: false, error: 'no_code' });
-        if (rec.attempts >= 5) return json(res, 429, { ok: false, error: 'too_many' });
-        if (new Date(rec.expires_at) < new Date()) return json(res, 400, { ok: false, error: 'expired' });
-        if (rec.code_hash !== sha(code + email)) {
-          db.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').run(email);
-          return json(res, 400, { ok: false, error: 'wrong_code' });
-        }
-        db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);
+        const bad = checkLoginCode(email, code, 'login');
+        if (bad) return json(res, bad === 'too_many' ? 429 : 400, { ok: false, error: bad });
 
         /* личность подтверждена — токен устройства меняется в любом случае: старый, даже если утёк, больше не действует */
         const rotate = (userId) => { db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(parseCookies(req).lunario_app || '')); newSession(userId, res, req.headers['user-agent']); };
@@ -1197,7 +1213,24 @@ const server = createServer(async (req, res) => {
 
       /* «Очистить историю» и «Удалить аккаунт» — одна политика на все личные таблицы (account-data.mjs) */
       if (p === '/api/data' && req.method === 'DELETE') { clearHistory(db, u); return json(res, 200, { ok: true }); }
+      /* Удаление необратимо, поэтому у аккаунта с почтой оно подтверждается отдельным кодом из письма:
+         одной кнопки на чужом или забытом устройстве мало. Аккаунту без почты подтверждать нечем — там только кнопка. */
+      if (p === '/api/account/delete-code' && req.method === 'POST') {
+        if (!u.email) return json(res, 200, { ok: true, sent: false, reason: 'no_email' });
+        if (!allowRate(codeRate, clientIp(req), 5) || !allowRate(codeRateEmail, u.email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
+        if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
+        try {
+          const m = deleteMail(issueLoginCode(u.email, 'delete'));
+          await sendMail({ to: u.email, subject: m.subject, text: m.text, html: m.html });
+        } catch (e) { logError('mail', e.message); return json(res, 502, { ok: false, error: 'send_failed' }); }
+        return json(res, 200, { ok: true, sent: true });
+      }
       if (p === '/api/account' && req.method === 'DELETE') {
+        if (u.email) {
+          const b = await readBody(req).catch(() => ({}));
+          const bad = checkLoginCode(u.email, clean(b.code, 6), 'delete');
+          if (bad) return json(res, bad === 'too_many' ? 429 : 400, { ok: false, error: bad });
+        }
         deleteAccount(db, u);
         clearSessionCookie(res);
         return json(res, 200, { ok: true });

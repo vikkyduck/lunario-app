@@ -14,7 +14,9 @@ Environment=BASE_PATH=/app
 Environment=CONTENT_DIR=/opt/lunario-content
 # резервные копии: ночной cron и кнопка в кабинете админа пишут сюда
 Environment=BACKUP_DIR=/opt/lunario-app-backups
-# Секреты (SMTP) — только на сервере, деплой этот файл не трогает
+# Секреты (SMTP и BACKUP_SECRET — пароль шифрования резервных копий) — только на сервере,
+# деплой этот файл не трогает. Без BACKUP_SECRET копии снимаются открытыми, рядом с ключом шифрования записей.
+
 EnvironmentFile=-/opt/lunario-app/.env
 ExecStart=/usr/bin/node /opt/lunario-app/backend/server.mjs
 Restart=on-failure
