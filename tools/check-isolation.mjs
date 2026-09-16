@@ -191,10 +191,11 @@ try {
   await asAlice('/reminders/test', 'POST', { feature: 'morning', endpoint: bobEndpoint });
   assert.equal(db.prepare('SELECT COUNT(*) c FROM push_queue WHERE user_id = ?').get(bobId).c, 0, 'в очередь Б ничего не легло');
 
-  /* чужая ячейка уведомлений: перехват подписки и чтение чужой очереди */
-  const stolen = await asAlice('/push', 'POST', { endpoint: bobEndpoint });
-  const ownerNow = db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(bobEndpoint);
-  console.log('  проба: POST /api/push с чужой ячейкой →', stolen.status, '| владелец ячейки теперь:', ownerNow ? (ownerNow.user_id === bobId ? 'Б' : 'А') : 'никто');
+  /* чужая ячейка уведомлений: её нельзя перевесить на себя — иначе у Б уведомления молча прекратятся,
+     а сервер начнёт слать на её устройство тексты А */
+  assert.equal((await asAlice('/push', 'POST', { endpoint: bobEndpoint })).status, 409, 'чужую ячейку уведомлений не перехватить');
+  assert.equal(db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(bobEndpoint).user_id, bobId, 'ячейка осталась у Б');
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM push_subs WHERE user_id = ?').get(aliceId).c, 0, 'и А её себе не записал');
 
   /* запись в чужой аккаунт напрямую */
   const { randomUUID } = await import('node:crypto');

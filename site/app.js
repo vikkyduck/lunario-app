@@ -1403,7 +1403,14 @@ async function pushSubscribe(){
     const sub = await withTimeout(reg.pushManager.getSubscription()) || await withTimeout(reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:toBytes(S.pushKey)}));
     await api('/push',{method:'POST',body:JSON.stringify({endpoint:sub.endpoint})});
     S.pushEndpoint=sub.endpoint; S.pushOn=true; return true;
-  } catch(e) { S.pushOn=false; toast('Не получилось подключить уведомления. Проверьте связь и повторите'); return false; }
+  } catch(e) {
+    S.pushOn=false;
+    /* ячейка уведомлений этого браузера занята другим аккаунтом — «повторите» тут не поможет, нужно другое действие */
+    toast(e && e.code==='endpoint_taken'
+      ? 'На этом устройстве уведомления включены у другого аккаунта. Зайдите в него и выключите уведомления — тогда включатся ваши'
+      : 'Не получилось подключить уведомления. Проверьте связь и повторите');
+    return false;
+  }
 }
 let nativeRequestId=0;
 const nativeRequests=new Map();

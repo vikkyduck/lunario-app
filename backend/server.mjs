@@ -869,7 +869,10 @@ const server = createServer(async (req, res) => {
         const endpoint = clean(b.endpoint, 500);
         if (!pushEndpointOk(endpoint)) return json(res, 400, { ok: false, error: 'bad_endpoint' });
         const holder = db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(endpoint);
-        /* ячейка уже у другого аккаунта — не перехватываем: при выходе она удаляется, и новый вход на том же устройстве заведёт свою */
+        /* Ячейка уже у другого аккаунта — не перехватываем: иначе тот, кто узнал чужой адрес, молча забрал бы себе
+           чужие уведомления. Выход из аккаунта ячейку НЕ освобождает — её снимает только «выключить уведомления»
+           (DELETE /api/push). Поэтому на общем браузере второй человек включит свои после того, как первый выключит
+           у себя; приложение так ему и говорит (pushSubscribe в site/app.js, ответ endpoint_taken). */
         if (holder && holder.user_id !== u.id) return json(res, 409, { ok: false, error: 'endpoint_taken' });
         const fresh = !holder;
         db.prepare('INSERT INTO push_subs (endpoint, user_id, created_at) VALUES (?,?,?) ON CONFLICT(endpoint) DO NOTHING').run(endpoint, u.id, nowISO());
