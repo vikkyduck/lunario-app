@@ -130,6 +130,16 @@ try {
   assert.equal((await owner.raw('/preferences','POST',{...prefs,tools:'wishes'})).status,400);
   await owner.json('/preferences','POST',{...prefs,tools:[]});assert.deepEqual((await owner.json('/preferences')).preferences.tools,[]);
   await owner.json('/preferences','POST',{...prefs,tools:['gratitude','habits','askesis','wishes','hmood']});   /* дальше UI-сценарии открывают плитки с главной */
+  /* Утро: выбранные плитки хранятся в настройках; карта и руна, если выбраны, тянутся при первом /me дня; тема дня — от них */
+  { const fresh=account();await fresh.json('/me');await fresh.json('/profile','POST',{name:'Утро',birth:'1991-02-02',city:'Москва',consent:true});
+    const me0=await fresh.json('/me');assert.deepEqual(me0.day.morning,['lunar','tone']);assert.ok(me0.day.set?.text&&me0.day.set.question&&me0.day.theme?.key,'настрой, вопрос и тема дня');assert.equal(me0.day.card,null);assert.equal(me0.day.rune,null);
+    assert.equal((await fresh.raw('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card','nope']})).status,400);
+    await fresh.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['dayrune','card']});
+    const me1=await fresh.json('/me');assert.ok(me1.day.card&&me1.day.rune,'chosen card and rune are drawn by themselves');assert.deepEqual(me1.day.morning,['dayrune','card']);
+    assert.equal((await fresh.json('/dayrune','POST')).rune.slug,me1.day.rune.slug,'the same rune all day');assert.equal(me1.day.set.text,me0.day.set.text,'today\'s настрой does not change after the choice');
+    const other2=account();await other2.json('/me');await other2.json('/profile','POST',{name:'Утро-2',birth:'1991-02-02',city:'Москва',consent:true});
+    await other2.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card']});const me2=await other2.json('/me');
+    assert.ok(me2.day.card,'card drawn from the first day pack');assert.ok(me2.day.theme?.key,'theme from the card'); }
   const wishesBefore=(await owner.json('/wishes')).items.length;
   assert.equal((await owner.raw('/wishes','POST',{text:'Неверное фото',photo:'not-an-image'})).status,400);
   assert.equal((await owner.json('/wishes')).items.length,wishesBefore,'No orphan wish when its photo is invalid');
@@ -177,19 +187,13 @@ try {
   assert.equal(long.rule,'every:100');
   const qaDB = new DatabaseSync(join(fixture,'data/app.db'));
   qaDB.exec('PRAGMA busy_timeout=5000');
-  for (const milestone of [30,60,90,180,365]) {
-    const h=(await owner.json('/habits','POST',{title:'Ежедневно '+milestone,rule:'каждый день'})).items.find(h=>h.title==='Ежедневно '+milestone);
-    qaDB.prepare('UPDATE habits SET created_at=? WHERE id=?').run(new Date(Date.parse(day)-(milestone-1)*864e5).toISOString(),h.id);
-    const add=qaDB.prepare('INSERT INTO habit_marks(habit_id,day) VALUES(?,?)');
-    for(let i=1;i<milestone;i++)add.run(h.id,new Date(Date.parse(day)-i*864e5).toISOString().slice(0,10));
-    const result=await owner.json('/habits','PATCH',{id:h.id});
-    assert.equal(result.award?.days,milestone);
-    await owner.json('/habits','PATCH',{id:h.id});
-    assert.equal((await owner.json('/habits','PATCH',{id:h.id})).award,null,'A milestone is awarded once');
-  }
-  const weekly=(await owner.json('/habits','POST',{title:'Еженедельно',rule:'раз в неделю'})).items.find(h=>h.title==='Еженедельно');
-  for(let i=1;i<365;i++)qaDB.prepare('INSERT INTO habit_marks(habit_id,day) VALUES(?,?)').run(weekly.id,new Date(Date.parse(day)-i*864e5).toISOString().slice(0,10));
-  assert.equal((await owner.json('/habits','PATCH',{id:weekly.id})).award,null,'Non-daily habits get no daily milestone');
+  /* Наград за серии больше нет (решение владелицы): отметка — просто отметка, серия считается, но ничего не «выдаётся» */
+  { const h=(await owner.json('/habits','POST',{title:'Ежедневно 30',rule:'каждый день'})).items.find(h=>h.title==='Ежедневно 30');
+    qaDB.prepare('UPDATE habits SET created_at=? WHERE id=?').run(new Date(Date.parse(day)-29*864e5).toISOString(),h.id);
+    const add=qaDB.prepare('INSERT INTO habit_marks(habit_id,day) VALUES(?,?)');for(let i=1;i<30;i++)add.run(h.id,new Date(Date.parse(day)-i*864e5).toISOString().slice(0,10));
+    const result=await owner.json('/habits','PATCH',{id:h.id});assert.equal(result.award,undefined,'no award field');
+    const row=result.items.find(x=>x.id===h.id);assert.equal(row.streak,30);assert.equal(row.awards,undefined);assert.equal(row.next,undefined);
+    assert.equal(qaDB.prepare('SELECT COUNT(*) n FROM habit_awards').get().n,0,'nothing is written to habit_awards any more'); }
   const schedule=(await owner.json('/reminders','POST',{feature:'askesis',enabled:true,freq:'weekly',weekday:5,time:'20:40',tz:'Europe/Moscow'})).item;
   assert.equal(schedule.freq,'weekly'); assert.equal(schedule.time,'20:40'); assert.equal(schedule.weekday,5); assert.ok(schedule.nextAt);
   const reminders=await import(pathToFileURL(join(fixture,'backend/reminders.mjs')));
@@ -205,7 +209,7 @@ try {
   assert.ok((await owner.json('/askesis')).active.some(a=>a.id===askesis.id),'Building a future plan must not finish current askeses');
   assert.equal((await other.json('/reminders/askesis-plan')).items.length,0);
   const push=reminders.notificationFor('askesis',person);
-  assert.ok(push.body.includes(String(asc.active[0].left))); assert.ok(push.body.includes(asc.active[0].support));
+  assert.ok(push.body.includes(String(asc.active[0].left))); assert.equal(asc.active[0].support,undefined,'no support phrases any more');assert.ok(!/держитесь|Вы справ/i.test(push.body));
   await owner.json('/habits','POST',{title:'10 000 шагов',rule:'каждый день'});
   await owner.json('/reminders','POST',{feature:'habits',enabled:true,time:'20:40'});
   qaDB.prepare('INSERT INTO push_subs(endpoint,user_id,created_at) VALUES(?,?,?)').run('https://push.invalid/synthetic',person.id,new Date().toISOString());
@@ -218,7 +222,7 @@ try {
   assert.ok(queued.some(n=>n.feature==='habits' && n.body.includes('10 000 шагов')));
   assert.ok(queued.every(n=>!n.body.includes('enc1:')));
   qaDB.prepare('DELETE FROM push_subs WHERE endpoint=?').run('https://push.invalid/synthetic');
-  console.log('PASS: actual background-worker initialization queues correct askesis countdown/support and due habits; transport mocked, no notifications sent.');
+  console.log('PASS: actual background-worker initialization queues correct askesis countdown and due habits; transport mocked, no notifications sent.');
   assert.equal(reminders.notificationFor('gratitude',person).title,'Кому и за что я благодарна сегодня?');
   await owner.json('/journal','POST',{kind:'gratitude',title:'Кому и за что я благодарна сегодня?',text:'Маме за звонок'});
   const gratitude=(await owner.json('/journal?kind=gratitude')).items[0];
@@ -611,7 +615,7 @@ try {
   assert.equal(qaDB.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION, 'user_version tracks the last applied migration');
   assert.equal((await (await fetch(base + '/api/health')).json()).schema, SCHEMA_VERSION);
   qaDB.close();
-  console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, 30/60/90/180/365 daily-only awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
+  console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, no streak awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
   if (process.argv.includes('--ui-recovery') || process.argv.includes('--ui-restoration') || process.argv.includes('--ui') || process.argv.includes('--ui-repeat') || process.argv.includes('--ui-experience') || process.argv.includes('--ui-design') || process.argv.includes('--ui-regression') || process.argv.includes('--ui-brand')) {
     // Optional Playwright checks use the same real backend and isolated database.
     const { chromium } = createRequire(import.meta.url)('playwright');

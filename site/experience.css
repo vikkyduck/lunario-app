@@ -6,7 +6,6 @@ body.inner :is(input,textarea,select){background:var(--field);color:var(--text);
 body.inner :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
 body.inner textarea{font-size:18px;line-height:1.65;min-height:160px;resize:none;overflow:hidden}
 body.inner .wid b{font-size:17px;line-height:1.4}
-body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.histbody p){font-size:var(--read-size)!important;line-height:1.7;color:var(--text)}
 body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.wid>span,.field label,.text-action,.rem-summary,.segmented button,.emotion-family,.mchip,.mood-own-row label,.hb-rule,.chip,.btn.sm,.observation>summary,.practice-create>summary){font-size:16px;line-height:1.5}
 body.inner .wpane :is(.hint,.msg,.saved-state){font-size:16px!important;color:var(--muted)}
 body.inner :is(.wpane .saved-state,.saved-state){color:var(--ok)}

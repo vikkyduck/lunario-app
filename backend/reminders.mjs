@@ -171,10 +171,9 @@ export function askesisNotification(items, day) {
   const act=items.filter(a=>a.started<=day && a.until>=day); if(!act.length) return null;
   const a=act[0], left=Math.round((Date.parse(a.until)-Date.parse(day))/864e5);
   const done=Math.round((Date.parse(day)-Date.parse(a.started))/864e5)+1;
-  const support=C.ASKESIS_SUPPORT[(a.id+Number(day.slice(-2)))%Math.max(1,C.ASKESIS_SUPPORT.length)] || '';
   const leftText=left===0?'Сегодня последний день':`До конца осталось ${left} ${plural(left,'день','дня','дней')}`;
   const more=act.length>1?` Ещё ${act.length-1} ${plural(act.length-1,'аскеза','аскезы','аскез')} — в приложении.`:'';
-  const t=tpl('askesis',{'название':a.title,'день':done,'всего':a.total,'осталось':leftText,'поддержка':support});
+  const t=tpl('askesis',{'название':a.title,'день':done,'всего':a.total,'осталось':leftText});
   return {title:t.title,body:(t.body+more).slice(0,220),url:FEATURES.askesis.url};
 }
 export function askesisNativePlan(userId, fromMs=Date.now()) {

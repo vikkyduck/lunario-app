@@ -1,4 +1,8 @@
 export const DEFAULT_PREFERENCES = {theme:'dark', ritual:['card','mood','gratitude'], topics:[], topicsAll:false, lunarViews:0};
+/* Утро на «Сегодня»: какие плитки человек выбрал в ответ на «На что хочу обращать внимание каждое утро?». Нет выбора — Луна и вопрос дня */
+export const MORNING_KEYS = ['card', 'dayrune', 'sky', 'day', 'lunar', 'tone'];
+export const DEFAULT_MORNING = ['lunar', 'tone'];
+export const morningOf = (prefs) => Array.isArray(prefs.morning) ? prefs.morning.filter((k) => MORNING_KEYS.includes(k)) : DEFAULT_MORNING;
 const practices = new Set(['card','mood','habits','gratitude','tone','journal']);
 export function preferences(raw) {
   try { return {...DEFAULT_PREFERENCES, ...JSON.parse(raw || '{}')}; }
@@ -8,6 +12,7 @@ const topicKey = (k) => typeof k === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(k
 export function validPreferences(value) {
   if (value && value.topics !== undefined && !(Array.isArray(value.topics) && value.topics.length <= 12 && value.topics.every(topicKey))) return false;
   if (value && value.tools !== undefined && !(Array.isArray(value.tools) && value.tools.length <= 40 && value.tools.every(topicKey))) return false;   /* видимые инструменты: ключи из каталога */
+  if (value && value.morning !== undefined && !(Array.isArray(value.morning) && value.morning.length <= 10 && value.morning.every((k) => MORNING_KEYS.includes(k)))) return false;
   if (value && value.topicsAll !== undefined && typeof value.topicsAll !== 'boolean') return false;
   return value && ['system','light','dark'].includes(value.theme) && Array.isArray(value.ritual)
     && value.ritual.length >= 2 && value.ritual.length <= 3

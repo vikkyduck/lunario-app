@@ -34,7 +34,7 @@ function refreshPracticeReminder(){
   loadReminders().then(()=>{if(XP.page!==key)return;const tools=$('practice-tools');tools.innerHTML=remBox(feature);paintRem(feature);const button=tools.querySelector('.rem-summary');if(button){button.setAttribute('data-on','click:openPracticeSettings-a0');button.dataset.a0=feature;   /* не onclick: под CSP атрибут-обработчик заблокируют */button.removeAttribute('aria-controls');button.setAttribute('aria-haspopup','dialog');button.removeAttribute('aria-expanded');button.lastElementChild.textContent='→';tools.replaceChildren(button);}}).catch(()=>{});
 }
 
-function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.theme);applyTools();}
+function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.theme);applyTools();paintMorning();}
 function applyTheme(mode){
   const theme=mode==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;
   document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;
@@ -82,6 +82,27 @@ async function toggleTool(key){
   finally{toggleTool.busy=false;}
 }
 function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidget(key);}
+
+/* ── Утро на «Сегодня»: ответ на «На что хочу обращать внимание каждое утро?». Выбранные плитки — в ленте «Ваше утро» и в утреннем пуше,
+   остальные — маленькими квадратами ниже. Карта и руна, если выбраны, тянутся утром сами, и от них считается тема дня ── */
+const MORNING=[['card','Карта дня'],['dayrune','Руна дня'],['sky','Влияние планет'],['day','Прогноз дня'],['lunar','Луна'],['tone','Вопрос дня']];
+function morningChosen(){return Array.isArray(XP.prefs.morning)?XP.prefs.morning.filter(k=>MORNING.some(m=>m[0]===k)):['lunar','tone'];}
+function paintMorning(){
+  const chips=$('morning-chips'),feed=$('morning-feed'),more=$('morning-more');if(!chips||!feed||!more)return;
+  const chosen=morningChosen();
+  chips.innerHTML=MORNING.map(([k,label])=>`<button data-on="click:toggleMorning-a0" data-a0="${k}" type="button" class="chip${chosen.includes(k)?' on':''}" aria-pressed="${chosen.includes(k)}">${label}</button>`).join('');
+  for(const [k] of MORNING){const tile=document.querySelector('#v-home [data-feature="'+k+'"]');if(tile)(chosen.includes(k)?feed:more).appendChild(tile);}
+  feed.closest('.feature-group').hidden=!chosen.length;more.closest('.feature-group').hidden=chosen.length===MORNING.length;
+}
+async function toggleMorning(key){
+  if(toggleMorning.busy)return;toggleMorning.busy=true;
+  const set=new Set(morningChosen());if(set.has(key))set.delete(key);else set.add(key);
+  const morning=MORNING.map(m=>m[0]).filter(k=>set.has(k));
+  try{await savePreferences({...XP.prefs,morning});paintMorning();track(set.has(key)?'morning_add':'morning_remove',key);
+    if(set.has(key)&&(key==='card'||key==='dayrune')){const r=await api('/me');S.day=r.day;paintToday();}   /* карта или руна тянутся сразу; тема дня — с завтрашнего утра */
+  }catch{toast('Не удалось сохранить. Попробуйте ещё раз');}
+  finally{toggleMorning.busy=false;}
+}
 
 /* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живёт там), «Практики» — тоже:
    отметки привычек и аскез вернутся в дневник своими фильтрами вместе с вечерней карточкой дня. Подписи записей — для всех видов. */

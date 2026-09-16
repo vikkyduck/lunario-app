@@ -57,8 +57,8 @@ document.addEventListener('pointermove',(e)=>{
     lightFrame=0;
   });
 },{passive:true});
-/* Вибрация: tap — нажатие, ok — сохранено, done — шаг завершён, award — награда */
-const HAP = { tap: 9, ok: [0, 12], done: [0, 14, 45, 22], award: [0, 20, 60, 30, 60, 40] };
+/* Вибрация: tap — нажатие, ok — сохранено, done — шаг завершён */
+const HAP = { tap: 9, ok: [0, 12], done: [0, 14, 45, 22] };
 function hap(kind = 'tap'){
   // в оболочке вибрация идёт через Taptic Engine — navigator.vibrate на iOS не работает
   if (IOS_SHELL && nativePost({ type:'haptic', kind: kind === 'tap' ? 'tap' : 'success' })) return;
@@ -110,7 +110,7 @@ const FEATURES = {
   card:{sec:'Ваш ритуал',title:'Карта дня',view:'home',reminder:'card'}, mood:{sec:'Дневник',title:'Настроение дня',view:'history',reminder:'mood'},
   day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, dayrune:{sec:'Сегодня',title:'Руна дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'history'},
   habits:{sec:'Дневник',title:'Дневник привычек',view:'history',page:true,reminder:'habits'}, askesis:{sec:'Дневник',title:'Взять аскезу',view:'history',page:true,reminder:'askesis'},
-  lunar:{sec:'Луна и планеты',title:'Лунный день',view:'home',reminder:'lunar'}, sky:{sec:'Луна и планеты',title:'Влияние планет на сегодня',view:'home',reminder:'sky'},
+  lunar:{sec:'Луна и планеты',title:'Влияние Луны на сегодня',view:'home',reminder:'lunar'}, sky:{sec:'Луна и планеты',title:'Влияние планет на сегодня',view:'home',reminder:'sky'},
   worry:{sec:'Свериться с собой',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
   journal:{sec:'Дневник',title:'Дневник',view:'history',page:true}, gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history',reminder:'gratitude'},
   wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history',reminder:'moodreport'},
@@ -173,7 +173,7 @@ document.addEventListener('keydown',e=>{
     const next=e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowRight'?1:-1)+items.length)%items.length;
     e.preventDefault();items[next].click();return;
   }
-  if(!wgOpen || $('award').classList.contains('on'))return;
+  if(!wgOpen)return;
   if(e.key==='Escape'){closeWidget();return;}
   if(e.key!=='Tab')return;
   const items=[...$('wg').querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),summary,a[href],[tabindex="0"]')].filter(el=>el.getClientRects().length);
@@ -348,6 +348,8 @@ function paintToday(){
     return `<div class="barrow"><span class="l">${label}</span><div class="bar" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}" aria-valuetext="${value}%"><i style="width:${value}%"></i></div><span class="v">${value}%</span></div>`;
   }).join('');
   $('t-daysub').textContent=d.forecast.title;
+  if($('t-runesub'))$('t-runesub').textContent=d.rune?`${d.rune.name}${d.rune.keyword?' · '+d.rune.keyword:''}`:'Одна руна на день: образ и совет';
+  if($('t-tonesub'))$('t-tonesub').textContent=d.question||'Вопрос от Лунарио по теме дня';
   if (wgOpen === 'tone') paintTone();
   renderMoods(); paintCardTile(); paintLunar(); loadNumerology();
 }
@@ -776,7 +778,7 @@ async function installApp(){ if(!deferred) return; track('installed'); deferred.
    а не из копий справочников в коде — источник у контента один, content.mjs. */
 const catalogFrom = (c) => ({ cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
   news: c.news || [], quickMoods: c.quickMoods || [], moods: c.moods || [], moodFamilies: c.moodFamilies || {}, legacyMoods: c.legacyMoods || {},
-  awards: c.awards || [], tools: c.tools || [], reminderTexts: c.reminderTexts || {} });
+  tools: c.tools || [], reminderTexts: c.reminderTexts || {} });
 let CAT = null, catPromise = null;
 try { const cached = localStorage.getItem('lun_catalog'); if (cached) CAT = catalogFrom(JSON.parse(cached)); } catch (e) {}
 function loadCatalog(){
@@ -1616,7 +1618,6 @@ function shareResText(p){
     case 'askesis': return `Аскеза «${p.a.title}»: день ${p.a.done} из ${p.a.total}, осталось ${p.a.left}.\nЛунарио · ${link}`;
     case 'lunar': return `${ordinal(p.l.n)} лунный день${p.l.title ? ' · ' + p.l.title : ''}${p.l.theme ? '\n' + p.l.theme : ''}\n${p.l.advice || ''}\nЛунарио · ${link}`;
     case 'gratitude': return `Сегодня я благодарна: ${p.text}\nЛунарио · ${link}`;
-    case 'award': return `${p.days} ${plural(p.days, 'день', 'дня', 'дней')} подряд: «${p.title}» — ${p.name} ✦\nЛунарио · ${link}`;
     case 'sky': return `На небе сегодня: ${p.sky.moon.phase} ${p.sky.moon.signIn}${p.sky.today.length ? ' · ' + p.sky.today.map(e => e.title).join(' · ') : ''}.\nЛунарио · ${link}`;
   }
   return `Лунарио · ${link}`;
@@ -1701,17 +1702,6 @@ async function drawPostcardExtra(ctx, p){
     drawText(ctx, 'БЛАГОДАРНОСТЬ', 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
     let y = drawText(ctx, gratQ(), 540, 470, { size: 44, weight: 600, color: '#e9c77e', maxW: 880, lh: 1.25 });
     drawText(ctx, p.text, 540, y + 80, { size: 40, color: '#f5f2ea', maxW: 860, lh: 1.42 });
-    return true;
-  }
-  if (p.type === 'award') {
-    drawText(ctx, `${p.days} ${plural(p.days, 'ДЕНЬ', 'ДНЯ', 'ДНЕЙ')} ПОДРЯД`, 540, 170, { size: 30, color: '#d9b868', spacing: 6 });
-    if (p.days >= 365) { ctx.save(); ctx.strokeStyle = '#f0d79a'; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.shadowColor = 'rgba(240,215,154,.6)'; ctx.shadowBlur = 60;
-      ctx.beginPath(); ctx.arc(540, 560, 150, 0, Math.PI * 2); ctx.fillStyle = '#f0d79a'; ctx.fill();
-      for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; ctx.beginPath(); ctx.moveTo(540 + Math.cos(a) * 200, 560 + Math.sin(a) * 200); ctx.lineTo(540 + Math.cos(a) * 280, 560 + Math.sin(a) * 280); ctx.stroke(); } ctx.restore(); }
-    else pcMoonDisc(ctx, 540, 560, 200, { 30: 18, 60: 50, 90: 80, 180: 100 }[p.days] || 100, true);
-    let y = drawText(ctx, p.name, 540, 940, { size: 64, weight: 600, color: '#e9c77e' });
-    y = drawText(ctx, p.title, 540, y + 30, { size: 40, color: '#f5f2ea', maxW: 900, lh: 1.3 });
-    drawText(ctx, p.text, 540, y + 50, { size: 32, color: '#ded8ee', maxW: 860, lh: 1.42 });
     return true;
   }
   if (p.type === 'lunar') {
@@ -1927,7 +1917,6 @@ function paintHabits(){
     <button data-on="click:habitMark-a0" data-a0="${h.id}" type="button" class="hb-check" aria-label="${h.today?'Снять отметку':'Отметить'}: ${esc(h.title)}" aria-pressed="${h.today}" ${habitBusy.has(h.id)?'disabled':''}>${h.today?'✓':''}</button>
     <div class="grow"><b class="hb-columns"><span>${esc(h.title)}</span><span class="hb-rule">${esc(h.ruleText||h.ruleLabel)}</span></b>
       <small class="habit-progress">${habitProgress(h)}</small>
-      ${h.awards.length?`<span class="hb-badge">${awardIcon(h.awards.at(-1),16)} ${h.awards.at(-1)} дней</span>`:''}
       ${habitView==='all'?`<div class="hd-row">${h.week.map(w=>`<button data-on="click:habitMark-a0-a1" data-a0="${h.id}" data-a1="${w.day}" type="button" class="hd${w.done?' on':''}${w.due?' planned':' rest'}${w.day===today?' today':''}" data-due="${w.due}" aria-label="${fmtDay(w.day)}: ${w.done?'отмечено':w.due?'запланировано, не отмечено':'свободный день'}" title="${w.due?'Запланировано':'Свободный день'}" aria-pressed="${w.done}"><span>${WD_SHORT[wdIdx(w.day)]}</span></button>`).join('')}</div>`:''}
       ${hbEditing===h.id?`<div class="hb-edit"><div class="field"><label for="hb-t-${h.id}">Название</label><input data-on="input:habitEditDrafts-a0-Object-assign-habitEditDrafts-a1-titl" data-a0="${h.id}" data-a1="${h.id}" id="hb-t-${h.id}" value="${esc(habitEditDrafts[h.id]?.title??h.title)}" maxlength="80"></div>
         <div class="field"><label for="hb-r-${h.id}">Регулярность — своими словами</label><input data-on="input:habitEditDrafts-a0-Object-assign-habitEditDrafts-a1-rule" data-a0="${h.id}" data-a1="${h.id}" id="hb-r-${h.id}" value="${esc(habitEditDrafts[h.id]?.rule??(h.ruleText||h.ruleLabel))}" maxlength="60" list="rule-ideas"></div>
@@ -1964,7 +1953,6 @@ async function habitMark(id, day){
   if(habitBusy.has(id))return;habitBusy.add(id);
   try {
     const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day }) }); HB = r.items; hap('ok'); paintHabits();
-    if (r.award) showAward(r.award);
   } catch (e) { toast('Не получилось отметить'); }
   finally{habitBusy.delete(id);document.querySelectorAll('[data-habit="'+id+'"] .hb-check').forEach(b=>b.disabled=false);}
 }
@@ -1972,25 +1960,8 @@ async function habitRemove(id){
   if (!confirm('Убрать привычку из списка? Отметки сохранятся в истории.')) return;
   try { const r = await api('/habits?id=' + id, { method: 'DELETE' }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; paintHabits(); } catch (e) { toast('Не получилось'); }
 }
-/* награды: луна растёт вместе с серией — от молодого серпа до солнца; тексты из каталога */
-const awardText = (days) => { const a = CAT?.awards?.find((x) => x[0] === days); return a ? [a[1], a[2]] : [`${days} дней подряд`, '']; };
-function awardIcon(days, size){
-  const k = days >= 365 ? 1 : days >= 180 ? 1 : days >= 90 ? .8 : days >= 60 ? .5 : .18;
-  if (days >= 365) return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" stroke="#f0d79a" stroke-width="2.5" stroke-linecap="round"><circle cx="32" cy="32" r="13" fill="#f0d79a"/>${[...Array(12)].map((_, i) => { const a = i * Math.PI / 6; return `<line x1="${32 + Math.cos(a) * 19}" y1="${32 + Math.sin(a) * 19}" x2="${32 + Math.cos(a) * 27}" y2="${32 + Math.sin(a) * 27}"/>`; }).join('')}</svg>`;
-  const rx = Math.abs(32 * (1 - 2 * k)) * 0.6, sweep = k < .5 ? 1 : 0;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="20" fill="#2a2150" stroke="rgba(240,215,154,.35)"/><path d="M32 12A20 20 0 0 1 32 52A${rx} 20 0 0 ${sweep} 32 12Z" fill="#f0d79a"/></svg>`;
-}
-function showAward(a){
-  const [name, text] = awardText(a.days);
-  const id = regRes({ type: 'award', days: a.days, name, text, title: a.title, day: S.day.date });
-  $('award-box').innerHTML = `<div class="award">${awardIcon(a.days, 180)}<span class="eyebrow mt-3">${a.days} ${plural(a.days, 'день', 'дня', 'дней')} подряд</span>
-      <div class="title-gold mt-2">${esc(name)}</div>
-      <p class="mt-2 strong">${esc(a.title)}</p><p class="mt-2">${esc(text)}</p>
-      <div class="resrow mt-4"><button data-on="click:savePostcard-a0" data-a0="${id}" class="btn sm" type="button">↓&nbsp; Открытка</button><button data-on="click:shareRes-a0" data-a0="${id}" class="btn ghost sm" type="button">Поделиться</button><button data-on="click:award-classList-remove-on" class="btn ghost sm" type="button">Закрыть</button></div></div>`;
-  $('award').classList.add('on'); hap('award'); preparePending();
-}
 
-/* ══════════ Взять аскезу: отказ до выбранной даты, поддержка и счёт дней, заметки по желанию ══════════ */
+/* ══════════ Взять аскезу: отказ до выбранной даты, счёт дней, заметки по желанию ══════════ */
 let AS = null, askForm = {};
 async function loadAskesis(){
   const box = $('as-box'); if (!AS) box.innerHTML = LOADING;
@@ -2019,7 +1990,6 @@ function paintAskesis(){
       <h3 class="practice-question">${esc(a.title)}</h3>
       <p class="practice-progress">${a.left===0?'Сегодня последний день':`Осталось ${a.left} ${plural(a.left,'день','дня','дней')}`} · до ${ruDate(a.until)}</p>
       <div class="bar" role="progressbar" aria-label="Срок аскезы" aria-valuemin="0" aria-valuemax="${a.total}" aria-valuenow="${a.done}"><i style="width:${Math.round(a.done/a.total*100)}%"></i></div>
-      <p class="ask-support">${esc(a.support)}</p>
       ${a.today?`<div class="saved-state" role="status">Наблюдение сохранено · ${fmtDay(today)}</div><p class="entry-text">${esc(a.today.text)}</p>`:''}
       <details data-on="toggle:askPanelToggle-this-a0" data-a0="${a.id}" class="observation" ${askNoteOpen[a.id]?'open':''}>
         <summary data-on="click:toggleAskPanel-event-this-a0" data-a0="${a.id}">${a.today?'Изменить наблюдение':'Добавить наблюдение'}</summary>

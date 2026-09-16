@@ -11,7 +11,7 @@
    Возвращает true: запрос обработан, ответ отправлен. */
 export function createPracticeRoutes(deps) {
   const { db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO, track, touchStreak,
-    habitList, askesisList, parseRule, habitStreak, HABIT_MILESTONES, validEndDate } = deps;
+    habitList, askesisList, parseRule, habitStreak, validEndDate } = deps;
 
   return async function practiceRoutes({ p, req, res, url, u, d }) {
   /* ── главная: что из практик уже сделано сегодня — одним запросом вместо пяти ── */
@@ -22,7 +22,6 @@ export function createPracticeRoutes(deps) {
 
   /* ── дневник привычек: список с регулярностью, карточка дня, награды ── */
   if (p === '/api/habits') {
-    let award = null;
     if (req.method === 'POST') {
       const b = await readBody(req);
       const title = clean(b.title, 80), ruleText = clean(b.rule, 60);
@@ -43,22 +42,12 @@ export function createPracticeRoutes(deps) {
         if (db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day)) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
         else {
           db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u); track(u, 'habit_mark', day === d ? 'today' : 'past');
-          /* ежедневная привычка дошла до рубежа — награда, один раз */
-          if ((h.rule || 'daily') === 'daily') {
-            const marks = new Set(db.prepare('SELECT day FROM habit_marks WHERE habit_id = ?').all(h.id).map((m) => m.day));
-            const streak = habitStreak(h, d, marks);
-            if (HABIT_MILESTONES.includes(streak) && !db.prepare('SELECT 1 FROM habit_awards WHERE habit_id = ? AND days = ?').get(h.id, streak)) {
-              db.prepare('INSERT INTO habit_awards (habit_id, days, ts) VALUES (?,?,?)').run(h.id, streak, nowISO());
-              track(u, 'habit_award', streak);
-              award = { habitId: h.id, title: open_(h.title), days: streak };
-            }
-          }
         }
       }
     } else if (req.method === 'DELETE') {
       db.prepare('UPDATE habits SET archived = 1 WHERE id = ? AND user_id = ?').run(Number(url.searchParams.get('id')) || 0, u.id);
     }
-    return json(res, 200, { items: habitList(u.id, d), streak: u.streak, award });
+    return json(res, 200, { items: habitList(u.id, d), streak: u.streak });
   }
 
   /* ── аскеза: до даты, поддержка и счёт дней, заметки по желанию ── */

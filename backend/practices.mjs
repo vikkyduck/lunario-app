@@ -1,7 +1,6 @@
 import * as C from './content.mjs';
 import { MSK, dayIn, addDays } from './util.mjs';
 
-export const HABIT_MILESTONES = [30, 60, 90, 180, 365];
 const WD_RULES = [[1, /(^|[^а-я])(пн|понедельн)/], [2, /(^|[^а-я])(вт([^а-я]|$)|вторн)/], [3, /(^|[^а-я])(ср([^а-я]|$)|сред)/], [4, /(^|[^а-я])(чт|четверг)/],
   [5, /(^|[^а-я])(пт|пятниц)/], [6, /(^|[^а-я])(сб|суббот)/], [7, /(^|[^а-я])(вс([^а-я]|$)|воскрес)/]];
 const WORD_NUM = { один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10, пару: 2, пара: 2 };
@@ -100,10 +99,9 @@ function habitList(userId, d) {
   return db.prepare('SELECT id, title, created_at, rule, rule_text FROM habits WHERE user_id = ? AND archived = 0 ORDER BY id').all(userId).map((h) => {
     const marks = new Set(db.prepare('SELECT day FROM habit_marks WHERE habit_id = ?').all(h.id).map((m) => m.day));
     const rule = h.rule || 'daily', streak = habitStreak(h, d, marks);
-    const awards = db.prepare('SELECT days FROM habit_awards WHERE habit_id = ? ORDER BY days').all(h.id).map((a) => a.days);
+;
     return { id: h.id, title: open_(h.title), since: habitStart(h), rule, ruleText: h.rule_text || '', ruleLabel: RULE_LABEL(rule), daily: rule === 'daily',
-      due: habitDue(h, d, marks), today: marks.has(d), streak, total: marks.size, awards,
-      next: rule === 'daily' ? HABIT_MILESTONES.find((m) => m > streak) || null : null,
+      due: habitDue(h, d, marks), today: marks.has(d), streak, total: marks.size,
       week: week.map((day) => ({ day, done: marks.has(day), due: habitDue(h, day, marks) })) };
   });
 }
@@ -117,7 +115,7 @@ function askesisList(userId, d) {
     const total = Math.max(1, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1);
     const done = Math.min(total, Math.max(0, Math.round((Date.parse(d < until ? d : until) - Date.parse(a.started)) / 864e5) + 1));
     return { id: a.id, title: open_(a.title), started: a.started, until, total, done, left: Math.max(0, Math.round((Date.parse(until) - Date.parse(d)) / 864e5)),
-      status: a.status, finished: a.finished_at, notes, today: notes.find((n) => n.day === d) || null, support: C.ASKESIS_SUPPORT[(a.id + Number(d.slice(-2))) % Math.max(1, C.ASKESIS_SUPPORT.length)] || '' };
+      status: a.status, finished: a.finished_at, notes, today: notes.find((n) => n.day === d) || null};
   };
   return {
     active: db.prepare("SELECT * FROM askesis WHERE user_id = ? AND status = 'active' ORDER BY id DESC").all(userId).map(shape),

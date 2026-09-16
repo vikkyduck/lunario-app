@@ -18,13 +18,14 @@ export function initDailySets(db, legacySets = []) {
 
 // Rolling 365-day window, including today. Text identity survives reorder/content updates.
 // The exact phrase and question are snapshotted so reloads never change today's pair.
-export function dailySet(db, user, day, sets) {
+export function dailySet(db, user, day, sets, { allowRepeat = false } = {}) {
   let row = db.prepare('SELECT * FROM daily_sets WHERE user_id=? AND day=?').get(user.id, day);
   if (!row?.text) {
     const since = new Date(Date.parse(day) - 364 * 864e5).toISOString().slice(0, 10);
     const used = new Set(db.prepare('SELECT text_key FROM daily_sets WHERE user_id=? AND day>=? AND day<=?').all(user.id, since, day).map(r => r.text_key));
     const unique = [...new Map(Array.from(sets, (s, idx) => [setKey(s[1]), { s, idx, key: setKey(s[1]) }])).values()];
-    const pool = unique.filter(s => !used.has(s.key));
+    let pool = unique.filter(s => !used.has(s.key));
+    if (!pool.length && allowRepeat) pool = unique;   /* тема исчерпана за год — можно по второму кругу */
     if (!pool.length) return null; // Never silently repeat when an incomplete custom set is supplied.
     const chosen = pool[randomInt(pool.length)];
     db.prepare(`INSERT INTO daily_sets(user_id,day,idx,text_key,text,question) VALUES(?,?,?,?,?,?)

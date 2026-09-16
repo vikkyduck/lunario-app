@@ -1,38 +1,31 @@
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { initDailySets, dailySet } from '../backend/daily-sets.mjs';
-process.env.CONTENT_DIR ||= new URL('../content', import.meta.url).pathname;
+/* Настрой дня: пары «настрой | вопрос» по темам. Внутри темы — без повторов, пока тема не исчерпана; исчерпана — по второму
+   кругу (allowRepeat), но никогда пусто. Выпавшая пара снимается в daily_sets и в течение дня не меняется.
+   Папка текстов в git не попадает, поэтому чередование проверяется на условных парах; у владельца — и на настоящих. */
+process.env.CONTENT_DIR ||= new URL('../content', import.meta.url).pathname; process.env.LUNARIO_QUIET = '1';
 const C = await import('../backend/content.mjs');
-/* Тексты живут в папке контента и в git не попадают (там только ПРОЧТИ-МЕНЯ.txt), поэтому на чистом клоне —
-   например, в CI — установок дня нет. Содержимое тогда проверять не на чем, но чередование проверить можно и нужно:
-   подставляем 365 условных установок того же вида. У владельца, где папка на месте, проверяется и то и другое. */
-const real = [...C.SETS], hasContent = real.length >= 365;
-const source = { sets: hasContent ? real : Array.from({length:365},(_,i)=>[`k${i}`,`Установка ${i}, {Имя}`,`Вопрос ${i}?`]) };
-
-const db=new DatabaseSync(':memory:'); initDailySets(db);
-if (hasContent) {
-  assert.equal(source.sets.length,365);
-  assert.equal(new Set(source.sets.map(s=>s[1])).size,365);
-  assert.ok(source.sets.every(s=>s[2]?.endsWith('?')));
-} else console.log(`Папки текстов нет (установок ${real.length}) — содержимое не проверяется, чередование проверяется на условных 365.`);
-const days=[], results=[];
-for(let i=0;i<731;i++){
-  const day=new Date(Date.UTC(2027,0,1)+i*864e5).toISOString().slice(0,10);
-  const result=dailySet(db,{id:1,name:'Анна'},day,source.sets);
-  assert.ok(result?.text); assert.ok(result.statement); assert.ok(!result.statement.includes('{Имя}')&&!result.statement.includes('Анна')); assert.ok(!result.text.includes('{Имя}'));
-  assert.ok(!results.slice(-364).some(s=>s.text===result.text),`Repeated phrase within a year: ${day}`);
-  assert.deepEqual(dailySet(db,{id:1,name:'Анна'},day,[...source.sets].reverse()),result,'Reload/reorder must keep today unchanged');
-  days.push(day);results.push(result);
-}
-assert.equal(db.prepare('SELECT COUNT(*) n FROM daily_sets WHERE user_id=1').get().n,731);
-const second=days.slice(0,365).map(day=>dailySet(db,{id:2,name:'Анна'},day,source.sets));
-assert.equal(new Set(second.map(s=>s.text)).size,365);
-assert.ok(second.some((s,i)=>s.text!==results[i].text),'Users must have individual sequences');
-const migrated=new DatabaseSync(':memory:');
-migrated.exec(`CREATE TABLE daily_sets(user_id INTEGER,day TEXT,idx INTEGER,PRIMARY KEY(user_id,day)); INSERT INTO daily_sets VALUES(7,'2026-09-14',0);`);
-initDailySets(migrated,[source.sets[17]]);
-assert.equal(dailySet(migrated,{id:7,name:'Анна'},'2026-09-14',source.sets).text,source.sets[17][1].replace('{Имя}','Анна'));
-const next=dailySet(migrated,{id:7,name:'Анна'},'2026-09-15',source.sets);
-assert.notEqual(next.text,source.sets[17][1].replace('{Имя}','Анна'));
-db.close();migrated.close();
-console.log(`PASS: ${hasContent?'all 365 source phrases, ':'rotation only (no content folder), '}731 consecutive dates without repeats in each 365-day window, per-user sequences, reload/reorder stability and legacy migration.`);
+const real = [...C.NASTROY], themes = [...C.THEMES];
+if (real.length) {
+  assert.ok(themes.length >= 12, 'twelve themes');
+  assert.ok(real.every((n) => themes.some((t) => t.key === n[0]) && n[1] && /\?\s*$/.test(n[2])), 'every настрой has a known theme and a question');
+  for (const t of themes) assert.ok(real.some((n) => n[0] === t.key), `theme «${t.title}» has at least one настрой`);
+  assert.equal(C.themeOf('тон', 'День границ'), 'границы'); assert.equal(C.themeOf('карта', 'star'), 'восстановление'); assert.equal(C.themeOf('небо', 'фаза full'), 'выдох'); assert.equal(C.themeOf('руна', 'nope'), null);
+} else console.log('Папки текстов нет — содержимое не проверяется, чередование проверяется на условных парах');
+const pool = (n) => Array.from({ length: n }, (_, i) => [i + 1, `Настрой ${i}`, `Вопрос ${i}?`]);
+const db = new DatabaseSync(':memory:'); initDailySets(db);
+const day = (i) => new Date(Date.UTC(2027, 0, 1) + i * 864e5).toISOString().slice(0, 10);
+const four = pool(4), seen = [];
+for (let i = 0; i < 4; i++) { const r = dailySet(db, { id: 1, name: 'Анна' }, day(i), four); assert.ok(r?.text && r.question && !r.text.includes('{Имя}')); assert.ok(!seen.includes(r.text), 'no repeat while the theme has fresh lines'); seen.push(r.text); assert.deepEqual(dailySet(db, { id: 1, name: 'Анна' }, day(i), [...four].reverse()), r, 'reload/reorder keeps the day'); }
+assert.equal(dailySet(db, { id: 1, name: 'Анна' }, day(4), four), null, 'exhausted theme returns null without allowRepeat');
+const again = dailySet(db, { id: 1, name: 'Анна' }, day(4), four, { allowRepeat: true }); assert.ok(again?.text && seen.includes(again.text), 'exhausted theme goes round again');
+assert.equal(dailySet(db, { id: 1, name: 'Анна' }, day(4), four).text, again.text, 'the repeated pair is snapshotted too');
+const big = pool(400), texts = new Set();
+for (let i = 0; i < 365; i++) texts.add(dailySet(db, { id: 2, name: 'Анна' }, day(i), big).text);
+assert.equal(texts.size, 365, 'a big pool never repeats within a year');
+assert.equal(db.prepare('SELECT COUNT(*) n FROM daily_sets').get().n, 5 + 365);
+const stale = new DatabaseSync(':memory:'); stale.exec(`CREATE TABLE daily_sets(user_id INTEGER,day TEXT,idx INTEGER,PRIMARY KEY(user_id,day)); INSERT INTO daily_sets VALUES(7,'2026-09-14',0);`);
+initDailySets(stale); assert.ok(dailySet(stale, { id: 7, name: 'Анна' }, '2026-09-14', four)?.text, 'an old index-only row gets a fresh pair');
+db.close(); stale.close();
+console.log(`PASS: ${real.length ? `${real.length} настроев в ${themes.length} темах, ` : ''}theme pools without repeats until exhausted, second round on exhaustion, daily snapshot, legacy rows.`);

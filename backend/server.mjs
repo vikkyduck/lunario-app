@@ -11,11 +11,11 @@ import { vapidKeys, pushEndpointOk } from './push.mjs';
 import * as C from './content.mjs';
 import { personalExport } from './personal-export.mjs';
 import { personalExportPdf } from './personal-export-pdf.mjs';
-import { preferences, validPreferences, timeline } from './experience.mjs';
+import { preferences, validPreferences, timeline, morningOf } from './experience.mjs';
 import { entryPage } from './entries.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
-import { createPractices, parseRule, habitStreak, HABIT_MILESTONES } from './practices.mjs';
+import { createPractices, parseRule, habitStreak } from './practices.mjs';
 import { CONTENT_DIR, IMAGE_DIRS } from './content.mjs';
 import { MSK, MOSCOW, ISO_DAY, dayIn, addDays } from './util.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
@@ -256,16 +256,51 @@ function cardOfDay(u, day) {
   return a ? cardPublic(a) : null;
 }
 
-/* Установка дня: случайная, без повторов в течение года у каждого человека. Выпавшая запоминается в daily_sets. */
-initDailySets(db, C.LEGACY_SETS);
-const setOfDay = (u, day) => dailySet(db, u, day, C.SETS);
+/* Тема дня → настрой и вопрос дня. Тему задаёт тон дня (пока человек не собрал утро из карты, руны и планет — тогда
+   первый выбранный источник). Настрой к теме выпадает без повторов в течение года; тема исчерпана — по второму кругу.
+   Выпавшая пара запоминается в daily_sets, поэтому в течение дня не меняется. */
+initDailySets(db);
+const toneOfDay = (u, day) => C.DAY_TONES[hash32(`${u.id}:${day}:tone`) % C.DAY_TONES.length];
+const runeOfDay = (u, day) => { const row = db.prepare("SELECT data FROM entries WHERE user_id=? AND day=? AND kind='dayrune' ORDER BY id DESC LIMIT 1").get(u.id, day); const slug = (parseData(row && row.data) || {}).rune; return slug ? [...C.RUNES].find((r) => r.slug === slug) || null : null; };
+/* Утро: выбранные карта и руна тянутся сами при первом открытии дня — чтобы тема дня была известна с утра, а не после клика */
+function drawMorning(u, day) {
+  if (day !== today()) return;
+  const chosen = morningOf(preferences(u.preferences));
+  if (chosen.includes('card') && !cardOfDay(u, day)) {
+    const a = drawDistinct([...C.ARCANA], 1)[0];
+    db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)').run(u.id, nowISO(), day, 'card', '', a.name, a.keys, JSON.stringify({ card: a.slug }));
+    track(u, 'card_open', a.slug);
+  }
+  if (chosen.includes('dayrune') && !runeOfDay(u, day)) {
+    const r = drawDistinct([...C.RUNES], 1)[0];
+    db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)').run(u.id, nowISO(), day, 'dayrune', '', r.name, r.answer, JSON.stringify({ rune: r.slug, layout: 'one', runes: [r.slug] }));
+    track(u, 'dayrune_open', r.slug);
+  }
+}
+/* Тема дня — по первому выбранному источнику: карта → руна → прогноз (тон дня); без выбора — тон дня */
+function themeOfDay(u, day) {
+  const chosen = morningOf(preferences(u.preferences));
+  let key = null;
+  if (chosen.includes('card')) { const c = cardOfDay(u, day); if (c) key = C.themeOf('карта', c.slug); }
+  if (!key && chosen.includes('dayrune')) { const r = runeOfDay(u, day); if (r) key = C.themeOf('руна', r.slug); }
+  if (!key) key = C.themeOf('тон', toneOfDay(u, day)[0]) || [...C.THEMES][0]?.key || null;
+  return [...C.THEMES].find((t) => t.key === key) || null;
+}
+function setOfDay(u, day) {
+  const theme = themeOfDay(u, day), all = [...C.NASTROY];
+  const pool = (theme ? all.filter((n) => n[0] === theme.key) : all).map((n, i) => [i + 1, n[1], n[2]]);
+  return (pool.length && (dailySet(db, u, day, pool) || dailySet(db, u, day, pool, { allowRepeat: true }))) || (all.length ? dailySet(db, u, day, all.map((n, i) => [i + 1, n[1], n[2]]), { allowRepeat: true }) : null);
+}
 
 /* ── персональный день ── */
 function dayPack(u, day) {
   const seed = `${u.id}:${day}`;
+  drawMorning(u, day);
   const set = setOfDay(u, day);
   const sign = u.birth ? signOf(u.birth) : null;
-  const tone = C.DAY_TONES[hash32(seed + ':tone') % C.DAY_TONES.length], moon = moonOf(day);
+  /* тема дня — та, к которой подобран уже выпавший настрой; сегодня она не меняется, даже если днём выбрать другой источник */
+  const tone = toneOfDay(u, day), moon = moonOf(day), byText = set ? [...C.NASTROY].find((n) => n[1] === set.text) : null;
+  const theme = (byText && [...C.THEMES].find((t) => t.key === byText[0])) || themeOfDay(u, day);
   return {
     date: day,
     moon: moon.name,
@@ -278,7 +313,10 @@ function dayPack(u, day) {
       ? { title: tone[0], text: `${tone[1]} ${sign.trait[0].toUpperCase()}${sign.trait.slice(1)} — сегодня это особенно заметно.`, bars: tone[2] }
       : { title: tone[0], text: tone[1], bars: tone[2] },
     affirmation: (W.materialForDay('affirmation', day) || {}).text || C.AFFIRMATIONS[hash32(seed + ':aff') % C.AFFIRMATIONS.length],
-    set,                            /* установка на главной и вопрос дня к ней */
+    set,                            /* настрой дня на главной и вопрос дня к нему — по теме дня */
+    theme: theme ? { key: theme.key, title: theme.title } : null,
+    morning: morningOf(preferences(u.preferences)),   /* выбранные плитки утра */
+    rune: (() => { const r = runeOfDay(u, day); return r ? runePublic(r) : null; })(),
     question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     lunar: lunarPack(u),
   };
@@ -446,7 +484,7 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
-  track, touchStreak, habitList, askesisList, parseRule, habitStreak, HABIT_MILESTONES, validEndDate });
+  track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
 
 const server = createServer(async (req, res) => {
   try {
@@ -463,7 +501,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
       return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS, lunarDays: [...C.LUNAR_DAYS], askesisIdeas: [...C.ASKESIS_IDEAS], habitIdeas: [...C.HABIT_IDEAS], tools: [...C.TOOLS],
         news: [...C.NEWS], quickMoods: C.QUICK_MOODS, moods: [...C.MOODS], moodFamilies: { ...C.MOOD_FAMILIES }, legacyMoods: C.LEGACY_MOODS,
-        awards: [...C.AWARDS], reminderTexts: Object.fromEntries(['card', 'mood', 'moodreport', 'habits', 'askesis', 'gratitude', 'lunar', 'sky'].map((k) => [k, C.REMINDER_TEXTS[k]])) }));
+        reminderTexts: Object.fromEntries(['card', 'mood', 'moodreport', 'habits', 'askesis', 'gratitude', 'lunar', 'sky'].map((k) => [k, C.REMINDER_TEXTS[k]])) }));
     }
 
     /* Лунные дни целиком: 30 статей с картинками и общие главы справочника. Личного нет, кэш как у каталога;
@@ -667,7 +705,8 @@ const server = createServer(async (req, res) => {
           /* tools — какие инструменты человек оставил на экранах; нет поля — стартовый набор из каталога (видимость, не данные) */
           const toolKeys = new Set([...C.TOOLS].map((t) => t.key));
           const tools = Array.isArray(b.tools) ? [...new Set(b.tools.filter((k) => toolKeys.has(k)))] : (prev.tools ?? null);
-          const value = {theme:b.theme,ritual:b.ritual,topics,topicsAll:b.topicsAll !== undefined ? !!b.topicsAll : !!prev.topicsAll,lunarViews:prev.lunarViews||0,...(tools ? {tools} : {})};
+          const morning = Array.isArray(b.morning) ? [...new Set(b.morning)] : (prev.morning ?? null);   /* плитки утра на «Сегодня» */
+          const value = {theme:b.theme,ritual:b.ritual,topics,topicsAll:b.topicsAll !== undefined ? !!b.topicsAll : !!prev.topicsAll,lunarViews:prev.lunarViews||0,...(tools ? {tools} : {}),...(morning ? {morning} : {})};
           db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify(value),u.id);
           return json(res,200,{preferences:value});
         }

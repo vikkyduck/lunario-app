@@ -36,6 +36,14 @@ export async function checkFourSections({browser,base,owner}){
     // ── Конструктор инструментов Дневника: новый человек видит стартовый набор, каталог добавляет и убирает плитки, записи целы ──
     await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&CAT.tools.length);
     for(const key of ['card','dayrune','day','tone','lunar','sky'])assert.ok(await page.locator('#v-home [data-feature='+key+']').isVisible(),key+' is always on «Сегодня»');
+    // ── Утро: ответ на «На что хочу обращать внимание каждое утро?» — выбранное сверху, остальное квадратами; карта тянется сама и задаёт тему с утра ──
+    assert.deepEqual(await page.locator('#morning-chips .chip').allTextContents(),['Карта дня','Руна дня','Влияние планет','Прогноз дня','Луна','Вопрос дня']);
+    assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('#morning-feed [data-feature]')].map(e=>e.dataset.feature)),['lunar','tone'],'default morning: Луна и вопрос дня');
+    assert.ok((await page.locator('#h-wish').innerText()).length>10&&(await owner.json('/me')).day.theme?.key,'настрой дня и его тема');
+    await page.locator('#morning-chips').getByRole('button',{name:'Карта дня',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#morning-feed [data-feature=card]'));
+    assert.deepEqual((await owner.json('/preferences')).preferences.morning,['card','lunar','tone']);
+    const meAfter=await owner.json('/me');assert.ok(meAfter.day.card,'a chosen card is drawn by itself');
+    await page.locator('#morning-chips').getByRole('button',{name:'Карта дня',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#morning-more [data-feature=card]'));
     assert.equal(await page.locator('#v-home [data-feature=habits],#v-home [data-feature=askesis],#v-home [data-feature=mood],#h-next,#h-progress,.day-focus,.quick-actions').count(),0,'practices, mood and the ritual counter are not on «Сегодня»');
     assert.equal(await page.locator('#v-history [data-feature=hentries]').count(),0);assert.ok(await page.locator('#v-ask [data-feature=hentries]').count()===1,'question history lives in «Свериться с собой»');
     await page.evaluate(()=>go('history'));

@@ -20,7 +20,7 @@ export async function checkRestoration({browser,base,owner}){
       sections:{image:['Образ тестовой карты.'],spread:['Карта в тестовом раскладе.'],state:['Состояние человека.'],shadow:['Теневая сторона карты.'],advice:['Совет тестовой карты.']}};
     await context.route('**/api/catalog*',route=>route.fulfill({json:{...catalogue,cards:catalogue.cards.map(c=>c.slug===full.slug?full:c)}}));
     await page.goto(base+'/');await page.locator('#v-home.on').waitFor();
-    const me=await owner.json('/me');assert.equal(await page.locator('#h-wish').textContent(),me.day.set.text);assert.match(me.day.set.text,/, Гость$/);
+    const me=await owner.json('/me');assert.equal(await page.locator("#h-wish").textContent(),me.day.set.text);assert.ok(me.day.theme&&me.day.set.question,"настрой и вопрос — по теме дня");
     await page.evaluate(()=>go('ask'));await page.locator('[data-feature=worry]').click();
     await page.locator('#hub-chips button').first().waitFor();
     assert.equal(await page.locator('#hub-questions').count(),0,'no preset questions any more');

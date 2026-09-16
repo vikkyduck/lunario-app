@@ -174,9 +174,9 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   flow.section('Практики', 'Дневник привычек', habits.length ? plural(habits.length, 'привычка', 'привычки', 'привычек') : '');
   if (!habits.length) flow.empty('Привычек пока нет.');
   for (const h of habits) {
-    const marks = h.marks || [], awards = (h.awards || []).map((a) => a.days).sort((a, b) => a - b);
+    const marks = h.marks || [];
     flow.card({ meta: [`с ${fmtDay((h.created_at || '').slice(0, 10))}`, h.archived ? 'в архиве' : ''].filter(Boolean).join(' · '), title: h.title,
-      text: [h.rule_text ? `Ритм: ${h.rule_text}.` : '', marks.length ? `Отметок: ${marks.length}, с ${fmtDay(marks[0])} по ${fmtDay(marks[marks.length - 1])}.` : 'Отметок пока не было.', awards.length ? `Награды за серии: ${awards.join(', ')} дней.` : ''].filter(Boolean).join(' ') });
+      text: [h.rule_text ? `Ритм: ${h.rule_text}.` : '', marks.length ? `Отметок: ${marks.length}, с ${fmtDay(marks[0])} по ${fmtDay(marks[marks.length - 1])}.` : 'Отметок пока не было.'].filter(Boolean).join(' ') });
   }
 
   /* ── аскезы ── */
@@ -203,7 +203,7 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
 
   /* ── установки дня ── */
   const sets = [...(data.dailySets || [])].sort((a, b) => (b.day || '').localeCompare(a.day || ''));
-  flow.section('Сегодня', 'Установки дня', sets.length ? plural(sets.length, 'день', 'дня', 'дней') : '');
+  flow.section('Сегодня', 'Настрой дня', sets.length ? plural(sets.length, 'день', 'дня', 'дней') : '');
   if (!sets.length) flow.empty('Установок пока не было.');
   for (const s of sets) flow.card({ meta: fmtDay(s.day), text: s.text, note: s.question });
 
