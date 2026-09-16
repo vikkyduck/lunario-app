@@ -101,7 +101,7 @@ async function toggleMorning(key){
 /* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живёт там), «Практики» — тоже:
    отметки привычек и аскез вернутся в дневник своими фильтрами вместе с вечерней карточкой дня. Подписи записей — для всех видов. */
 const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['habits','Привычки'],['askesis','Аскезы'],['wishes','Желания']];
-const TIMELINE_LABELS={journal:'Запись',gratitude:'Благодарность',answer:'Вопрос дня',mood:'Настроение',readings:'Карты и ответы',habits:'Привычка',askesis:'Аскеза',wishes:'Желание'};
+const TIMELINE_LABELS={journal:'Запись',gratitude:'Благодарность',answer:'Вопрос дня',mood:'Настроение',readings:'Карты и ответы',habits:'Привычка',askesis:'Аскеза',wishes:'Желание',weekly:'Итог недели'};
 function timelineText(text){return text.length>400?`<details class="timeline-long"><summary><span class="entry-text">${esc(text.slice(0,230))}…</span><span class="text-action">Читать полностью</span></summary><p class="entry-text">${esc(text)}</p></details>`:`<p class="entry-text">${esc(text)}</p>`;}
 function paintTimelineFilters(){
   $('timeline-filters').innerHTML=TIMELINE_TYPES.map(([key,label])=>`<button data-on="click:filterTimeline-a0" data-a0="${key}" class="chip" type="button" aria-pressed="${XP.timeline.kind===key}">${label}</button>`).join('');

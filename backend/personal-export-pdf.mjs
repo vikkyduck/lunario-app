@@ -20,7 +20,8 @@ const fmtDay = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); retu
 const fmtWhen = (iso) => { const t = new Date(iso); return isNaN(t) ? '' : `${fmtDay(iso.slice(0, 10))}, ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')} UTC`; };
 const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return n + ' ' + (a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many); };
 const KIND = { yesno: '«Да / Нет»', rune: 'Руна', runes: 'Расклад рун', spread: 'Расклад Таро', card: 'Карта дня', dayrune: 'Руна дня' };
-const JOURNAL_KIND = { gratitude: 'благодарность', answer: 'ответ на вопрос дня' };
+const JOURNAL_KIND = { gratitude: 'благодарность', answer: 'ответ на вопрос дня', weekly: 'итог недели' };
+const ECHO = { yes: 'отозвалось', no: 'не связано', unsure: 'не уверена' };
 const THEME = { dark: 'ночная', light: 'светлая', system: 'как в системе' };
 const FREQ = { daily: 'каждый день', weekly: 'раз в неделю', events: 'по событиям на небе' };
 const WEEKDAYS = ['', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
@@ -206,6 +207,10 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   flow.section('Сегодня', 'Настрой дня', sets.length ? plural(sets.length, 'день', 'дня', 'дней') : '');
   if (!sets.length) flow.empty('Установок пока не было.');
   for (const s of sets) flow.card({ meta: fmtDay(s.day), text: s.text, note: s.question });
+
+  /* ── что отозвалось ── */
+  const echoes = [...(data.echoes || [])].sort((a, b) => (b.day || '').localeCompare(a.day || ''));
+  if (echoes.length) { flow.section('Дневник', 'Что отозвалось', plural(echoes.length, 'отметка', 'отметки', 'отметок')); flow.bullets(echoes.map((e) => `${fmtDay(e.day)} — ${ECHO[e.verdict] || e.verdict}`), { size: 10 }); }
 
   flow.finish();
   return doc.build();

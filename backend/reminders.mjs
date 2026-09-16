@@ -170,7 +170,7 @@ function morningNotification(u, d, atMs, tz) {
 }
 /* День записан — если сегодня есть хоть что-то: запись, настроение, отметка привычки или аскезы */
 export function dayRemembered(userId, d) {
-  return !!(db.prepare('SELECT 1 FROM journal WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d)
+  return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' LIMIT 1").get(userId, d)
     || db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d)
     || db.prepare('SELECT 1 FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? LIMIT 1').get(userId, d)
     || db.prepare('SELECT 1 FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ? LIMIT 1').get(userId, d));
@@ -178,7 +178,7 @@ export function dayRemembered(userId, d) {
 /* Сколько моментов сохранено за неделю: записи всех видов и отмеченные настроения */
 export function weekMoments(userId, d) {
   const since = new Date(Date.parse(d + 'T12:00:00Z') - 6 * 864e5).toISOString().slice(0, 10);
-  return db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day BETWEEN ? AND ?').get(userId, since, d).c
+  return db.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day BETWEEN ? AND ? AND kind <> 'weekly'").get(userId, since, d).c
     + db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ? AND day BETWEEN ? AND ?').get(userId, since, d).c;
 }
 

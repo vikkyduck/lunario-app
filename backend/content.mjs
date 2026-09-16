@@ -360,6 +360,13 @@ const REMINDER_TEXTS_FALLBACK = {
   week: ['Моя неделя: про что она', 'Ваша неделя в Лунарио готова'], 'week-мало': ['Моя неделя', 'На этой неделе вы сохранили {n} {момента}'],
   'пробное': ['Лунарио', 'Сегодня напоминать не о чем — но напоминания работают ✦'],
 };
+/* Тексты экрана «Моя неделя» — запасные, те же, что в content/неделя.txt: ключ → варианты (ритм — несколько, берётся по неделе) */
+const WEEK_TEXTS_FALLBACK = {
+  'ритм': ['Ритм — это не счёт. Дни, когда получилось, уже с вами.', 'Пропуски — тоже часть ритма, а не его отсутствие.', 'У недели свой темп. Вы его видите — и этого достаточно.'],
+  'пусто': ['Записей не было. Это нормально.'],
+  'мало': ['На этой неделе вы сохранили {n} {момента}'],
+  'рефлексия': ['Что хочется взять с собой в следующую неделю?'],
+};
 
 /* ── Установки дня: запасной набор на случай отсутствия файла ── */
 /* Темы дня (12): ключ | название | о чём. Тон дня, карта, руна и небо ведут к теме (темы-источников.txt),
@@ -595,6 +602,10 @@ function build() {
   /* Тексты напоминаний */
   const rt = rows('напоминания.txt', 3);
   r.REMINDER_TEXTS = Object.assign({}, REMINDER_TEXTS_FALLBACK, rt ? Object.fromEntries(rt.map((c) => [c[0], [c[1], c[2]]])) : {});
+  /* Тексты «Моей недели»: ключ | текст; ключ может повторяться — это варианты, файл целиком заменяет запасной список по ключу */
+  const wt = rows('неделя.txt', 2) || [];
+  r.WEEK_TEXTS = { ...WEEK_TEXTS_FALLBACK };
+  for (const key of new Set(wt.map((c) => c[0]))) r.WEEK_TEXTS[key] = wt.filter((c) => c[0] === key).map((c) => c[1]);
   /* Тексты неба: тип | ключ | … — в объект по типам; чего нет в файле, то возьмёт sky.mjs из своих запасных */
   const sk = rows('небо.txt', 3) || [];
   const sky = { phase: {}, eclipse: {}, retro: {}, season: {} };
@@ -644,6 +655,7 @@ export const themeOf = (source, code) => (data.THEME_OF[source] || {})[String(co
 export const MOODS = new Proxy([], { get: (_, k) => Reflect.get(data.MOODS, k) });
 export const MOOD_FAMILIES = new Proxy({}, { get: (_, k) => Reflect.get(data.MOOD_FAMILIES, k), ownKeys: () => Reflect.ownKeys(data.MOOD_FAMILIES), getOwnPropertyDescriptor: (_, k) => ({ value: data.MOOD_FAMILIES[k], enumerable: true, configurable: true }) });
 export const REMINDER_TEXTS = new Proxy({}, { get: (_, k) => Reflect.get(data.REMINDER_TEXTS, k) });
+export const WEEK_TEXTS = new Proxy({}, { get: (_, k) => Reflect.get(data.WEEK_TEXTS, k) });
 export const SKY = new Proxy({}, { get: (_, k) => Reflect.get(data.SKY, k) });
 export const NEWS = new Proxy([], { get: (_, k) => Reflect.get(data.NEWS, k) });
 export const ASKESIS_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.ASKESIS_IDEAS, k) });

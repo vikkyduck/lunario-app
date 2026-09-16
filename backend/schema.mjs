@@ -176,6 +176,9 @@ export const MIGRATIONS = [
      отчёты и старые экраны продолжают работать, а полный список живёт здесь. */
   { v: 14, name: 'несколько настроений за день', up: (db) => db.exec(`
     CREATE TABLE IF NOT EXISTS mood_marks (user_id INTEGER NOT NULL, day TEXT NOT NULL, mood TEXT NOT NULL, PRIMARY KEY (user_id, day, mood));`) },
+  /* «Моя неделя»: связь «утренний настрой ↔ вечерняя запись» подтверждает сам человек — yes / no / unsure, одна отметка на день */
+  { v: 15, name: 'что отозвалось за неделю', up: (db) => db.exec(`
+    CREATE TABLE IF NOT EXISTS week_echoes (user_id INTEGER NOT NULL, day TEXT NOT NULL, verdict TEXT NOT NULL, ts TEXT NOT NULL, PRIMARY KEY (user_id, day));`) },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 

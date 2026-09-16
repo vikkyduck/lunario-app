@@ -260,6 +260,29 @@ try {
     assert.equal(qaDB.prepare("SELECT COUNT(*) n FROM reminders WHERE user_id=? AND enabled=1 AND feature NOT IN ('morning','evening','week')").get(uid).n,0,'old rows are switched off');
     assert.equal(reminders.migrateLegacyReminders(),0,'migration runs once'); }
   console.log('PASS: three reminders — morning from the настрой and chosen tiles, evening silent after a remembered day, weekly by moments; native 14-day plan; worker queue; legacy migration.');
+  /* «Моя неделя»: пусто → мало → полная; фрагменты дословно; «отозвалось» только по своим дням; рефлексия одна на неделю; чужие данные не видны */
+  { const wk=account();await wk.json('/me');await wk.json('/profile','POST',{name:'Неделя',birth:'1992-02-02',city:'Москва',consent:true});
+    const w0=await wk.json('/week');assert.equal(w0.mode,'empty');assert.equal(w0.text,'Записей не было. Это нормально.');assert.ok(w0.week.start<=day&&w0.week.end>=w0.week.start);assert.equal(w0.reflection.question,'Что хочется взять с собой в следующую неделю?');
+    assert.equal((await wk.json('/week?week=2030-01-01')).week.end<=w0.week.end,true,'the future is clamped to the current week');
+    await wk.json('/day','POST',{text:'Первый момент недели'});const w1=await wk.json('/week');assert.equal(w1.mode,'few');assert.equal(w1.text,'На этой неделе вы сохранили 1 момент');assert.equal(w1.saved[0].text,'Первый момент недели');
+    await wk.json('/day','POST',{gratitude:'Себе за то, что дошла',moods:['joy','quick:calm']});const w2=await wk.json('/week');assert.equal(w2.mode,'full');assert.equal(w2.moments,3);
+    assert.equal(w2.moods.count,1);assert.deepEqual(w2.moods.days.find(x=>x.day===day).moods.map(m=>m.toLowerCase()),['радость','спокойно']);assert.ok(w2.moods.top.some(t=>t.mood.toLowerCase()==='радость'));
+    assert.equal(w2.saved.length,2,'verbatim fragments');assert.ok(w2.saved.every(f=>['Первый момент недели','Себе за то, что дошла'].includes(f.text)));
+    await wk.json('/me');const e=w2.echoes.find(x=>x.day===day);assert.ok(e&&e.morning&&e.evening&&e.verdict==='','today has a morning настрой and an evening record');
+    assert.equal((await wk.json('/week/echo','POST',{day,verdict:'yes'})).verdict,'yes');assert.equal((await wk.json('/week')).echoes.find(x=>x.day===day).verdict,'yes');
+    assert.equal((await wk.raw('/week/echo','POST',{day,verdict:'maybe'})).status,400);assert.equal((await wk.raw('/week/echo','POST',{day:'2031-01-01',verdict:'yes'})).status,400);
+    assert.equal((await wk.json('/week/echo','POST',{day,verdict:''})).verdict,'');assert.equal(qaDB.prepare('SELECT COUNT(*) n FROM week_echoes WHERE day=?').get(day).n,0,'cleared verdict leaves no row');
+    const r1=await wk.json('/week/reflect','POST',{week:day,text:'Взять с собой тишину'});assert.equal(r1.text,'Взять с собой тишину');assert.equal(r1.day,w2.week.end);
+    await wk.json('/week/reflect','POST',{week:day,text:'Взять с собой тишину и сон'});assert.equal((await wk.json('/week')).reflection.text,'Взять с собой тишину и сон');
+    const uid=(await wk.json('/me')).user.id;assert.equal(qaDB.prepare("SELECT COUNT(*) n FROM journal WHERE user_id=? AND kind='weekly'").get(uid).n,1,'one reflection per week');
+    assert.ok((await wk.json('/timeline?kind=&day=&offset=0')).items.some(i=>i.kind==='weekly'&&i.body==='Взять с собой тишину и сон'),'reflection is in the diary timeline');
+    assert.equal((await wk.json('/week')).moments,3,'the reflection itself is not a moment');
+    await wk.json('/week/reflect','POST',{week:day,text:''});assert.equal((await wk.json('/week')).reflection.text,'','empty text removes the reflection');
+    const h=(await wk.json('/habits','POST',{title:'Прогулка',rule:'каждый день'})).items.find(x=>x.title==='Прогулка');await wk.json('/day','POST',{habits:[{id:h.id,done:true}]});
+    const w3=await wk.json('/week');const rh=w3.rhythm.habits.find(x=>x.id===h.id);assert.ok(rh&&rh.done===1&&rh.days.some(x=>x.day===day&&x.done),'habit days in the rhythm');assert.ok(w3.rhythm.phrase,'a pace phrase comes with the rhythm');
+    const stranger=account();await stranger.json('/me');const ws=await stranger.json('/week');assert.equal(ws.mode,'empty');assert.equal(ws.echoes.length,0);assert.equal(ws.rhythm.habits.length,0,'another account sees none of it');
+    assert.equal(reminders.notificationFor('week',qaDB.prepare('SELECT * FROM users WHERE id=?').get(uid)).title,'Моя неделя: про что она'); }
+  console.log('PASS: «Моя неделя» — empty / few / full modes, verbatim fragments, echo verdicts, one weekly reflection, rhythm days, account isolation.');
   await owner.json('/journal','POST',{kind:'gratitude',title:'Кому и за что я благодарна сегодня?',text:'Маме за звонок'});
   const gratitude=(await owner.json('/journal?kind=gratitude')).items[0];
   assert.equal(gratitude.day,day);assert.equal(gratitude.text,'Маме за звонок');

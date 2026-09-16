@@ -114,7 +114,7 @@ const FEATURES = {
   worry:{sec:'Свериться с собой',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
   journal:{sec:'Дневник',title:'Дневник',view:'history',page:true}, gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history'},
   wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history'},
-  hentries:{sec:'Свериться с собой',title:'Мои вопросы и ответы',view:'ask'}, week:{sec:'Дневник',title:'Итоги недели',view:'history'}, timelineEntry:{sec:'Дневник',title:'Запись',view:'history'},
+  hentries:{sec:'Свериться с собой',title:'Мои вопросы и ответы',view:'ask'}, week:{sec:'Дневник',title:'Моя неделя',view:'history'}, timelineEntry:{sec:'Дневник',title:'Запись',view:'history'},
   natal:{sec:'Обо мне',title:'Натальная карта',view:'about'}, year:{sec:'Обо мне',title:'Личный год',view:'about'}, birthnum:{sec:'Обо мне',title:'Нумерология',view:'about'}, compat:{sec:'Обо мне',title:'Совместимость',view:'about'},
   tests:{sec:'Обо мне',title:'Тесты',view:'about'},
   remind:{sec:'Аккаунт',title:'Уведомления',view:'account'}, mail:{sec:'Аккаунт',title:'Вход по почте',view:'account'}, edit:{sec:'Аккаунт',title:'Изменить мои данные',view:'account'},
@@ -147,7 +147,7 @@ function openWidget(k, title){
 const WIDGET_LOADERS = {
   tools: () => paintTools(), appearance: () => paintAppearance(), topics: () => paintTopics(), skyplace: () => paintSkyPlace(),
   journal: () => { loadJournal(); prepareDictation(); requestAnimationFrame(() => growTextarea($('j-text'))); },
-  wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(), hmood: () => loadMoodReport(),
+  wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(''), hmood: () => loadMoodReport(),
   mood: () => { moodUI.precision=false; moodUI.mode='families'; renderMoods(); paintMoodExtra(); },
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
   askesis: () => loadAskesis(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => paintTone(),
@@ -528,18 +528,55 @@ async function logout(all){
   await api(all?'/auth/logout-all':'/auth/logout',{method:'POST'});
   location.reload();
 }
-async function loadWeek(){
-  try{
-    const w = await api('/week');
-    $('w-summary').textContent = w.summary;
-    const parts = [];
-    if (w.moods.length) parts.push(w.moods.map(m=>`${m.mood} — ${m.count}`).join(' · '));
-    if (w.asked.length) parts.push('спрашивали: ' + w.asked.map(a=>`${a.kind} — ${a.count}`).join(' · '));
-    if (w.notes) parts.push(`записей в дневнике — ${w.notes}`);
-    $('w-detail').innerHTML = parts.length
-      ? parts.map(t=>`<p class="hint">${t}</p>`).join('')
-      : '';
-  }catch(e){ $('w-summary').textContent = 'Итог недели появится, когда наберутся отметки.'; }
+/* ══════════ «Моя неделя: про что она» — воскресный экран Дневника: пять частей по фактам, без интерпретаций ══════════ */
+const WK={data:null,pick:''};
+const WK_DOW=['пн','вт','ср','чт','пт','сб','вс'];
+const WK_MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const wkDate=(d,month=true)=>{const [,m,dd]=d.split('-').map(Number);return month?`${dd} ${WK_MONTHS[m-1]}`:String(dd);};
+const wkRange=(a,b)=>a.slice(0,7)===b.slice(0,7)?`${wkDate(a,false)}–${wkDate(b)}`:`${wkDate(a)} – ${wkDate(b)}`;
+const WK_KIND={'':'запись',gratitude:'благодарность',answer:'ответ на вопрос дня'};
+const WK_VERDICT=[['yes','Отозвалось'],['no','Не связано'],['unsure','Не уверена']];
+async function loadWeek(pick){
+  if(pick!==undefined)WK.pick=pick;
+  const box=$('week-box');if(!box)return;if(!WK.data)box.innerHTML='<p class="hint" role="status">Собираем неделю…</p>';
+  try{WK.data=await api('/week'+(WK.pick?'?week='+WK.pick:''));paintWeek();}
+  catch(e){box.innerHTML='<p class="msg err">Неделя не загрузилась. <button data-on="click:loadWeek" class="text-action" type="button">Повторить</button></p>';}
+}
+function weekShift(n){const w=WK.data?.week;if(!w)return;loadWeek(new Date(Date.parse(w.start+'T12:00:00Z')+Number(n)*7*864e5).toISOString().slice(0,10));}
+function paintWeek(){
+  const w=WK.data,box=$('week-box');if(!w||!box)return;
+  const nav=`<div class="week-nav"><button data-on="click:weekShift-a0" data-a0="-1" type="button" class="text-action">← прошлая</button><span class="eyebrow">${wkRange(w.week.start,w.week.end)}</span>${w.week.current?'<span></span>':'<button data-on="click:weekShift-a0" data-a0="1" type="button" class="text-action">следующая →</button>'}</div>`;
+  const quote=(f)=>`<blockquote class="week-quote"><small>${wkDate(f.day)} · ${WK_KIND[f.kind]||''}</small><p>${esc(f.text)}</p></blockquote>`;
+  const saved=w.saved.length?`<section class="card week-part"><h3>Что вы сохранили</h3>${w.saved.map(quote).join('')}</section>`:'';
+  const reflect=`<section class="card week-part"><h3>${esc(w.reflection.question)}</h3><p class="hint">Одна строка, если хочется — она останется в дневнике</p><div class="field"><textarea data-on="input:growTextarea-this" id="wk-reflect" maxlength="2000" rows="2">${esc(w.reflection.text)}</textarea></div><div class="answer-actions"><button data-on="click:saveWeekReflection" class="btn sm" id="wk-reflect-save" type="button">Сохранить</button></div><p class="hint" id="wk-reflect-state" role="status"></p></section>`;
+  if(w.mode!=='full'){box.innerHTML=nav+`<section class="card week-part"><p class="t2">${esc(w.text)}</p></section>`+saved+reflect;growTextarea($('wk-reflect'));return;}
+  const days=w.moods.days;
+  const moods=`<section class="card week-part"><h3>Настроение недели</h3>${w.moods.count?`<div class="week-strip" aria-hidden="true">${days.map((d,i)=>`<div class="week-col${d.day>w.week.today?' future':''}"><span class="week-dow">${WK_DOW[i]}</span><span class="week-dot ${d.moods.length?'done':'none'}"></span></div>`).join('')}</div><div class="week-mood-list">${days.map((d,i)=>d.moods.length?`<p><b>${WK_DOW[i]}</b>${d.moods.map(esc).join(' · ')}</p>`:'').join('')}</div>${w.moods.top[0]?.count>1?`<p class="hint">Чаще всего — ${w.moods.top.filter(t=>t.count===w.moods.top[0].count).map(t=>esc(t.mood)).join(', ')}: ${w.moods.top[0].count} ${plural(w.moods.top[0].count,'день','дня','дней')} из ${w.moods.count}</p>`:`<p class="hint">${w.moods.count===1?'Один день с отметкой — картина сложится к концу недели':'Ничего не повторялось — каждый день был своим'}</p>`}`:'<p class="hint">Настроение на этой неделе не отмечали</p>'}</section>`;
+  const echoes=`<section class="card week-part"><h3>Что отозвалось</h3><p class="hint">Утренний настрой и то, что вы записали вечером. Связаны ли они — решаете вы</p>${w.echoes.length?w.echoes.map(e=>`<div class="week-echo" data-day="${e.day}"><small>${wkDate(e.day)}${e.source?' · '+esc(e.source):''}</small><p><span class="week-when">Утром</span> ${esc(e.morning)}</p><p><span class="week-when">Вечером</span> ${esc(e.evening)}</p><div class="chips flow">${WK_VERDICT.map(([k,l])=>`<button data-on="click:weekEcho-a0-a1" data-a0="${e.day}" data-a1="${k}" type="button" class="chip${e.verdict===k?' on':''}" aria-pressed="${e.verdict===k}">${l}</button>`).join('')}</div></div>`).join(''):'<p class="hint">Пар «утро ↔ вечер» пока не набралось: для них нужны настрой утром и запись вечером</p>'}</section>`;
+  const dots=(list,cls)=>`<div class="week-dots" aria-hidden="true">${days.map(d=>`<span class="week-dot ${cls(list.find(x=>x.day===d.day))}"></span>`).join('')}</div>`;
+  const habits=w.rhythm.habits.map(h=>`<div class="week-row"><div class="grow"><b>${esc(h.title)}</b><small>${h.due?`${h.done} из ${h.due} ${plural(h.due,'дня','дней','дней')}`:`${h.done} ${plural(h.done,'день','дня','дней')}`}</small></div>${dots(h.days,x=>!x?'none':x.done?'done':'due')}</div>`).join('');
+  const askesis=w.rhythm.askesis.map(a=>`<div class="week-row"><div class="grow"><b>${esc(a.title)}</b><small>${a.days.length?`держусь — ${a.kept}${a.missed?` · сорвалась — ${a.missed}`:''}`:'отметок на этой неделе нет'}</small></div>${dots(a.days,x=>!x?'none':x.kept?'done':'missed')}</div>`).join('');
+  const rhythm=habits||askesis?`<section class="card week-part"><h3>Ваш ритм</h3>${habits}${askesis}${w.rhythm.phrase?`<p class="hint week-phrase">${esc(w.rhythm.phrase)}</p>`:''}</section>`:'';
+  box.innerHTML=nav+moods+saved+echoes+rhythm+reflect;growTextarea($('wk-reflect'));
+}
+/* отметка «отозвалось»: повторное нажатие снимает */
+async function weekEcho(day,verdict){
+  const cur=WK.data?.echoes.find(e=>e.day===day);const next=cur&&cur.verdict===verdict?'':verdict;
+  try{const r=await api('/week/echo',{method:'POST',body:JSON.stringify({day,verdict:next})});if(cur)cur.verdict=r.verdict;
+    document.querySelectorAll(`.week-echo[data-day="${day}"] .chip`).forEach(b=>{const on=b.dataset.a1===r.verdict;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});hap('ok');}
+  catch(e){toast('Не удалось сохранить отметку');}
+}
+async function saveWeekReflection(){
+  if(saveWeekReflection.busy||!WK.data)return;saveWeekReflection.busy=true;const btn=$('wk-reflect-save');btn.disabled=true;
+  try{const r=await api('/week/reflect',{method:'POST',body:JSON.stringify({week:WK.data.week.start,text:$('wk-reflect').value})});WK.data.reflection=r;
+    $('wk-reflect-state').textContent=r.text?'Сохранено ✦ Строка в дневнике под датой воскресенья':'Строка снята';hap('ok');XP.timeline.dirty=true;}
+  catch(e){$('wk-reflect-state').textContent='Не удалось сохранить. Текст остался в поле — попробуйте ещё раз';}
+  finally{saveWeekReflection.busy=false;btn.disabled=false;}
+}
+/* по воскресеньям и понедельникам «Моя неделя» — первой плиткой Дневника */
+function paintWeekTop(){
+  const el=$('week-top');if(!el||!S.day?.date)return;const dow=new Date(S.day.date+'T12:00:00Z').getUTCDay();const show=dow===0||dow===1;el.hidden=!show;
+  if(show)$('week-top-sub').textContent=dow===0?'Воскресенье — можно посмотреть на неделю целиком':'Прошедшая неделя — целиком, на одном экране';
 }
 async function loadInvite(){
   try{
@@ -690,7 +727,7 @@ async function obSendCode(email){
 
 /* ── разделы: данные подгружаются при входе ── */
 /* На экране «Дневник» видны лента и счётчик желаний; итоги, вопросы и записи виджеты грузят сами при открытии */
-function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline(); loadWishes(); loadDayCard(); }
+function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline(); loadWishes(); loadDayCard(); paintWeekTop(); }
 
 /* ══════════ Карточка дня «Запомнить этот день»: ячейки-вопросы, настроение, привычки, аскеза — один запрос, разные типы ══════════ */
 const DC={state:null,moods:new Set(),own:'',habits:new Map(),askesis:new Map()};

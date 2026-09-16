@@ -50,8 +50,10 @@ import { AppError, publicError, saveJournalOperation, sweepReceipts } from './sy
 import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } from './transfer.mjs';
 import { createPracticeRoutes } from './http/practice-routes.mjs';
 import { createDay } from './day.mjs';
+import { createWeek } from './week.mjs';
 import { createMorning, hash32, parseData, drawDistinct } from './morning.mjs';
 import { createDayRoutes } from './http/day-routes.mjs';
+import { createWeekRoutes } from './http/week-routes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -447,6 +449,8 @@ const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanTe
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
 const Day = createDay({ db, seal, open: open_, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day });
+const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText });
+const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
 const server = createServer(async (req, res) => {
   try {
@@ -914,21 +918,6 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true, until });
       }
 
-      /* Итог недели: сколько дней отмечено, какое состояние преобладало,
-         о чём чаще спрашивали. Считается по фактам, без чтения текстов. */
-      if (p === '/api/week' && req.method === 'GET') {
-        const w = weekSummary(u);
-        const asked = db.prepare('SELECT kind, COUNT(*) c FROM entries WHERE user_id=? AND day>=? GROUP BY kind').all(u.id, w.since);
-        const notes = db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id=? AND day>=?').get(u.id, w.since).c;
-        const KIND_RU = { yesno: 'вопросы «Да / Нет»', rune: 'руны', runes: 'расклады рун', spread: 'расклады Таро', card: 'карты дня' };
-        return json(res, 200, {
-          days: w.days, notes,
-          moods: w.moods.map((m) => ({ mood: MOOD_RU[m.mood] || m.mood, count: m.c })),
-          asked: asked.map((a) => ({ kind: KIND_RU[a.kind] || a.kind, count: a.c })),
-          summary: w.summary,
-        });
-      }
-
       /* Отчёт по настроениям: неделя по дням, месяц по долям, итог словами */
       if (p === '/api/mood/report' && req.method === 'GET') {
         const w = weekSummary(u);
@@ -978,6 +967,7 @@ const server = createServer(async (req, res) => {
       /* ── практики дня: что сделано сегодня, привычки, аскеза — backend/http/practice-routes.mjs ── */
       if (await practiceRoutes({ p, req, res, url, u, d })) return;
       if (await dayRoutes({ p, req, res, u, d })) return;
+      if (await weekRoutes({ p, req, res, url, u, d })) return;
 
       /* ── на небе: сейчас и ближайшие недели ── */
       if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyCached(u.tz || MSK));
