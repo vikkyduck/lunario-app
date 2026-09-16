@@ -244,6 +244,28 @@ try {
   assert.deepEqual(staffLeak, [], 'личные тексты попали в кабинет:\n' + staffLeak.join('\n'));
   console.log('PASS: в отчётах кабинета и карточке человека — счётчики, а не личные тексты.');
 
+  /* ── беклог: сотрудник видит и меняет ровно задачи своих ролей ──
+     Задачи — внутренняя работа, не чьи-то личные данные, но права по ролям должны совпадать с
+     обещанием: контент и поддержка видят только своё, продукт и админ — весь беклог. Худший случай —
+     две роли сразу (контент + поддержка): это две области, а не «весь беклог», и продуктовую задачу
+     такой сотрудник не видит ни в списке, ни через ?role=, ни по номеру. */
+  for (const role of ['content', 'support', 'product']) await staff.json('/cabinet/tasks', 'POST', { title: `Задача для роли ${role}`, role });
+  const taskOf = (role) => db.prepare('SELECT id FROM tasks WHERE role = ?').get(role).id;
+  const tContent = taskOf('content'), tSupport = taskOf('support'), tProduct = taskOf('product');
+  const twoMail = 'two-roles@example.test';
+  await staff.json('/cabinet/staff', 'POST', { email: twoMail, name: 'Контент и поддержка', roles: ['content', 'support'] });
+  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login')`)
+    .run(twoMail, createHash('sha256').update('123456' + twoMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+  const two = account(); await two.json('/me'); await two.json('/auth/verify', 'POST', { email: twoMail, code: '123456' });
+  const visible = async (q = '') => (await two.json('/cabinet/tasks' + q)).items.map((t) => t.id);
+  assert.deepEqual((await visible()).filter((id) => [tContent, tSupport, tProduct].includes(id)).sort(), [tContent, tSupport].sort(),
+    'сотрудник с двумя ролями видит задачи обеих своих областей и не видит продуктовую');
+  assert.equal((await visible('?role=product')).includes(tProduct), false, 'срез по ?role= не открывает сотруднику чужую область');
+  assert.equal((await two.raw('/cabinet/tasks', 'POST', { id: tProduct, status: 'done', onlyStatus: true })).status, 403, 'статус чужой (продуктовой) задачи по номеру не меняется');
+  assert.equal(db.prepare('SELECT status FROM tasks WHERE id = ?').get(tProduct).status, 'new', 'продуктовая задача в базе не тронута');
+  for (const id of [tContent, tSupport]) assert.equal((await two.raw('/cabinet/tasks', 'POST', { id, status: 'in_progress', onlyStatus: true })).status, 200, 'свою задачу сотрудник по-прежнему переводит');
+  console.log('PASS: сотрудник с двумя ролями видит и меняет ровно задачи своих областей — продуктовые ему не видны и не переводятся по номеру.');
+
   /* ── PDF рисует ровно то, что дал personalExport: своих запросов к базе не делает ── */
   const pdfSrc = readFileSync(join(repo, 'backend/personal-export-pdf.mjs'), 'utf8');
   assert.equal(/\bdb\.prepare\(|\bdb\.exec\(/.test(pdfSrc), false, 'PDF-выгрузка ходит в базу сама — данные могут прийти не от того человека');

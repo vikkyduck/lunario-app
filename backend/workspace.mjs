@@ -185,9 +185,10 @@ export async function aiCheck(k) {
 /* ── беклог задач ── */
 export const TASK_STATUS = { new: 'Новая', in_progress: 'В работе', review: 'На проверке', done: 'Готово' };
 export const TASK_ROLES = { content: 'Контент', support: 'Поддержка', product: 'Продукт', marketing: 'Маркетинг' };
-export function taskList(role) {
-  const rows = role ? all(`SELECT * FROM tasks WHERE role = ? ORDER BY CASE status WHEN 'done' THEN 1 ELSE 0 END, CASE priority WHEN 'high' THEN 0 ELSE 1 END, created_at DESC`, role)
-    : all(`SELECT * FROM tasks ORDER BY CASE status WHEN 'done' THEN 1 ELSE 0 END, CASE priority WHEN 'high' THEN 0 ELSE 1 END, created_at DESC`);
+/* roles — какие области показать: пустой список — весь беклог, иначе только задачи этих ролей */
+export function taskList(roles = []) {
+  const order = `ORDER BY CASE status WHEN 'done' THEN 1 ELSE 0 END, CASE priority WHEN 'high' THEN 0 ELSE 1 END, created_at DESC`;
+  const rows = roles.length ? all(`SELECT * FROM tasks WHERE role IN (${roles.map(() => '?').join(',')}) ${order}`, ...roles) : all(`SELECT * FROM tasks ${order}`);
   return rows.map((t) => ({ ...t, created_by: mask(t.created_by), assignee: mask(t.assignee) }));
 }
 export function taskSave(b, by) {
@@ -201,11 +202,11 @@ export function taskSave(b, by) {
     .run(title, clean(b.text, 2000), role, status, priority, isDay(b.due_day) ? b.due_day : '', by || '', clean(b.assignee, 120), now(), now());
   return { ok: true };
 }
-/* role — область сотрудника (контент или поддержка видят только свои задачи); пустая — весь беклог */
-export function taskStatus(id, status, by, role = '') {
+/* own — области сотрудника (контент и/или поддержка меняют только свои задачи); пустой список — весь беклог */
+export function taskStatus(id, status, by, own = []) {
   if (!(status in TASK_STATUS)) return { ok: false, error: 'bad_status' };
   const t = one('SELECT role FROM tasks WHERE id = ?', Number(id)); if (!t) return { ok: false, error: 'not_found' };
-  if (role && t.role !== role) return { ok: false, error: 'no_access' };   // скрытая в списке задача не должна меняться по id
+  if (own.length && !own.includes(t.role)) return { ok: false, error: 'no_access' };   // скрытая в списке задача не должна меняться по id
   db.prepare('UPDATE tasks SET status=?, updated_at=?, done_at=? WHERE id=?').run(status, now(), status === 'done' ? now() : '', Number(id));
   return { ok: true };
 }

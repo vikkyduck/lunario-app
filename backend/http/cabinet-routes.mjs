@@ -116,9 +116,10 @@ export function createCabinetRoutes(deps) {
     }
     if (p === '/api/cabinet/tasks') {
       if (!allowed('backlog')) return json(res, 403, { ok: false, error: 'no_access' });
-      // контент и поддержка видят только своё; продукт и админ — весь беклог
-      const own = admin || roles.includes('product') ? '' : (roles.includes('content') && !roles.includes('support') ? 'content' : roles.includes('support') && !roles.includes('content') ? 'support' : '');
-      if (req.method === 'GET') return json(res, 200, { items: own ? W.taskList(own) : W.taskList(url.searchParams.get('role') || ''), statuses: W.TASK_STATUS, roles: W.TASK_ROLES, canCreate: admin || roles.includes('product'), own });
+      // контент и поддержка видят только своё (с двумя ролями — обе области); продукт и админ — весь беклог
+      const own = admin || roles.includes('product') ? [] : roles.filter((r) => r === 'content' || r === 'support');
+      const pick = url.searchParams.get('role') || '';   // срез одной роли — только тем, кому открыт весь беклог
+      if (req.method === 'GET') return json(res, 200, { items: W.taskList(own.length ? own : pick ? [pick] : []), statuses: W.TASK_STATUS, roles: W.TASK_ROLES, canCreate: admin || roles.includes('product'), own });
       if (req.method === 'POST') {
         const b = await readBody(req);
         if (b.id && b.onlyStatus) { const r = W.taskStatus(b.id, b.status, u.email, own); return json(res, r.ok ? 200 : r.error === 'no_access' ? 403 : 400, r); }
