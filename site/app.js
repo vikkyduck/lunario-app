@@ -117,9 +117,9 @@ const FEATURES = {
   hentries:{sec:'Дневник',title:'Мои вопросы и ответы',view:'history'}, week:{sec:'Дневник',title:'Итоги недели',view:'history'}, timelineEntry:{sec:'Дневник',title:'Запись',view:'history'},
   natal:{sec:'Обо мне',title:'Натальная карта',view:'about'}, year:{sec:'Обо мне',title:'Личный год',view:'about'}, birthnum:{sec:'Обо мне',title:'Нумерология',view:'about'}, compat:{sec:'Обо мне',title:'Совместимость',view:'about'},
   tests:{sec:'Обо мне',title:'Тесты',view:'about'},
-  remind:{sec:'Аккаунт',title:'Уведомления',view:'account'}, mail:{sec:'Аккаунт',title:'Вход по почте',view:'account'}, edit:{sec:'Аккаунт',title:'Изменить мои данные',view:'account'}, shelves:{sec:'Аккаунт',title:'Мои данные',view:'account'},
-  support:{sec:'Аккаунт',title:'Чат поддержки',view:'account'}, invite:{sec:'Аккаунт',title:'Позвать подругу',view:'account'}, appearance:{sec:'Аккаунт',title:'Оформление',view:'account'}, topics:{sec:'Аккаунт',title:'Темы чтения',view:'account'},
-  skyplace:{sec:'Аккаунт',title:'Небо над вами',view:'account'}, appinfo:{sec:'Аккаунт',title:'О приложении',view:'account'}, terms:{sec:'Аккаунт',title:'Условия использования',view:'account'},
+  remind:{sec:'Аккаунт',title:'Уведомления',view:'account'}, mail:{sec:'Аккаунт',title:'Вход по почте',view:'account'}, edit:{sec:'Аккаунт',title:'Изменить мои данные',view:'account'},
+  support:{sec:'Аккаунт',title:'Чат поддержки',view:'account'}, invite:{sec:'Аккаунт',title:'Позвать подругу',view:'account'}, appearance:{sec:'Аккаунт',title:'Оформление',view:'account'}, topics:{sec:'Аккаунт',title:'Настройка контента',view:'account'},
+  skyplace:{sec:'Аккаунт',title:'Геолокация',view:'account'}, appinfo:{sec:'Аккаунт',title:'О приложении',view:'account'}, terms:{sec:'Аккаунт',title:'Условия использования',view:'account'},
   practiceSettings:{sec:'',title:'Уведомления'}, askDate:{sec:'Взять аскезу',title:'Передвинуть дату'},
 };
 /* Цель из ?open= в уведомлении: ключ функции или ключ её напоминания (moodreport → История настроений) */
@@ -153,7 +153,7 @@ const WIDGET_LOADERS = {
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
   askesis: () => loadAskesis(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => paintTone(),
   day: () => { showForecastNote(); track('forecast_view'); }, worry: () => renderHub(), invite: () => loadInvite(), remind: () => paintAllReminders(), edit: () => fillEdit(),
-  support: () => supOpen(), natal: () => loadNatal(), mail: () => renderAuth(), shelves: () => loadShelves(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
+  support: () => supOpen(), natal: () => loadNatal(), mail: () => renderAuth(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
 };
 function loadWidgetContent(k){ WIDGET_LOADERS[k]?.(); }
 function closeWidget(e){
@@ -185,36 +185,6 @@ function focusSelectedTab(label){document.querySelector('.segmented[aria-label="
 
 /* ── натальная карта: расчёт на сервере, здесь только вывод ── */
 let natalCache = null;
-/* ── «Мои данные»: профиль, практики и история ── */
-async function loadShelves(){
-  const box = $('sh-box'); box.innerHTML = '<div class="item"><p>Загружаем данные…</p></div>';
-  try {
-    const s = await api('/shelves');
-    const a = s.about, dy = s.day, h = s.history;
-    const row = (k, v) => v ? `<div class="sh-row"><span>${k}</span><b>${v}</b></div>` : '';
-    const ru = { yesno: '«Да / Нет»', rune: 'руны', runes: 'расклады рун', spread: 'расклады Таро', card: 'карты дня' };
-    const about = row('Имя', esc(a.name)) + row('Дата рождения', a.birth ? fmtDay(a.birth) + (a.birthTime ? ' · ' + a.birthTime : '') : '')
-      + row('Город', esc(a.city) + (a.region ? `<small> · ${esc(a.region)}</small>` : '')) + row('Знак', a.sign ? `${a.sign.name}${a.sign.element ? ' · ' + a.sign.element : ''}` : '')
-      + row('Число судьбы', a.destiny ? `${a.destiny.n} · ${esc(a.destiny.title)}` : '')
-      + row('Личный год', a.year ? `${a.year.n}${a.year.energy ? ' · ' + esc(a.year.energy) : ''}<small> с ${fmtDay(a.year.from)} по ${fmtDay(dayBefore(a.year.to))}</small>` : '')
-      + row('Натальная карта', a.natal && a.natal.sun ? `☉ ${a.natal.sun}${a.natal.moon ? ` · ☽ ${a.natal.moon}` : ''}${a.natal.asc ? ` · Asc ${a.natal.asc}` : ''}` : '')
-      + row('В Лунарио', `с ${fmtDay(a.since)}${a.streak ? ` · серия ${a.streak}` : ''}`) + row('Почта', esc(a.email));
-    const wk = dy.week.filter((w) => w.moodRu).map((w) => `${fmtDay(w.day).slice(0, 5)} — ${w.moodRu}`).join(', ');
-    const day = row('Настроение', esc(dy.moodRu)) + row('Карта дня', dy.card ? esc(dy.card.name) : '')
-      + row('Луна', `${esc(dy.moon || '')}${dy.lunar ? ` · ${dy.lunar.n}-й лунный день` : ''}`) + row('Неделя', esc(wk))
-      + row('Дневник', dy.journal.length ? dy.journal.map((j) => `<small>${fmtDay(j.day).slice(0, 5)}</small> ${esc(j.text)}`).join('<br>') : '')
-      + row('Желания', dy.wishes.open.length ? esc(dy.wishes.open.join(' · ')) + (dy.wishes.done ? `<small> · исполнено ${dy.wishes.done}</small>` : '') : '')
-      + row('Привычки', dy.habits.map((x) => `${esc(x.title)}<small> · ${x.streak} подряд</small>`).join('<br>'))
-      + row('Аскезы', dy.askesis.map((x) => `${esc(x.title)}<small> · день ${x.done} из ${x.total}, до ${fmtDay(x.until)}</small>`).join('<br>'));
-    const hist = !h.total ? '<p>Обращений пока не было.</p>'
-      : row('Всего', `${h.total}<small> · ${Object.entries(h.byKind).map(([k, n]) => `${ru[k] || k} ${n}`).join(', ')}</small>`)
-      + row('Темы', esc(h.topics.map((t) => `${t.name} ${t.n}`).join(', '))) + row('Ответы «Да / Нет»', esc(h.verdicts.map((v) => `${v.verdict} ${v.n}`).join(', ')))
-      + row('Последние', h.recent.slice(0, 6).map((r) => `<small>${fmtDay(r.day).slice(0, 5)} · ${esc(r.kindRu)}</small> ${r.question ? esc(r.question) + ' → ' : ''}${esc(r.answer)}`).join('<br>'));
-    const shelf = (t, sub, body, i) => `<div class="item rise" style="--i:${i}"><b>${t}</b><small>${sub}</small><div class="sh-rows">${body || '<p>Пока пусто.</p>'}</div></div>`;
-    box.innerHTML = shelf('Обо мне', 'анкета и то, что из неё считается', about, 0) + shelf('Мой день', `сегодня, ${fmtDay(dy.date)}, и последняя неделя`, day, 1) + shelf('Истории', 'к чему вы возвращаетесь и что вам отвечали', hist, 2)
-      + `<p class="hint mt-1">Данные хранятся в России, личные тексты зашифрованы. Обновлено ${s.updated ? fmtWhen(s.updated) : '—'}. Стереть всё — «Очистить историю» в аккаунте.</p>`;
-  } catch (e) { box.innerHTML = `<div class="item"><p>${e.code === 'no_birth' ? 'Заполните профиль — здесь появятся ваши данные.' : 'Не получилось загрузить данные, попробуйте позже.'}</p></div>`; }
-}
 async function loadNatal(){
   const box = $('natal-box');
   try{
@@ -729,7 +699,7 @@ function loadAccount(){
   $('ac-name').textContent=u.name||'Мой профиль';
   $('m-sign').textContent=[u.sign,u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
-  $('ac-mail').textContent=u.email||'Мой профиль и приложение';
+  $('ac-mail-sub').textContent=u.email||'Сохранённые записи доступны на других устройствах';   /* почта, по которой вошли, — прямо в ряду «Вход по почте» */
   const geoLine=$('m-geo');
   if(u.lat!=null){
     const off=u.tzOffset!=null?(u.tzOffset>=0?'+':'−')+Math.abs(Math.round(u.tzOffset/60)):'—';
@@ -1558,7 +1528,7 @@ function registerWebMcp(){
     ]});
   }catch(e){}
 }
-/* Виджет «Небо над вами»: место для созвездий — по устройству (только по нажатию), свой город или как в анкете */
+/* Виджет «Геолокация»: место для созвездий — по устройству (только по нажатию), свой город или как в анкете */
 function paintSkyPlace(){
   const box=$('skyplace-box'),sky=window.LunarioSky;if(!box)return;
   const d=sky?sky.describe():{label:'Москва',source:'moscow',hasProfile:false,geolocation:false};
@@ -1572,7 +1542,7 @@ function paintSkyPlace(){
   const pick=attachCity('sp-city','sp-city-list','sp-geo');
   $('sp-city-list').addEventListener('click',()=>setTimeout(()=>{const c=pick.picked;if(c&&sky){sky.setCity({name:c.name,lat:c.lat,lon:c.lon});$('sp-now').textContent=sky.describe().label;toast('Небо перестроено ✦');}},0));
 }
-/* Виджет «Темы чтения» в «Аккаунте» */
+/* Виджет «Настройка контента» (темы чтения) в «Аккаунте» */
 function paintTopics(){
   const box=$('topics-box');if(!box)return;
   if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не удалось загрузить темы. Откройте ещё раз</p>';});return;}

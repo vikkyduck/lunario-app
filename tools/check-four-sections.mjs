@@ -14,16 +14,16 @@ export async function checkFourSections({browser,base,owner}){
     // «Аккаунт» — не вкладка: открывается по кружку с фото на главной, ни одна вкладка не подсвечена, назад — на «Сегодня»
     await page.locator('#h-acct').click();await page.locator('#v-account.on').waitFor();assert.equal(await page.locator('.app-nav [aria-current=page]').count(),0);
     assert.equal(await page.locator('#v-account [data-feature=natal],#v-account [data-feature=year]').count(),0,'Readings live in «Обо мне», not in the account');
-    await page.locator('#v-account > .back').click();await page.locator('#v-home.on').waitFor();
+    await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home.on').waitFor();
     // кружок с фото виден на каждой из четырёх вкладок и с любой из них открывает «Аккаунт»
     for(const view of ['ask','history','about']){await page.locator(`.app-nav [data-nav=${view}]`).click();await page.locator('#v-'+view+'.on').waitFor();assert.ok(await page.locator('.section-acct').isVisible(),view+' shows the account circle');}
-    await page.locator('.section-acct').click();await page.locator('#v-account.on').waitFor();assert.ok(await page.locator('.section-acct').isHidden(),'No circle on the account screen itself');await page.locator('#v-account > .back').click();await page.locator('#v-home.on').waitFor();
+    await page.locator('.section-acct').click();await page.locator('#v-account.on').waitFor();assert.ok(await page.locator('.section-acct').isHidden(),'No circle on the account screen itself');await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home.on').waitFor();
     const initialDay=(await owner.json('/me')).day;
     await page.locator('#h-set-question').click();
     assert.equal(await page.locator('#tone-box .practice-question').innerText(),initialDay.question);
     assert.equal(await page.locator('#tone-box > .hint').innerText(),initialDay.set.statement);
     await close();assert.equal(await page.evaluate(()=>document.activeElement.id),'h-set-question');
-    const routes={home:['card','day','tone','mood','habits','askesis','lunar','sky'],ask:['worry'],history:['journal','gratitude','wishes','hmood','hentries','week'],about:['natal','year','birthnum','compat','tests'],account:['mail','remind','shelves','support','edit','invite']};
+    const routes={home:['card','day','tone','mood','habits','askesis','lunar','sky'],ask:['worry'],history:['journal','gratitude','wishes','hmood','hentries','week'],about:['natal','year','birthnum','compat','tests'],account:['mail','remind','support','edit','invite']};
     for(const [view,keys] of Object.entries(routes))for(const key of keys){
       await page.evaluate(v=>go(v),view);
       const root=page.locator(`#v-${view} [data-feature="${key}"]`);assert.equal(await root.count(),1,key+' canonical entry');

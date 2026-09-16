@@ -49,7 +49,7 @@ export async function checkDesign({browser,base,owner}){
     await page.evaluate(id=>supThread(id),ticket.id);assert.equal(await page.locator('#sup-reply').inputValue(),'Несохранённый ответ');await page.unroute('**/api/support/ticket?*');
     await close();await page.evaluate(()=>openWidget('support'));await page.locator('#sup-text').waitFor();await page.evaluate(id=>supThread(id),ticket.id);await page.locator('#sup-reply').waitFor();assert.equal(await page.locator('#sup-reply').inputValue(),'Несохранённый ответ');await close();
 
-    const panes=['card','mood','worry','day','tone','gratitude','journal','habits','askesis','wishes','sky','lunar','hmood','hentries','week','year','birthnum','compat','natal','edit','remind','mail','shelves','support','invite','appinfo','terms','ritual','appearance'];
+    const panes=['card','mood','worry','day','tone','gratitude','journal','habits','askesis','wishes','sky','lunar','hmood','hentries','week','year','birthnum','compat','natal','edit','remind','mail','support','invite','appinfo','terms','ritual','appearance'];
     for(const theme of ['light','dark'])for(const [width,height] of [[320,568],[390,844],[1440,900]]){
       await page.setViewportSize({width,height});await page.evaluate(t=>applyTheme(t),theme);
       for(const view of ['home','ask','history','about','account','news']){

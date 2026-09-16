@@ -21,8 +21,6 @@ export async function checkRestoration({browser,base,owner}){
     await context.route('**/api/catalog*',route=>route.fulfill({json:{...catalogue,cards:catalogue.cards.map(c=>c.slug===full.slug?full:c)}}));
     await page.goto(base+'/');await page.locator('#v-home.on').waitFor();
     const me=await owner.json('/me');assert.equal(await page.locator('#h-wish').textContent(),me.day.set.text);assert.match(me.day.set.text,/, Гость$/);
-    await page.evaluate(()=>go('account'));await page.locator('[data-feature=shelves]').click();await page.locator('#sh-box .sh-rows').first().waitFor();
-    assert.doesNotMatch(await page.locator('#sh-box').innerText(),/полк|Установка дня/i);await shot('my-data');await close();
     await page.evaluate(()=>go('ask'));await page.locator('[data-feature=worry]').click();
     await page.locator('#hub-questions button').first().waitFor();
     assert.deepEqual(await page.locator('#hub-questions button').allTextContents(),catalogue.worries);

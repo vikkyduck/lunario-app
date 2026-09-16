@@ -47,7 +47,8 @@ body.inner:not(:has(#v-home.on)) .section-brand{display:inline-flex}
 body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{display:grid}
 .widget-brand{display:flex;width:max-content;margin-bottom:14px}
 body.inner #v-home .hdr{margin-bottom:0;position:relative;z-index:2}
-body.inner #v-home .hdr .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+/* заголовок экрана только для читалок: на главной и в аккаунте он визуально не нужен */
+body.inner :is(#v-home .hdr .sr-only,#v-account>h1.sr-only){position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
 body.inner #h-date{font-size:13px;font-weight:400;letter-spacing:.03em;text-transform:none;color:var(--muted)}
 body.inner #h-acct{width:44px;height:44px;font-weight:600}
 body.inner .acct,body.inner .avatar{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);color:var(--gold-2)}
@@ -342,10 +343,7 @@ body.inner .habit-calendar-key{font-size:15px!important;color:var(--muted);margi
 /* ── Аккаунт: экран настроек. Шапка компактная, профиль в одну строку, каждая группа — одна стеклянная панель
    с рядами по 64px и тонкими разделителями; «Управление аккаунтом» — такая же группа. Ряды не «взлетают» при наведении,
    а подсвечиваются; раскрытие «Данных для расчётов» и вход на экран — по общему ритму движения (--t, --sp) ── */
-#v-account>.back{margin:-14px 0 0 -2px;padding:6px 2px;min-height:40px}
-#v-account>.eyebrow{margin:6px 0 2px}
-body.inner #v-account>h1{margin-bottom:0}
-#v-account .account-layout{margin-top:18px}
+#v-account .account-layout{margin-top:6px}   /* сразу после логотипа: заголовка и «назад» на экране нет, назад — вкладка «Сегодня» */
 /* профиль */
 body.inner #v-account .profile-summary{padding:20px 20px 6px}
 #v-account .profile-head{display:flex;align-items:center;gap:16px}
@@ -392,13 +390,11 @@ body.inner #v-account .danger-zone{padding-top:0;border-top:0}
 }
 @media(min-width:900px){
   #v-account .account-group .compact-links,#v-account .rows{grid-template-columns:1fr;column-gap:0;gap:0;margin-top:0}
-  #v-account .account-layout{margin-top:20px}
+  #v-account .account-layout{margin-top:10px}
   #v-account .profile-block>h2{display:block}
   body.inner #v-account .account-group{margin-top:0}
 }
 @media(prefers-reduced-motion:reduce){body.inner #v-account .profile-detail>summary::after{transition:none}body.inner #v-account .profile-detail[open]>p{animation:none}}
 @media(min-width:1180px){
-  #v-account .account-layout{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr);gap:28px 28px;grid-template-areas:"profile app side" "manage app side"}
-  #v-account .account-side{display:block;grid-area:side;min-width:0}
-  body.inner #v-account .account-side>.account-group+.account-group{margin-top:28px}
+  #v-account .account-layout{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr);gap:28px 28px;grid-template-areas:"profile app manage" "help app manage"}
 }

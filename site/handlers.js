@@ -48,7 +48,6 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "openWidget-topics": function (event) { openWidget('topics') },
   "openWidget-appinfo": function (event) { openWidget('appinfo') },
   "installApp": function (event) { installApp() },
-  "openWidget-shelves": function (event) { openWidget('shelves') },
   "exportPersonalData": function (event) { exportPersonalData() },
   "openWidget-support": function (event) { openWidget('support') },
   "openWidget-invite": function (event) { openWidget('invite') },

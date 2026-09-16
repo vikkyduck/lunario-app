@@ -294,9 +294,9 @@ body:not(.inner):not(.hello) .bg{display:none}
   body.inner .wrap{padding:48px 48px 120px}
   /* аккаунт: группы раскладываются по областям, чтобы экран читался целиком без прокрутки;
      обёртки колонок из разметки на широком экране не участвуют (display:contents) */
-  .account-layout{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.15fr);gap:28px 32px;align-items:start;grid-template-areas:"profile app" "privacy app" "help app" "manage app"}
-  .account-personal,.account-settings,.account-side{display:contents}
-  #ag-profile{grid-area:profile}#ag-app{grid-area:app}#ag-privacy{grid-area:privacy}#ag-help{grid-area:help}#ag-manage{grid-area:manage}
+  .account-layout{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.15fr);gap:28px 32px;align-items:start;grid-template-areas:"profile app" "help app" "manage app"}
+  .account-personal,.account-settings{display:contents}
+  #ag-profile{grid-area:profile}#ag-app{grid-area:app}#ag-help{grid-area:help}#ag-manage{grid-area:manage}
   .account-layout .account-group{margin-top:0}
   body.inner .method-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   body.inner .method-grid .wid{display:flex;min-height:210px;gap:16px}
