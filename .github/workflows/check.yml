@@ -28,3 +28,5 @@ jobs:
         run: node tools/check-personal-features.mjs
       - name: Надёжное сохранение и вход (повторы, конфликты, перенос гостя)
         run: node tools/check-sync.mjs
+      - name: Изоляция личных данных (человек А не видит данные человека Б)
+        run: node tools/check-isolation.mjs

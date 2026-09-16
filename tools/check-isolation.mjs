@@ -37,7 +37,8 @@ async function start() {
   server = spawn(process.execPath, [join(fixture, 'backend/server.mjs')], {
     env: { PATH: process.env.PATH, PORT: String(port), HOST: '127.0.0.1', BASE_PATH: '/app',
       DATA_DIR: join(fixture, 'data'), CONTENT_DIR: join(fixture, 'content'), BACKUP_DIR: join(fixture, 'backups'),
-      SITE_DIR: join(repo, 'site'), PUBLIC_BASE: `http://127.0.0.1:${port}`, ANON_RATE: '500', LUNARIO_QUIET: '1' },
+      SITE_DIR: join(repo, 'site'), PUBLIC_BASE: `http://127.0.0.1:${port}`, ANON_RATE: '500', LUNARIO_QUIET: '1',
+      ADMIN_EMAILS: 'staff@example.test' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   server.stdout.on('data', (d) => { log += d; }); server.stderr.on('data', (d) => { log += d; });
@@ -173,10 +174,17 @@ try {
   await asAlice(`/askesis?id=${bobAskesis}`, 'DELETE');
   assert.equal(db.prepare('SELECT status FROM askesis WHERE id = ?').get(bobAskesis).status, 'active', 'чужая аскеза не остановлена');
 
+  /* карточка дня: чужие привычка и аскеза, подсунутые в одно сохранение */
+  if ((await asAlice('/day')).status === 200) {
+    await asAlice('/day', 'POST', { habits: [{ id: bobHabit, done: true }], askesis: [{ id: bobAskesis, kept: 0, note: 'пишу в чужую аскезу' }] });
+    assert.equal(db.prepare('SELECT COUNT(*) c FROM habit_marks WHERE habit_id = ? AND day = ?').get(bobHabit, today).c, 0, 'чужая привычка не отмечена через карточку дня');
+    assert.equal(db.prepare('SELECT COUNT(*) c FROM askesis_days WHERE askesis_id = ? AND day = ?').get(bobAskesis, today).c, 0, 'в чужую аскезу не записано через карточку дня');
+  }
+
   /* лента, досье, выгрузка, профиль */
   for (const path of ['/timeline', `/timeline?day=${today}`, '/timeline?offset=0', '/me', '/week', '/mood/report',
     '/data/export', '/data/export.pdf', '/shelves', '/shelves/context', '/day-status', '/invite', '/photo',
-    '/reminders', '/reminders/askesis-plan', '/reminders/preview?feature=card', '/wishes', '/habits', '/askesis']) await asAlice(path);
+    '/reminders', '/reminders/askesis-plan', '/reminders/preview?feature=card', '/wishes', '/habits', '/askesis', '/day']) await asAlice(path);
 
   /* уведомления: чужое устройство и чужая очередь */
   await asAlice('/push/next', 'POST', { endpoint: bobEndpoint });
@@ -201,7 +209,7 @@ try {
   const open = [];
   for (const path of ['/timeline', '/entries', '/wishes', '/habits', '/askesis', '/journal', '/data/export',
     '/data/export.pdf', '/shelves', '/shelves/context', '/photo', `/wishes/photo?id=${bobWish}`, '/support/tickets',
-    `/support/ticket?id=${bobTicket}`, '/reminders', '/push', '/invite', '/week', '/mood/report', '/day-status', '/natal']) {
+    `/support/ticket?id=${bobTicket}`, '/reminders', '/push', '/invite', '/week', '/mood/report', '/day-status', '/natal', '/day']) {
     const r = await fetch(base + '/api' + path, { headers: { 'X-Forwarded-For': '203.0.113.251' } });
     if (r.status !== 401) open.push(`${path} → ${r.status}`);
   }
@@ -212,6 +220,29 @@ try {
   assert.ok(guest.user && guest.user.id !== bobId && guest.user.id !== aliceId, '/me без сессии завёл нового человека, а не отдал чужого');
   assert.equal(marks.some((m) => JSON.stringify(guest).includes(m)), false, 'и в его ответе нет ни одной чужой метки');
   console.log('PASS: без сессии личные маршруты отвечают 401; /me заводит нового пустого гостя, а не отдаёт чужой аккаунт.');
+
+  /* ── кабинет: сотруднику положено видеть счётчики, но не личные тексты ──
+     Роль даёт доступ к чужим цифрам по работе — это не дефект. Дефект — если в отчёт попадает
+     то, что человек написал своими словами: настроение «своим словом», запись, обращение. */
+  const staff = account();
+  await staff.json('/me');
+  const staffMail = 'staff@example.test';
+  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
+    VALUES (?,?,?,?,0,'login') ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0`)
+    .run(staffMail, createHash('sha256').update('123456' + staffMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+  await staff.json('/auth/verify', 'POST', { email: staffMail, code: '123456' });
+  const staffLeak = [];
+  for (const kind of ['rituals', 'activity', 'features', 'topics', 'supportmetrics', 'quality', 'concerns', 'feedback', 'ai', 'lifecycle']) {
+    const r = await staff.raw(`/cabinet/report?kind=${kind}`);
+    if (r.status !== 200) continue;
+    const text = JSON.stringify(await r.json());
+    for (const m of marks) if (text.includes(m)) staffLeak.push(`${kind} → ${m}`);
+    if (/"own:/.test(text)) staffLeak.push(`${kind} → настроение своим словом попало в отчёт целиком`);
+  }
+  const card = await staff.raw(`/cabinet/user?id=${bobId}`);
+  if (card.status === 200) { const text = JSON.stringify(await card.json()); for (const m of marks) if (text.includes(m) && m !== M('имя')) staffLeak.push(`карточка человека → ${m}`); }
+  assert.deepEqual(staffLeak, [], 'личные тексты попали в кабинет:\n' + staffLeak.join('\n'));
+  console.log('PASS: в отчётах кабинета и карточке человека — счётчики, а не личные тексты.');
 
   /* ── PDF рисует ровно то, что дал personalExport: своих запросов к базе не делает ── */
   const pdfSrc = readFileSync(join(repo, 'backend/personal-export-pdf.mjs'), 'utf8');
