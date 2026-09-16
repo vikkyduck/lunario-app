@@ -27,10 +27,13 @@ echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app/backend/lunario-app.service /etc/systemd/system/lunario-app.service \
   && install -m644 /opt/lunario-app/backend/lunario-daily.service /etc/systemd/system/lunario-daily.service \
   && install -m644 /opt/lunario-app/backend/lunario-daily.timer /etc/systemd/system/lunario-daily.timer \
+  && install -m644 /opt/lunario-app/backend/lunario-backup.service /etc/systemd/system/lunario-backup.service \
+  && install -m644 /opt/lunario-app/backend/lunario-backup.timer /etc/systemd/system/lunario-backup.timer \
   && mkdir -p /opt/lunario-app-backups \
-  && install -m644 /dev/stdin /etc/cron.d/lunario-app-backup <<< "40 3 * * * root set -a; . /opt/lunario-app/.env 2>/dev/null; set +a; DATA_DIR=/opt/lunario-app/data CONTENT_DIR=/opt/lunario-content BACKUP_DIR=/opt/lunario-app-backups /usr/bin/node /opt/lunario-app/backend/backup.mjs >>/var/log/lunario-app-backup.log 2>&1" \
+  && rm -f /etc/cron.d/lunario-app-backup \
   && systemctl daemon-reload && systemctl enable lunario-app >/dev/null \
   && systemctl enable --now lunario-daily.timer >/dev/null && systemctl restart lunario-daily.timer \
+  && systemctl enable --now lunario-backup.timer >/dev/null \
   && systemctl restart lunario-app && sleep 1 \
   && printf "health: " && curl -sS http://127.0.0.1:5031/app/api/health && echo'
 # готовность: миграции прошли, сервис отвечает; иначе — откат к снимку, снятому выше
