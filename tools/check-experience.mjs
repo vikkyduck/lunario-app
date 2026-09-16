@@ -17,7 +17,7 @@ export async function checkExperience({browser,base,owner}){
     const pr0=(await owner.json('/preferences')).preferences;await owner.json('/preferences','POST',{...pr0,tools:['gratitude','habits','askesis','wishes','hmood']});
     await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&!document.querySelector('#v-history [data-feature=askesis]').hidden);
     assert.equal(await page.locator('#h-next,.day-focus').count(),0);
-    await page.locator('#h-set-question').click();
+    await page.locator('#v-home [data-feature=tone]').click();
     await page.locator('#tone-a').fill('Длинный ответ для проверки чтения и поля. '.repeat(30));
     assert.ok(await page.locator('#tone-a').evaluate(e=>e.clientHeight>300&&e.scrollHeight<=e.clientHeight+2));
     assert.equal(await page.locator('#tone-a').evaluate(e=>getComputedStyle(e).fontSize),'18px');

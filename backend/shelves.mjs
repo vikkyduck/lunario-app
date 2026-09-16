@@ -21,7 +21,7 @@ const ELEMENT = {
 };
 /* «Солнце в Овне»: знак в предложном падеже для текста досье */
 const TOPIC_RU = { work: 'работа', money: 'деньги', love: 'отношения', health: 'здоровье', move: 'дом и переезд', study: 'учёба', self: 'о себе' };
-const KIND_RU = { yesno: '«Да / Нет»', rune: 'руна', runes: 'расклад рун', spread: 'расклад Таро', card: 'карта дня' };
+const KIND_RU = { yesno: '«Да / Нет»', rune: 'руна', runes: 'расклад рун', spread: 'расклад Таро', card: 'карта дня', dayrune: 'руна дня' };
 const SHELVES = ['about', 'day', 'history'];
 const SHELF_VERSION = 2;   /* форма полок; старые — пересобираются при чтении */
 

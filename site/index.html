@@ -26,7 +26,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=56"></script>
+<script src="/app/boot.js?v=57"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -679,9 +679,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=56">
-<link rel="stylesheet" href="/app/experience.css?v=56">
-<link rel="stylesheet" href="/app/moon-glass.css?v=56">
+<link rel="stylesheet" href="/app/theme.css?v=57">
+<link rel="stylesheet" href="/app/experience.css?v=57">
+<link rel="stylesheet" href="/app/moon-glass.css?v=57">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -770,10 +770,10 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
     <div class="home-intro">
       <div class="home-moon" aria-hidden="true"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" decoding="async"></div>
-      <div class="daily-statement"><h2 id="h-wish"></h2><button data-on="click:openWidget-tone" class="text-action secondary" id="h-set-question" type="button">Вопрос дня <span aria-hidden="true">→</span></button></div>
+      <div class="daily-statement"><h2 id="h-wish"></h2></div>
     </div>
     <div class="today-layout"><div class="today-main">
-      <section class="feature-group"><h2>На этот день</h2><div class="wids compact-links"><button data-on="click:openWidget-card" class="wid" data-feature="card" type="button" aria-label="Карта дня"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" type="button" aria-label="Прогноз дня"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" type="button" aria-label="Вопрос дня"><i class="ico star"></i><b>Вопрос дня</b><span>Ответ можно сохранить в дневник</span></button></div></section>
+      <section class="feature-group"><h2>На этот день</h2><div class="wids compact-links"><button data-on="click:openWidget-card" class="wid" data-feature="card" type="button" aria-label="Карта дня"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" type="button" aria-label="Руна дня"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" type="button" aria-label="Прогноз дня"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" type="button" aria-label="Вопрос дня"><i class="ico star"></i><b>Вопрос дня</b><span>Ответ можно сохранить в дневник</span></button></div></section>
     </div><div class="today-side">
       <section class="feature-group" id="home-sky" data-feature="around"><h2>Луна и планеты</h2>
         <button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" type="button" aria-label="Лунный день"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button>
@@ -843,6 +843,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <div class="wpane" id="w-practiceSettings"><div id="practice-settings-box"></div></div>
   <div class="wpane" id="w-askDate"><div class="field"><label for="ask-date">До какого дня</label><input id="ask-date" type="date" aria-describedby="ask-date-msg"></div><button data-on="click:saveAskDate" class="btn" id="ask-date-save" type="button">Сохранить дату</button><p class="msg" id="ask-date-msg" role="status"></p></div>
   <div class="wpane" id="w-timelineEntry"><div id="timeline-entry-box"></div></div>
+  <div class="wpane" id="w-dayrune"><div id="dayrune-box"><p class="hint">Тянем руну…</p></div></div>
   <div class="wpane" id="w-card">
     <div data-on="click:flipCard" class="daycard glow" id="t-card">
       <div class="dc-in">
@@ -940,13 +941,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 </div>
 <div data-on="click:if-event-target-this-this-classList-remove-on" class="award-bg" id="award"><div id="award-box"></div></div>
 
-<script src="/app/moon-logo.js?v=56"></script>
+<script src="/app/moon-logo.js?v=57"></script>
 
-<script type="module" src="/app/sky.js?v=56"></script>
+<script type="module" src="/app/sky.js?v=57"></script>
 
-<script src="/app/experience.js?v=56"></script>
-<script src="/app/app.js?v=56"></script>
-<script src="/app/handlers.js?v=56"></script>
-<script src="/app/on.js?v=56"></script>
+<script src="/app/experience.js?v=57"></script>
+<script src="/app/app.js?v=57"></script>
+<script src="/app/handlers.js?v=57"></script>
+<script src="/app/on.js?v=57"></script>
 </body>
 </html>

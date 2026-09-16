@@ -704,6 +704,20 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true, card, streak: touchStreak(u) });
       }
 
+      /* Руна дня: как карта дня — одна на день, запоминается в entries (kind dayrune), повторное открытие возвращает ту же */
+      if (p === '/api/dayrune' && req.method === 'POST') {
+        const row = db.prepare("SELECT data FROM entries WHERE user_id=? AND day=? AND kind='dayrune' ORDER BY id DESC LIMIT 1").get(u.id, d);
+        const slug = (parseData(row && row.data) || {}).rune;
+        let rune = slug ? [...C.RUNES].find((r) => r.slug === slug) : null;
+        if (!rune) {
+          rune = drawDistinct([...C.RUNES], 1)[0];
+          db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+            .run(u.id, nowISO(), d, 'dayrune', '', rune.name, rune.answer, JSON.stringify({ rune: rune.slug, layout: 'one', runes: [rune.slug] }));
+          track(u, 'dayrune_open', rune.slug);
+        }
+        return json(res, 200, { ok: true, day: d, rune: runePublic(rune) });
+      }
+
       if (p === '/api/ask' && req.method === 'POST') {
         const b = await readBody(req);
         const q = clean(b.question, 300);

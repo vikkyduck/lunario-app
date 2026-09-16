@@ -57,8 +57,6 @@ body.inner .acct,body.inner .avatar{background:var(--moon-panel) padding-box,var
 .home-moon img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 24px #d9b86825)}
 body.inner .home-intro .daily-statement{order:1;margin:0;max-width:none;position:relative}
 body.inner .home-intro #h-wish{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:clamp(26px,3vw,36px);font-weight:600;line-height:1.5;letter-spacing:-.01em;margin:0;text-wrap:pretty;overflow-wrap:anywhere;color:var(--text)}
-body.inner #h-set-question{color:var(--gold-2);font-size:15px;margin-top:14px;gap:12px}
-body.inner #h-set-question span{margin-left:8px}
 .today-layout{position:relative;z-index:1}
 body.inner #home-sky .moonline{padding:20px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;border-radius:var(--r-xl);box-shadow:var(--moon-shadow);gap:14px;margin-bottom:12px}
 body.inner #home-sky .moon-sm{width:50px;height:50px;flex-basis:50px}
@@ -174,7 +172,6 @@ body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.field labe
 body.inner :is(.field label,.text-action,.back,.rem-summary,.segmented button,.emotion-family,.mchip,.chip,.observation>summary,.practice-create>summary){font-size:17px;font-weight:600;color:var(--text)}
 body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.ln-text,.histbody p,textarea){font-weight:500}
 body.inner .wpane :is(.hint,.msg){font-size:17px!important}
-body.inner #h-set-question{font-size:18px;font-weight:600}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:18px;color:var(--text)}
 body.inner #home-sky .moonline b{font-weight:600}
 /* подписи вкладок в две строки («Свериться с собой»): 13px, иконки выровнены по верху, всё в 70px панели */
@@ -244,7 +241,7 @@ html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#ho
   opacity:.28;transition:opacity var(--t) ease;transform:none;animation:none;
 }
 html[data-theme=light] body.inner :is(.ico,.app-nav .on .ico){background-color:var(--gold-2);filter:none}
-html[data-theme=light] body.inner :is(.eyebrow,.big,.avatar,.acct,.kw,.timeline-kind,.card-question h3,#h-set-question,.lunar-arrow,.app-nav button.on,.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true],.chip.on,.chip[aria-pressed=true]){color:var(--text)}
+html[data-theme=light] body.inner :is(.eyebrow,.big,.avatar,.acct,.kw,.timeline-kind,.card-question h3,.lunar-arrow,.app-nav button.on,.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true],.chip.on,.chip[aria-pressed=true]){color:var(--text)}
 html[data-theme=light] body.inner .btn:not(.ghost){color:#f5f2ea;border-color:#ffffff70;box-shadow:inset 0 1px 0 #ffffff66,0 8px 22px -12px #2a215080}
 html[data-theme=light] body.inner .btn:not(.ghost) :is(span,.ico){color:#f5f2ea}
 html[data-theme=light] body.inner .btn:not(.ghost) .ico{background-color:#f5f2ea}

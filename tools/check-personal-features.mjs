@@ -322,6 +322,10 @@ try {
   assert.equal((await evt.raw('/event', 'POST', { t: 'mood_set' })).status, 400, 'Server-owned events are rejected from /api/event');
   await evt.json('/mood', 'POST', { mood: 'joy' }); assert.equal(count('mood_set'), 1);
   await evt.json('/card', 'POST'); await evt.json('/card', 'POST'); assert.equal(count('card_open'), 1, 'Card of the day is drawn once and counted once');
+  { const r1 = await evt.json('/dayrune', 'POST'), r2 = await evt.json('/dayrune', 'POST');
+    assert.ok(r1.rune && r1.rune.slug && r1.rune.name && r1.rune.answer, 'rune of the day has a name and an answer');
+    assert.equal(r2.rune.slug, r1.rune.slug, 'the same rune all day'); assert.equal(count('dayrune_open'), 1, 'Rune of the day is drawn once and counted once');
+    assert.ok((await evt.json('/entries')).items.some((i) => i.kind === 'dayrune' && i.title === r1.rune.name), 'rune of the day is recorded'); }
   await evt.json('/journal', 'POST', { text: 'Обычная запись' }); assert.equal(count('journal_add'), 1);
   await evt.json('/journal', 'POST', { text: 'Спасибо', kind: 'gratitude', title: 'Кому и за что я благодарна сегодня?' }); assert.equal(count('gratitude_add'), 1);
   await evt.json('/event', 'POST', { t: 'forecast_view' }); assert.equal(count('forecast_view'), 1);

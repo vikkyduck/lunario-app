@@ -19,7 +19,7 @@ const MONTHS = ['января', 'февраля', 'марта', 'апреля', 
 const fmtDay = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : String(d || ''); };
 const fmtWhen = (iso) => { const t = new Date(iso); return isNaN(t) ? '' : `${fmtDay(iso.slice(0, 10))}, ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')} UTC`; };
 const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return n + ' ' + (a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many); };
-const KIND = { yesno: '«Да / Нет»', rune: 'Руна', runes: 'Расклад рун', spread: 'Расклад Таро', card: 'Карта дня' };
+const KIND = { yesno: '«Да / Нет»', rune: 'Руна', runes: 'Расклад рун', spread: 'Расклад Таро', card: 'Карта дня', dayrune: 'Руна дня' };
 const JOURNAL_KIND = { gratitude: 'благодарность', answer: 'ответ на вопрос дня' };
 const THEME = { dark: 'ночная', light: 'светлая', system: 'как в системе' };
 const FREQ = { daily: 'каждый день', weekly: 'раз в неделю', events: 'по событиям на небе' };

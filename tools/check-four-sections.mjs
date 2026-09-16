@@ -21,11 +21,11 @@ export async function checkFourSections({browser,base,owner}){
     for(const view of ['ask','history','about']){await page.locator(`.app-nav [data-nav=${view}]`).click();await page.locator('#v-'+view+'.on').waitFor();assert.ok(await page.locator('.section-acct').isVisible(),view+' shows the account circle');}
     await page.locator('.section-acct').click();await page.locator('#v-account.on').waitFor();assert.ok(await page.locator('.section-acct').isHidden(),'No circle on the account screen itself');await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home.on').waitFor();
     const initialDay=(await owner.json('/me')).day;
-    await page.locator('#h-set-question').click();
+    await page.locator('#v-home [data-feature=tone]').click();
     assert.equal(await page.locator('#tone-box .practice-question').innerText(),initialDay.question);
     assert.equal(await page.locator('#tone-box > .hint').innerText(),initialDay.set.statement);
-    await close();assert.equal(await page.evaluate(()=>document.activeElement.id),'h-set-question');
-    const routes={home:['card','day','tone','lunar','sky'],ask:['worry','hentries'],history:['journal','mood','gratitude','habits','askesis','wishes','hmood','week'],about:['natal','year','birthnum','compat','tests'],account:['mail','remind','support','edit','invite']};
+    await close();assert.equal(await page.evaluate(()=>document.activeElement.dataset.feature),'tone');assert.equal(await page.locator('#h-set-question').count(),0,'no duplicate question link in the hero');
+    const routes={home:['card','dayrune','day','tone','lunar','sky'],ask:['worry','hentries'],history:['journal','mood','gratitude','habits','askesis','wishes','hmood','week'],about:['natal','year','birthnum','compat','tests'],account:['mail','remind','support','edit','invite']};
     for(const [view,keys] of Object.entries(routes))for(const key of keys){
       await page.evaluate(v=>go(v),view);
       const root=page.locator(`#v-${view} [data-feature="${key}"]`);assert.equal(await root.count(),1,key+' canonical entry');
@@ -35,7 +35,7 @@ export async function checkFourSections({browser,base,owner}){
     for(const [alias,target] of [['today','home'],['around','home'],['me','about']]){await page.evaluate(v=>go(v),alias);assert.ok(await page.locator('#v-'+target).evaluate(el=>el.classList.contains('on')));}
     // ── Конструктор инструментов Дневника: новый человек видит стартовый набор, каталог добавляет и убирает плитки, записи целы ──
     await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&CAT.tools.length);
-    for(const key of ['card','day','tone','lunar','sky'])assert.ok(await page.locator('#v-home [data-feature='+key+']').isVisible(),key+' is always on «Сегодня»');
+    for(const key of ['card','dayrune','day','tone','lunar','sky'])assert.ok(await page.locator('#v-home [data-feature='+key+']').isVisible(),key+' is always on «Сегодня»');
     assert.equal(await page.locator('#v-home [data-feature=habits],#v-home [data-feature=askesis],#v-home [data-feature=mood],#h-next,#h-progress,.day-focus,.quick-actions').count(),0,'practices, mood and the ritual counter are not on «Сегодня»');
     assert.equal(await page.locator('#v-history [data-feature=hentries]').count(),0);assert.ok(await page.locator('#v-ask [data-feature=hentries]').count()===1,'question history lives in «Свериться с собой»');
     await page.evaluate(()=>go('history'));
@@ -67,7 +67,7 @@ export async function checkFourSections({browser,base,owner}){
     await page.getByRole('button',{name:'Все эмоции',exact:true}).click();assert.equal(await page.locator('.mchip').count(),32);await close();
     await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history [data-feature=gratitude]').click();await page.locator('#gr-text').fill('Себе за внимательность к себе');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await page.locator('#gr-box .saved-state').waitFor();await close();
     await page.locator('.app-nav [data-nav=home]').click();
-    await page.locator('#h-set-question').click();await page.locator('#tone-a').fill('Я заметила свои потребности');await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
+    await page.locator('#v-home [data-feature=tone]').click();await page.locator('#tone-a').fill('Я заметила свои потребности');await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
     await page.evaluate(()=>{go('history');openWidget('journal');});await page.locator('#j-text').fill('Мой текст.');await page.locator('#j-dictate').click();
     await page.evaluate(()=>window.__speechQA.rec.onresult({resultIndex:0,results:[Object.assign([{transcript:'Продиктованное продолжение'}],{isFinal:true})]}));
     assert.equal(await page.locator('#j-text').inputValue(),'Мой текст. Продиктованное продолжение');await close();assert.equal(await page.evaluate(()=>window.__speechQA.aborts),1);assert.equal(await page.locator('#j-dictate').getAttribute('aria-pressed'),'false');assert.ok(await page.evaluate(()=>window.__speechQA.rec.onresult===null&&window.__speechQA.rec.onerror===null&&window.__speechQA.rec.onend===null));

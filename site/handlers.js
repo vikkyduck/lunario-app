@@ -18,6 +18,7 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "openWidget-habits": function (event) { openWidget('habits') },
   "openWidget-askesis": function (event) { openWidget('askesis') },
   "openWidget-card": function (event) { openWidget('card') },
+  "openWidget-dayrune": function (event) { openWidget('dayrune') },
   "openWidget-day": function (event) { openWidget('day') },
   "openWidget-lunar": function (event) { openWidget('lunar') },
   "openWidget-sky": function (event) { openWidget('sky') },

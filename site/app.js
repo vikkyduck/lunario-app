@@ -108,7 +108,7 @@ function openLogin(){
    Отсюда — заголовки, строка уведомлений под заголовком, полный экран и переход по ?open= из уведомления. ── */
 const FEATURES = {
   card:{sec:'Ваш ритуал',title:'Карта дня',view:'home',reminder:'card'}, mood:{sec:'Дневник',title:'Настроение дня',view:'history',reminder:'mood'},
-  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'history'},
+  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, dayrune:{sec:'Сегодня',title:'Руна дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'history'},
   habits:{sec:'Дневник',title:'Дневник привычек',view:'history',page:true,reminder:'habits'}, askesis:{sec:'Дневник',title:'Взять аскезу',view:'history',page:true,reminder:'askesis'},
   lunar:{sec:'Луна и планеты',title:'Лунный день',view:'home',reminder:'lunar'}, sky:{sec:'Луна и планеты',title:'Влияние планет на сегодня',view:'home',reminder:'sky'},
   worry:{sec:'Свериться с собой',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
@@ -153,7 +153,7 @@ const WIDGET_LOADERS = {
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
   askesis: () => loadAskesis(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => paintTone(),
   day: () => { showForecastNote(); track('forecast_view'); }, worry: () => renderHub(), invite: () => loadInvite(), remind: () => paintAllReminders(), edit: () => fillEdit(),
-  support: () => supOpen(), natal: () => loadNatal(), mail: () => renderAuth(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
+  support: () => supOpen(), dayrune: () => loadDayRune(), natal: () => loadNatal(), mail: () => renderAuth(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
 };
 function loadWidgetContent(k){ WIDGET_LOADERS[k]?.(); }
 function closeWidget(e){
@@ -185,6 +185,15 @@ function focusSelectedTab(label){document.querySelector('.segmented[aria-label="
 
 /* ── натальная карта: расчёт на сервере, здесь только вывод ── */
 let natalCache = null;
+/* ── руна дня: одна на день, тянется на сервере при первом открытии и дальше показывается та же ── */
+async function loadDayRune(){
+  const box=$('dayrune-box');if(!box)return;box.innerHTML='<p class="hint">Тянем руну…</p>';
+  try{
+    const [r]=await Promise.all([api('/dayrune',{method:'POST'}),loadCatalog()]);
+    box.innerHTML=runesHtml({layout:'one',runes:[r.rune.slug],live:[r.rune],q:'',day:r.day});preparePending();
+    const sub=$('t-runesub');if(sub)sub.textContent=`${r.rune.name}${r.rune.keyword?' · '+r.rune.keyword:''}`;
+  }catch(e){box.innerHTML='<p class="msg err">Не получилось вытянуть руну. Попробуйте ещё раз.</p>';}
+}
 async function loadNatal(){
   const box = $('natal-box');
   try{
@@ -969,7 +978,7 @@ async function runAsk(mode, q, out, hint, layout){
 }
 
 /* ── история: записи раскрываются в тот же вид, что и свежий результат ── */
-const KIND_LABEL = { card: 'Карта дня', yesno: 'Да / Нет', rune: 'Руна', runes: 'Руны', spread: 'Таро' };
+const KIND_LABEL = { card: 'Карта дня', dayrune: 'Руна дня', yesno: 'Да / Нет', rune: 'Руна', runes: 'Руны', spread: 'Таро' };
 function kindLabel(i){
   const L = i.data && i.data.layout ? layoutOf(i.kind === 'spread' ? 'tarot' : 'rune', i.data.layout) : null;
   return L && i.kind !== 'rune' ? `${KIND_LABEL[i.kind]} · ${L.title}` : (KIND_LABEL[i.kind] || i.kind);
@@ -1004,7 +1013,7 @@ function entryHtml(i){
   const d = i.data || {};
   if (i.kind === 'card' && d.card) return cardDayHtml(cardBy(d.card) || { name: i.title, keys: i.body, sections: {} }, i.day, true);
   if (i.kind === 'yesno') return yesnoHtml({ q: i.question, title: i.title, body: i.body, day: i.day });
-  if ((i.kind === 'rune' || i.kind === 'runes') && d.runes) return runesHtml({ q: i.question, layout: d.layout || 'one', runes: d.runes, day: i.day });
+  if ((i.kind === 'rune' || i.kind === 'runes' || i.kind === 'dayrune') && d.runes) return runesHtml({ q: i.question, layout: d.layout || 'one', runes: d.runes, day: i.day });
   if (i.kind === 'spread' && d.cards) return spreadHtml({ q: i.question, layout: d.layout || 'three', cards: d.cards, day: i.day });
   return `<p>${esc(i.body || i.title)}</p>`;   /* записи, сделанные до появления кодов */
 }
