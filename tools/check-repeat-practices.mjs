@@ -45,7 +45,7 @@ export async function checkRepeatPractices({browser,base,owner}){
     await page.locator('.observation summary').nth(0).click();await page.locator('.observation textarea').nth(0).fill('Первое наблюдение');
     await page.locator('.observation summary').nth(1).click();await page.locator('.observation textarea').nth(1).fill('Второе наблюдение');
     if(await primary()>1)gaps.push('Одновременно открыты формы двух наблюдений');
-    await page.locator('.practice-create summary').click();
+    await page.locator('#as-box .practice-create > summary').click();   // именно заголовок панели: внутри формы есть свой <summary>
     if(await primary()>1)gaps.push('Создание аскезы конкурирует с формами наблюдений');
     await page.locator('.observation summary').nth(0).click();
     assert.equal(await page.locator('.observation textarea').nth(0).inputValue(),'Первое наблюдение');
