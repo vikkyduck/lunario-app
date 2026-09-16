@@ -26,7 +26,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=49"></script>
+<script src="/app/boot.js?v=50"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -693,9 +693,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=49">
-<link rel="stylesheet" href="/app/experience.css?v=49">
-<link rel="stylesheet" href="/app/moon-glass.css?v=49">
+<link rel="stylesheet" href="/app/theme.css?v=50">
+<link rel="stylesheet" href="/app/experience.css?v=50">
+<link rel="stylesheet" href="/app/moon-glass.css?v=50">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -826,7 +826,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   </section>
   <!-- АККАУНТ: открывается по кружку с фото в правом верхнем углу главной — фото, анкета, приложение, приватность, помощь, выход -->
   <section class="view" id="v-account"><h1 class="sr-only">Аккаунт</h1>
-    <div class="account-layout"><div class="account-personal">
+    <div class="account-layout"><div class="account-col account-personal">
     <section class="account-group profile-block" id="ag-profile"><h2>Профиль</h2>
     <section class="profile-summary card">
       <div class="profile-head"><div id="ac-photo"></div><div class="profile-id"><h2 id="ac-name"></h2><p id="profile-summary"></p></div></div>
@@ -834,7 +834,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <p class="profile-note" id="ac-photo-note">Фото появится в кружке справа вверху</p>
       <details class="profile-detail"><summary>Данные для расчётов</summary><p id="m-sign"></p><p class="geo" id="m-geo"></p></details>
     </section></section>
-    </div><div class="account-settings">
+    <section class="account-group danger-zone" id="ag-manage"><h2>Управление аккаунтом</h2><div class="rows">
+      <button data-on="click:logout" class="rowbtn" type="button"><i class="ico exit"></i>Выйти на этом устройстве</button>
+      <button data-on="click:logout-true" class="rowbtn" type="button"><i class="ico exit"></i>Выйти на всех устройствах</button>
+      <button data-on="click:exportPersonalData" class="rowbtn" type="button"><i class="ico list"></i>Скачать мои данные</button>
+      <button data-on="click:wipe-data" class="rowbtn" type="button"><i class="ico list"></i>Очистить историю</button>
+      <button data-on="click:wipe-account" class="rowbtn warn" type="button"><i class="ico exit"></i>Удалить аккаунт</button></div></section>
+    </div><div class="account-col account-settings">
     <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids compact-links"><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Включить, выбрать время и регулярность</span></button><button data-on="click:openWidget-mail" class="wid" data-feature="mail" type="button" aria-label="Вход по почте"><i class="ico mail"></i><b>Вход по почте</b><span id="ac-mail-sub">Сохранённые записи доступны на других устройствах</span></button><button data-on="click:go-news" class="wid" type="button" aria-label="Новое в приложении" data-feature="news"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
       <button data-on="click:openWidget-skyplace" class="wid sky-location-control" type="button"><i class="ico orbit"></i><b>Геолокация</b><span data-sky-place>Москва · место не определено</span></button>
       <button data-on="click:openWidget-appearance" class="wid" type="button"><i class="ico moon"></i><b>Оформление</b><span>Светлая и тёмная темы</span></button>
@@ -842,12 +848,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <button data-on="click:openWidget-appinfo" class="wid" type="button"><i class="ico moon"></i><b>О приложении</b></button>
       <button data-on="click:installApp" class="wid" id="t-install" type="button" style="display:none"><i class="ico star"></i><b>Установить на телефон</b></button></div></section>
     <section class="account-group" id="ag-help"><h2>Помощь</h2><div class="wids compact-links"><button data-on="click:openWidget-support" class="wid" data-feature="support" type="button" aria-label="Чат поддержки"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button data-on="click:openWidget-invite" class="wid" type="button" aria-label="Позвать подругу" data-feature="invite"><i class="ico person"></i><b>Позвать подругу</b></button></div></section>
-    <section class="account-group danger-zone" id="ag-manage"><h2>Управление аккаунтом</h2><div class="rows">
-      <button data-on="click:logout" class="rowbtn" type="button"><i class="ico exit"></i>Выйти на этом устройстве</button>
-      <button data-on="click:logout-true" class="rowbtn" type="button"><i class="ico exit"></i>Выйти на всех устройствах</button>
-      <button data-on="click:exportPersonalData" class="rowbtn" type="button"><i class="ico list"></i>Скачать мои данные</button>
-      <button data-on="click:wipe-data" class="rowbtn" type="button"><i class="ico list"></i>Очистить историю</button>
-      <button data-on="click:wipe-account" class="rowbtn warn" type="button"><i class="ico exit"></i>Удалить аккаунт</button></div></section>
     </div></div>
   </section>
 </div>
@@ -965,13 +965,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 </div>
 <div data-on="click:if-event-target-this-this-classList-remove-on" class="award-bg" id="award"><div id="award-box"></div></div>
 
-<script src="/app/moon-logo.js?v=49"></script>
+<script src="/app/moon-logo.js?v=50"></script>
 
-<script type="module" src="/app/sky.js?v=49"></script>
+<script type="module" src="/app/sky.js?v=50"></script>
 
-<script src="/app/experience.js?v=49"></script>
-<script src="/app/app.js?v=49"></script>
-<script src="/app/handlers.js?v=49"></script>
-<script src="/app/on.js?v=49"></script>
+<script src="/app/experience.js?v=50"></script>
+<script src="/app/app.js?v=50"></script>
+<script src="/app/handlers.js?v=50"></script>
+<script src="/app/on.js?v=50"></script>
 </body>
 </html>
