@@ -19,6 +19,9 @@ import { CONTENT_DIR, IMAGE_DIRS } from './content.mjs';
 import { MSK, MOSCOW, ISO_DAY, dayIn, addDays } from './util.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
+/* Тексты приложения читает и правит кабинет контента; папка под наблюдением — правки перечитываются сами */
+const readContent = (name) => readFileSync(join(CONTENT_DIR, name), 'utf8');
+const writeContent = (name, text) => writeFileSync(join(CONTENT_DIR, name), text, 'utf8');
 const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
   const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
   const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;
@@ -39,6 +42,9 @@ import { CLIENT_EVENTS } from './events.mjs';
 import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs';
 import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
 import { createReportRunner } from './report-runner.mjs';
+import { createCabinetRoutes } from './http/cabinet-routes.mjs';
+import { createIdentity } from './identity.mjs';
+import { createPracticeRoutes } from './http/practice-routes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -91,28 +97,6 @@ const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().sl
 /* Многострочные тексты (дневник, заметки, обращения): переносы строк — часть текста, убираем только прочие управляющие символы */
 const cleanText = (s, max) => String(s ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b-\x1f]/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const sha = (s) => createHash('sha256').update(s).digest('hex');
-/* Код действует 15 минут. purpose — для чего он: 'login' (вход и выдача доступа сотруднику) или
-   'delete' (подтверждение удаления аккаунта). Код одной цели не подходит для другой: письмо
-   «подтвердите удаление» не должно открывать вход. У почты в каждый момент один код — новый заменяет прежний. */
-function issueLoginCode(email, purpose = 'login') {
-  const code = String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
-  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
-    VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET
-    code_hash = excluded.code_hash, created_at = excluded.created_at,
-    expires_at = excluded.expires_at, attempts = 0, purpose = excluded.purpose`)
-    .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString(), purpose);
-  return code;
-}
-/* Проверка кода: та же для входа и для удаления. Возвращает причину отказа или null, если код подошёл (и погашен). */
-function checkLoginCode(email, code, purpose = 'login') {
-  const rec = db.prepare('SELECT * FROM login_codes WHERE email = ?').get(email);
-  if (!rec || (rec.purpose || 'login') !== purpose) return 'no_code';
-  if (rec.attempts >= 5) return 'too_many';
-  if (new Date(rec.expires_at) < new Date()) return 'expired';
-  if (rec.code_hash !== sha(code + email)) { db.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').run(email); return 'wrong_code'; }
-  db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);
-  return null;
-}
 // сотруднику, которому только что назначили роль, шлём код входа сразу — не нужно самому запрашивать
 async function notifyStaffAccess(email, roleKeys) {
   const names = (roleKeys || []).filter((r) => r !== 'user' && r in ROLES && r !== 'admin').map((r) => ROLES[r]);
@@ -159,7 +143,9 @@ function ageBand(birth) {
 /* Страница сводки: цифры словами, чтобы не читать выгрузку данных. */
 
 function hash32(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
-const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+/* Ответ JSON. Возвращает true — «запрос обработан»: по этому признаку маршрутные модули
+   (backend/http/*) говорят серверу, что дальше искать не нужно. */
+const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); return true; };
 
 /* Кнопка «Прислать код» появляется только после успешной проверки авторизации.
    Сервис перезапускается скриптом set-smtp.sh — проверка сработает сама. */
@@ -342,61 +328,9 @@ const USER_COLS = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name
 const userById = (id) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id);
 const userByEmail = (email) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`).get(email);
 const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').get(id) || {}).photo || '';
-/* Сессия живёт год с выдачи и полгода без входа; у сотрудников (доступ к кабинету) — 90 дней и 30 без входа;
-   пользование отмечаем не чаще раза в 10 минут */
-const SESSION_MAX_MS = 365 * 864e5, SESSION_IDLE_MS = 180 * 864e5, SEEN_STEP_MS = 10 * 60000;
-/* Сотруднику кабинет открывает аналитику и карточки людей, поэтому его токен не живёт вечно: не дольше 90 дней
-   с выдачи и 45 дней без захода. Кука при этом скользящая, так что заново вводить код нужно раз в 90 дней, а не при
-   каждом заходе. */
-const STAFF_MAX_MS = 90 * 864e5, STAFF_IDLE_MS = 45 * 864e5;
-function parseCookies(req) {
-  const out = {};
-  for (const p of String(req.headers.cookie || '').split(';')) {
-    const i = p.indexOf('='); if (i > 0) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
-  }
-  return out;
-}
-function setSessionCookie(res, token) {
-  res.setHeader('Set-Cookie', `lunario_app=${token}; Path=${BASE}; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure`);
-}
-const clearSessionCookie = (res) => res.setHeader('Set-Cookie', `lunario_app=; Path=${BASE}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
-function newSession(userId, res, ua = '') {
-  const token = randomBytes(32).toString('hex');
-  db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, last_seen, ua) VALUES (?,?,?,?,?)')
-    .run(sha(token), userId, nowISO(), nowISO(), clean(ua, 200));
-  setSessionCookie(res, token);
-  return token;
-}
-function getUser(req, res, create = true) {
-  const tok = parseCookies(req).lunario_app;
-  if (tok) {
-    const h = sha(tok), sess = db.prepare('SELECT user_id, created_at, last_seen FROM sessions WHERE token_hash = ?').get(h);
-    if (sess) {
-      const now = Date.now(), age = now - Date.parse(sess.created_at), idle = now - Date.parse(sess.last_seen);
-      const u = userById(sess.user_id);
-      /* Порог у сотрудников короче. Проверку роли (запрос к staff) делаем только когда она способна изменить исход —
-         сессия уже старше сотруднического порога, но ещё в пределах пользовательского; свежие сессии её не касаются. */
-      const overStaff = age > STAFF_MAX_MS || idle > STAFF_IDLE_MS;
-      const overUser = age > SESSION_MAX_MS || idle > SESSION_IDLE_MS;
-      const expired = overUser || (overStaff && u && u.email && rolesFor(u.email).length);
-      if (expired) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(h);
-      else if (u) {
-        if (idle > SEEN_STEP_MS) {
-          db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), h);
-          /* Скользящая сессия: пока человек пользуется приложением, кука продлевается. Иначе она однажды
-             истекала бы в браузере при живой сессии на сервере — и код пришлось бы вводить заново. */
-          if (res) setSessionCookie(res, tok);
-        }
-        if (now - Date.parse(u.last_seen) > SEEN_STEP_MS) db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
-        return u;
-      }
-    }
-  }
-  if (!create) return null;
-  const info = db.prepare('INSERT INTO users (created_at, last_seen) VALUES (?,?)').run(nowISO(), nowISO());
-  newSession(info.lastInsertRowid, res, req.headers['user-agent']);
-  return userById(info.lastInsertRowid);
-}
+/* Кто человек — сессии устройства и коды на почту — в backend/identity.mjs */
+const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, issueLoginCode, checkLoginCode } =
+  createIdentity({ db, basePath: BASE, sha, clean, nowISO, userById, rolesFor });
 function touchStreak(u) {                       // серию продолжает любой ритуал за день
   const d = today();
   if (u.streak_date === d) return u.streak;
@@ -496,6 +430,15 @@ setTimeout(() => {
   step();
 }, 3000).unref();
 
+/* Кабинеты сотрудников — отдельный HTTP-слой со своими зависимостями (backend/http/cabinet-routes.mjs).
+   Собирается здесь, где всё перечисленное уже определено. */
+const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig,
+  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, Backup, W,
+  staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
+
+const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
+  track, touchStreak, habitList, askesisList, parseRule, habitStreak, HABIT_MILESTONES, validEndDate });
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
@@ -541,142 +484,8 @@ const server = createServer(async (req, res) => {
       }
       if (req.method !== 'GET' && SHELF_TOUCH[p]) { const uid = u.id; res.once('finish', () => scheduleShelves(uid, d, SHELF_TOUCH[p])); }
 
-      /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
-      if (p.startsWith('/api/cabinet/')) {
-        const roles = rolesFor(u.email);
-        const cfg = getConfig();   // состав кабинетов задаёт админ; по умолчанию — из кода
-        if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom });
-        if (!roles.length) return json(res, 403, { ok: false, error: 'no_access' });
-        const admin = roles.includes('admin');
-        // роль проверяется на каждом запросе: скрытая кнопка — не защита
-        const allowed = (kind) => admin || roles.some((r) => (cfg.menus[r] || []).includes(kind));
-        if (p === '/api/cabinet/config') {
-          if (req.method === 'GET') return json(res, 200, { ...cfg, defaults: { reports: REPORT_META, blocks: OVERVIEW_BLOCKS } });
-          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-          if (req.method === 'POST') { const b = await readBody(req); const r = setConfig(b, u.email); if (r.ok) console.log(`[кабинет] ${u.email} изменил конфигурацию кабинетов`); return json(res, r.ok ? 200 : 400, r); }
-          if (req.method === 'DELETE') { console.log(`[кабинет] ${u.email} сбросил конфигурацию кабинетов`); return json(res, 200, resetConfig()); }
-        }
-        if (p === '/api/cabinet/dashboard') {
-          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-          return json(res, 200, await Reports.overview(Object.fromEntries(url.searchParams)));
-        }
-        if (p === '/api/cabinet/report') {
-          const kind = url.searchParams.get('kind') || '';
-          if (!allowed(kind)) return json(res, 403, { ok: false, error: 'no_access' });
-          const r = await Reports.report(kind, Object.fromEntries(url.searchParams));
-          if (!r) return json(res, 404, { ok: false, error: 'not_found' });
-          if (kind === 'content') r.files = contentFiles();
-          return json(res, 200, r);
-        }
-        /* ── резервные копии: список — всем, у кого есть «Здоровье системы»; снять и скачать — только админам ── */
-        if (p === '/api/cabinet/backups' && req.method === 'GET') {
-          if (!allowed('system')) return json(res, 403, { ok: false, error: 'no_access' });
-          return json(res, 200, { ...Backup.list(), schedule: 'каждую ночь в 03:40 по серверу', keep: 14, admin });
-        }
-        if (p === '/api/cabinet/backups' && req.method === 'POST') {
-          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-          try { const r = await Backup.run(true); console.log(`[кабинет] ${u.email} снял резервную копию: ${r.files.join(', ')}`); return json(res, 200, { ok: true, ...r }); }
-          catch (e) { logError('/api/cabinet/backups', e.message); return json(res, 500, { ok: false, error: 'backup_failed', message: e.message }); }
-        }
-        if (p === '/api/cabinet/backups/download' && req.method === 'GET') {
-          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-          const f = Backup.file(url.searchParams.get('name')); if (!f) return json(res, 404, { ok: false, error: 'not_found' });
-          console.log(`[кабинет] ${u.email} скачал резервную копию ${basename(f)}`);
-          res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${basename(f)}"`, 'Cache-Control': 'no-store' });
-          return res.end(readFileSync(f));
-        }
-        if (p === '/api/cabinet/user') {
-          if (!allowed('users')) return json(res, 403, { ok: false, error: 'no_access' });
-          const c = userCard(url.searchParams.get('id'));
-          return c ? json(res, 200, c) : json(res, 404, { ok: false, error: 'not_found' });
-        }
-        if (p === '/api/cabinet/content') {
-          if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
-          const name = String(url.searchParams.get('file') || '');
-          if (!contentFiles().some((f) => f.name === name)) return json(res, 404, { ok: false, error: 'not_found' });
-          if (req.method === 'GET') return json(res, 200, { name, text: readFileSync(join(CONTENT_DIR, name), 'utf8') });
-          if (req.method === 'POST') {
-            const b = await readBody(req);
-            const text = String(b.text || '');
-            if (text.length > 200000) return json(res, 400, { ok: false, error: 'too_long' });
-            writeFileSync(join(CONTENT_DIR, name), text, 'utf8');   // папка под наблюдением — тексты перечитаются сами
-            console.log(`[контент] ${u.email} сохранил ${name} (${text.length} симв.)`);
-            return json(res, 200, { ok: true });
-          }
-        }
-        if (p === '/api/cabinet/campaigns') {
-          if (!allowed('campaigns')) return json(res, 403, { ok: false, error: 'no_access' });
-          if (req.method === 'GET') return json(res, 200, { items: W.campaignList() });
-          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.campaignSave(b, u.email)); }
-          if (req.method === 'DELETE') return json(res, 200, W.campaignRemove(url.searchParams.get('id')));
-        }
-        if (p === '/api/cabinet/materials') {
-          if (!allowed('materials')) return json(res, 403, { ok: false, error: 'no_access' });
-          if (req.method === 'GET') return json(res, 200, { items: W.materialList(), kinds: W.MATERIAL_KINDS, statuses: W.MATERIAL_STATUS });
-          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.materialSave(b, u.email)); }
-          if (req.method === 'DELETE') return json(res, 200, W.materialRemove(url.searchParams.get('id')));
-        }
-        if (p === '/api/cabinet/media/archive' && req.method === 'POST') {
-          if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });
-          const b = await readBody(req); return json(res, 200, W.mediaArchive(b.id, !!b.on));
-        }
-        if (p === '/api/cabinet/media/download' && req.method === 'GET') {
-          if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });
-          const f = W.mediaFile(url.searchParams.get('id')); if (!f) return json(res, 404, { ok: false, error: 'not_found' });
-          res.writeHead(200, { 'Content-Type': f.type || 'application/octet-stream', 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(f.name)}`, 'Cache-Control': 'no-store' });
-          return res.end(readFileSync(f.path));
-        }
-        if (p === '/api/cabinet/media') {
-          if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });
-          if (req.method === 'GET') return json(res, 200, W.mediaList());
-          if (req.method === 'POST') { const b = await readBody(req, 7 * 1024 * 1024); return json(res, 200, W.mediaAdd(b, u.email)); }
-          if (req.method === 'DELETE') return json(res, 200, W.mediaRemove(url.searchParams.get('id')));
-        }
-        if (p === '/api/cabinet/ai' || p === '/api/cabinet/ai/check') {
-          if (!allowed('ai')) return json(res, 403, { ok: false, error: 'no_access' });
-          if (p.endsWith('/check') && req.method === 'POST') { const b = await readBody(req); return json(res, 200, await W.aiCheck(String(b.provider || ''))); }
-          if (req.method === 'GET') return json(res, 200, { items: W.aiList() });
-          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.aiSave(b, u.email)); }
-          if (req.method === 'DELETE') return json(res, 200, W.aiRemove(url.searchParams.get('provider')));
-        }
-        if (p === '/api/cabinet/tasks') {
-          if (!allowed('backlog')) return json(res, 403, { ok: false, error: 'no_access' });
-          // контент и поддержка видят только своё; продукт и админ — весь беклог
-          const own = admin || roles.includes('product') ? '' : (roles.includes('content') && !roles.includes('support') ? 'content' : roles.includes('support') && !roles.includes('content') ? 'support' : '');
-          if (req.method === 'GET') return json(res, 200, { items: own ? W.taskList(own) : W.taskList(url.searchParams.get('role') || ''), statuses: W.TASK_STATUS, roles: W.TASK_ROLES, canCreate: admin || roles.includes('product'), own });
-          if (req.method === 'POST') {
-            const b = await readBody(req);
-            if (b.id && b.onlyStatus) { const r = W.taskStatus(b.id, b.status, u.email, own); return json(res, r.ok ? 200 : r.error === 'no_access' ? 403 : 400, r); }
-            if (!(admin || roles.includes('product'))) return json(res, 403, { ok: false, error: 'product_only' });
-            return json(res, 200, W.taskSave(b, u.email));
-          }
-          if (req.method === 'DELETE') { if (!(admin || roles.includes('product'))) return json(res, 403, { ok: false, error: 'product_only' }); return json(res, 200, W.taskRemove(url.searchParams.get('id'))); }
-        }
-        if (p === '/api/cabinet/tickets' || p === '/api/cabinet/ticket') {
-          if (!allowed('tickets')) return json(res, 403, { ok: false, error: 'no_access' });
-          if (p.endsWith('/tickets')) return json(res, 200, { items: W.ticketQueue(url.searchParams.get('status') || ''), statuses: W.TICKET_STATUS, topics: W.TICKET_TOPICS });
-          const id = url.searchParams.get('id');
-          if (req.method === 'GET') { const t = W.ticketThread(id); return t ? json(res, 200, t) : json(res, 404, { ok: false, error: 'not_found' }); }
-          if (req.method === 'POST') { const b = await readBody(req); if (b.text) { const r = W.ticketMessage(id, 'support', b.text, u.email); if (!r.ok) return json(res, 400, r); } if (b.status || b.priority || b.topic) W.ticketSet(id, b, u.email); return json(res, 200, { ok: true }); }
-        }
-        if (p === '/api/cabinet/staff') {
-          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-          if (req.method === 'GET') return json(res, 200, { items: staffList(), admins: ADMIN_EMAILS });
-          if (req.method === 'POST') {
-            const b = await readBody(req);
-            const r = staffSet(b.email, b.name, b.roles, u.email);
-            if (r.ok) notifyStaffAccess(String(b.email || '').toLowerCase().trim(), Array.isArray(b.roles) ? b.roles : []);
-            return json(res, 200, r);
-          }
-          if (req.method === 'DELETE') return json(res, 200, staffRemove(url.searchParams.get('email')));
-        }
-        if (p === '/api/cabinet/costs') {
-          if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-          if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, costAdd(b.month, b.name, b.amount, b.kind)); }
-          if (req.method === 'DELETE') return json(res, 200, costRemove(url.searchParams.get('id')));
-        }
-        return json(res, 404, { ok: false, error: 'not_found' });
-      }
+      /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы — backend/http/cabinet-routes.mjs ── */
+      if (p.startsWith('/api/cabinet/')) return cabinetRoutes({ p, req, res, url, u });
 
       /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
       if (p === '/api/natal' && req.method === 'GET') {
@@ -1099,82 +908,8 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { items: pendingFor(u.id, clean(b.endpoint, 500)) });
       }
 
-      /* ── главная: что из практик уже сделано сегодня — одним запросом вместо пяти ── */
-      if (p === '/api/day-status' && req.method === 'GET') {
-        const done = (kind) => !!db.prepare('SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = ? LIMIT 1').get(u.id, d, kind);
-        return json(res, 200, { habits: habitList(u.id, d), askesis: askesisList(u.id, d), journal: done(''), gratitude: done('gratitude'), answer: done('answer') });
-      }
-
-      /* ── дневник привычек: список с регулярностью, карточка дня, награды ── */
-      if (p === '/api/habits') {
-        let award = null;
-        if (req.method === 'POST') {
-          const b = await readBody(req);
-          const title = clean(b.title, 80), ruleText = clean(b.rule, 60);
-          if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
-          if (db.prepare('SELECT COUNT(*) c FROM habits WHERE user_id = ? AND archived = 0').get(u.id).c >= 20) return json(res, 400, { ok: false, error: 'too_many' });
-          db.prepare('INSERT INTO habits (user_id, title, created_at, rule, rule_text) VALUES (?,?,?,?,?)').run(u.id, seal(title), nowISO(), parseRule(ruleText), ruleText);
-          touchStreak(u); track(u, 'habit_add', parseRule(ruleText));
-        } else if (req.method === 'PATCH') {
-          const b = await readBody(req);
-          const h = db.prepare('SELECT * FROM habits WHERE id = ? AND user_id = ? AND archived = 0').get(Number(b.id) || 0, u.id);
-          if (!h) return json(res, 404, { ok: false, error: 'not_found' });
-          if (b.rule !== undefined || b.title !== undefined) {   // правка названия или регулярности
-            const ruleText = b.rule !== undefined ? clean(b.rule, 60) : h.rule_text, title = b.title !== undefined ? clean(b.title, 80) : open_(h.title);
-            if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
-            db.prepare('UPDATE habits SET title = ?, rule = ?, rule_text = ? WHERE id = ?').run(seal(title), parseRule(ruleText), ruleText, h.id);
-          } else {
-            const day = ISO_DAY.test(b.day || '') && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
-            if (db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day)) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
-            else {
-              db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u); track(u, 'habit_mark', day === d ? 'today' : 'past');
-              /* ежедневная привычка дошла до рубежа — награда, один раз */
-              if ((h.rule || 'daily') === 'daily') {
-                const marks = new Set(db.prepare('SELECT day FROM habit_marks WHERE habit_id = ?').all(h.id).map((m) => m.day));
-                const streak = habitStreak(h, d, marks);
-                if (HABIT_MILESTONES.includes(streak) && !db.prepare('SELECT 1 FROM habit_awards WHERE habit_id = ? AND days = ?').get(h.id, streak)) {
-                  db.prepare('INSERT INTO habit_awards (habit_id, days, ts) VALUES (?,?,?)').run(h.id, streak, nowISO());
-                  track(u, 'habit_award', streak);
-                  award = { habitId: h.id, title: open_(h.title), days: streak };
-                }
-              }
-            }
-          }
-        } else if (req.method === 'DELETE') {
-          db.prepare('UPDATE habits SET archived = 1 WHERE id = ? AND user_id = ?').run(Number(url.searchParams.get('id')) || 0, u.id);
-        }
-        return json(res, 200, { items: habitList(u.id, d), streak: u.streak, award });
-      }
-
-      /* ── аскеза: до даты, поддержка и счёт дней, заметки по желанию ── */
-      if (p === '/api/askesis') {
-        if (req.method === 'POST') {
-          const b = await readBody(req);
-          const title = clean(b.title, 80), until = String(b.until || '');
-          if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
-          if (!validEndDate(until, d)) return json(res, 400, { ok: false, error: 'bad_until' });
-          if (db.prepare("SELECT COUNT(*) c FROM askesis WHERE user_id = ? AND status = 'active'").get(u.id).c >= 5) return json(res, 400, { ok: false, error: 'too_many' });
-          const days = Math.round((Date.parse(until) - Date.parse(d)) / 864e5) + 1;
-          db.prepare('INSERT INTO askesis (user_id, title, days, started, until) VALUES (?,?,?,?,?)').run(u.id, seal(title), days, d, until);
-          touchStreak(u); track(u, 'askesis_start', String(days));
-        } else if (req.method === 'PATCH') {
-          const b = await readBody(req);
-          const a = db.prepare("SELECT * FROM askesis WHERE id = ? AND user_id = ? AND status = 'active'").get(Number(b.id) || 0, u.id);
-          if (!a) return json(res, 404, { ok: false, error: 'not_found' });
-          if (b.until !== undefined) {                                   // передвинуть дату
-            const until = String(b.until || '');
-            if (!validEndDate(until, d)) return json(res, 400, { ok: false, error: 'bad_until' });
-            db.prepare('UPDATE askesis SET until = ?, days = ? WHERE id = ?').run(until, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1, a.id);
-          } else {                                                       // заметка-наблюдение за сегодня
-            const note = cleanText(b.note, 500);
-            db.prepare('INSERT INTO askesis_days (askesis_id, day, kept, note) VALUES (?,?,1,?) ON CONFLICT(askesis_id, day) DO UPDATE SET note = excluded.note').run(a.id, d, seal(note));
-            touchStreak(u); track(u, 'askesis_mark', '');
-          }
-        } else if (req.method === 'DELETE') {
-          db.prepare("UPDATE askesis SET status = 'stopped', finished_at = ? WHERE id = ? AND user_id = ? AND status = 'active'").run(d, Number(url.searchParams.get('id')) || 0, u.id);
-        }
-        return json(res, 200, askesisList(u.id, d));
-      }
+      /* ── практики дня: что сделано сегодня, привычки, аскеза — backend/http/practice-routes.mjs ── */
+      if (await practiceRoutes({ p, req, res, url, u, d })) return;
 
       /* ── на небе: сейчас и ближайшие недели ── */
       if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyCached(u.tz || MSK));

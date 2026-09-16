@@ -36,7 +36,9 @@ for (let i=0;i<100;i++) {
   await delay(100);
 }
 function proxy(req,res) {
-  const upstream = request(apiBase+req.url,{method:req.method,headers:{...req.headers,host:`127.0.0.1:${apiPort}`}},r=>{
+  // Как nginx на сервере: дописываем адрес соединения в конец X-Forwarded-For — по нему приложение считает лимиты
+  const fwd = req.headers['x-forwarded-for'], peer = req.socket.remoteAddress || '127.0.0.1';
+  const upstream = request(apiBase+req.url,{method:req.method,headers:{...req.headers,host:`127.0.0.1:${apiPort}`,'x-forwarded-for':fwd?`${fwd}, ${peer}`:peer}},r=>{
     const headers={...r.headers,'cache-control':'no-store'};
     if(headers['set-cookie']) headers['set-cookie']=headers['set-cookie'].map(c=>c.replace(/; Secure/gi,''));
     res.writeHead(r.statusCode,headers);r.pipe(res);
