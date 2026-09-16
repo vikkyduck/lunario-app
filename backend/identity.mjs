@@ -23,10 +23,15 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
      с выдачи и 45 дней без захода. Кука при этом скользящая, так что заново вводить код нужно раз в 90 дней, а не при
      каждом заходе. */
   const STAFF_MAX_MS = 90 * 864e5, STAFF_IDLE_MS = 45 * 864e5;
+  /* Куку присылает клиент, и она бывает битой: «%» без двух цифр роняет decodeURIComponent. Одна испорченная кука
+     не должна ронять весь запрос — берём её как есть, а остальные читаем нормально. */
   function parseCookies(req) {
     const out = {};
     for (const p of String(req.headers.cookie || '').split(';')) {
-      const i = p.indexOf('='); if (i > 0) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
+      const i = p.indexOf('='); if (i <= 0) continue;
+      const raw = p.slice(i + 1).trim();
+      let value; try { value = decodeURIComponent(raw); } catch { value = raw; }
+      out[p.slice(0, i).trim()] = value;
     }
     return out;
   }
@@ -34,13 +39,15 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
     res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=${basePath}; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure`);
   }
   const clearSessionCookie = (res) => res.setHeader('Set-Cookie', `${COOKIE}=; Path=${basePath}; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
-  function newSession(userId, res, ua = '') {
+  /* Только запись в базу, без ответа: нужно, чтобы создание сессии умещалось внутрь транзакции входа.
+     Кука — отдельно и строго после COMMIT: иначе при откате у человека осталась бы кука несуществующей сессии. */
+  function createSession(userId, ua = '') {
     const token = randomBytes(32).toString('hex');
     db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, last_seen, ua) VALUES (?,?,?,?,?)')
       .run(sha(token), userId, nowISO(), nowISO(), clean(ua, 200));
-    setSessionCookie(res, token);
     return token;
   }
+  function newSession(userId, res, ua = '') { const token = createSession(userId, ua); setSessionCookie(res, token); return token; }
   function getUser(req, res, create = true) {
     const tok = parseCookies(req)[COOKIE];
     if (tok) {
@@ -84,8 +91,14 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
       .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString(), purpose);
     return code;
   }
+  /* Ровно шесть ASCII-цифр. Раньше код резался до шести символов, и «1234567» с верными первыми шестью подходил —
+     то есть проверка пропускала не тот код, который человек получил в письме. */
+  const CODE = /^[0-9]{6}$/;
+  const codeFormatOk = (code) => typeof code === 'string' && CODE.test(code);
+
   /* Проверка кода: та же для входа и для удаления. Возвращает причину отказа или null, если код подошёл (и погашен). */
   function checkLoginCode(email, code, purpose = 'login') {
+    if (!codeFormatOk(code)) return 'bad_code_format';
     const rec = db.prepare('SELECT * FROM login_codes WHERE email = ?').get(email);
     if (!rec || (rec.purpose || 'login') !== purpose) return 'no_code';
     if (rec.attempts >= 5) return 'too_many';
@@ -95,7 +108,72 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
     return null;
   }
 
-  return { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, issueLoginCode, checkLoginCode,
+  /* Подтверждение кода — одной транзакцией.
+
+     Раньше это шло вразнобой: код гасился одним запросом, почта привязывалась другим, сессия — третьим.
+     Отказ в середине оставлял человека без кода и без входа: код уже удалён, а почта ещё не привязана,
+     и повторить тем же кодом невозможно. Теперь либо всё, либо ничего.
+
+     Два правила, которые легко нарушить:
+     · счётчик неверных попыток обязан сохраниться даже при отказе — поэтому при неверном коде мы не бросаем
+       исключение (оно откатило бы счётчик), а возвращаем решение и фиксируем транзакцию;
+     · токен новой сессии здесь только записывается в базу; кука ставится вызывающим и строго после COMMIT.
+
+     Записи гостя сами никуда не переносятся: вход в чужой аккаунт — не повод отдать ему чужой дневник.
+     Если у гостя есть что переносить, возвращаем предложение, а решение принимает человек.
+
+     Возвращает { state, ... }, где state:
+       attached          — почта закреплена за тем же аккаунтом, в котором человек и был;
+       already_signed_in — эта почта уже принадлежит текущему аккаунту;
+       signed_in         — вошли в другой существующий аккаунт (гостю было нечего переносить);
+       guest_transfer_required — то же, но у гостя остались записи, и он может их перенести;
+       иначе { error } — причина отказа. */
+  function verifyLogin({ email, code, guest, ua, currentToken, profileFields, countGuestRecords, transferOffer }) {
+    let begun = false;
+    try {
+      db.exec('BEGIN IMMEDIATE'); begun = true;
+      const bad = checkLoginCode(email, code, 'login');
+      if (bad) { db.exec('COMMIT'); begun = false; return { error: bad }; }
+
+      const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+      const revoke = () => { if (currentToken) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(currentToken)); };
+
+      if (!existing) {                       /* почты ещё нет — закрепляем за текущим аккаунтом, всё написанное остаётся */
+        db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), guest.id);
+        revoke();
+        const token = createSession(guest.id, ua);
+        db.exec('COMMIT'); begun = false;
+        return { state: 'attached', accountId: guest.id, token };
+      }
+      if (existing.id === guest.id) {         /* уже свой аккаунт — просто меняем токен устройства */
+        revoke();
+        const token = createSession(guest.id, ua);
+        db.exec('COMMIT'); begun = false;
+        return { state: 'already_signed_in', accountId: guest.id, token };
+      }
+
+      /* Аккаунт с этой почтой есть, и это другой аккаунт. Анкету, заполненную только что на этом устройстве,
+         переносим — она про того же человека и в найденном аккаунте её нет. Записи не трогаем. */
+      if (guest.onboarded && !existing.onboarded && profileFields) db.prepare(profileFields.sql).run(...profileFields.values(guest, existing.id));
+      revoke();
+      const token = createSession(existing.id, ua);
+      const counts = countGuestRecords ? countGuestRecords(guest.id) : {};
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      if (!total) {                           /* гостю нечего терять — пустой профиль устройства не копим */
+        db.prepare('DELETE FROM sessions WHERE user_id = ?').run(guest.id);
+        db.prepare('DELETE FROM users WHERE id = ?').run(guest.id);
+      }
+      db.exec('COMMIT'); begun = false;
+      return total
+        ? { state: 'guest_transfer_required', accountId: existing.id, token, guestId: guest.id, counts, transfer: transferOffer ? transferOffer(guest.id, existing.id) : null }
+        : { state: 'signed_in', accountId: existing.id, token };
+    } catch (e) {
+      if (begun) { try { db.exec('ROLLBACK'); } catch { try { db.close(); } catch {} } }
+      throw e;
+    }
+  }
+
+  return { parseCookies, setSessionCookie, clearSessionCookie, newSession, createSession, getUser, issueLoginCode, checkLoginCode, codeFormatOk, verifyLogin,
     /* для проверок и отчётов: какая политика сейчас действует */
     policy: { SESSION_MAX_MS, SESSION_IDLE_MS, STAFF_MAX_MS, STAFF_IDLE_MS, SEEN_STEP_MS } };
 }
