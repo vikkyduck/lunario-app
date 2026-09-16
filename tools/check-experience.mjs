@@ -35,6 +35,11 @@ export async function checkExperience({browser,base,owner}){
     await page.locator('#timeline-filters').getByRole('button',{name:'Вопрос дня',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-kind').length===1);
     assert.ok((await page.locator('#timeline-list').innerText()).includes('Длинный ответ'));assert.ok(!(await page.locator('#timeline-list').innerText()).includes('Сегодня я нашла'));
     await page.locator('#timeline-filters').getByRole('button',{name:'Все',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-entry').length>=2);await shot('diary-light');
+    /* фильтр по функции снимает режим «один день»: иначе все фильтры показывают пустоту (так и было у владелицы) */
+    await page.evaluate(()=>diaryDay(S.day.date));await page.locator('#timeline-date').waitFor();await page.locator('#timeline-filters').getByRole('button',{name:'Записи',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#timeline-date').hidden&&document.querySelectorAll('.timeline-entry').length>=1);
+    assert.deepEqual(await page.locator('#timeline-filters .chip').allTextContents(),['Все','Записи','Благодарности','Вопрос дня','Настроения','Желания'],'no «Карты и ответы» and «Практики» chips in the diary');
+    await page.locator('#timeline-filters').getByRole('button',{name:'Все',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-entry').length>=2);
     await page.locator('#v-history [data-feature=journal]').scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);await page.locator('#v-history [data-feature=journal]').click();await page.locator('#j-text').fill('Несохранённая мысль');await close();
     await page.waitForFunction(y=>Math.abs(scrollY-y)<5,before);await page.locator('#v-history [data-feature=journal]').click();assert.equal(await page.locator('#j-text').inputValue(),'Несохранённая мысль');await close();
     await owner.json('/mood','POST',{mood:'joy'});await page.locator('[data-feature=hmood]').click();await page.locator('.mr-day').last().click();await page.locator('#timeline-date').waitFor();assert.ok((await page.locator('#timeline-date').innerText()).includes(day.split('-').reverse().join('.')));await page.getByRole('button',{name:'Все даты ×',exact:true}).click();

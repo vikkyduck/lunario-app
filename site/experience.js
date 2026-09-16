@@ -83,13 +83,16 @@ async function toggleTool(key){
 }
 function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidget(key);}
 
-const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['readings','Карты и ответы'],['practices','Практики'],['wishes','Желания']];
+/* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живёт там), «Практики» — тоже:
+   отметки привычек и аскез вернутся в дневник своими фильтрами вместе с вечерней карточкой дня. Подписи записей — для всех видов. */
+const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['wishes','Желания']];
+const TIMELINE_LABELS={journal:'Запись',gratitude:'Благодарность',answer:'Вопрос дня',mood:'Настроение',readings:'Карты и ответы',practices:'Практика',wishes:'Желание'};
 function timelineText(text){return text.length>400?`<details class="timeline-long"><summary><span class="entry-text">${esc(text.slice(0,230))}…</span><span class="text-action">Читать полностью</span></summary><p class="entry-text">${esc(text)}</p></details>`:`<p class="entry-text">${esc(text)}</p>`;}
 function paintTimelineFilters(){
   $('timeline-filters').innerHTML=TIMELINE_TYPES.map(([key,label])=>`<button data-on="click:filterTimeline-a0" data-a0="${key}" class="chip" type="button" aria-pressed="${XP.timeline.kind===key}">${label}</button>`).join('');
   $('timeline-date').hidden=!XP.timeline.day;$('timeline-date').innerHTML=XP.timeline.day?`${fmtDay(XP.timeline.day)} <button data-on="click:showAllDiary" type="button" class="text-action">Все даты ×</button>`:'';
 }
-function filterTimeline(kind){XP.timeline.kind=kind;loadTimeline();}
+function filterTimeline(kind){XP.timeline.kind=kind;XP.timeline.day='';loadTimeline();}
 function showAllDiary(){XP.timeline.day='';loadTimeline();}
 function diaryDay(day){closeWidget();XP.timeline.day=day;XP.timeline.kind='';XP.timeline.dirty=true;XP.scroll.history=0;go('history');}
 async function loadTimeline(more=false){
@@ -102,8 +105,9 @@ async function loadTimeline(more=false){
 function paintTimeline(){
   const t=XP.timeline;let prev='';
   $('timeline-list').innerHTML=t.items.map((r,index)=>{
+    if(r.kind==='readings')return '';   /* карты и ответы — в «Свериться с собой», не в дневнике */
     const heading=r.day!==prev?`<h2 class="timeline-day">${fmtDay(r.day)}</h2>`:'';prev=r.day;
-    const label=TIMELINE_TYPES.find(([key])=>key===r.kind)?.[1]||'';
+    const label=TIMELINE_LABELS[r.kind]||'';
     let content=r.source==='mood'?`<p class="entry-text">${esc(moodInfo(r.title)?.label||MOOD_LABEL[r.title]||r.title.replace(/^own:/,''))}</p>`:
       r.source==='entry'?`<button data-on="click:openTimelineEntry-a0" data-a0="${index}" type="button" class="timeline-link">${esc(r.body||r.title)} <span aria-hidden="true">→</span></button>`:
       `${r.title?`<p class="timeline-title">${esc(r.title)}</p>`:''}${r.body?timelineText(r.body):''}${r.source==='habit'?'<p class="hint">Выполнено</p>':''}${r.source==='wish'?`<button data-on="click:openWidget-wishes" class="text-action">${r.data==='1'?'Сбылось':'Открыть желание'} →</button>`:''}`;
