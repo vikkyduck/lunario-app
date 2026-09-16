@@ -9,6 +9,7 @@
 export const PERSONAL_DATA = [
   { table: 'entries', on: 'history', note: 'вопросы, карты, расклады' },
   { table: 'moods', on: 'history' },
+  { table: 'mood_marks', on: 'history', note: 'все отмеченные за день настроения' },
   { table: 'journal', on: 'history', note: 'записи, благодарности, ответы на вопрос дня' },
   { table: 'wishes', on: 'history' },
   { table: 'usage', on: 'history', note: 'дневной счётчик раскладов' },

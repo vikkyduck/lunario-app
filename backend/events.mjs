@@ -26,6 +26,7 @@ export const EVENTS = [
   E('habit_mark', 'Отметил привычку', 'server', { core: true }),
   E('askesis_start', 'Взял аскезу', 'server', { core: true, section: 'Сегодня', title: 'Взять аскезу' }),
   E('askesis_mark', 'Записал наблюдение аскезы', 'server', { core: true }),
+  E('day_save', 'Запомнил день', 'server', { core: true, section: 'Дневник', title: 'Запомнить этот день' }),
   E('lunar_view', 'Открыл лунный день', 'client', { core: true, section: 'Луна и небо', title: 'Лунный день' }),
   E('lunar_expand', 'Развернул раздел лунного дня', 'client'),
   E('topics_set', 'Выбрал темы чтения', 'client'),

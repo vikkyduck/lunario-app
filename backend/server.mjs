@@ -49,6 +49,8 @@ import { createIdentity } from './identity.mjs';
 import { AppError, publicError, saveJournalOperation, sweepReceipts } from './sync.mjs';
 import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } from './transfer.mjs';
 import { createPracticeRoutes } from './http/practice-routes.mjs';
+import { createDay } from './day.mjs';
+import { createDayRoutes } from './http/day-routes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -485,6 +487,8 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
+const Day = createDay({ db, seal, open: open_, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question });
+const dayRoutes = createDayRoutes({ json, readBody, day: Day });
 
 const server = createServer(async (req, res) => {
   try {
@@ -811,6 +815,7 @@ const server = createServer(async (req, res) => {
         const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* своё слово: «own:собранно» */
         if (!own && !C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
         db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
+        db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);   /* карточка дня показывает все отмеченные */
         track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* своё слово — личный текст, в аналитику не идёт */
         const month = d.slice(0, 7);
         const stats = db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, month + '%');
@@ -1009,6 +1014,7 @@ const server = createServer(async (req, res) => {
 
       /* ── практики дня: что сделано сегодня, привычки, аскеза — backend/http/practice-routes.mjs ── */
       if (await practiceRoutes({ p, req, res, url, u, d })) return;
+      if (await dayRoutes({ p, req, res, u, d })) return;
 
       /* ── на небе: сейчас и ближайшие недели ── */
       if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyCached(u.tz || MSK));

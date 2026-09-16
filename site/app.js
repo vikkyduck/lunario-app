@@ -161,6 +161,7 @@ function closeWidget(e){
   if (!wgOpen) return;
   if(wgOpen==='journal'&&journalSpeech)stopJournalDictation();
   if(wgOpen==='support'){rememberSupportDraft();supStop();}
+  if(wgOpen==='mood'&&$('v-history')?.classList.contains('on'))loadDayCard();   /* оттенки выбраны в круге — карточка дня показывает их сразу */
   $('wg-store').appendChild($('w-'+wgOpen)); wgOpen = null;
   $('wg').classList.remove('on'); document.body.classList.remove('wg-open');$('wg-tools').innerHTML='';
   if(wgFocus?.isConnected)wgFocus.focus({preventScroll:true});wgFocus=null;
@@ -691,7 +692,51 @@ async function obSendCode(email){
 
 /* ── разделы: данные подгружаются при входе ── */
 /* На экране «Дневник» видны лента и счётчик желаний; итоги, вопросы и записи виджеты грузят сами при открытии */
-function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline(); loadWishes(); }
+function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline(); loadWishes(); loadDayCard(); }
+
+/* ══════════ Карточка дня «Запомнить этот день»: ячейки-вопросы, настроение, привычки, аскеза — один запрос, разные типы ══════════ */
+const DC={state:null,moods:new Set(),own:'',habits:new Map(),askesis:new Map()};
+async function loadDayCard(){
+  if(!$('day-card'))return;
+  try{ DC.state=await api('/day'); paintDayCard(); }
+  catch(e){ if($('dc-state'))$('dc-state').textContent='Не удалось загрузить сегодняшний день. Попробуйте ещё раз'; }
+}
+function paintDayCard(){
+  const s=DC.state;if(!s||!$('day-card'))return;
+  $('dc-date').textContent=fmtDay(s.day);
+  $('dc-question').textContent=s.question||'';
+  const fill=(id,cell)=>{const el=$(id);if(document.activeElement!==el){el.value=cell?cell.text:'';growTextarea(el);}};
+  fill('dc-text',s.text);fill('dc-grat',s.gratitude);fill('dc-answer',s.answer);
+  DC.moods=new Set(s.moods.filter(m=>!m.startsWith('own:')));const own=s.moods.filter(m=>m.startsWith('own:')).map(m=>m.slice(4));
+  if(document.activeElement!==$('dc-own')){DC.own=own.join(', ');$('dc-own').value=DC.own;}
+  const shades=[...s.moods].filter(m=>!quickMoods().some(q=>q.key===m)&&!m.startsWith('own:'));   /* оттенки из круга эмоций — тоже чипами */
+  $('dc-mood-chips').innerHTML=[...quickMoods().map(q=>[q.key,q.label]),...shades.map(k=>[k,MOOD_LABEL[k]])].map(([k,label])=>`<button data-on="click:dcMood-a0" data-a0="${k}" type="button" class="chip${DC.moods.has(k)?' on':''}" aria-pressed="${DC.moods.has(k)}">${esc(label)}</button>`).join('')
+    +`<button data-on="click:openWidget-mood" type="button" class="chip">все оттенки…</button>`;
+  DC.habits=new Map(s.habits.map(h=>[h.id,h.today]));
+  const habits=s.habits.filter(h=>h.due||h.rule==='free'||h.today);
+  $('dc-habit-list').innerHTML=habits.map(h=>`<div class="dc-row"><button data-on="click:dcHabit-a0" data-a0="${h.id}" type="button" class="dc-check" aria-pressed="${DC.habits.get(h.id)}" aria-label="${esc(h.title)}">${DC.habits.get(h.id)?'✓':''}</button><div class="grow">${esc(h.title)}</div></div>`).join('');
+  $('dc-habits').classList.toggle('empty',!habits.length);
+  DC.askesis=new Map(s.askesis.map(a=>[a.id,{kept:a.kept,note:a.note}]));
+  $('dc-askesis-list').innerHTML=s.askesis.map(a=>`<div class="dc-ask"><div class="grow"><b>${esc(a.title)}</b><small>день ${a.done} из ${a.total}${a.left?` · осталось ${a.left} ${plural(a.left,'день','дня','дней')}`:' · последний день'}</small></div>
+    <button data-on="click:dcAsk-a0-a1" data-a0="${a.id}" data-a1="1" type="button" class="chip${a.kept===true?' on':''}" aria-pressed="${a.kept===true}">держусь</button><button data-on="click:dcAsk-a0-a1" data-a0="${a.id}" data-a1="0" type="button" class="chip${a.kept===false?' on':''}" aria-pressed="${a.kept===false}">сорвалась</button>
+    <div class="field grow"><input data-on="input:dcNote-a0-value" data-a0="${a.id}" maxlength="500" placeholder="заметка, если хочется" value="${esc(a.note||'')}"></div></div>`).join('');
+  $('dc-askesis').classList.toggle('empty',!s.askesis.length);
+}
+function dcMood(key){if(DC.moods.has(key))DC.moods.delete(key);else DC.moods.add(key);const b=document.querySelector(`#dc-mood-chips [data-a0="${key}"]`);if(b){b.classList.toggle('on',DC.moods.has(key));b.setAttribute('aria-pressed',DC.moods.has(key));}}
+function dcOwnInput(){DC.own=$('dc-own').value;}
+function dcHabit(id){id=Number(id);DC.habits.set(id,!DC.habits.get(id));const b=document.querySelector(`#dc-habit-list [data-a0="${id}"]`);if(b){b.setAttribute('aria-pressed',DC.habits.get(id));b.textContent=DC.habits.get(id)?'✓':'';}}
+function dcAsk(id,kept){id=Number(id);const cur=DC.askesis.get(id)||{kept:null,note:''};cur.kept=kept==='1';DC.askesis.set(id,cur);document.querySelectorAll(`#dc-askesis-list [data-a0="${id}"].chip`).forEach(b=>{const on=(b.dataset.a1==='1')===cur.kept;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
+function dcNote(id,value){id=Number(id);const cur=DC.askesis.get(id)||{kept:null,note:''};cur.note=value;DC.askesis.set(id,cur);}
+async function saveDayCard(){
+  if(saveDayCard.busy||!DC.state)return;saveDayCard.busy=true;const btn=$('dc-save');btn.disabled=true;btn.textContent='Запоминаем…';
+  const own=DC.own.split(',').map(x=>x.trim().replace(/\s+/g,'-').slice(0,24)).filter(Boolean).map(x=>'own:'+x);
+  const body={text:$('dc-text').value,gratitude:$('dc-grat').value,answer:$('dc-answer').value,question:DC.state.question,moods:[...DC.moods,...own],
+    habits:[...DC.habits].map(([id,done])=>({id,done})),askesis:[...DC.askesis].map(([id,v])=>({id,...(v.kept===null?{}:{kept:v.kept}),note:v.note||''}))};
+  try{ DC.state=await api('/day',{method:'POST',body:JSON.stringify(body)}); paintDayCard(); hap('done');
+    $('dc-state').textContent='День сохранён ✦ Можно дополнить до полуночи'; toast('День сохранён ✦'); XP.timeline.dirty=true; loadTimeline(); S.mood=DC.state.moods[0]||null; }
+  catch(e){ $('dc-state').textContent='Не удалось сохранить. Всё написанное осталось в полях — попробуйте ещё раз'; }
+  finally{ saveDayCard.busy=false; btn.disabled=false; btn.textContent='Запомнить этот день'; }
+}
 const loadWishes=()=>api('/wishes').then(renderWishes).catch(()=>{});
 function loadAbout(){
   const u=S.user; loadNumerology();

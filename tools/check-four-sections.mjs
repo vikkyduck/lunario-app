@@ -81,6 +81,23 @@ export async function checkFourSections({browser,base,owner}){
     assert.equal(await page.locator('#j-text').inputValue(),'Мой текст. Продиктованное продолжение');await close();assert.equal(await page.evaluate(()=>window.__speechQA.aborts),1);assert.equal(await page.locator('#j-dictate').getAttribute('aria-pressed'),'false');assert.ok(await page.evaluate(()=>window.__speechQA.rec.onresult===null&&window.__speechQA.rec.onerror===null&&window.__speechQA.rec.onend===null));
     await page.locator('#v-history [data-feature=journal]').click();assert.equal(await page.locator('#j-text').inputValue(),'Мой текст. Продиктованное продолжение');
     await page.getByRole('button',{name:'Сохранить запись',exact:true}).click();await page.locator('#journal-saved').waitFor();await close();
+    // ── Карточка дня «Запомнить этот день»: ячейки — свои типы, несколько настроений, привычка галочкой; повтор не дублирует ──
+    await page.evaluate(()=>go('history'));await page.waitForFunction(()=>DC.state&&document.querySelector('#dc-text').value.includes('Продиктованное продолжение'));
+    const journalBefore=(await owner.json('/journal')).items.length;
+    await page.locator('#dc-grat').fill('Себе за внимательность к себе и подруге за чай');await page.locator('#dc-answer').fill('Отпущу спор, который тяну третий день');
+    await page.locator('#dc-mood-chips').getByRole('button',{name:'Устала',exact:true}).click();await page.locator('#dc-own').fill('собранно');await page.locator('#dc-own').dispatchEvent('input');
+    await page.locator('#dc-habit-list .dc-check').first().click();
+    await page.locator('#dc-save').click();await page.waitForFunction(()=>document.querySelector('#dc-state').textContent.includes('День сохранён'));
+    const dayState=await owner.json('/day');assert.equal(dayState.gratitude.text,'Себе за внимательность к себе и подруге за чай');assert.equal(dayState.answer.text,'Отпущу спор, который тяну третий день');
+    assert.deepEqual(dayState.moods.sort(),['own:собранно','quick:tired'].sort());assert.ok(dayState.habits.some(h=>h.today),'habit marked from the card');
+    assert.equal((await owner.json('/journal')).items.length,journalBefore+1,'answer is new, gratitude and note are edited in place — no duplicates');
+    await page.locator('#dc-save').click();await page.waitForFunction(()=>document.querySelector('#dc-state').textContent.includes('День сохранён'));
+    assert.equal((await owner.json('/journal')).items.length,journalBefore+1,'saving again does not duplicate');
+    await page.waitForFunction(()=>document.querySelectorAll('#timeline-list .day-entry').length>=1);
+    assert.equal(await page.locator('#timeline-list .day-entry').first().locator('.timeline-kind',{hasText:/^Настроение$/}).count(),1,'several moods — one line in the day card');
+    assert.deepEqual(await page.locator('#timeline-filters .chip').allTextContents(),['Все','Записи','Благодарности','Вопрос дня','Настроения','Привычки','Аскезы','Желания']);
+    await page.locator('#timeline-filters').getByRole('button',{name:'Привычки',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#timeline-list .timeline-kind')?.textContent==='Привычка');
+    await page.locator('#timeline-filters').getByRole('button',{name:'Все',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('#timeline-list .day-entry').length>=1);
     await page.evaluate(()=>go('ask'));await page.locator('[data-feature=worry]').click();
     assert.deepEqual(await page.locator('#hub-chips button').allTextContents(),['Отношения','Работа и деньги','Решение','Тревога','Отношение к себе','Другое']);
     await page.getByRole('button',{name:'Работа и деньги',exact:true}).click();await page.locator('#hub-q').fill('Как мне договориться об условиях работы?');await page.getByRole('button',{name:'Решение',exact:true}).click();assert.equal(await page.locator('#hub-q').inputValue(),'Как мне договориться об условиях работы?');

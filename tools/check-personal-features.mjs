@@ -140,6 +140,22 @@ try {
     const other2=account();await other2.json('/me');await other2.json('/profile','POST',{name:'Утро-2',birth:'1991-02-02',city:'Москва',consent:true});
     await other2.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card']});const me2=await other2.json('/me');
     assert.ok(me2.day.card,'card drawn from the first day pack');assert.ok(me2.day.theme?.key,'theme from the card'); }
+  /* Карточка дня: один запрос — разные типы; повтор не дублирует; пустая ячейка не стирает; чужие привычки и аскезы не трогаются */
+  { const p=account();await p.json('/me');await p.json('/profile','POST',{name:'День',birth:'1993-03-03',city:'Москва',consent:true});
+    const h=(await p.json('/habits','POST',{title:'Вода',rule:'каждый день'})).items.find(x=>x.title==='Вода');
+    const untilDay=new Date(Date.parse(day+'T12:00:00Z')+6*864e5).toISOString().slice(0,10);const a=(await p.json('/askesis','POST',{title:'Без сахара',until:untilDay})).active.find(x=>x.until===untilDay);
+    const s0=await p.json('/day');assert.ok(s0.question&&s0.text===null&&s0.moods.length===0&&s0.habits.some(x=>x.id===h.id)&&s0.askesis.some(x=>x.id===a.id));
+    const r1=await p.json('/day','POST',{text:'Первая запись дня',gratitude:'Себе',answer:'Ответ дня',moods:['quick:calm','joy','own:собранно','nope'],habits:[{id:h.id,done:true},{id:999999,done:true}],askesis:[{id:a.id,kept:false,note:'Сорвалась вечером'}]});
+    assert.deepEqual(r1.saved,['text','gratitude','answer','moods','habits','askesis']);assert.deepEqual(r1.moods,['quick:calm','joy','own:собранно']);assert.ok(r1.habits.find(x=>x.id===h.id).today);
+    assert.equal(r1.askesis.find(x=>x.id===a.id).kept,false);assert.equal(r1.askesis.find(x=>x.id===a.id).note,'Сорвалась вечером');
+    const j1=(await p.json('/journal')).items;assert.equal(j1.length,3);assert.deepEqual(j1.map(i=>i.kind).sort(),['','answer','gratitude']);assert.equal(j1.find(i=>i.kind==='answer').title,s0.question);
+    assert.equal((await p.json('/me')).mood,'quick:calm','first mood stays the main one');
+    const r2=await p.json('/day','POST',{text:'Первая запись дня, дописанная',gratitude:'',moods:['joy']});
+    assert.equal(r2.text.text,'Первая запись дня, дописанная');assert.equal(r2.gratitude.text,'Себе','empty cell keeps the record');assert.deepEqual(r2.moods,['joy']);
+    assert.equal((await p.json('/journal')).items.length,3,'no duplicates on a second save');
+    assert.equal((await p.json('/day','POST',{habits:[{id:h.id,done:false}]})).habits.find(x=>x.id===h.id).today,false);
+    assert.equal((await other.raw('/day','POST',{habits:[{id:h.id,done:true}]})).status,200);assert.equal((await p.json('/day')).habits.find(x=>x.id===h.id).today,false,'another account cannot mark my habit');
+    const tl=await p.json('/timeline?kind=askesis&day=&offset=0');assert.ok(tl.items.some(i=>i.kind==='askesis'&&i.data==='0'),'askesis day with kept=0 in the timeline'); }
   const wishesBefore=(await owner.json('/wishes')).items.length;
   assert.equal((await owner.raw('/wishes','POST',{text:'Неверное фото',photo:'not-an-image'})).status,400);
   assert.equal((await owner.json('/wishes')).items.length,wishesBefore,'No orphan wish when its photo is invalid');

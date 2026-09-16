@@ -106,8 +106,8 @@ async function toggleMorning(key){
 
 /* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живёт там), «Практики» — тоже:
    отметки привычек и аскез вернутся в дневник своими фильтрами вместе с вечерней карточкой дня. Подписи записей — для всех видов. */
-const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['wishes','Желания']];
-const TIMELINE_LABELS={journal:'Запись',gratitude:'Благодарность',answer:'Вопрос дня',mood:'Настроение',readings:'Карты и ответы',practices:'Практика',wishes:'Желание'};
+const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['habits','Привычки'],['askesis','Аскезы'],['wishes','Желания']];
+const TIMELINE_LABELS={journal:'Запись',gratitude:'Благодарность',answer:'Вопрос дня',mood:'Настроение',readings:'Карты и ответы',habits:'Привычка',askesis:'Аскеза',wishes:'Желание'};
 function timelineText(text){return text.length>400?`<details class="timeline-long"><summary><span class="entry-text">${esc(text.slice(0,230))}…</span><span class="text-action">Читать полностью</span></summary><p class="entry-text">${esc(text)}</p></details>`:`<p class="entry-text">${esc(text)}</p>`;}
 function paintTimelineFilters(){
   $('timeline-filters').innerHTML=TIMELINE_TYPES.map(([key,label])=>`<button data-on="click:filterTimeline-a0" data-a0="${key}" class="chip" type="button" aria-pressed="${XP.timeline.kind===key}">${label}</button>`).join('');
@@ -124,16 +124,21 @@ async function loadTimeline(more=false){
   catch{if(request!==t.request)return;$('timeline-list').insertAdjacentHTML('beforeend','<p class="msg err">Записи не загрузились. <button data-on="click:loadTimeline" class="text-action">Повторить</button></p>');}
 }
 function paintTimeline(){
-  const t=XP.timeline;let prev='';
-  $('timeline-list').innerHTML=t.items.map((r,index)=>{
-    if(r.kind==='readings')return '';   /* карты и ответы — в «Свериться с собой», не в дневнике */
-    const heading=r.day!==prev?`<h2 class="timeline-day">${fmtDay(r.day)}</h2>`:'';prev=r.day;
+  const t=XP.timeline;const days=[];   /* день — одна карточка: заголовок с датой, внутри записи через тонкие линии */
+  t.items.forEach((r,index)=>{
+    if(r.kind==='readings')return;   /* карты и ответы — в «Свериться с собой», не в дневнике */
     const label=TIMELINE_LABELS[r.kind]||'';
     let content=r.source==='mood'?`<p class="entry-text">${esc(moodInfo(r.title)?.label||MOOD_LABEL[r.title]||r.title.replace(/^own:/,''))}</p>`:
       r.source==='entry'?`<button data-on="click:openTimelineEntry-a0" data-a0="${index}" type="button" class="timeline-link">${esc(r.body||r.title)} <span aria-hidden="true">→</span></button>`:
-      `${r.title?`<p class="timeline-title">${esc(r.title)}</p>`:''}${r.body?timelineText(r.body):''}${r.source==='habit'?'<p class="hint">Выполнено</p>':''}${r.source==='wish'?`<button data-on="click:openWidget-wishes" class="text-action">${r.data==='1'?'Сбылось':'Открыть желание'} →</button>`:''}`;
-    return heading+`<article class="timeline-entry"><span class="timeline-kind">${esc(label)}</span>${content}</article>`;
-  }).join('')||`<p class="hint timeline-empty">${t.day?'В этот день записей этого типа нет':t.kind?'Записей этого типа пока нет':'Здесь появятся ваши записи, настроение и история практик'}</p>`;
+      `${r.title?`<p class="timeline-title">${esc(r.title)}</p>`:''}${r.body?timelineText(r.body):''}${r.source==='habit'?'<p class="hint">Выполнено</p>':''}${r.source==='askesis'?`<p class="hint">${r.data==='0'?'Сорвалась':'Держусь'}</p>`:''}${r.source==='wish'?`<button data-on="click:openWidget-wishes" class="text-action">${r.data==='1'?'Сбылось':'Открыть желание'} →</button>`:''}`;
+    const last=days[days.length-1];
+    if(r.source==='mood'&&last&&last.day===r.day&&last.moodEntry){last.moodEntry.push(content);return;}   /* несколько настроений за день — одной строкой */
+    const html=`<article class="timeline-entry"><span class="timeline-kind">${esc(label)}</span>${content}</article>`;
+    if(last&&last.day===r.day){last.parts.push(html);if(r.source==='mood')last.moodEntry=[content];}
+    else days.push({day:r.day,parts:[html],moodEntry:r.source==='mood'?[content]:null});
+  });
+  const dayHtml=(d)=>{if(d.moodEntry&&d.moodEntry.length>1){const merged=`<article class="timeline-entry"><span class="timeline-kind">Настроение</span><p class="entry-text">${d.moodEntry.map(c=>c.replace(/<[^>]+>/g,'')).join(' · ')}</p></article>`;const i=d.parts.findIndex(p=>p.includes('>Настроение<'));if(i>=0)d.parts[i]=merged;}return d.parts.join('');};
+  $('timeline-list').innerHTML=days.map(d=>`<section class="day-entry"><h2 class="timeline-day">${fmtDay(d.day)}</h2>${dayHtml(d)}</section>`).join('')||`<p class="hint timeline-empty">${t.day?'В этот день записей этого типа нет':t.kind?'Записей этого типа пока нет':'Здесь появятся ваши записи, настроение и история практик'}</p>`;
   $('timeline-more').hidden=t.next===null;
 }
 async function openTimelineEntry(index){
@@ -144,7 +149,8 @@ async function openTimelineEntry(index){
 
 async function chooseWishPhoto(){const photo=await pickImage(1200,.82);if(!photo)return;XP.wishPhoto=photo;paintWishDraft();}
 function paintWishDraft(){const box=$('wish-preview');box.innerHTML=XP.wishPhoto?`<img src="${XP.wishPhoto}" alt="Фото нового желания"><button data-on="click:XP-wishPhoto-paintWishDraft" type="button" class="text-action">Убрать фото</button>`:'';$('wish-photo-pick').textContent=XP.wishPhoto?'Заменить фото':'Добавить фото';}
-function growTextarea(el){if(!el||el.tagName!=='TEXTAREA'||!el.getClientRects().length)return;el.style.height='auto';el.style.height=Math.max(160,el.scrollHeight+2)+'px';}
+function growTextarea(el){if(!el||el.tagName!=='TEXTAREA'||!el.getClientRects().length)return;const min=el.closest('.day-card')?56:160;   /* ячейки карточки дня — компактные */
+  el.style.height='auto';el.style.height=Math.max(min,el.scrollHeight+2)+'px';}
 function enhanceInterface(root){
   // Labels and navigation cues follow the original controls when panes move or rerender.
   if(root.nodeType!==1)return;

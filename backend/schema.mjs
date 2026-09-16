@@ -172,6 +172,10 @@ export const MIGRATIONS = [
       PRIMARY KEY (user_id, operation_id)
     );
     CREATE INDEX IF NOT EXISTS idx_receipts_created ON sync_receipts (created_at);`) },
+  /* Вечером можно отметить несколько настроений, хоть все (решение владелицы 16.09). Первое остаётся «главным» в moods —
+     отчёты и старые экраны продолжают работать, а полный список живёт здесь. */
+  { v: 14, name: 'несколько настроений за день', up: (db) => db.exec(`
+    CREATE TABLE IF NOT EXISTS mood_marks (user_id INTEGER NOT NULL, day TEXT NOT NULL, mood TEXT NOT NULL, PRIMARY KEY (user_id, day, mood));`) },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
