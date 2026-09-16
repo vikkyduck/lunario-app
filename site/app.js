@@ -421,7 +421,7 @@ function paintNum(n){
 function askErrorText(e){
   if(e.code==='limit') track('spread_limit');
   return e.code==='limit' ? 'Разборы на сегодня закончились. Карта дня, «Да/Нет» и руны остаются без ограничений.'
-    : e.code==='short_question' ? 'Напишите вопрос целиком — так вы потом вспомните, о чём спрашивали, а ответ будет про вашу ситуацию.'
+    : e.code==='short_question' ? 'Напишите вопрос целиком, так вы потом вспомните, что вас волновало.'
     : 'Не получилось. Попробуйте ещё раз.';
 }
 $('a-go').onclick=async()=>{
@@ -1813,7 +1813,7 @@ function hubTopic(index){
 }
 function hubMethod(kind){hubDraft.kind=kind;document.querySelectorAll('#hub-opts .chip').forEach(b=>{const on=b.dataset.kind===kind;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
 /* инструменты видны всегда; пока вопрос короче нескольких слов — кнопка ждёт и подсказывает, что дописать */
-function hubCheck(){const v=$('hub-q').value.trim(),ok=hubReady(v);$('hub-go').disabled=!ok;$('hub-hint').textContent=ok||!v?'':'Напишите вопрос целиком — так вы потом вспомните, о чём спрашивали, а ответ будет про вашу ситуацию';}
+function hubCheck(){const v=$('hub-q').value.trim(),ok=hubReady(v);$('hub-go').disabled=!ok;$('hub-hint').textContent=ok||!v?'':'Напишите вопрос целиком, так вы потом вспомните, что вас волновало';}
 async function hubAsk(){
   if(hubAsk.busy)return;const q=$('hub-q').value.trim();if(!hubReady(q)){hubCheck();return;}
   const out=$('hub-res'),button=$('hub-go');hubAsk.busy=true;button.disabled=true;button.textContent='Получаем ответ…';out.hidden=false;out.innerHTML='<p class="msg">Смотрим…</p>';
