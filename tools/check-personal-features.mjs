@@ -2,7 +2,7 @@
    node >=22.5 tools/check-personal-features.mjs
    No production data, credentials, email or notification delivery is used. */
 import assert from 'node:assert/strict';
-import { mkdtemp, cp, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -76,6 +76,10 @@ try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true,
     filter: path => !path.endsWith('.db') && !path.endsWith('.db-wal') && !path.endsWith('.db-shm') });
   await mkdir(join(fixture, 'content'));
+  /* «Новое в приложении» живёт только в content/новое.txt (запасного списка в коде нет): две новинки на текущий месяц,
+     чтобы экран новостей было чем проверять — плитка ведёт в существующий раздел */
+  const newsMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' }).slice(0, 7);
+  await writeFile(join(fixture, 'content', 'новое.txt'), `# месяц | название | раздел:виджет | о чём\n${newsMonth} | Взять аскезу | today:askesis | Отказ или ограничение до выбранной даты\n${newsMonth} | Карта дня | today:card | Все 22 аркана с картинками\n`);
   await mkdir(join(fixture, 'data'));
   // Deterministic tiny city catalogue; the untracked production catalogue is never read.
   const cities = new DatabaseSync(join(fixture, 'backend/cities.db'));
@@ -487,15 +491,26 @@ try {
   assert.equal((await fetch(base + '/api/journal', { method: 'POST', headers: { Cookie: writer.cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': writer.ip }, body: '{bad' })).status, 400);
   console.log('PASS: per-account write budget and request-size errors are explicit; internals stay in the log.');
 
-  // ── Заголовки страниц: кликджекинг и подмена типа ──
+  // ── Заголовки страниц и CSP: скрипты только со своего домена, инлайна в разметке нет ──
   for (const path of ['/', '/cabinet']) {
-    const h = (await fetch(base + path)).headers;
+    const r = await fetch(base + path), h = r.headers, html = await r.text(), csp = h.get('content-security-policy') || '';
     assert.equal(h.get('x-frame-options'), 'DENY', path + ' X-Frame-Options');
-    assert.match(h.get('content-security-policy') || '', /frame-ancestors 'none'/, path + ' CSP frame-ancestors');
+    assert.match(csp, /frame-ancestors 'none'/, path + ' CSP frame-ancestors');
+    assert.match(csp, /script-src 'self'(;|$)/, path + " CSP script-src is 'self' only");
+    assert.ok(!/script-src[^;]*unsafe-inline/.test(csp), path + ' no unsafe-inline for scripts');
     assert.equal(h.get('x-content-type-options'), 'nosniff', path + ' nosniff');
+    assert.ok(!/<script(?![^>]*\bsrc=)/i.test(html), path + ' has no inline <script>');
+    assert.ok(!/\son[a-z]+="/i.test(html), path + ' has no inline on*= handlers');
   }
+  /* и в шаблонах JS, из которых собирается разметка: атрибут-обработчик, добавленный через innerHTML, CSP тоже блокирует */
+  const fs = await import('node:fs');
+  for (const f of ['app.js', 'experience.js', 'cabinet.js', 'handlers.js', 'cabinet-handlers.js']) assert.ok(!/\son[a-z]+="/.test(fs.readFileSync(join(repo, 'site', f), 'utf8')), f + ' has no on*= attributes in templates');
   assert.equal((await fetch(base + '/sw.js')).headers.get('x-content-type-options'), 'nosniff');
-  console.log('PASS: HTML pages carry anti-clickjacking and nosniff headers.');
+  /* офлайн-оболочка: каждый адрес из SHELL в sw.js должен отдаваться — иначе первое офлайн-открытие получит пустой экран */
+  const sw = fs.readFileSync(join(repo, 'site', 'sw.js'), 'utf8');
+  const shell = new Function('V', 'return ' + /const SHELL = (\[[\s\S]*?\]);/.exec(sw)[1].replace(/\/\*[\s\S]*?\*\//g, ''))(/const V = '(\d+)'/.exec(sw)[1]);
+  for (const u of shell) assert.equal((await fetch(base + u.replace(/^\/app/, ''))).status, 200, 'SHELL entry is served: ' + u);
+  console.log(`PASS: strict CSP (script-src self, no inline scripts or handlers in markup or templates), anti-clickjacking and nosniff headers; all ${shell.length} offline shell files are served.`);
 
   // ── Удаление аккаунта подтверждается отдельным кодом; код входа для этого не годится ──
   const doomed = account(); await doomed.json('/me');
@@ -677,7 +692,7 @@ try {
         await close();
       }
       // «Скоро» рисуется из строк «скоро | …» в content/новое.txt: раздел виден только когда такие строки есть.
-      await page.evaluate(()=>go('news'));await ready();
+      await page.evaluate(()=>go('news'));await page.locator('#news-box .wid').first().waitFor();   /* paintNews асинхронный: ждём плитки */
       assert.equal(await page.locator('#news-soon').isHidden(), !(await page.evaluate(()=>(CAT?.news||[]).some(n=>n.soon))));
       await page.evaluate(()=>go('ask'));
       assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Разобрать вопрос','Да / Нет','Руны','Таро']);

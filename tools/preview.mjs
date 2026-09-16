@@ -8,6 +8,7 @@ import { join, dirname, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
+import { HTML_HEADERS } from '../backend/http/headers.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -107,7 +108,7 @@ const server=createServer(async(req,res)=>{
     if(['/app/','/app/index.html'].includes(url.pathname)) {
       const html=readFileSync(join(repo,'site/index.html'),'utf8').replace('<title>','<title>Локальный просмотр · ')
         .replace('<body>','<body><div style="position:fixed;z-index:350;top:0;left:0;right:0;text-align:center;font:10px/16px system-ui;background:#201a35;color:#c9bedc;pointer-events:none">Демо-профиль · данные сохраняются только локально</div>');
-      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(html);return;
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8',...HTML_HEADERS});res.end(html);return;   // тот же CSP, что у сервера: превью честно показывает, что заблокируется
     }
     if(url.pathname.startsWith('/app/')) {proxy(req,res);return;}
     if(url.pathname==='/api/event'){res.writeHead(204);res.end();return;}

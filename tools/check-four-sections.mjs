@@ -22,7 +22,7 @@ export async function checkFourSections({browser,base,owner}){
       const root=page.locator(`#v-${view} [data-feature="${key}"]`);assert.equal(await root.count(),1,key+' canonical entry');
       await root.click();await page.locator(`:is(#wg.on,#v-practice.on) #w-${key}`).waitFor();await close();
     }
-    for(const mode of ['yesno','rune','spread']){await page.evaluate(()=>go('ask'));await page.locator(`#v-ask button[onclick="openAsk('${mode}')"]`).click();await page.locator('#w-ask').waitFor();assert.ok(await page.locator('#a-go').evaluate(el=>!el.classList.contains('ghost')));await close();}
+    for(const mode of ['yesno','rune','spread']){await page.evaluate(()=>go('ask'));await page.locator(`#v-ask button[data-on="click:openAsk-${mode}"]`).click();await page.locator('#w-ask').waitFor();assert.ok(await page.locator('#a-go').evaluate(el=>!el.classList.contains('ghost')));await close();}
     for(const [alias,target] of [['today','home'],['around','home'],['about','account']]){await page.evaluate(v=>go(v),alias);assert.ok(await page.locator('#v-'+target).evaluate(el=>el.classList.contains('on')));}
     await page.reload();await page.waitForSelector('#v-home.on');
     assert.equal(await page.locator('#h-next').innerText(),'Открыть карту дня →');

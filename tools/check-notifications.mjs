@@ -72,7 +72,7 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     const cases=[['home','habits','habits'],['history','hmood','moodreport'],['home','mood','mood'],['home','askesis','askesis'],['history','gratitude','gratitude'],['home','sky','sky'],['home','lunar','lunar']];
     for(const [view,key,feature] of cases){
       await page.evaluate(v=>go(v),view);
-      await page.locator(`#v-${view} button[onclick="openWidget('${key}')"]`).click();
+      await page.locator(`#v-${view} button[data-on="click:openWidget-${key}"]`).click();
       const full=['habits','askesis'].includes(key);
       if(full)await page.locator('#practice-tools .rem-summary').click();
       const rem=page.locator(`${full?'#practice-settings-box':'#wg-tools'} [data-rem=${feature}]`);

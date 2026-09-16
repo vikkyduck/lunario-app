@@ -4,10 +4,13 @@
    при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const V = '44';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
+const V = '45';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
 const CACHE = 'lunario-app-v' + V;
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
-const SHELL = ['/app/', '/app/theme.css?v=' + V, '/app/experience.css?v=' + V, '/app/moon-glass.css?v=' + V, '/app/experience.js?v=' + V, '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=' + V, '/app/sky-model.js?v=' + V, '/app/constellations.js?v=' + V, '/app/assets/moon-hero.png'];
+const SHELL = ['/app/', '/app/theme.css?v=' + V, '/app/experience.css?v=' + V, '/app/moon-glass.css?v=' + V,
+  /* скрипты оболочки: раньше жили внутри index.html, вынесены ради CSP без инлайна — офлайн без них экран пустой */
+  '/app/boot.js?v=' + V, '/app/moon-logo.js?v=' + V, '/app/experience.js?v=' + V, '/app/app.js?v=' + V, '/app/handlers.js?v=' + V, '/app/on.js?v=' + V,
+  '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=' + V, '/app/sky-model.js?v=' + V, '/app/constellations.js?v=' + V, '/app/assets/moon-hero.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

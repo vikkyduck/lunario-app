@@ -20,7 +20,7 @@ function openPractice(key,fromHistory=false){
   document.querySelectorAll('.view').forEach(el=>el.classList.toggle('on',el.id==='v-practice'));
   document.body.classList.add('inner','practice-open');
   $('practice-title').textContent=FEATURES[key].title;$('practice-body').appendChild($('w-'+key));
-  const feature=FEATURES[key].reminder;$('practice-tools').innerHTML=feature?`<button class="text-action rem-summary" type="button" onclick="openPracticeSettings('${feature}')">Уведомления →</button>`:'';
+  const feature=FEATURES[key].reminder;$('practice-tools').innerHTML=feature?`<button data-on="click:openPracticeSettings-a0" data-a0="${feature}" class="text-action rem-summary" type="button">Уведомления →</button>`:'';
   if(feature)refreshPracticeReminder();
   window.refreshMoonLogos?.();loadWidgetContent(key);restoreScroll('practice:'+key);$('practice-back').focus({preventScroll:true});
 }
@@ -32,7 +32,7 @@ window.addEventListener('popstate',e=>{
 function openPracticeSettings(feature){openWidget('practiceSettings');$('practice-settings-box').innerHTML=remBox(feature);remEditing[feature]=true;paintRem(feature);}
 function refreshPracticeReminder(){
   const key=XP.page,feature=FEATURES[key]?.reminder;if(!feature)return;
-  loadReminders().then(()=>{if(XP.page!==key)return;const tools=$('practice-tools');tools.innerHTML=remBox(feature);paintRem(feature);const button=tools.querySelector('.rem-summary');if(button){button.setAttribute('onclick',`openPracticeSettings('${feature}')`);button.removeAttribute('aria-controls');button.setAttribute('aria-haspopup','dialog');button.removeAttribute('aria-expanded');button.lastElementChild.textContent='→';tools.replaceChildren(button);}}).catch(()=>{});
+  loadReminders().then(()=>{if(XP.page!==key)return;const tools=$('practice-tools');tools.innerHTML=remBox(feature);paintRem(feature);const button=tools.querySelector('.rem-summary');if(button){button.setAttribute('data-on','click:openPracticeSettings-a0');button.dataset.a0=feature;   /* не onclick: под CSP атрибут-обработчик заблокируют */button.removeAttribute('aria-controls');button.setAttribute('aria-haspopup','dialog');button.removeAttribute('aria-expanded');button.lastElementChild.textContent='→';tools.replaceChildren(button);}}).catch(()=>{});
 }
 
 function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.theme);paintNextStep();}
@@ -46,7 +46,7 @@ function applyTheme(mode){
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(XP.prefs.theme==='system')applyTheme('system');});
 function paintAppearance(){
-  $('appearance-box').innerHTML=`<p class="hint">Выберите тему для чтения</p><div class="theme-options">${[['light','Светлая'],['dark','Тёмная'],['system','Как на устройстве']].map(([key,label])=>`<button type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}" onclick="saveTheme('${key}')"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div><p class="saved-state" id="theme-state" role="status"></p>`;
+  $('appearance-box').innerHTML=`<p class="hint">Выберите тему для чтения</p><div class="theme-options">${[['light','Светлая'],['dark','Тёмная'],['system','Как на устройстве']].map(([key,label])=>`<button data-on="click:saveTheme-a0" data-a0="${key}" type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div><p class="saved-state" id="theme-state" role="status"></p>`;
 }
 async function savePreferences(value){const r=await api('/preferences',{method:'POST',body:JSON.stringify(value)});XP.prefs=r.preferences;return r;}
 async function saveTheme(theme){
@@ -58,7 +58,7 @@ function ritualDone(key){return {card:!!S.day?.card,mood:!!S.mood,habits:!!S.hab
 function ritualNext(){const key=XP.prefs.ritual.find(k=>!ritualDone(k));return key?{key,view:FEATURES[key].view,label:RITUALS[key]}:null;}
 function paintRitual(){
   if(!XP.ritualDraft)XP.ritualDraft=[...XP.prefs.ritual];
-  $('ritual-box').innerHTML=`<p class="hint">Выберите 2–3 практики. Они будут открываться с главной кнопки в выбранном порядке.</p><div class="ritual-options">${Object.keys(RITUALS).map((key)=>{const n=XP.ritualDraft.indexOf(key);return `<button class="ritual-option" type="button" aria-pressed="${n>=0}" onclick="toggleRitual('${key}')"><span>${esc(FEATURES[key].title)}</span><span aria-hidden="true">${n>=0?n+1:'＋'}</span></button>`;}).join('')}</div><p id="ritual-count" class="hint" role="status">Выбрано ${XP.ritualDraft.length} из 3</p><button class="btn" id="ritual-save" onclick="saveRitual()" ${XP.ritualDraft.length<2?'disabled':''}>Сохранить ритуал</button>`;
+  $('ritual-box').innerHTML=`<p class="hint">Выберите 2–3 практики. Они будут открываться с главной кнопки в выбранном порядке.</p><div class="ritual-options">${Object.keys(RITUALS).map((key)=>{const n=XP.ritualDraft.indexOf(key);return `<button data-on="click:toggleRitual-a0" data-a0="${key}" class="ritual-option" type="button" aria-pressed="${n>=0}"><span>${esc(FEATURES[key].title)}</span><span aria-hidden="true">${n>=0?n+1:'＋'}</span></button>`;}).join('')}</div><p id="ritual-count" class="hint" role="status">Выбрано ${XP.ritualDraft.length} из 3</p><button data-on="click:saveRitual" class="btn" id="ritual-save" ${XP.ritualDraft.length<2?'disabled':''}>Сохранить ритуал</button>`;
 }
 function toggleRitual(key){const i=XP.ritualDraft.indexOf(key);if(i>=0)XP.ritualDraft.splice(i,1);else if(XP.ritualDraft.length<3)XP.ritualDraft.push(key);else{$('ritual-count').textContent='Уже выбраны 3 практики. Уберите одну, чтобы выбрать другую';return;}paintRitual();}
 async function saveRitual(){
@@ -70,8 +70,8 @@ async function saveRitual(){
 const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['readings','Карты и ответы'],['practices','Практики'],['wishes','Желания']];
 function timelineText(text){return text.length>400?`<details class="timeline-long"><summary><span class="entry-text">${esc(text.slice(0,230))}…</span><span class="text-action">Читать полностью</span></summary><p class="entry-text">${esc(text)}</p></details>`:`<p class="entry-text">${esc(text)}</p>`;}
 function paintTimelineFilters(){
-  $('timeline-filters').innerHTML=TIMELINE_TYPES.map(([key,label])=>`<button class="chip" type="button" aria-pressed="${XP.timeline.kind===key}" onclick="filterTimeline('${key}')">${label}</button>`).join('');
-  $('timeline-date').hidden=!XP.timeline.day;$('timeline-date').innerHTML=XP.timeline.day?`${fmtDay(XP.timeline.day)} <button type="button" class="text-action" onclick="showAllDiary()">Все даты ×</button>`:'';
+  $('timeline-filters').innerHTML=TIMELINE_TYPES.map(([key,label])=>`<button data-on="click:filterTimeline-a0" data-a0="${key}" class="chip" type="button" aria-pressed="${XP.timeline.kind===key}">${label}</button>`).join('');
+  $('timeline-date').hidden=!XP.timeline.day;$('timeline-date').innerHTML=XP.timeline.day?`${fmtDay(XP.timeline.day)} <button data-on="click:showAllDiary" type="button" class="text-action">Все даты ×</button>`:'';
 }
 function filterTimeline(kind){XP.timeline.kind=kind;loadTimeline();}
 function showAllDiary(){XP.timeline.day='';loadTimeline();}
@@ -81,7 +81,7 @@ async function loadTimeline(more=false){
   if(!more){t.dirty=false;if(!t.items.length)$('timeline-list').innerHTML='<p class="hint" role="status">Загружаем записи…</p>';}
   $('timeline-more').hidden=true;
   try{const q=new URLSearchParams({kind:t.kind,day:t.day,offset:String(more?t.next||0:0)});const r=await api('/timeline?'+q);if(request!==t.request)return;t.items=more?[...t.items,...r.items]:r.items;t.next=r.next;paintTimeline();}
-  catch{if(request!==t.request)return;$('timeline-list').insertAdjacentHTML('beforeend','<p class="msg err">Записи не загрузились. <button class="text-action" onclick="loadTimeline()">Повторить</button></p>');}
+  catch{if(request!==t.request)return;$('timeline-list').insertAdjacentHTML('beforeend','<p class="msg err">Записи не загрузились. <button data-on="click:loadTimeline" class="text-action">Повторить</button></p>');}
 }
 function paintTimeline(){
   const t=XP.timeline;let prev='';
@@ -89,8 +89,8 @@ function paintTimeline(){
     const heading=r.day!==prev?`<h2 class="timeline-day">${fmtDay(r.day)}</h2>`:'';prev=r.day;
     const label=TIMELINE_TYPES.find(([key])=>key===r.kind)?.[1]||'';
     let content=r.source==='mood'?`<p class="entry-text">${esc(moodInfo(r.title)?.label||MOOD_LABEL[r.title]||r.title.replace(/^own:/,''))}</p>`:
-      r.source==='entry'?`<button type="button" class="timeline-link" onclick="openTimelineEntry(${index})">${esc(r.body||r.title)} <span aria-hidden="true">→</span></button>`:
-      `${r.title?`<p class="timeline-title">${esc(r.title)}</p>`:''}${r.body?timelineText(r.body):''}${r.source==='habit'?'<p class="hint">Выполнено</p>':''}${r.source==='wish'?`<button class="text-action" onclick="openWidget('wishes')">${r.data==='1'?'Сбылось':'Открыть желание'} →</button>`:''}`;
+      r.source==='entry'?`<button data-on="click:openTimelineEntry-a0" data-a0="${index}" type="button" class="timeline-link">${esc(r.body||r.title)} <span aria-hidden="true">→</span></button>`:
+      `${r.title?`<p class="timeline-title">${esc(r.title)}</p>`:''}${r.body?timelineText(r.body):''}${r.source==='habit'?'<p class="hint">Выполнено</p>':''}${r.source==='wish'?`<button data-on="click:openWidget-wishes" class="text-action">${r.data==='1'?'Сбылось':'Открыть желание'} →</button>`:''}`;
     return heading+`<article class="timeline-entry"><span class="timeline-kind">${esc(label)}</span>${content}</article>`;
   }).join('')||`<p class="hint timeline-empty">${t.day?'В этот день записей этого типа нет':t.kind?'Записей этого типа пока нет':'Здесь появятся ваши записи, настроение и история практик'}</p>`;
   $('timeline-more').hidden=t.next===null;
@@ -102,7 +102,7 @@ async function openTimelineEntry(index){
 }
 
 async function chooseWishPhoto(){const photo=await pickImage(1200,.82);if(!photo)return;XP.wishPhoto=photo;paintWishDraft();}
-function paintWishDraft(){const box=$('wish-preview');box.innerHTML=XP.wishPhoto?`<img src="${XP.wishPhoto}" alt="Фото нового желания"><button type="button" class="text-action" onclick="XP.wishPhoto='';paintWishDraft()">Убрать фото</button>`:'';$('wish-photo-pick').textContent=XP.wishPhoto?'Заменить фото':'Добавить фото';}
+function paintWishDraft(){const box=$('wish-preview');box.innerHTML=XP.wishPhoto?`<img src="${XP.wishPhoto}" alt="Фото нового желания"><button data-on="click:XP-wishPhoto-paintWishDraft" type="button" class="text-action">Убрать фото</button>`:'';$('wish-photo-pick').textContent=XP.wishPhoto?'Заменить фото':'Добавить фото';}
 function growTextarea(el){if(!el||el.tagName!=='TEXTAREA'||!el.getClientRects().length)return;el.style.height='auto';el.style.height=Math.max(160,el.scrollHeight+2)+'px';}
 function enhanceInterface(root){
   // Labels and navigation cues follow the original controls when panes move or rerender.
