@@ -490,8 +490,8 @@ try {
   // ── Заголовки страниц: кликджекинг и подмена типа ──
   for (const path of ['/', '/cabinet']) {
     const h = (await fetch(base + path)).headers;
-    assert.equal(h.get('x-frame-options'), 'SAMEORIGIN', path + ' X-Frame-Options');
-    assert.match(h.get('content-security-policy') || '', /frame-ancestors 'self'/, path + ' CSP frame-ancestors');
+    assert.equal(h.get('x-frame-options'), 'DENY', path + ' X-Frame-Options');
+    assert.match(h.get('content-security-policy') || '', /frame-ancestors 'none'/, path + ' CSP frame-ancestors');
     assert.equal(h.get('x-content-type-options'), 'nosniff', path + ' nosniff');
   }
   assert.equal((await fetch(base + '/sw.js')).headers.get('x-content-type-options'), 'nosniff');

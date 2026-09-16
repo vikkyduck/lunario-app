@@ -363,9 +363,11 @@ function readBody(req, max = 32768) {
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
-/* Страницам — защита от встраивания в чужой сайт (кликджекинг), от подмены <base> и плагинов; статике — nosniff.
-   Инлайн-скрипты и обработчики в index.html делают полный CSP невозможным без переписывания фронтенда. */
-const HTML_HEADERS = { 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'; object-src 'none'; base-uri 'self'", 'Referrer-Policy': 'strict-origin-when-cross-origin' };
+/* Страницам — защита от встраивания (кликджекинг), от подмены <base> и плагинов; статике — nosniff.
+   Значения совпадают с теми, что ставит nginx на сервере (DENY): приложение нигде себя не встраивает,
+   а два одинаковых заголовка безвредны — разные заставили бы браузер выбирать.
+   Инлайн-скрипты и обработчики в index.html пока не дают включить script-src без 'unsafe-inline'. */
+const HTML_HEADERS = { 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "frame-ancestors 'none'; object-src 'none'; base-uri 'self'", 'Referrer-Policy': 'strict-origin-when-cross-origin' };
 function serveStatic(res, rel, cacheSec = 3600, headOnly = false, extra = {}) {
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const file = join(SITE_DIR, safe);
