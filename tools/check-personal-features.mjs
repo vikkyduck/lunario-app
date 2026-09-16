@@ -632,7 +632,10 @@ try {
       await page.waitForSelector('#v-home.on');
       await page.waitForFunction(() => document.querySelector('#h-acct img')?.naturalWidth > 0);
       assert.equal(await page.locator('#h-acct .news-dot').count(), 1);
-      await page.locator('.app-nav [data-nav=account]').click();
+      /* «Аккаунт» больше не вкладка внизу: после перестройки навигации туда ведёт кружок с фото в шапке,
+         а нижние вкладки — «Сегодня», «Свериться с собой», «Дневник», «Обо мне». */
+      await page.locator('#h-acct').click();
+      await page.locator('#v-account.on').waitFor();
       assert.ok(await page.getByRole('button', { name: 'Заменить фото', exact: true }).isVisible());
       // Exercise the existing photo picker, resize/upload and avatar refresh.
       const chooser = page.waitForEvent('filechooser');
@@ -671,7 +674,8 @@ try {
       await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
       await page.waitForFunction(() => document.querySelectorAll('#m-wishes .wish-picture img').length === 2);
       await close();
-      assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(t=>t.trim()), ['Сегодня','Свериться с собой','Дневник','Обо мне']);
+      /* пробелы нормализуем: в подписи вкладки неразрывный пробел, чтобы «с собой» не разрывалось на узком экране */
+      assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(t=>t.replace(/\s+/g,' ').trim()), ['Сегодня','Свериться с собой','Дневник','Обо мне']);
       await page.locator('.app-nav').getByRole('button',{name:'Сегодня',exact:true}).click();
       await page.locator('#v-home').getByRole('button',{name:/^Отметить настроение/}).click();
       await page.getByRole('button',{name:'Все эмоции',exact:true}).click();

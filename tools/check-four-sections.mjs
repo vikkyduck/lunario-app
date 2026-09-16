@@ -9,7 +9,9 @@ export async function checkFourSections({browser,base,owner}){
   const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
   try{
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
-    assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.trim()),['Сегодня','Свериться с собой','Дневник','Обо мне']);
+    /* пробелы нормализуем: в подписи вкладки стоит неразрывный пробел, чтобы «с собой» не разрывалось на узком экране —
+   для человека это тот же текст, и проверка не должна зависеть от вида пробела */
+    assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.replace(/\s+/g,' ').trim()),['Сегодня','Свериться с собой','Дневник','Обо мне']);
     assert.equal(await page.locator('#v-home .sqs,#v-home .mini,#v-today,#v-around').count(),0,'No obsolete menu or orphan category');
     // «Аккаунт» — не вкладка: открывается по кружку с фото на главной, ни одна вкладка не подсвечена, назад — на «Сегодня»
     await page.locator('#h-acct').click();await page.locator('#v-account.on').waitFor();assert.equal(await page.locator('.app-nav [aria-current=page]').count(),0);
