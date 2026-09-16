@@ -104,7 +104,7 @@ try {
   await bob.json('/askesis', 'PATCH', { id: bobAskesis, note: mark('наблюдение') });
   await bob.json('/mood', 'POST', { mood: `own:${M('настроение').slice(0, 24)}` });
   const bobTicket = (await bob.json('/support/tickets', 'POST', { subject: mark('тема'), text: mark('обращение'), topic: 'Прочее' })).id;
-  await bob.json('/reminders', 'POST', { feature: 'card', enabled: true, time: '09:00' });
+  await bob.json('/reminders', 'POST', { feature: 'morning', enabled: true, time: '09:00' });
   const bobEndpoint = 'https://fcm.googleapis.com/fcm/send/' + M('устройство').replace(/[^a-zA-Z0-9-]/g, '');
   await bob.json('/push', 'POST', { endpoint: bobEndpoint });
   /* расклад и установка дня — прямо в базу: содержимое дня в проверке не участвует, важен только номер */
@@ -184,12 +184,17 @@ try {
   /* лента, досье, выгрузка, профиль */
   for (const path of ['/timeline', `/timeline?day=${today}`, '/timeline?offset=0', '/me', '/week', '/mood/report',
     '/data/export', '/data/export.pdf', '/shelves', '/shelves/context', '/day-status', '/invite', '/photo',
-    '/reminders', '/reminders/askesis-plan', '/reminders/preview?feature=card', '/wishes', '/habits', '/askesis', '/day']) await asAlice(path);
+    '/reminders', '/reminders/askesis-plan', '/reminders/preview?feature=morning', '/wishes', '/habits', '/askesis', '/day']) await asAlice(path);
 
   /* уведомления: чужое устройство и чужая очередь */
   await asAlice('/push/next', 'POST', { endpoint: bobEndpoint });
-  await asAlice('/reminders/test', 'POST', { feature: 'card', endpoint: bobEndpoint });
+  await asAlice('/reminders/test', 'POST', { feature: 'morning', endpoint: bobEndpoint });
   assert.equal(db.prepare('SELECT COUNT(*) c FROM push_queue WHERE user_id = ?').get(bobId).c, 0, 'в очередь Б ничего не легло');
+
+  /* чужая ячейка уведомлений: перехват подписки и чтение чужой очереди */
+  const stolen = await asAlice('/push', 'POST', { endpoint: bobEndpoint });
+  const ownerNow = db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(bobEndpoint);
+  console.log('  проба: POST /api/push с чужой ячейкой →', stolen.status, '| владелец ячейки теперь:', ownerNow ? (ownerNow.user_id === bobId ? 'Б' : 'А') : 'никто');
 
   /* запись в чужой аккаунт напрямую */
   const { randomUUID } = await import('node:crypto');

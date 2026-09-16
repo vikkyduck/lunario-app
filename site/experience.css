@@ -155,8 +155,6 @@ body.inner .compact-links .wid .dot{position:absolute;right:43px;top:22px}
 body.inner #home-sky .moonline{padding:20px 0;margin-bottom:12px;align-items:flex-start;gap:14px}
 body.inner #home-sky .moon-sm{margin-top:4px}
 body.inner #home-sky .lunar-arrow{align-self:center}
-body.inner #push-invite{max-width:620px;margin-top:24px}
-body.inner .push-invite-row{justify-content:flex-start;gap:4px 20px;border-top:1px solid var(--line);padding-top:12px}
 
 /* Choosing a method reads as three equal options, without an orphan card. */
 body.inner .question-entry .wid{background:var(--accent-soft);min-height:150px;padding:24px;border-color:transparent}
@@ -289,7 +287,7 @@ body:not(.inner):not(.hello) .bg{display:none}
 @media(max-width:759px){
   body.inner .wg{border-radius:0;padding:calc(20px + env(safe-area-inset-top)) 20px env(safe-area-inset-bottom)}
   body.inner .wg-head{top:calc(-20px - env(safe-area-inset-top));padding-top:20px}
-  body.inner #wg:is([data-kind=appearance],[data-kind=tools],[data-kind=askDate],[data-kind=practiceSettings]) .wg{height:auto;max-height:calc(var(--visible-height,100dvh) - 20px);bottom:var(--keyboard-gap,0px);top:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+  body.inner #wg:is([data-kind=appearance],[data-kind=tools],[data-kind=askDate]) .wg{height:auto;max-height:calc(var(--visible-height,100dvh) - 20px);bottom:var(--keyboard-gap,0px);top:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
   body.inner .app-nav{padding-bottom:calc(6px + env(safe-area-inset-bottom));height:calc(70px + env(safe-area-inset-bottom))}
   body.inner .wpane .hb-entry{grid-template-columns:1fr;gap:0}
   body.inner .wish-create-actions .btn{flex:1}
@@ -352,3 +350,11 @@ body:not(.inner) #v-onb #o-codebox .auth-secondary{margin-top:20px;min-height:48
 /* Роли текста и компактный ввод: явная роль элемента сильнее общих правил чтения (они заменили inline-стили) */
 .t2{color:var(--text-2)!important}.strong{color:var(--strong)!important}.faint{color:var(--faint)!important}.t-gold{color:var(--gold)!important}
 body.inner input.compact{font-size:14px}
+
+/* экран трёх напоминаний после анкеты */
+.rhythm-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
+.rhythm-row:first-child{border-top:0}
+.rhythm-row input[type=checkbox]{width:22px;height:22px;flex:0 0 22px;accent-color:var(--gold)}
+.rhythm-row .grow{min-width:0}.rhythm-row b{display:block;font-size:17px;font-weight:600}.rhythm-row small{display:block;font-size:14px;line-height:1.4;color:var(--muted)}
+.rhythm-row input[type=time]{width:auto;flex:0 0 auto;padding:8px 10px;font-size:16px}
+.rhythm-card .btn{margin-top:18px;width:100%}

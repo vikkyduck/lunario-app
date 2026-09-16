@@ -8,11 +8,17 @@ import { vapidKeys } from './push.mjs';
 import { initReminders, runDue } from './reminders.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices } from './practices.mjs';
+import * as C from './content.mjs';
+import { createMorning } from './morning.mjs';
+import { dayIn } from './util.mjs';
 
 const DATA_DIR = process.env.DATA_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
 export function initScheduledReminders(db, dataDir = DATA_DIR) {
   const {open} = privateText(dataDir, {create:false});
-  initReminders(db, createPractices(db, open));
+  /* утренний пуш собирается тем же модулем, что «Сегодня»: тема дня, настрой, карта и руна — и события пишутся так же */
+  const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(new Date().toISOString(), dayIn(), u.id, type, String(detail || '').slice(0, 60), '');
+  const Morning = createMorning({ db, C, track, nowISO: () => new Date().toISOString(), today: () => dayIn() });
+  initReminders(db, { ...createPractices(db, open), morningPack: (u, d) => Morning.pack(u, d) });
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const db = new DatabaseSync(join(DATA_DIR, 'app.db'));

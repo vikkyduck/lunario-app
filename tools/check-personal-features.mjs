@@ -210,36 +210,56 @@ try {
     const result=await owner.json('/habits','PATCH',{id:h.id});assert.equal(result.award,undefined,'no award field');
     const row=result.items.find(x=>x.id===h.id);assert.equal(row.streak,30);assert.equal(row.awards,undefined);assert.equal(row.next,undefined);
     assert.equal(qaDB.prepare('SELECT COUNT(*) n FROM habit_awards').get().n,0,'nothing is written to habit_awards any more'); }
-  const schedule=(await owner.json('/reminders','POST',{feature:'askesis',enabled:true,freq:'weekly',weekday:5,time:'20:40',tz:'Europe/Moscow'})).item;
-  assert.equal(schedule.freq,'weekly'); assert.equal(schedule.time,'20:40'); assert.equal(schedule.weekday,5); assert.ok(schedule.nextAt);
+  /* ── Три напоминания: утро (настрой и выбранные плитки), вечер (молчит, если день записан), неделя (по воскресеньям) ── */
   const reminders=await import(pathToFileURL(join(fixture,'backend/reminders.mjs')));
-  const asc=await owner.json('/askesis');
+  assert.deepEqual(Object.keys(reminders.FEATURES),['morning','evening','week']);
+  assert.equal((await owner.raw('/reminders','POST',{feature:'askesis',enabled:true})).status,400,'old per-feature reminders are gone');
+  const list=(await owner.json('/reminders')).items;assert.deepEqual(list.map(r=>r.feature),['morning','evening','week']);assert.equal(list.find(r=>r.feature==='week').freq,'weekly');
+  const schedule=(await owner.json('/reminders','POST',{feature:'evening',enabled:true,time:'20:40',tz:'Europe/Moscow'})).item;
+  assert.equal(schedule.time,'20:40');assert.equal(schedule.freq,'daily');assert.ok(schedule.nextAt);
+  assert.equal((await owner.json('/reminders','POST',{feature:'week',enabled:true,freq:'daily',weekday:5,time:'13:10'})).item.freq,'weekly','week is always weekly');
   const worker=await import(pathToFileURL(join(fixture,'backend/send-daily.mjs')));
   worker.initScheduledReminders(qaDB,join(fixture,'data'));
-  const person=qaDB.prepare('SELECT id,name FROM users WHERE name=?').get('Проверка сохранения');
-  const plan=await owner.json('/reminders/askesis-plan');
-  assert.equal(plan.items.length,14);
-  assert.ok(plan.items.every(item=>new Date(item.date+'T12:00:00Z').getUTCDay()===5));
-  assert.equal(Date.parse(plan.items[1].date)-Date.parse(plan.items[0].date),7*864e5);
-  assert.ok(plan.items[0].body.includes(String(Math.round((Date.parse(longDate)-Date.parse(plan.items[0].date))/864e5))));
-  assert.ok((await owner.json('/askesis')).active.some(a=>a.id===askesis.id),'Building a future plan must not finish current askeses');
-  assert.equal((await other.json('/reminders/askesis-plan')).items.length,0);
-  const push=reminders.notificationFor('askesis',person);
-  assert.ok(push.body.includes(String(asc.active[0].left))); assert.equal(asc.active[0].support,undefined,'no support phrases any more');assert.ok(!/держитесь|Вы справ/i.test(push.body));
-  await owner.json('/habits','POST',{title:'10 000 шагов',rule:'каждый день'});
-  await owner.json('/reminders','POST',{feature:'habits',enabled:true,time:'20:40'});
+  const person=qaDB.prepare('SELECT id,name,preferences,tz,lat,lon,birth FROM users WHERE name=?').get('Проверка сохранения');
+  /* утро: заголовок — настрой дня, строки — по выбранным плиткам; план на 14 дней для телефона */
+  await owner.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card','lunar','tone']});
+  const morning=reminders.notificationFor('morning',qaDB.prepare('SELECT * FROM users WHERE id=?').get(person.id));
+  const meNow=await owner.json('/me');assert.equal(morning.title,meNow.day.set.text,'morning push title is the настрой of the day');
+  assert.ok(morning.body.includes('Карта дня — ')&&morning.body.includes('лунный день')&&morning.body.includes('Вопрос дня: '),morning.body);assert.equal(morning.url,'/app/?open=today');
+  await owner.json('/reminders','POST',{feature:'morning',enabled:true,time:'08:30'});
+  const plan=await owner.json('/reminders/native-plan?feature=morning');assert.equal(plan.items.length,14);assert.ok(plan.items.every(i=>i.title&&i.url==='/app/?open=today'));
+  assert.equal(Date.parse(plan.items[1].date)-Date.parse(plan.items[0].date),864e5);
+  assert.equal((await other.json('/reminders/native-plan?feature=morning')).items.length,0,'no plan without an enabled reminder');
+  /* вечер: пока день не записан — напоминаем; записали хоть что-то — молчим */
+  const evPerson=account();await evPerson.json('/me');await evPerson.json('/profile','POST',{name:'Вечер',birth:'1994-04-04',city:'Москва',consent:true});
+  const evRow=qaDB.prepare('SELECT * FROM users WHERE name=?').get('Вечер');
+  assert.equal(reminders.notificationFor('week',evRow),null,'no moments this week — no weekly push');
+  assert.equal(reminders.notificationFor('evening',evRow).title,'Запомнить этот день');
+  await evPerson.json('/day','POST',{moods:['joy']});assert.equal(reminders.notificationFor('evening',evRow),null,'a remembered day needs no evening push');
+  /* неделя: без записей — пуша нет; мало — «сохранили N момент(а)»; три и больше — «неделя готова» */
+  assert.match(reminders.notificationFor('week',evRow).body,/сохранили 1 момент$/);
+  await evPerson.json('/day','POST',{text:'Первый момент'});assert.match(reminders.notificationFor('week',evRow).body,/сохранили 2 момента/);
+  await evPerson.json('/day','POST',{gratitude:'Второй'});assert.equal(reminders.notificationFor('week',evRow).title,'Моя неделя: про что она');
+  /* планировщик кладёт в очередь и будит устройство */
   qaDB.prepare('INSERT INTO push_subs(endpoint,user_id,created_at) VALUES(?,?,?)').run('https://push.invalid/synthetic',person.id,new Date().toISOString());
-  qaDB.prepare("UPDATE reminders SET next_at=? WHERE user_id=? AND feature IN ('askesis','habits')").run(new Date(Date.now()-1000).toISOString(),person.id);
+  qaDB.prepare("UPDATE reminders SET next_at=? WHERE user_id=? AND feature IN ('morning','evening')").run(new Date(Date.now()-1000).toISOString(),person.id);
   let deliveries=0;
   const delivery=await reminders.runDue({},()=>{},async()=>{deliveries++;return true;});
-  assert.equal(deliveries,1);assert.equal(delivery.queued,2);
+  assert.equal(deliveries,1);assert.ok(delivery.queued>=1);
   const queued=qaDB.prepare('SELECT feature,title,body FROM push_queue WHERE user_id=?').all(person.id);
-  assert.ok(queued.some(n=>n.feature==='askesis' && n.title.includes('Без шоппинга, мой срок') && n.body.includes(String(longAskesis.left))));
-  assert.ok(queued.some(n=>n.feature==='habits' && n.body.includes('10 000 шагов')));
-  assert.ok(queued.every(n=>!n.body.includes('enc1:')));
+  assert.ok(queued.some(n=>n.feature==='morning'&&n.title===meNow.day.set.text));assert.ok(queued.every(n=>!n.body.includes('enc1:')));
   qaDB.prepare('DELETE FROM push_subs WHERE endpoint=?').run('https://push.invalid/synthetic');
-  console.log('PASS: actual background-worker initialization queues correct askesis countdown and due habits; transport mocked, no notifications sent.');
-  assert.equal(reminders.notificationFor('gratitude',person).title,'Кому и за что я благодарна сегодня?');
+  /* перенос старых восьми: включённые утренние → утро с самым ранним временем, вечерние → вечер с самым поздним, отчёт → неделя */
+  { const legacy=account();await legacy.json('/me');await legacy.json('/profile','POST',{name:'Прежние напоминания',birth:'1990-01-01',city:'Москва',consent:true});
+    const uid=qaDB.prepare('SELECT id FROM users WHERE name=?').get('Прежние напоминания').id;
+    const ins=qaDB.prepare("INSERT INTO reminders(user_id,feature,enabled,time,freq,weekday,tz,next_at) VALUES(?,?,1,?,?,?,'Europe/Moscow','2030-01-01T00:00:00.000Z')");
+    ins.run(uid,'card','09:15','daily',7);ins.run(uid,'lunar','08:40','daily',7);ins.run(uid,'habits','20:00','daily',7);ins.run(uid,'gratitude','21:30','daily',7);ins.run(uid,'moodreport','19:00','weekly',6);
+    assert.equal(reminders.migrateLegacyReminders(),1);
+    const moved=Object.fromEntries((await legacy.json('/reminders')).items.map(r=>[r.feature,r]));
+    assert.equal(moved.morning.time,'08:40');assert.ok(moved.morning.enabled);assert.equal(moved.evening.time,'21:30');assert.ok(moved.evening.enabled);assert.equal(moved.week.weekday,6);assert.equal(moved.week.time,'19:00');
+    assert.equal(qaDB.prepare("SELECT COUNT(*) n FROM reminders WHERE user_id=? AND enabled=1 AND feature NOT IN ('morning','evening','week')").get(uid).n,0,'old rows are switched off');
+    assert.equal(reminders.migrateLegacyReminders(),0,'migration runs once'); }
+  console.log('PASS: three reminders — morning from the настрой and chosen tiles, evening silent after a remembered day, weekly by moments; native 14-day plan; worker queue; legacy migration.');
   await owner.json('/journal','POST',{kind:'gratitude',title:'Кому и за что я благодарна сегодня?',text:'Маме за звонок'});
   const gratitude=(await owner.json('/journal?kind=gratitude')).items[0];
   assert.equal(gratitude.day,day);assert.equal(gratitude.text,'Маме за звонок');
@@ -259,8 +279,6 @@ try {
     const hexOf=(buf)=>{const cmap=text(buf);const map=new Map();for(const mm of cmap.matchAll(/<([0-9a-f]{4})> <([0-9a-f]{4})>/g))map.set(mm[1],String.fromCharCode(parseInt(mm[2],16)));let s='';for(const mm of cmap.matchAll(/<([0-9a-f]+)> Tj/g))s+=mm[1].match(/.{4}/g).map((g)=>map.get(g)||'').join('')+'\n';return s;};
     const mine=hexOf(personalExportPdf(bundle));assert.ok(mine.includes('Тест: прогулка вечером'),'habit title in PDF text');assert.ok(mine.includes('Тест: вечер прошёл спокойно'),'askesis note in PDF text');
     assert.ok(!hexOf(personalExportPdf(await other.json('/data/export'))).includes('Тест: прогулка вечером'),'other account gets its own PDF'); }
-  assert.equal(reminders.notificationFor('gratitude',person),null,'Do not remind after gratitude is recorded');
-  assert.equal(reminders.notificationFor('gratitude',person,Date.parse(day+'T20:59:00Z'),'Asia/Tokyo'),null,'Reminder suppression uses the same day as the diary');
   await owner.json('/journal','POST',{kind:'answer',title:me.day.question,text:'Сегодня я могу дать себе время'});
   assert.ok((await owner.json('/journal')).items.some(i=>i.kind==='answer' && i.title===me.day.question && i.day===day));
   // Home screen status comes from one request; it mirrors the same tables the practice screens read.
@@ -269,30 +287,25 @@ try {
   assert.ok(status.habits.some(h=>h.title==='Тест: прогулка вечером'));assert.ok(Array.isArray(status.askesis.active));
   assert.equal((await other.json('/day-status')).gratitude,false,'Day status must be per account');
   assert.equal((await owner.json('/catalog')).moods.length,32);
-  // Every requested feature exposes a scheduled preference and a feature-specific preview.
-  for (const feature of ['mood','moodreport','habits','askesis','gratitude','lunar','sky']) {
+  // Each of the three reminders has a schedule with its own time zone and a preview.
+  for (const feature of ['morning','evening','week']) {
     const r=(await owner.json('/reminders','POST',{feature,enabled:true,time:'18:25',freq:'weekly',weekday:3,tz:'Asia/Tokyo'})).item;
     assert.equal(r.time,'18:25');assert.equal(r.weekday,3);assert.equal(r.tz,'Asia/Tokyo');
     assert.equal(new Date(r.nextAt).toLocaleString('sv-SE',{timeZone:r.tz}).slice(11,16),'18:25');
     const preview=(await owner.json('/reminders/preview?feature='+feature)).item;
-    assert.ok(preview.title);assert.ok(preview.body);assert.equal(preview.url,'/app/?open='+feature);
+    assert.ok(preview.title);assert.ok(preview.body);assert.equal(preview.url,reminders.FEATURES[feature].url);
   }
   assert.equal((await owner.raw('/reminders/preview?feature=invalid')).status,400);
-  for(const feature of ['lunar','sky']) {
-    const planned=await owner.json('/reminders/sky-plan?feature='+feature);
-    assert.equal(planned.items.length,7);
-    assert.ok(planned.items.every(n=>new Date(n.date+'T12:00:00Z').getUTCDay()===3 && n.body && n.url.endsWith(feature)));
-  }
   const endpoint='https://push.invalid/current', otherEndpoint='https://push.invalid/other-device';
   for(const ep of [endpoint,otherEndpoint])qaDB.prepare('INSERT INTO push_subs(endpoint,user_id,created_at) VALUES(?,?,?)').run(ep,person.id,new Date().toISOString());
   let sentTo=[];
-  assert.equal((await reminders.sendNow(person,'moodreport',{},endpoint,async sub=>{sentTo.push(sub.endpoint);return true;})).ok,true);
+  assert.equal((await reminders.sendNow(person,'week',{},endpoint,async sub=>{sentTo.push(sub.endpoint);return true;})).ok,true);
   assert.deepEqual(sentTo,[endpoint]);
-  assert.ok(reminders.pendingFor(person.id,endpoint).some(n=>n.feature==='moodreport'));
-  assert.ok(!reminders.pendingFor(person.id,otherEndpoint).some(n=>n.feature==='moodreport'));
-  assert.equal((await reminders.sendNow(person,'mood',{},'https://push.invalid/unknown',async()=>{throw Error('Must not send');})).error,'no_push');
+  assert.ok(reminders.pendingFor(person.id,endpoint).some(n=>n.feature==='week'));
+  assert.ok(!reminders.pendingFor(person.id,otherEndpoint).some(n=>n.feature==='week'));
+  assert.equal((await reminders.sendNow(person,'evening',{},'https://push.invalid/unknown',async()=>{throw Error('Must not send');})).error,'no_push');
   qaDB.prepare('DELETE FROM push_subs WHERE user_id=?').run(person.id);
-  console.log('PASS: all seven feature schedules, timezone, native lunar/sky plans, feature previews, device-specific test delivery and queue isolation.');
+  console.log('PASS: three reminder schedules, timezone, previews, device-specific test delivery and queue isolation.');
   // ── Одна версия оболочки: index.html, импорты sky.js и SHELL в sw.js должны совпадать ──
   assert.equal(versionMismatch(), null, 'Shell version must be the same in index.html, sky.js and sw.js');
 
@@ -310,7 +323,7 @@ try {
     const a = (await acc.json('/askesis', 'POST', { title: 'Аскеза', until })).active[0]; await acc.json('/askesis', 'PATCH', { id: a.id, note: 'Наблюдение' });
     await acc.json('/ask', 'POST', { question: 'Стоит ли мне менять работу этой осенью?', kind: 'yesno' });
     const t = await acc.json('/support/tickets', 'POST', { topic: 'Прочее', text: 'Личный вопрос в поддержку' }); await acc.json('/support/ticket?id=' + t.id, 'POST', { text: 'Ещё сообщение' });
-    await acc.json('/reminders', 'POST', { feature: 'card', enabled: true, tz: 'Europe/Moscow' });
+    await acc.json('/reminders', 'POST', { feature: 'morning', enabled: true, tz: 'Europe/Moscow' });
     await acc.json('/push', 'POST', { endpoint: 'https://push.example.com/box/' + name });
     await acc.json('/shelves');
     return (await acc.json('/me')).user.id;

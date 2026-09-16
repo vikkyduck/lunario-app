@@ -38,7 +38,7 @@ import { natalChart } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
-import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, askesisNativePlan, skyNativePlan, previewNotification } from './reminders.mjs';
+import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, nativePlan, previewNotification } from './reminders.mjs';
 import { CLIENT_EVENTS } from './events.mjs';
 import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs';
 import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
@@ -50,6 +50,7 @@ import { AppError, publicError, saveJournalOperation, sweepReceipts } from './sy
 import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } from './transfer.mjs';
 import { createPracticeRoutes } from './http/practice-routes.mjs';
 import { createDay } from './day.mjs';
+import { createMorning, hash32, parseData, drawDistinct } from './morning.mjs';
 import { createDayRoutes } from './http/day-routes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -96,7 +97,7 @@ function sendDataUrl(res, dataUrl) {
 }
 
 const {habitList, askesisList} = createPractices(db, open_);
-initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
+initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d), morningPack: (u, d) => Morning.pack(u, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
 initCabinet(db);   /* таблицы кабинетов; колонки users ведёт schema.mjs */
 initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
@@ -155,7 +156,6 @@ function ageBand(birth) {
 
 /* Страница сводки: цифры словами, чтобы не читать выгрузку данных. */
 
-function hash32(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 /* Ответ JSON. Возвращает true — «запрос обработан»: по этому признаку маршрутные модули
    (backend/http/*) говорят серверу, что дальше искать не нужно. */
 const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); return true; };
@@ -243,56 +243,15 @@ const moonOf = (day) => moonState(Date.parse(day + 'T12:00:00Z'));
 /* ── карты и руны: что уходит на экран (тексты экран берёт из каталога по коду) ── */
 const cardPublic = (a) => ({ slug: a.slug, name: a.name, keys: a.keys, question: a.question, today: a.today, image: a.image });
 const runePublic = (r) => ({ slug: r.slug, name: r.name, keyword: r.keyword, motto: r.motto, answer: r.answer, path: r.path, image: r.image });
-/* Случайные и без повторов внутри одного расклада — как из настоящей колоды или мешочка. */
-function drawDistinct(list, n) {
-  const idx = [...Array(list.length).keys()];
-  for (let i = idx.length - 1; i > 0; i--) { const j = randomInt(i + 1); [idx[i], idx[j]] = [idx[j], idx[i]]; }
-  return idx.slice(0, Math.min(n, idx.length)).map((i) => list[i]);
-}
-const parseData = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
 /* Карта дня тянется один раз в день и живёт в истории; до открытия её нет. */
-function cardOfDay(u, day) {
-  const row = db.prepare("SELECT data FROM entries WHERE user_id=? AND day=? AND kind='card' ORDER BY id DESC LIMIT 1").get(u.id, day);
-  const slug = (parseData(row && row.data) || {}).card;
-  const a = slug ? C.ARCANA.find((c) => c.slug === slug) : null;
-  return a ? cardPublic(a) : null;
-}
+const Morning = createMorning({ db, C, track, nowISO, today });
+const cardOfDay = (u, day) => { const a = Morning.cardOfDay(u, day); return a ? cardPublic(a) : null; };
 
 /* Тема дня → настрой и вопрос дня. Тему задаёт тон дня (пока человек не собрал утро из карты, руны и планет — тогда
    первый выбранный источник). Настрой к теме выпадает без повторов в течение года; тема исчерпана — по второму кругу.
    Выпавшая пара запоминается в daily_sets, поэтому в течение дня не меняется. */
 initDailySets(db);
-const toneOfDay = (u, day) => C.DAY_TONES[hash32(`${u.id}:${day}:tone`) % C.DAY_TONES.length];
-const runeOfDay = (u, day) => { const row = db.prepare("SELECT data FROM entries WHERE user_id=? AND day=? AND kind='dayrune' ORDER BY id DESC LIMIT 1").get(u.id, day); const slug = (parseData(row && row.data) || {}).rune; return slug ? [...C.RUNES].find((r) => r.slug === slug) || null : null; };
-/* Утро: выбранные карта и руна тянутся сами при первом открытии дня — чтобы тема дня была известна с утра, а не после клика */
-function drawMorning(u, day) {
-  if (day !== today()) return;
-  const chosen = morningOf(preferences(u.preferences));
-  if (chosen.includes('card') && !cardOfDay(u, day)) {
-    const a = drawDistinct([...C.ARCANA], 1)[0];
-    db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)').run(u.id, nowISO(), day, 'card', '', a.name, a.keys, JSON.stringify({ card: a.slug }));
-    track(u, 'card_open', a.slug);
-  }
-  if (chosen.includes('dayrune') && !runeOfDay(u, day)) {
-    const r = drawDistinct([...C.RUNES], 1)[0];
-    db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)').run(u.id, nowISO(), day, 'dayrune', '', r.name, r.answer, JSON.stringify({ rune: r.slug, layout: 'one', runes: [r.slug] }));
-    track(u, 'dayrune_open', r.slug);
-  }
-}
-/* Тема дня — по первому выбранному источнику: карта → руна → прогноз (тон дня); без выбора — тон дня */
-function themeOfDay(u, day) {
-  const chosen = morningOf(preferences(u.preferences));
-  let key = null;
-  if (chosen.includes('card')) { const c = cardOfDay(u, day); if (c) key = C.themeOf('карта', c.slug); }
-  if (!key && chosen.includes('dayrune')) { const r = runeOfDay(u, day); if (r) key = C.themeOf('руна', r.slug); }
-  if (!key) key = C.themeOf('тон', toneOfDay(u, day)[0]) || [...C.THEMES][0]?.key || null;
-  return [...C.THEMES].find((t) => t.key === key) || null;
-}
-function setOfDay(u, day) {
-  const theme = themeOfDay(u, day), all = [...C.NASTROY];
-  const pool = (theme ? all.filter((n) => n[0] === theme.key) : all).map((n, i) => [i + 1, n[1], n[2]]);
-  return (pool.length && (dailySet(db, u, day, pool) || dailySet(db, u, day, pool, { allowRepeat: true }))) || (all.length ? dailySet(db, u, day, all.map((n, i) => [i + 1, n[1], n[2]]), { allowRepeat: true }) : null);
-}
+const { toneOfDay, runeOfDay, drawMorning, setOfDay, themeFor } = Morning;
 
 /* ── персональный день ── */
 function dayPack(u, day) {
@@ -301,8 +260,7 @@ function dayPack(u, day) {
   const set = setOfDay(u, day);
   const sign = u.birth ? signOf(u.birth) : null;
   /* тема дня — та, к которой подобран уже выпавший настрой; сегодня она не меняется, даже если днём выбрать другой источник */
-  const tone = toneOfDay(u, day), moon = moonOf(day), byText = set ? [...C.NASTROY].find((n) => n[1] === set.text) : null;
-  const theme = (byText && [...C.THEMES].find((t) => t.key === byText[0])) || themeOfDay(u, day);
+  const tone = toneOfDay(u, day), moon = moonOf(day), theme = themeFor(u, day, set);
   return {
     date: day,
     moon: moon.name,
@@ -505,7 +463,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=600' });
       return res.end(JSON.stringify({ cards: [...C.ARCANA], runes: [...C.RUNES], layouts: C.LAYOUTS, lunarDays: [...C.LUNAR_DAYS], askesisIdeas: [...C.ASKESIS_IDEAS], habitIdeas: [...C.HABIT_IDEAS], tools: [...C.TOOLS],
         news: [...C.NEWS], quickMoods: C.QUICK_MOODS, moods: [...C.MOODS], moodFamilies: { ...C.MOOD_FAMILIES }, legacyMoods: C.LEGACY_MOODS,
-        reminderTexts: Object.fromEntries(['card', 'mood', 'moodreport', 'habits', 'askesis', 'gratitude', 'lunar', 'sky'].map((k) => [k, C.REMINDER_TEXTS[k]])) }));
+        reminderTexts: Object.fromEntries(['morning-пусто', 'evening', 'week'].map((k) => [k, C.REMINDER_TEXTS[k]])) }));
     }
 
     /* Лунные дни целиком: 30 статей с картинками и общие главы справочника. Личного нет, кэш как у каталога;
@@ -987,9 +945,9 @@ const server = createServer(async (req, res) => {
         const item = previewNotification(u, url.searchParams.get('feature'));
         return json(res, item ? 200 : 400, item ? { item } : { error: 'bad_feature' });
       }
-      if (p === '/api/reminders/sky-plan' && req.method === 'GET')
-        return json(res, 200, skyNativePlan(u, url.searchParams.get('feature')));
-      if (p === '/api/reminders/askesis-plan' && req.method === 'GET') return json(res, 200, askesisNativePlan(u.id));
+      /* план локальных уведомлений телефона на 14 дней: ?feature=morning|evening|week (старые адреса — на тот же план) */
+      if ((p === '/api/reminders/native-plan' || p === '/api/reminders/sky-plan' || p === '/api/reminders/askesis-plan') && req.method === 'GET')
+        return json(res, 200, nativePlan(u, REMINDER_FEATURES[url.searchParams.get('feature')] ? url.searchParams.get('feature') : 'morning'));
       if (p === '/api/reminders' && req.method === 'GET')
         return json(res, 200, { items: listReminders(u.id), push: { on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id = ?').get(u.id), key: PUSH.publicKey } });
       if (p === '/api/reminders' && req.method === 'POST') {

@@ -26,7 +26,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=59"></script>
+<script src="/app/boot.js?v=60"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -434,7 +434,6 @@ body.inner .app-nav{display:grid}
 .rem-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.rem-actions .btn{min-height:44px}
 .rem .sw{min-height:28px;background-clip:padding-box;border-top:9px solid transparent;border-bottom:9px solid transparent;box-sizing:content-box}.rem .sw i{top:3px}
 .rem .rem-lbl small{color:var(--muted)}.rem-body input{max-width:100%}
-#push-invite{margin:var(--s4) 0}
 .rem-lbl{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit}
 .rem-lbl b{display:block;font-size:15px;font-weight:650}.rem-lbl small{display:block;color:var(--faint);font-size:13px;margin-top:2px;line-height:1.35}
 .rem-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);animation:in var(--t) var(--sp)}
@@ -567,8 +566,6 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 .daily-statement{margin:26px 0 8px;max-width:820px}
 .daily-statement #h-wish{font-size:clamp(21px,3vw,28px);line-height:1.45;letter-spacing:-.015em;color:var(--text);margin-top:10px;text-wrap:pretty}
 .daily-statement .text-action{margin-top:4px}
-.push-invite-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0}
-.push-invite-row .ico{width:18px;height:18px}
 .wg-bg{background:rgba(6,5,13,.78)}
 .wg{background:var(--sheet);scroll-padding-top:94px}
 .wg-head{position:sticky;top:calc(-16px - env(safe-area-inset-top));z-index:8;background:var(--sheet);padding:16px 0 12px;border-bottom:1px solid var(--line);align-items:center}
@@ -672,9 +669,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=59">
-<link rel="stylesheet" href="/app/experience.css?v=59">
-<link rel="stylesheet" href="/app/moon-glass.css?v=59">
+<link rel="stylesheet" href="/app/theme.css?v=60">
+<link rel="stylesheet" href="/app/experience.css?v=60">
+<link rel="stylesheet" href="/app/moon-glass.css?v=60">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -722,6 +719,20 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   </section>
 
   <!-- АНКЕТА: почта — последний пункт, после кода открывается главная -->
+  <!-- ТРИ НАПОМИНАНИЯ: первое, что человек настраивает после анкеты; то же — в Аккаунт → Уведомления -->
+  <section class="view" id="v-rhythm">
+    <div class="onb-head">
+      <h1 class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></h1>
+      <p>Лунарио напоминает о себе три раза. Время можно поменять сейчас или потом в Аккаунте.</p>
+    </div>
+    <div class="card sec rhythm-card">
+      <label class="rhythm-row"><input type="checkbox" id="rh-morning" checked><span class="grow"><b>Утро</b><small>настрой дня и то, что вы выберете на «Сегодня»</small></span><input type="time" id="rh-time-morning" value="09:00" aria-label="Время утреннего напоминания"></label>
+      <label class="rhythm-row"><input type="checkbox" id="rh-evening" checked><span class="grow"><b>Вечер</b><small>запомнить этот день — молчит, если день уже записан</small></span><input type="time" id="rh-time-evening" value="21:00" aria-label="Время вечернего напоминания"></label>
+      <label class="rhythm-row"><input type="checkbox" id="rh-week" checked><span class="grow"><b>Неделя</b><small>по воскресеньям — моя неделя: про что она</small></span><input type="time" id="rh-time-week" value="13:00" aria-label="Время воскресного напоминания"></label>
+      <button data-on="click:rhythmEnable" class="btn" id="rh-go" type="button">Включить</button>
+      <div class="utility-actions"><button data-on="click:rhythmSkip" class="text-action secondary" type="button">Пропустить — включу потом</button></div>
+    </div>
+  </section>
   <section class="view" id="v-onb">
     <button data-on="click:go-hello" class="back">← Назад</button>
     <div class="onb-head">
@@ -769,7 +780,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <section class="card morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint">Выберите, что показывать первым. Можно всё</p><div class="chips flow" id="morning-chips"></div></section>
     <section class="feature-group" id="home-sky" data-feature="around"><h2>Ваше утро</h2><div class="wids compact-links" id="morning-feed"></div></section>
     <section class="feature-group" id="morning-rest"><h2>Всё про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid" data-feature="card" type="button" aria-label="Карта дня"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" type="button" aria-label="Руна дня"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" type="button" aria-label="Влияние планет на сегодня"><i class="ico star"></i><b>Влияние планет на сегодня</b><span>Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" type="button" aria-label="Прогноз дня"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" type="button" aria-label="Влияние Луны на сегодня"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" type="button" aria-label="Вопрос дня"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос от Лунарио по теме дня — ответ вечером в дневнике</span></button></div></section>
-    <div id="push-invite" hidden></div>
   </section>
   <section class="view" id="v-ask"><h1>Свериться с собой</h1><p class="section-caption">Карты, руны, вопросы</p>
     <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button" aria-label="Разобрать вопрос"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения и отношение к себе</span></button></div><section class="feature-group"><h2>Выбрать способ</h2><div class="wids method-grid">
@@ -817,7 +827,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <button data-on="click:wipe-data" class="rowbtn" type="button"><i class="ico list"></i>Очистить историю</button>
       <button data-on="click:wipe-account" class="rowbtn warn" type="button"><i class="ico exit"></i>Удалить аккаунт</button></div></section>
     </div><div class="account-col account-settings">
-    <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids compact-links"><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Включить, выбрать время и регулярность</span></button><button data-on="click:openWidget-mail" class="wid" data-feature="mail" type="button" aria-label="Вход по почте"><i class="ico mail"></i><b>Вход по почте</b><span id="ac-mail-sub">Сохранённые записи доступны на других устройствах</span></button><button data-on="click:go-news" class="wid" type="button" aria-label="Новое в приложении" data-feature="news"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
+    <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids compact-links"><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Утро, вечер и неделя — время своё</span></button><button data-on="click:openWidget-mail" class="wid" data-feature="mail" type="button" aria-label="Вход по почте"><i class="ico mail"></i><b>Вход по почте</b><span id="ac-mail-sub">Сохранённые записи доступны на других устройствах</span></button><button data-on="click:go-news" class="wid" type="button" aria-label="Новое в приложении" data-feature="news"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
       <button data-on="click:openWidget-skyplace" class="wid sky-location-control" type="button"><i class="ico orbit"></i><b>Геолокация</b><span data-sky-place>Москва · место не определено</span></button>
       <button data-on="click:openWidget-appearance" class="wid" type="button"><i class="ico moon"></i><b>Оформление</b><span>Светлая и тёмная темы</span></button>
       <button data-on="click:openWidget-topics" class="wid" data-feature="topics" type="button"><i class="ico list"></i><b>Настройка контента</b><span>Какие сферы жизни подсвечивать в сообщениях</span></button>
@@ -841,7 +851,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <div class="wpane" id="w-appearance"><div id="appearance-box"></div></div>
   <div class="wpane" id="w-topics"><div id="topics-box"></div></div>
   <div class="wpane" id="w-skyplace"><div id="skyplace-box"></div></div>
-  <div class="wpane" id="w-practiceSettings"><div id="practice-settings-box"></div></div>
   <div class="wpane" id="w-askDate"><div class="field"><label for="ask-date">До какого дня</label><input id="ask-date" type="date" aria-describedby="ask-date-msg"></div><button data-on="click:saveAskDate" class="btn" id="ask-date-save" type="button">Сохранить дату</button><p class="msg" id="ask-date-msg" role="status"></p></div>
   <div class="wpane" id="w-timelineEntry"><div id="timeline-entry-box"></div></div>
   <div class="wpane" id="w-dayrune"><div id="dayrune-box"><p class="hint">Тянем руну…</p></div></div>
@@ -941,13 +950,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=59"></script>
+<script src="/app/moon-logo.js?v=60"></script>
 
-<script type="module" src="/app/sky.js?v=59"></script>
+<script type="module" src="/app/sky.js?v=60"></script>
 
-<script src="/app/experience.js?v=59"></script>
-<script src="/app/app.js?v=59"></script>
-<script src="/app/handlers.js?v=59"></script>
-<script src="/app/on.js?v=59"></script>
+<script src="/app/experience.js?v=60"></script>
+<script src="/app/app.js?v=60"></script>
+<script src="/app/handlers.js?v=60"></script>
+<script src="/app/on.js?v=60"></script>
 </body>
 </html>

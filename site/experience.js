@@ -19,8 +19,7 @@ function openPractice(key,fromHistory=false){
   document.querySelectorAll('.view').forEach(el=>el.classList.toggle('on',el.id==='v-practice'));
   document.body.classList.add('inner','practice-open');
   $('practice-title').textContent=FEATURES[key].title;$('practice-body').appendChild($('w-'+key));
-  const feature=FEATURES[key].reminder;$('practice-tools').innerHTML=feature?`<button data-on="click:openPracticeSettings-a0" data-a0="${feature}" class="text-action rem-summary" type="button">Уведомления →</button>`:'';
-  if(feature)refreshPracticeReminder();
+  $('practice-tools').replaceChildren();   /* напоминаний по функциям нет — три пуша живут в Аккаунте */
   window.refreshMoonLogos?.();loadWidgetContent(key);restoreScroll('practice:'+key);$('practice-back').focus({preventScroll:true});
 }
 function practiceBack(){if(!XP.page)return;if(history.state?.lunPractice)history.back();else{const v=XP.returnView;go(v);XP.returnFocus?.focus({preventScroll:true});}}
@@ -28,11 +27,6 @@ window.addEventListener('popstate',e=>{
   if(e.state?.lunPractice){XP.returnView=e.state.lunView||'home';openPractice(e.state.lunPractice,true);return;}
   if(XP.page){const v=e.state?.lunView||XP.returnView;go(v);XP.returnFocus?.focus({preventScroll:true});}
 });
-function openPracticeSettings(feature){openWidget('practiceSettings');$('practice-settings-box').innerHTML=remBox(feature);remEditing[feature]=true;paintRem(feature);}
-function refreshPracticeReminder(){
-  const key=XP.page,feature=FEATURES[key]?.reminder;if(!feature)return;
-  loadReminders().then(()=>{if(XP.page!==key)return;const tools=$('practice-tools');tools.innerHTML=remBox(feature);paintRem(feature);const button=tools.querySelector('.rem-summary');if(button){button.setAttribute('data-on','click:openPracticeSettings-a0');button.dataset.a0=feature;   /* не onclick: под CSP атрибут-обработчик заблокируют */button.removeAttribute('aria-controls');button.setAttribute('aria-haspopup','dialog');button.removeAttribute('aria-expanded');button.lastElementChild.textContent='→';tools.replaceChildren(button);}}).catch(()=>{});
-}
 
 function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.theme);applyTools();paintMorning();}
 function applyTheme(mode){
