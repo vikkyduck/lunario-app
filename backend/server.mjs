@@ -868,9 +868,11 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const endpoint = clean(b.endpoint, 500);
         if (!pushEndpointOk(endpoint)) return json(res, 400, { ok: false, error: 'bad_endpoint' });
-        const fresh = !db.prepare('SELECT 1 FROM push_subs WHERE endpoint = ?').get(endpoint);
-        db.prepare('INSERT INTO push_subs (endpoint, user_id, created_at) VALUES (?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id')
-          .run(endpoint, u.id, nowISO());
+        const holder = db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(endpoint);
+        /* ячейка уже у другого аккаунта — не перехватываем: при выходе она удаляется, и новый вход на том же устройстве заведёт свою */
+        if (holder && holder.user_id !== u.id) return json(res, 409, { ok: false, error: 'endpoint_taken' });
+        const fresh = !holder;
+        db.prepare('INSERT INTO push_subs (endpoint, user_id, created_at) VALUES (?,?,?) ON CONFLICT(endpoint) DO NOTHING').run(endpoint, u.id, nowISO());
         /* устройств у аккаунта — не больше PUSH_DEVICES: лишние (самые старые) ячейки уходят, чтобы сервер не рассылал в тысячи адресов с одного аккаунта */
         db.prepare(`DELETE FROM push_subs WHERE user_id = ? AND endpoint NOT IN (SELECT endpoint FROM push_subs WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ${PUSH_DEVICES})`).run(u.id, u.id);
         if (fresh) track(u, 'push_on', '');
