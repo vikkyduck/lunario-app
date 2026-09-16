@@ -84,7 +84,7 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 .theme-option[aria-pressed=true]{outline:2px solid var(--gold);outline-offset:2px}
 html[data-theme=light] body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:rgba(245,242,234,.28);color:var(--text);border-color:var(--line);box-shadow:0 4px 20px #2820400c,inset 0 1px 0 #fff}
 html[data-theme=light] body.inner :is(.orb,.cloud){opacity:.035}
-html[data-theme=light] body.inner :is(.wid,.card,.item,.wpane,.profile-summary,.profile-detail,.timeline) :is(p,span,small,label){color:var(--text)}
+html[data-theme=light] body.inner :is(.wid,.card,.item,.wpane,.profile-summary,.timeline) :is(p,span,small,label){color:var(--text)}
 html[data-theme=light] body.inner :is(.hint,.section-caption,.geo,.wid>span,.wpane small,.timeline-kind,.timeline-day,.rem-status,.rem-summary){color:var(--muted)!important}
 html[data-theme=light] body.inner .btn:not(.ghost){background:var(--moon-control);color:#f5f2ea}
 html[data-theme=light] body.inner .btn.ghost{background:transparent;color:var(--text);border-color:rgba(42,33,80,.40)}
@@ -199,8 +199,6 @@ body.inner .wish-create-actions{gap:12px}
 body.inner .profile-summary{margin-top:0;padding:24px;border-radius:var(--radius-panel);max-width:none}
 body.inner .profile-summary h2{font-size:24px;letter-spacing:-.025em}
 body.inner #profile-summary{font-size:15px;line-height:1.6;color:var(--muted)}
-body.inner .profile-detail>summary{font-size:15px;line-height:1.5}
-body.inner .profile-detail p{font-size:15px;line-height:1.6}
 body.inner .avatar{background:var(--accent-soft);color:var(--gold-2);border:0;box-shadow:none}
 body.inner .account-group .compact-links{grid-template-columns:1fr}
 body.inner .danger-zone{gap:0;border-top:1px solid var(--line);padding-top:20px}

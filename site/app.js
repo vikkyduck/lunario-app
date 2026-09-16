@@ -697,15 +697,8 @@ function loadAbout(){
 function loadAccount(){
   const u=S.user; paintAvatar();
   $('ac-name').textContent=u.name||'Мой профиль';
-  $('m-sign').textContent=[u.sign,u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   $('ac-mail-sub').textContent=u.email||'Сохранённые записи доступны на других устройствах';   /* почта, по которой вошли, — прямо в ряду «Вход по почте» */
-  const geoLine=$('m-geo');
-  if(u.lat!=null){
-    const off=u.tzOffset!=null?(u.tzOffset>=0?'+':'−')+Math.abs(Math.round(u.tzOffset/60)):'—';
-    geoLine.innerHTML=`Координаты для натальной карты: <b>${u.lat.toFixed(4)}, ${u.lon.toFixed(4)}</b> · ${u.tz} · на дату рождения UTC${off}`
-      +(u.natalReady?'':'<br>Добавьте время рождения — без него карта строится приблизительно.');
-  } else geoLine.textContent='Город не распознан — координаты не сохранены. Впишите город из подсказки, чтобы построить натальную карту.';
 }
 function loadJournal(){
   api('/journal').then(r=>{

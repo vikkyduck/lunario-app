@@ -199,7 +199,7 @@ body{font-size:18px;font-weight:500}
 body.inner :is(.feature-group,.account-group)>h2{font-size:21px;color:var(--text)}
 body.inner :is(.wid,.compact-links .wid) b{font-size:20px;font-weight:600;line-height:1.45;letter-spacing:-.01em}
 body.inner .wid>span:not(.dot):not(.destination-arrow){font-size:17px;font-weight:500;color:var(--text);line-height:1.6}
-body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.field label,.hb-rule,.rem-lbl small,.profile-detail>summary,#profile-summary){font-size:17px;font-weight:500;color:var(--muted);line-height:1.65}
+body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.field label,.hb-rule,.rem-lbl small,#profile-summary){font-size:17px;font-weight:500;color:var(--muted);line-height:1.65}
 body.inner :is(.field label,.text-action,.back,.rem-summary,.segmented button,.emotion-family,.mchip,.chip,.observation>summary,.practice-create>summary){font-size:17px;font-weight:600;color:var(--text)}
 body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.ln-text,.histbody p,textarea){font-weight:500}
 body.inner .wpane :is(.hint,.msg){font-size:17px!important}
@@ -348,7 +348,7 @@ body.inner .habit-calendar-key{font-size:15px!important;color:var(--muted);margi
 #v-account .account-col{display:contents}
 #ag-profile{order:1}#ag-app{order:2}#ag-help{order:3}#ag-manage{order:4}
 /* профиль */
-body.inner #v-account .profile-summary{padding:20px 20px 6px}
+body.inner #v-account .profile-summary{padding:20px}
 #v-account .profile-head{display:flex;align-items:center;gap:16px}
 body.inner #v-account .avatar{width:64px;height:64px;flex:0 0 64px;font-size:26px;font-weight:600}
 #v-account .profile-id{min-width:0;flex:1}
@@ -358,15 +358,8 @@ body.inner #v-account #profile-summary{margin:4px 0 0;font-size:15px;line-height
 #ac-photo-actions{display:contents}
 body.inner #v-account .profile-actions .text-action{min-height:40px;padding:6px 0;font-size:16px;font-weight:600;color:var(--gold-2)}
 body.inner #v-account .profile-actions .text-action.secondary{font-weight:500;color:var(--muted)}
-#v-account .profile-note{margin:-2px 0 4px;font-size:14px;line-height:1.5;color:var(--faint)}
+#v-account .profile-note{margin:-2px 0 0;font-size:14px;line-height:1.5;color:var(--faint)}
 #v-account .profile-note[hidden]{display:none}
-body.inner #v-account .profile-detail{margin-top:6px;border-top:1px solid var(--line)}
-body.inner #v-account .profile-detail>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:10px 0;font-size:15px;font-weight:500;list-style:none}
-body.inner #v-account .profile-detail>summary::-webkit-details-marker{display:none}
-body.inner #v-account .profile-detail>summary::after{content:'›';flex:0 0 auto;font-size:20px;line-height:1;color:var(--gold-2);opacity:.75;transition:transform var(--t) var(--sp)}
-body.inner #v-account .profile-detail[open]>summary::after{transform:rotate(90deg)}
-body.inner #v-account .profile-detail p{margin:0 0 12px;font-size:14px;line-height:1.55}
-body.inner #v-account .profile-detail[open]>p{animation:in var(--t) var(--sp) both}
 /* группы */
 body.inner #v-account .account-group{margin-top:0}
 body.inner #v-account .account-group>h2{margin:0 0 10px 2px;font-size:18px;line-height:1.3}
@@ -403,4 +396,3 @@ body.inner #v-account .danger-zone{padding-top:0;border-top:0}
   body.inner #v-account .account-col>.account-group:last-child>:is(.compact-links,.rows){flex:1;grid-auto-rows:minmax(64px,1fr)}
   #v-account .profile-block>h2{display:block}
 }
-@media(prefers-reduced-motion:reduce){body.inner #v-account .profile-detail>summary::after{transition:none}body.inner #v-account .profile-detail[open]>p{animation:none}}

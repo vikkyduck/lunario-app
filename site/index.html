@@ -26,7 +26,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=50"></script>
+<script src="/app/boot.js?v=51"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -667,9 +667,7 @@ body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer
 .lunar-arrow{flex:0 0 auto;color:var(--gold-2);font-size:20px}
 #home-sky .moonline::after{display:none}
 .profile-summary{margin-top:20px}.profile-summary h2{font-size:22px;margin-bottom:16px}.profile-summary>p{margin-top:14px;font-size:14px}
-.profile-detail{margin-top:12px;border-top:1px solid var(--line)}
-:is(.profile-detail,.lunar-period,.lunar-library)>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:14px;color:var(--muted)}
-.profile-detail p{font-size:13px;margin:8px 0}
+:is(.lunar-period,.lunar-library)>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:14px;color:var(--muted)}
 .upcoming{margin-top:20px}
 .danger-zone{margin-top:44px}.danger-zone .warn{margin-top:20px}
 .question-entry{grid-template-columns:1fr}.question-entry .wid{min-height:100px}
@@ -693,9 +691,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=50">
-<link rel="stylesheet" href="/app/experience.css?v=50">
-<link rel="stylesheet" href="/app/moon-glass.css?v=50">
+<link rel="stylesheet" href="/app/theme.css?v=51">
+<link rel="stylesheet" href="/app/experience.css?v=51">
+<link rel="stylesheet" href="/app/moon-glass.css?v=51">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -832,7 +830,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <div class="profile-head"><div id="ac-photo"></div><div class="profile-id"><h2 id="ac-name"></h2><p id="profile-summary"></p></div></div>
       <div class="profile-actions"><button data-on="click:openWidget-edit" class="text-action" data-feature="edit" type="button">Изменить мои данные</button><span id="ac-photo-actions"></span></div>
       <p class="profile-note" id="ac-photo-note">Фото появится в кружке справа вверху</p>
-      <details class="profile-detail"><summary>Данные для расчётов</summary><p id="m-sign"></p><p class="geo" id="m-geo"></p></details>
     </section></section>
     <section class="account-group danger-zone" id="ag-manage"><h2>Управление аккаунтом</h2><div class="rows">
       <button data-on="click:logout" class="rowbtn" type="button"><i class="ico exit"></i>Выйти на этом устройстве</button>
@@ -965,13 +962,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 </div>
 <div data-on="click:if-event-target-this-this-classList-remove-on" class="award-bg" id="award"><div id="award-box"></div></div>
 
-<script src="/app/moon-logo.js?v=50"></script>
+<script src="/app/moon-logo.js?v=51"></script>
 
-<script type="module" src="/app/sky.js?v=50"></script>
+<script type="module" src="/app/sky.js?v=51"></script>
 
-<script src="/app/experience.js?v=50"></script>
-<script src="/app/app.js?v=50"></script>
-<script src="/app/handlers.js?v=50"></script>
-<script src="/app/on.js?v=50"></script>
+<script src="/app/experience.js?v=51"></script>
+<script src="/app/app.js?v=51"></script>
+<script src="/app/handlers.js?v=51"></script>
+<script src="/app/on.js?v=51"></script>
 </body>
 </html>
