@@ -294,7 +294,7 @@ function scatterFreq(today) {
 const SECTION_OF = Object.fromEntries(FEATURES.map((f) => [f[0], f[1]]));
 function sectionReach(from, to) {
   const rows = all(`SELECT type, user_id FROM events WHERE type IN (${inList(FUNC)}) AND day BETWEEN ? AND ? GROUP BY type, user_id`, from, to);
-  const m = { 'Мой день': new Set(), 'Свериться': new Set(), 'Обо мне': new Set(), 'Что вокруг': new Set(), 'История': new Set() };
+  const m = Object.fromEntries([...new Set(FEATURES.map((f) => f[1]))].map((s) => [s, new Set()]));
   for (const r of rows) { const sct = SECTION_OF[r.type]; if (m[sct]) m[sct].add(r.user_id); }
   return Object.entries(m).map(([k, v]) => [k, v.size]);
 }

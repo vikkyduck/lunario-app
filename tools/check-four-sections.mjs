@@ -9,21 +9,28 @@ export async function checkFourSections({browser,base,owner}){
   const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
   try{
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
-    assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.trim()),['Сегодня','Свериться','Дневник','Я']);
-    assert.equal(await page.locator('#v-home .sqs,#v-home .mini,#v-today,#v-about,#v-around').count(),0,'No obsolete menu or orphan category');
+    assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.trim()),['Сегодня','Свериться с собой','Дневник','Обо мне']);
+    assert.equal(await page.locator('#v-home .sqs,#v-home .mini,#v-today,#v-around').count(),0,'No obsolete menu or orphan category');
+    // «Аккаунт» — не вкладка: открывается по кружку с фото на главной, ни одна вкладка не подсвечена, назад — на «Сегодня»
+    await page.locator('#h-acct').click();await page.locator('#v-account.on').waitFor();assert.equal(await page.locator('.app-nav [aria-current=page]').count(),0);
+    assert.equal(await page.locator('#v-account [data-feature=natal],#v-account [data-feature=year]').count(),0,'Readings live in «Обо мне», not in the account');
+    await page.locator('#v-account > .back').click();await page.locator('#v-home.on').waitFor();
+    // кружок с фото виден на каждой из четырёх вкладок и с любой из них открывает «Аккаунт»
+    for(const view of ['ask','history','about']){await page.locator(`.app-nav [data-nav=${view}]`).click();await page.locator('#v-'+view+'.on').waitFor();assert.ok(await page.locator('.section-acct').isVisible(),view+' shows the account circle');}
+    await page.locator('.section-acct').click();await page.locator('#v-account.on').waitFor();assert.ok(await page.locator('.section-acct').isHidden(),'No circle on the account screen itself');await page.locator('#v-account > .back').click();await page.locator('#v-home.on').waitFor();
     const initialDay=(await owner.json('/me')).day;
     await page.locator('#h-set-question').click();
     assert.equal(await page.locator('#tone-box .practice-question').innerText(),initialDay.question);
     assert.equal(await page.locator('#tone-box > .hint').innerText(),initialDay.set.statement);
     await close();assert.equal(await page.evaluate(()=>document.activeElement.id),'h-set-question');
-    const routes={home:['card','day','tone','mood','habits','askesis','lunar','sky'],ask:['worry'],history:['journal','gratitude','wishes','hmood','hentries','week'],account:['natal','year','birthnum','compat','mail','remind','shelves','support','edit','invite']};
+    const routes={home:['card','day','tone','mood','habits','askesis','lunar','sky'],ask:['worry'],history:['journal','gratitude','wishes','hmood','hentries','week'],about:['natal','year','birthnum','compat','tests'],account:['mail','remind','shelves','support','edit','invite']};
     for(const [view,keys] of Object.entries(routes))for(const key of keys){
       await page.evaluate(v=>go(v),view);
       const root=page.locator(`#v-${view} [data-feature="${key}"]`);assert.equal(await root.count(),1,key+' canonical entry');
       await root.click();await page.locator(`:is(#wg.on,#v-practice.on) #w-${key}`).waitFor();await close();
     }
     for(const mode of ['yesno','rune','spread']){await page.evaluate(()=>go('ask'));await page.locator(`#v-ask button[data-on="click:openAsk-${mode}"]`).click();await page.locator('#w-ask').waitFor();assert.ok(await page.locator('#a-go').evaluate(el=>!el.classList.contains('ghost')));await close();}
-    for(const [alias,target] of [['today','home'],['around','home'],['about','account']]){await page.evaluate(v=>go(v),alias);assert.ok(await page.locator('#v-'+target).evaluate(el=>el.classList.contains('on')));}
+    for(const [alias,target] of [['today','home'],['around','home'],['me','about']]){await page.evaluate(v=>go(v),alias);assert.ok(await page.locator('#v-'+target).evaluate(el=>el.classList.contains('on')));}
     await page.reload();await page.waitForSelector('#v-home.on');
     assert.equal(await page.locator('#h-next').innerText(),'Открыть карту дня →');
     await page.locator('#h-next').click();await page.locator('#t-open').click();await page.locator('#t-after').waitFor();await close();

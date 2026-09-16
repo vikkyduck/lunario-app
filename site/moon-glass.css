@@ -41,6 +41,10 @@ body.inner :is(input,textarea,select):focus-visible{border-color:var(--gold);out
 .compact-brand .moon-img{width:100%;height:100%;animation:moonbreathe 7s ease-in-out infinite}
 .section-brand{display:none}
 body.inner:not(:has(#v-home.on)) .section-brand{display:inline-flex}
+/* кружок аккаунта в шапке разделов — на всех вкладках, кроме главной (там свой) и самого аккаунта */
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.section-acct{display:none;position:relative;top:auto;right:auto;flex:0 0 auto;margin-bottom:12px}
+body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{display:grid}
 .widget-brand{display:flex;width:max-content;margin-bottom:14px}
 body.inner #v-home .hdr{margin-bottom:0;position:relative;z-index:2}
 body.inner #v-home .hdr .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
@@ -204,7 +208,8 @@ body.inner .ritual-tools .text-action{font-size:16px;font-weight:600}
 body.inner #h-set-question{font-size:18px;font-weight:600}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:18px;color:var(--text)}
 body.inner #home-sky .moonline b{font-weight:600}
-html[data-theme] body.inner .app-nav button{font-size:16px;font-weight:600;color:var(--text)}
+/* подписи вкладок в две строки («Свериться с собой»): 13px, иконки выровнены по верху, всё в 70px панели */
+html[data-theme] body.inner .app-nav button{font-size:13px;line-height:1.15;font-weight:600;color:var(--text);justify-content:flex-start;padding:2px 2px 0;gap:2px;text-align:center}
 html[data-theme] body.inner .app-nav button.on{color:var(--gold-2)}
 body:not(.inner) :is(#v-onb,#v-login) :is(p,.field label,.geo){font-size:18px;font-weight:500;line-height:1.65}
 body:not(.inner) :is(#v-onb,#v-login) .field label{font-weight:600;color:var(--text)}

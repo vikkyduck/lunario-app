@@ -52,9 +52,9 @@ export async function checkDesign({browser,base,owner}){
     const panes=['card','mood','worry','day','tone','gratitude','journal','habits','askesis','wishes','sky','lunar','hmood','hentries','week','year','birthnum','compat','natal','edit','remind','mail','shelves','support','invite','appinfo','terms','ritual','appearance'];
     for(const theme of ['light','dark'])for(const [width,height] of [[320,568],[390,844],[1440,900]]){
       await page.setViewportSize({width,height});await page.evaluate(t=>applyTheme(t),theme);
-      for(const view of ['home','ask','history','account','news']){
+      for(const view of ['home','ask','history','about','account','news']){
         await page.evaluate(v=>{XP.scroll[v]=0;go(v);},view);await ready();await fit(theme+' '+width+' '+view);
-        if(view!=='news')assert.equal(await page.locator('.app-nav [aria-current=page]').count(),1);
+        assert.equal(await page.locator('.app-nav [aria-current=page]').count(),['account','news'].includes(view)?0:1);   /* аккаунт и новости — не вкладки */
         if(width!==320)await shot(theme+'-'+width+'-'+view);
       }
       for(const key of panes){

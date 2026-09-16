@@ -299,7 +299,8 @@ body:not(.inner):not(.hello) .bg{display:none}
   body.inner .method-grid .wid>span.destination-arrow{position:absolute;top:22px;right:18px}
   body.inner .day-focus .daily-statement #h-wish{font-size:26px}
 }
-@media(min-width:1180px){body.inner .account-personal .wids{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* «Обо мне»: на телефоне плитки в один столбец — «Совместимость» и «Нумерология» в полстолбца не помещаются и резались */
+@media(max-width:599px){body.inner .about-links{grid-template-columns:1fr}}
 @media(max-width:759px){
   body.inner .wg{border-radius:0;padding:calc(20px + env(safe-area-inset-top)) 20px env(safe-area-inset-bottom)}
   body.inner .wg-head{top:calc(-20px - env(safe-area-inset-top));padding-top:20px}

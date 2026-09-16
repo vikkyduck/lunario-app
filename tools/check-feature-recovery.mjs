@@ -59,7 +59,7 @@ export async function checkFeatureRecovery({browser,base,owner}){
     await page.locator('#as-box').getByRole('button',{name:'Взять аскезу',exact:true}).click();
     await page.locator('.practice-question').filter({hasText:'Мой вариант аскезы'}).waitFor();
     assert.equal((await owner.json('/askesis')).active[0].until,custom);await close();
-    for(const [key,target] of [['ask','ask'],['history','history'],['about','account'],['today','home']]){
+    for(const [key,target] of [['ask','ask'],['history','history'],['about','about'],['account','account'],['today','home']]){
       await page.evaluate(()=>go('news'));await page.locator(`[data-news-target=${key}]`).waitFor();
       await page.locator(`[data-news-target=${key}]`).click();await page.locator('#v-'+target+'.on').waitFor();
     }

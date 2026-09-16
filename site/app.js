@@ -66,9 +66,10 @@ function hap(kind = 'tap'){
 }
 const esc = (s) => String(s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
 
-/* ── навигация: главная и пространства; на телефоне — назад на главную, на широком — панель слева ── */
-const INNER_VIEWS=['home','ask','history','account','news'];
-const VIEW_ALIASES={today:'home',about:'account',around:'home'};
+/* ── навигация: четыре вкладки внизу (home, ask, history, about); account и news открываются с главной по кружку с фото
+   и вкладку не подсвечивают ── */
+const INNER_VIEWS=['home','ask','history','about','account','news'];
+const VIEW_ALIASES={today:'home',around:'home',me:'about'};
 function go(v){
   v=VIEW_ALIASES[v]||v;
   rememberScroll();closeWidget();leavePractice();
@@ -77,13 +78,13 @@ function go(v){
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
   document.body.classList.toggle('hello', v==='hello');                // большая луна в фоне — только на приветствии
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
-  const navFor = v==='news' ? 'account' : v;
-  document.querySelectorAll('.app-nav button').forEach(b=>{const on=b.dataset.nav===navFor;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+  document.querySelectorAll('.app-nav button').forEach(b=>{const on=b.dataset.nav===v;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   window.refreshMoonLogos?.();window.LunarioSky?.refresh();
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();}
   if(v==='history') loadHistory();
+  if(v==='about')loadAbout();
   if(v==='account')loadAccount();
   if(v==='news') paintNews();
 }
@@ -109,14 +110,15 @@ const FEATURES = {
   day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, ritual:{sec:'Сегодня',title:'Мой ритуал',view:'home'},
   habits:{sec:'Сегодня',title:'Дневник привычек',view:'home',page:true,reminder:'habits'}, askesis:{sec:'Сегодня',title:'Взять аскезу',view:'home',page:true,reminder:'askesis'},
   lunar:{sec:'Луна и небо',title:'Лунный день',view:'home',reminder:'lunar'}, sky:{sec:'Луна и небо',title:'На небе',view:'home',reminder:'sky'},
-  worry:{sec:'Свериться',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться',title:'',view:'ask'},
+  worry:{sec:'Свериться с собой',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
   journal:{sec:'Дневник',title:'Дневник',view:'history',page:true}, gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history',reminder:'gratitude'},
   wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history',reminder:'moodreport'},
   hentries:{sec:'Дневник',title:'Мои вопросы и ответы',view:'history'}, week:{sec:'Дневник',title:'Итоги недели',view:'history'}, timelineEntry:{sec:'Дневник',title:'Запись',view:'history'},
-  natal:{sec:'Я',title:'Натальная карта',view:'account'}, year:{sec:'Я',title:'Личный год',view:'account'}, birthnum:{sec:'Я',title:'Нумерология',view:'account'}, compat:{sec:'Я',title:'Совместимость',view:'account'},
-  remind:{sec:'Я',title:'Уведомления',view:'account'}, mail:{sec:'Я',title:'Вход по почте',view:'account'}, edit:{sec:'Я',title:'Изменить мои данные',view:'account'}, shelves:{sec:'Я',title:'Мои данные',view:'account'},
-  support:{sec:'Я',title:'Чат поддержки',view:'account'}, invite:{sec:'Я',title:'Позвать подругу',view:'account'}, appearance:{sec:'Я',title:'Оформление',view:'account'}, topics:{sec:'Я',title:'Темы чтения',view:'account'},
-  skyplace:{sec:'Я',title:'Небо над вами',view:'account'}, appinfo:{sec:'Я',title:'О приложении',view:'account'}, terms:{sec:'Я',title:'Условия использования',view:'account'},
+  natal:{sec:'Обо мне',title:'Натальная карта',view:'about'}, year:{sec:'Обо мне',title:'Личный год',view:'about'}, birthnum:{sec:'Обо мне',title:'Нумерология',view:'about'}, compat:{sec:'Обо мне',title:'Совместимость',view:'about'},
+  tests:{sec:'Обо мне',title:'Тесты',view:'about'},
+  remind:{sec:'Аккаунт',title:'Уведомления',view:'account'}, mail:{sec:'Аккаунт',title:'Вход по почте',view:'account'}, edit:{sec:'Аккаунт',title:'Изменить мои данные',view:'account'}, shelves:{sec:'Аккаунт',title:'Мои данные',view:'account'},
+  support:{sec:'Аккаунт',title:'Чат поддержки',view:'account'}, invite:{sec:'Аккаунт',title:'Позвать подругу',view:'account'}, appearance:{sec:'Аккаунт',title:'Оформление',view:'account'}, topics:{sec:'Аккаунт',title:'Темы чтения',view:'account'},
+  skyplace:{sec:'Аккаунт',title:'Небо над вами',view:'account'}, appinfo:{sec:'Аккаунт',title:'О приложении',view:'account'}, terms:{sec:'Аккаунт',title:'Условия использования',view:'account'},
   practiceSettings:{sec:'',title:'Уведомления'}, askDate:{sec:'Взять аскезу',title:'Передвинуть дату'},
 };
 /* Цель из ?open= в уведомлении: ключ функции или ключ её напоминания (moodreport → История настроений) */
@@ -331,7 +333,7 @@ function updatePracticeStatus(key, value){
 }
 /* Точка у аватара: «Новое в приложении» этого месяца ещё не открывали */
 const newsSeen=()=>{ try{ return localStorage.getItem('lun_news_seen')===S.day.date.slice(0,7); }catch(e){ return true; } };
-function paintNewsDot(){ const dot=document.querySelector('.news-dot'); if(dot) dot.hidden=newsSeen(); }
+function paintNewsDot(){ const seen=newsSeen(); document.querySelectorAll('.news-dot').forEach(dot=>{dot.hidden=seen;}); }
 function markNewsSeen(){ try{ localStorage.setItem('lun_news_seen',S.day.date.slice(0,7)); }catch(e){} paintNewsDot(); }
 function habitsHomeStatus(items){
   const due=items.filter(h=>h.due), done=due.filter(h=>h.today).length;S.habitsPending=due.length-done;S.habitsReady=true;S.habitsCount=items.length;
@@ -521,7 +523,7 @@ async function authCheck(){
     auth.onDone(r);
   } catch (e) { showMsg(msg, authErrorText(e, 'verify'), true); }
 }
-/* Виджет «Вход по почте» в «Я» */
+/* Виджет «Вход по почте» в «Аккаунте» */
 function renderAuth(){
   const u = S.user;
   const idle = () => u.email
@@ -701,7 +703,7 @@ $('o-go').onclick=async()=>{
     : last && last.status ? 'Сервер не принял анкету. Напишите нам, если повторится.'
     : 'Не удалось связаться с сервером — похоже, пропала сеть. Данные не потеряны: нажмите ещё раз.', true);
 };
-/* В анкете указана почта: код — на том же экране; не ушёл — не держим человека на пороге, почту можно привязать в «Я» */
+/* В анкете указана почта: код — на том же экране; не ушёл — не держим человека на пороге, почту можно привязать в «Аккаунте» */
 async function obSendCode(email){
   try { await requestCode(email); }
   catch (e) { toast(authErrorText(e, 'send')); startApp(); return; }
@@ -717,8 +719,12 @@ async function obSendCode(email){
 /* На экране «Дневник» видны лента и счётчик желаний; итоги, вопросы и записи виджеты грузят сами при открытии */
 function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline(); loadWishes(); }
 const loadWishes=()=>api('/wishes').then(renderWishes).catch(()=>{});
+function loadAbout(){
+  const u=S.user; loadNumerology();
+  $('ab-sub').textContent=[u.name,u.sign].filter(Boolean).join(' · ')||'Мой профиль';
+}
 function loadAccount(){
-  const u=S.user; paintAvatar(); loadNumerology();
+  const u=S.user; paintAvatar();
   $('ac-name').textContent=u.name||'Мой профиль';
   $('m-sign').textContent=[u.sign,u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
@@ -1545,9 +1551,9 @@ function registerWebMcp(){
     mc.provideContext({tools:[
       {name:'lunario_today',description:'Сегодня в Лунарио: дата, фаза Луны, лунный день и его рекомендация, установка дня. Без личных записей.',inputSchema:{type:'object',properties:{}},
         execute:async()=>{const d=S.day||{};const l=d.lunar||{};return {date:d.date,moon:d.moon,lunarDay:l.n?{n:l.n,title:l.title,advice:l.advice,period:l.period}:null,setting:d.set?d.set.statement||'':'' };}},
-      {name:'lunario_open',description:'Открыть раздел или инструмент Лунарио: home, ask, history, account, news; или виджет card, mood, lunar, sky, natal, year, compat, topics.',
+      {name:'lunario_open',description:'Открыть раздел или инструмент Лунарио: home, ask, history, about, account, news; или виджет card, mood, lunar, sky, natal, year, compat, topics.',
         inputSchema:{type:'object',properties:{target:{type:'string'}},required:['target']},
-        execute:async({target})=>{const t=String(target||'');if(['home','ask','history','account','news'].includes(t)){go(t);return {ok:true,view:t};}if(FEATURES[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
+        execute:async({target})=>{const t=String(target||'');if(['home','ask','history','about','account','news'].includes(t)){go(t);return {ok:true,view:t};}if(FEATURES[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
     ]});
   }catch(e){}
 }
@@ -1565,7 +1571,7 @@ function paintSkyPlace(){
   const pick=attachCity('sp-city','sp-city-list','sp-geo');
   $('sp-city-list').addEventListener('click',()=>setTimeout(()=>{const c=pick.picked;if(c&&sky){sky.setCity({name:c.name,lat:c.lat,lon:c.lon});$('sp-now').textContent=sky.describe().label;toast('Небо перестроено ✦');}},0));
 }
-/* Виджет «Темы чтения» в «Я» */
+/* Виджет «Темы чтения» в «Аккаунте» */
 function paintTopics(){
   const box=$('topics-box');if(!box)return;
   if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не удалось загрузить темы. Откройте ещё раз</p>';});return;}
@@ -2157,11 +2163,11 @@ function showWishPhoto(id, t){
 }
 async function removeWishPhoto(id){ try { const r = await api('/wishes/photo?id=' + id, { method: 'DELETE' }); hidePostcard(); renderWishes(r); } catch (e) { toast('Не получилось'); } }
 
-/* ══════════ Фото в аккаунте — кружок в правом верхнем углу ══════════ */
+/* ══════════ Фото в аккаунте — кружок в правом верхнем углу главной, по нему же открывается «Аккаунт» ══════════ */
 const photoUrl = (u) => u && u.photo ? `/app/api/photo?t=${encodeURIComponent(u.photoTs || '')}` : '';
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
-  $('h-acct').innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot" hidden aria-hidden="true"></i>`; paintNewsDot();
+  document.querySelectorAll('.acct').forEach(el=>{el.innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot" hidden aria-hidden="true"></i>`;}); paintNewsDot();
   const box = $('ac-photo'); if (box) box.innerHTML = `<div class="row top"><div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>
     <div class="grow"><button data-on="click:setPhoto" class="btn ghost sm" type="button">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? `<button data-on="click:removePhoto" type="button" class="linkbtn left mt-2">Убрать</button>` : '<p class="hint mt-2">Покажем в кружке на главной.</p>'}</div></div>`;
 }
@@ -2192,10 +2198,11 @@ async function paintNews(){
   for(const key of keys){
     const root = featureRoot(key); if(!root) continue;
     const tile = key==='around'?document.querySelector('[data-feature="lunar"]').cloneNode(true):root.cloneNode(true); tile.className='wid'; tile.removeAttribute('id'); tile.removeAttribute('data-on'); tile.removeAttribute('style');   /* обработчик клона — свой, ниже */
-    if(root.dataset.nav){
-      tile.replaceChildren();const icon=root.querySelector('.ico');if(icon)tile.appendChild(icon.cloneNode(true));
-      const title=document.createElement('b');title.textContent=root.textContent.trim();tile.appendChild(title);
-      const caption=$('v-'+root.dataset.nav)?.querySelector('.eyebrow');if(caption){const sub=document.createElement('span');sub.textContent=caption.textContent;tile.appendChild(sub);}
+    const section=root.dataset.nav||(root.dataset.feature==='account'?'account':'');   /* раздел: вкладка внизу или «Аккаунт» по кружку с фото */
+    if(section){
+      tile.replaceChildren();const icon=root.querySelector('.ico');const i=document.createElement('i');i.className=icon?icon.className:'ico person';tile.appendChild(i);
+      const title=document.createElement('b');title.textContent=root.dataset.nav?root.textContent.trim():$('v-'+section).querySelector('h1').textContent.trim();tile.appendChild(title);
+      const caption=$('v-'+section)?.querySelector('.eyebrow');if(caption){const sub=document.createElement('span');sub.textContent=caption.textContent;tile.appendChild(sub);}
     }
     tile.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
     tile.querySelectorAll('canvas').forEach(el=>{const icon=document.createElement('i');icon.className='ico moon';el.replaceWith(icon);});

@@ -662,7 +662,7 @@ try {
       await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
       await page.waitForFunction(() => document.querySelectorAll('#m-wishes .wish-picture img').length === 2);
       await close();
-      assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(t=>t.trim()), ['Сегодня','Свериться','Дневник','Я']);
+      assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(t=>t.trim()), ['Сегодня','Свериться с собой','Дневник','Обо мне']);
       await page.locator('.app-nav').getByRole('button',{name:'Сегодня',exact:true}).click();
       await page.locator('#v-home').getByRole('button',{name:/^Отметить настроение/}).click();
       await page.getByRole('button',{name:'Все эмоции',exact:true}).click();
@@ -689,7 +689,7 @@ try {
       await page.locator('#w-journal').getByText('Ответ из интерфейса',{exact:true}).waitFor();
       await close();
       await page.locator('.app-nav [data-nav=home]').click();
-      await page.locator('.app-nav [data-nav=account]').click();await page.locator('#v-account [data-feature=news]').click();
+      await page.locator('#h-acct').click();await page.locator('#v-account [data-feature=news]').click();
       await page.locator('#news-box .wid').first().waitFor();
       // A root card edit is immediately reflected in News, with the same action.
       await page.evaluate(()=>{const root=document.querySelector('#v-home [data-feature=askesis]');root.querySelector('b').textContent='Взять аскезу · проверка';root.setAttribute('aria-label','Взять аскезу · проверка');return paintNews();});
@@ -706,7 +706,7 @@ try {
         }
       }
       // Every surviving feature card opens the actual widget pane.
-      for(const [view,key] of [['home','card'],['home','mood'],['ask','worry'],['home','day'],['home','tone'],['home','askesis'],['history','wishes'],['home','habits'],['history','gratitude'],['account','natal'],['account','year'],['account','birthnum'],['account','compat'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','shelves'],['account','support']]) {
+      for(const [view,key] of [['home','card'],['home','mood'],['ask','worry'],['home','day'],['home','tone'],['home','askesis'],['history','wishes'],['home','habits'],['history','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','compat'],['about','tests'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['history','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','shelves'],['account','support']]) {
         await page.evaluate(v=>go(v),view);
         await page.locator(`#v-${view} [data-feature="${key}"]`).click();
         await page.waitForFunction(k=>document.querySelector(':is(#wg-body,#practice-body) #w-'+k)!==null,key);

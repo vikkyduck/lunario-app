@@ -26,7 +26,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=45"></script>
+<script src="/app/boot.js?v=46"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -288,11 +288,12 @@ body.wg-open{overflow:hidden}
 body.inner{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 .app-nav{position:fixed;z-index:120;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:62px;padding:5px;display:none;grid-template-columns:repeat(4,1fr);gap:3px;border:1px solid rgba(255,255,255,.13);border-radius:var(--r-xl);background:rgba(19,16,34,.78);box-shadow:inset 0 1px rgba(255,255,255,.15),0 16px 48px rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
 body.inner .app-nav{display:grid}
-.app-nav button{border:0;border-radius:var(--r-l);background:transparent;color:var(--faint);font:inherit;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+.app-nav button{border:0;border-radius:var(--r-l);background:transparent;color:var(--faint);font:inherit;font-size:11px;line-height:1.1;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px;text-align:center;cursor:pointer}
 .app-nav button .ico{width:21px;height:21px;background:var(--faint)}
 .app-nav button.on{background:rgba(255,255,255,.08);color:var(--text);box-shadow:inset 0 1px rgba(255,255,255,.1)}
 .app-nav button.on .ico{background:var(--gold-2)}
-#v-ask>.back,#v-history>.back,#v-account>.back{display:none}
+#v-ask>.back,#v-history>.back,#v-about>.back{display:none}
+#v-account>.back,#v-news>.back{margin-bottom:6px}
 .day-focus{margin-top:22px;padding:22px;text-align:left;width:100%;color:inherit;font:inherit;cursor:pointer}
 .quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
 .quick-actions button{min-height:104px;padding:13px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--glass-bg);box-shadow:var(--glass-shadow);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:center;backdrop-filter:none;-webkit-backdrop-filter:none}
@@ -698,9 +699,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=45">
-<link rel="stylesheet" href="/app/experience.css?v=45">
-<link rel="stylesheet" href="/app/moon-glass.css?v=45">
+<link rel="stylesheet" href="/app/theme.css?v=46">
+<link rel="stylesheet" href="/app/experience.css?v=46">
+<link rel="stylesheet" href="/app/moon-glass.css?v=46">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -709,7 +710,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <canvas class="sky" id="sky"></canvas>
 </div>
 <div class="wrap">
-  <div class="wordmark compact-brand section-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div>
+  <div class="section-head"><div class="wordmark compact-brand section-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div>
+    <button data-on="click:go-account" class="acct section-acct" type="button" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
 
   <!-- ВХОД: личный профиль или вход по почте -->
   <section class="view" id="v-hello">
@@ -785,7 +787,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <section class="view" id="v-home">
     <div class="row hdr"><div class="grow"><div class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div><span class="eyebrow" id="h-date"></span><h1 class="sr-only">Сегодня</h1></div>
       <a data-on="click:openCabinet-return-false" class="cabs" id="h-cabs" href="/app/cabinet" hidden aria-label="Вернуться в кабинеты">← Кабинеты</a>
-      <button data-on="click:go-account" class="acct" id="h-acct" type="button" aria-label="Я — мой профиль">✦</button></div>
+      <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
     <div class="home-intro">
       <div class="home-moon" aria-hidden="true"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" decoding="async"></div>
       <div class="daily-statement"><h2 id="h-wish"></h2><button data-on="click:openWidget-tone" class="text-action secondary" id="h-set-question" type="button">Вопрос дня <span aria-hidden="true">→</span></button></div>
@@ -811,7 +813,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
         <div class="wids compact-links"><button data-on="click:openWidget-sky" class="wid" data-feature="sky" type="button" aria-label="На небе"><i class="ico star"></i><b>На небе</b><span>Фазы Луны, затмения, ретроградные планеты</span></button></div></section>
     </div></div><div id="push-invite" hidden></div>
   </section>
-  <section class="view" id="v-ask"><h1>Свериться</h1><p class="section-caption">Карты, руны, вопросы</p>
+  <section class="view" id="v-ask"><h1>Свериться с собой</h1><p class="section-caption">Карты, руны, вопросы</p>
     <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button" aria-label="Разобрать вопрос"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения и отношение к себе</span></button></div><section class="feature-group"><h2>Выбрать способ</h2><div class="wids method-grid">
 <button data-on="click:openAsk-yesno" class="wid" type="button"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ на конкретный вопрос, с пояснением</span></button><button data-on="click:openAsk-rune" class="wid" type="button"><i class="ico rune"></i><b>Руны</b><span>Одна руна, три руны, крест, четыре стихии</span></button><button data-on="click:openAsk-spread" class="wid" type="button"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест — два расклада в день</span></button></div></section></section>
   <section class="view" id="v-history"><h1>Дневник</h1>
@@ -820,17 +822,22 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <details class="diary-library" open><summary>Желания и итоги</summary><div class="wids compact-links"><button data-on="click:openWidget-wishes" class="wid" data-feature="wishes" type="button" aria-label="Мои желания"><i class="ico heart"></i><b>Мои желания</b><span data-status="wishes">Фото и планы</span></button><button data-on="click:openWidget-hmood" class="wid" data-feature="hmood" type="button" aria-label="История настроений"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button><button data-on="click:openWidget-hentries" class="wid" data-feature="hentries" type="button" aria-label="Мои вопросы и ответы"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b></button><button data-on="click:openWidget-week" class="wid" data-feature="week" type="button" aria-label="Итоги недели"><i class="ico calendar"></i><b>Итоги недели</b><span>Что повторялось в настроении и вопросах</span></button></div></details>
   </section>
   <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div></section>
-  <section class="view" id="v-news"><button data-on="click:go-account" class="back">← Я</button>
+  <section class="view" id="v-news"><button data-on="click:go-account" class="back" type="button">← Аккаунт</button>
     <span class="eyebrow" id="news-sub">За этот месяц</span><h1>Новое в приложении</h1><div class="wids" id="news-box"></div>
     <section class="feature-group upcoming" id="news-soon" hidden><h2>Скоро</h2><p class="hint">Эти материалы ещё готовятся</p><div class="list" id="news-soon-box"></div></section>
   </section>
-  <section class="view" id="v-account"><span class="eyebrow" id="ac-mail">Мой профиль и приложение</span><h1>Я</h1>
+  <!-- ОБО МНЕ: вкладка внизу — разборы по дате рождения; анкета и настройки живут в аккаунте (кружок с фото на главной) -->
+  <section class="view" id="v-about"><span class="eyebrow" id="ab-sub">Мой профиль</span><h1>Обо мне</h1>
+    <div class="wids about-links"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></button><button data-on="click:openWidget-tests" class="wid" data-feature="tests" type="button" aria-label="Тесты"><i class="ico list"></i><b>Тесты</b><span id="tests-sub">Узнать себя через вопросы</span></button></div>
+  </section>
+  <!-- АККАУНТ: открывается по кружку с фото в правом верхнем углу главной — фото, анкета, приложение, приватность, помощь, выход -->
+  <section class="view" id="v-account"><button data-on="click:go-home" class="back" type="button">← Сегодня</button>
+    <span class="eyebrow" id="ac-mail">Мой профиль и приложение</span><h1>Аккаунт</h1>
     <div class="account-layout"><div class="account-personal">
     <section class="profile-summary card"><h2 id="ac-name"></h2><div id="ac-photo"></div><p id="profile-summary"></p>
       <button data-on="click:openWidget-edit" class="text-action secondary" data-feature="edit" type="button">Изменить мои данные</button>
       <details class="profile-detail"><summary>Данные для расчётов</summary><p id="m-sign"></p><p class="geo" id="m-geo"></p></details>
     </section>
-    <section class="feature-group"><h2 id="m-name">Обо мне</h2><div class="wids"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты в знаках и домах, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнёра: общий процент и четыре стороны</span></button></div></section>
     </div><div class="account-settings">
     <section class="account-group"><h2>Приложение</h2><div class="wids compact-links"><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Включить, выбрать время и регулярность</span></button><button data-on="click:openWidget-mail" class="wid" data-feature="mail" type="button" aria-label="Вход по почте"><i class="ico mail"></i><b>Вход по почте</b><span>Сохранённые записи доступны на других устройствах</span></button><button data-on="click:go-news" class="wid" type="button" aria-label="Новое в приложении" data-feature="news"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
       <button data-on="click:openWidget-skyplace" class="wid sky-location-control" type="button"><i class="ico orbit"></i><b>Небо над вами</b><span data-sky-place>Москва · место не определено</span></button>
@@ -851,9 +858,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 <nav class="app-nav" aria-label="Основные разделы">
   <button data-on="click:go-home" type="button" data-nav="home"><i class="ico moon"></i>Сегодня</button>
-  <button data-on="click:go-ask" type="button" data-nav="ask"><i class="ico yes-no"></i>Свериться</button>
+  <button data-on="click:go-ask" type="button" data-nav="ask"><i class="ico yes-no"></i>Свериться с&nbsp;собой</button>
   <button data-on="click:go-history" type="button" data-nav="history"><i class="ico journal"></i>Дневник</button>
-  <button data-on="click:go-account" type="button" data-nav="account"><i class="ico person"></i>Я</button>
+  <button data-on="click:go-about" type="button" data-nav="about"><i class="ico person"></i>Обо мне</button>
 </nav>
 
 <!-- панели виджетов: openWidget() переносит нужную в обёртку и возвращает обратно -->
@@ -940,9 +947,10 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   </div>
   <div class="wpane" id="w-mail"><div class="card" id="m-auth"></div></div>
   <div class="wpane" id="w-natal"><div id="natal-box"><p class="hint">Считаем…</p></div></div>
+  <div class="wpane" id="w-tests"><div class="list" id="tests-box"><p class="hint">Тесты готовятся и появятся здесь.</p></div></div>
   <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
   <div class="wpane" id="w-appinfo"><p>Лунарио — пространство, где можно услышать себя: замечать настроение, записывать мысли и смотреть на вопрос иначе.</p><p class="material-note" data-material-note></p><button data-on="click:openWidget-terms" class="text-action">Условия использования →</button></div>
-  <div class="wpane" id="w-terms"><p>Карты, руны, астрологические и нумерологические интерпретации — материалы для размышления. Решения о своих действиях принимаете вы.</p><p class="material-note" data-material-note></p><p>Записи сохраняются, когда вы нажимаете кнопку сохранения. Напоминания включаются по вашему выбору. Скачать свои данные и управлять аккаунтом можно в разделе «Я».</p><p class="material-note"><a href="/politika" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/soglasie" target="_blank" rel="noopener">Обработка персональных данных</a></p></div>
+  <div class="wpane" id="w-terms"><p>Карты, руны, астрологические и нумерологические интерпретации — материалы для размышления. Решения о своих действиях принимаете вы.</p><p class="material-note" data-material-note></p><p>Записи сохраняются, когда вы нажимаете кнопку сохранения. Напоминания включаются по вашему выбору. Скачать свои данные и управлять аккаунтом можно в «Аккаунте» — кружок с фото в правом верхнем углу главной.</p><p class="material-note"><a href="/politika" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/soglasie" target="_blank" rel="noopener">Обработка персональных данных</a></p></div>
 </div>
 <div data-on="click:closeWidget-event" class="wg-bg" id="wg">
   <div class="wg" role="dialog" aria-modal="true" aria-labelledby="wg-title">
@@ -962,13 +970,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 </div>
 <div data-on="click:if-event-target-this-this-classList-remove-on" class="award-bg" id="award"><div id="award-box"></div></div>
 
-<script src="/app/moon-logo.js?v=45"></script>
+<script src="/app/moon-logo.js?v=46"></script>
 
-<script type="module" src="/app/sky.js?v=45"></script>
+<script type="module" src="/app/sky.js?v=46"></script>
 
-<script src="/app/experience.js?v=45"></script>
-<script src="/app/app.js?v=45"></script>
-<script src="/app/handlers.js?v=45"></script>
-<script src="/app/on.js?v=45"></script>
+<script src="/app/experience.js?v=46"></script>
+<script src="/app/app.js?v=46"></script>
+<script src="/app/handlers.js?v=46"></script>
+<script src="/app/on.js?v=46"></script>
 </body>
 </html>
