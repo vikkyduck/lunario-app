@@ -510,7 +510,28 @@ try {
   const sw = fs.readFileSync(join(repo, 'site', 'sw.js'), 'utf8');
   const shell = new Function('V', 'return ' + /const SHELL = (\[[\s\S]*?\]);/.exec(sw)[1].replace(/\/\*[\s\S]*?\*\//g, ''))(/const V = '(\d+)'/.exec(sw)[1]);
   for (const u of shell) assert.equal((await fetch(base + u.replace(/^\/app/, ''))).status, 200, 'SHELL entry is served: ' + u);
-  console.log(`PASS: strict CSP (script-src self, no inline scripts or handlers in markup or templates), anti-clickjacking and nosniff headers; all ${shell.length} offline shell files are served.`);
+  /* Реестр обработчиков и разметка должны сходиться. Перенос из атрибутов делался скриптом, и у него два
+     характерных промаха: тело, собранное конкатенацией ('+id+' в обычной строке), он принимал за литерал,
+     а имя с зашитым аргументом рядом с параметрическим давало мёртвую запись и ломало поиск по data-a0. */
+  const sites = ['index.html', 'app.js', 'experience.js', 'handlers.js', 'cabinet.html', 'cabinet.js', 'cabinet-handlers.js'].map((f) => [f, fs.readFileSync(join(repo, 'site', f), 'utf8')]);
+  const src = Object.fromEntries(sites);
+  for (const reg of ['handlers.js', 'cabinet-handlers.js']) {
+    for (const [, name, body] of src[reg].matchAll(/^ {2}"([^"]+)": function \(event\) \{ (.*) \},$/gm)) {
+      assert.ok(!/'\+\s*[A-Za-z_$][\w$]*\s*\+'/.test(body), `${reg}: «${name}» хранит кусок конкатенации вида '+имя+' — это переменная той строки, где собиралась разметка, её место в data-aN: ${body}`);
+      assert.ok(!/\$\{/.test(body), `${reg}: «${name}» хранит незакрытую подстановку: ${body}`);
+    }
+  }
+  const named = (f) => new Set([...src[f].matchAll(/^ {2}"([^"]+)": function \(event\)/gm)].map((m) => m[1]));
+  /* Имена из разметки. Пропускаем те, что собираются в коде (`'[data-on="click:openWidget-'+key+'"]'` — это селектор,
+     а не разметка): имя там подставляется на ходу, а сами кнопки объявлены в разметке и так попадут в список. */
+  const used = (files) => { const out = new Set(); for (const f of files) for (const [, spec] of src[f].matchAll(/data-on="([^"]+)"/g)) { if (/'\+|\+'|\$\{/.test(spec)) continue; for (const pair of spec.split(' ')) out.add(pair.slice(pair.indexOf(':') + 1)); } return out; };
+  const appUsed = used(['index.html', 'app.js', 'experience.js']);
+  for (const m of src['experience.js'].matchAll(/setAttribute\('data-on'\s*,\s*'([^']+)'/g)) appUsed.add(m[1].slice(m[1].indexOf(':') + 1));   // одна кнопка получает data-on из кода
+  for (const [reg, u] of [['handlers.js', appUsed], ['cabinet-handlers.js', used(['cabinet.html', 'cabinet.js'])]]) {
+    for (const n of u) assert.ok(named(reg).has(n), `${reg}: разметка ссылается на «${n}», а обработчика нет`);
+    for (const n of named(reg)) assert.ok(u.has(n), `${reg}: «${n}» никем не используется — мёртвая запись после переноса`);
+  }
+  console.log(`PASS: strict CSP (script-src self, no inline scripts or handlers in markup or templates), anti-clickjacking and nosniff headers; all ${shell.length} offline shell files are served; handler registry matches the markup with no leftover concatenation.`);
 
   // ── Удаление аккаунта подтверждается отдельным кодом; код входа для этого не годится ──
   const doomed = account(); await doomed.json('/me');

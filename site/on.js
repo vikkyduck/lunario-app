@@ -6,7 +6,9 @@
 (function () {
   function run(event) {
     const H = window.LUN_HANDLERS || {};
-    for (let el = event.target; el && el.nodeType === 1; el = el.parentElement) {
+    /* toggle не всплывает: у атрибута ontoggle срабатывал только свой <details>. Идём по предкам лишь для
+       всплывающих событий — иначе открытие вложенного <details> дёргало бы обработчик внешнего. */
+    for (let el = event.target; el && el.nodeType === 1; el = event.bubbles ? el.parentElement : null) {
       const spec = el.getAttribute('data-on'); if (!spec) continue;
       for (const pair of spec.split(' ')) {
         const i = pair.indexOf(':'); if (pair.slice(0, i) !== event.type) continue;

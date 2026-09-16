@@ -46,6 +46,21 @@ export async function checkRepeatPractices({browser,base,owner}){
     await page.locator('.observation summary').nth(1).click();await page.locator('.observation textarea').nth(1).fill('Второе наблюдение');
     if(await primary()>1)gaps.push('Одновременно открыты формы двух наблюдений');
     await page.locator('#as-box .practice-create > summary').click();   // именно заголовок панели: внутри формы есть свой <summary>
+    /* Семантика делегирования (on.js): у атрибута ontoggle срабатывал только свой <details> — toggle не всплывает.
+       Вложенные «Примеры аскез» внутри панели создания аскезы не должны дёргать askPanelToggle внешней панели.
+       Проверяем сам механизм на временной разметке: click обязан дойти до предка, toggle — нет. */
+    const delegation=await page.evaluate(()=>{
+      const calls=[];window.LUN_HANDLERS.__qaOuter=function(){calls.push('предок:'+event.type);};
+      const box=document.createElement('div');
+      box.innerHTML='<details data-on="toggle:__qaOuter click:__qaOuter"><summary>внешний</summary><details id="__qaInner"><summary>вложенный</summary></details></details>';
+      document.body.appendChild(box);
+      const inner=box.querySelector('#__qaInner');
+      inner.open=true;inner.dispatchEvent(new Event('toggle',{bubbles:false}));
+      inner.querySelector('summary').dispatchEvent(new MouseEvent('click',{bubbles:true}));
+      box.remove();delete window.LUN_HANDLERS.__qaOuter;
+      return calls;
+    });
+    assert.deepEqual(delegation,['предок:click'],'toggle вложенного <details> не должен вызывать обработчик предка, click — должен');
     if(await primary()>1)gaps.push('Создание аскезы конкурирует с формами наблюдений');
     await page.locator('.observation summary').nth(0).click();
     assert.equal(await page.locator('.observation textarea').nth(0).inputValue(),'Первое наблюдение');

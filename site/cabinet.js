@@ -437,7 +437,7 @@ async function userCard(id) {
 function economyExtras(r) {
   const per = (r.kpis.find((k) => k.title.startsWith('На 1 активного')) || {}).value;
   const growth = `<div class="viz" style="margin-top:14px"><h3>Рост аудитории</h3><div class="sub">линейная модель по стоимости обслуживания одного активного за месяц</div>
-    <div class="row" style="margin-top:12px"><input data-on="input:g-out-textContent-value-toLocaleString-ru-RU-человек-a0" data-a0="${per === null ? 'null' : per}" data-a1="${per || 0}" type="range" min="1000" max="10000" step="1000" value="1000" style="min-height:0;padding:0"><b id="g-out" class="fixed" style="min-width:220px">1 000 человек → ${per === null || per === undefined ? 'нет данных' : (1000 * per).toLocaleString('ru-RU') + ' ₽/мес'}</b></div>
+    <div class="row" style="margin-top:12px"><input data-on="input:g-out-textContent-value-toLocaleString-ru-RU-человек-a0" data-a0="${per ?? 'null'}" data-a1="${per || 0}" type="range" min="1000" max="10000" step="1000" value="1000" style="min-height:0;padding:0"><b id="g-out" class="fixed" style="min-width:220px">1 000 человек → ${per === null || per === undefined ? 'нет данных' : (1000 * per).toLocaleString('ru-RU') + ' ₽/мес'}</b></div>
     <p class="note">Тестовые аккаунты и разработка исключены. Без реальных тарифов — только текущее среднее.</p></div>`;
   if (!S.me.isAdmin || !r.costForm) return growth;
   return growth + `<div class="viz" style="margin-top:14px"><h3>Добавить расход · ${r.costForm.month}</h3>

@@ -50,6 +50,12 @@ export async function checkUsabilityUI({browser,base,owner}){
     await page.locator('#mood-own').fill('');
     await page.getByRole('tab',{name:'Основные эмоции',exact:true}).click();
     assert.equal(await page.locator('#mood-own').inputValue(),'');
+    /* «Сочетания эмоций» перерисовывает список — фокус должен вернуться на саму кнопку, иначе он падает на <body>
+       и клавиатурой приходится идти с начала экрана. Кнопка есть только в режиме «Основные эмоции». */
+    const dyad=page.getByRole('button',{name:'Сочетания эмоций',exact:true});
+    await dyad.waitFor();await dyad.click();
+    assert.equal(await page.evaluate(()=>document.activeElement?.textContent?.trim()),'Сочетания эмоций','после перерисовки фокус вернулся на «Сочетания эмоций»');
+    await page.locator('.emotion-family').first().click();   // возвращаем выбранное семейство — дальше проверяются его оттенки
     await page.locator('#mood-shades .mchip').nth(1).click();
     await page.locator('#t-moods .saved-state').waitFor();
     await capture('mood-mobile');await close();
