@@ -26,7 +26,7 @@ export async function checkRestoration({browser,base,owner}){
     assert.equal(await page.locator('#hub-questions').count(),0,'no preset questions any more');
     assert.equal(await page.locator('#hub-chips button').count(),6);
     assert.ok(await page.locator('#hub-opts').isVisible()&&await page.locator('#hub-go').isDisabled(),'instruments are visible right away, the button waits for a question');
-    await page.locator('#hub-q').fill('Работа');assert.ok(await page.locator('#hub-go').isDisabled());assert.match(await page.locator('#hub-hint').innerText(),/Допишите вопрос/);
+    await page.locator('#hub-q').fill('Работа');assert.ok(await page.locator('#hub-go').isDisabled());assert.match(await page.locator('#hub-hint').innerText(),/Напишите вопрос целиком/);
     await page.locator('#hub-chips button').first().click();assert.equal(await page.locator('#hub-q').inputValue(),'Что мне сейчас важно в отношениях?','a short own text is replaced by the topic question');
     const edited='Что мне сейчас важно в отношениях? Что мне важно понять?';await page.locator('#hub-q').fill(edited);assert.ok(await page.locator('#hub-go').isEnabled());assert.equal(await page.locator('#hub-hint').innerText(),'');
     await page.locator('#hub-chips button').nth(1).click();assert.equal(await page.locator('#hub-q').inputValue(),edited,'a full own question survives a topic switch');
