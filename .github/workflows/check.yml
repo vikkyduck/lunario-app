@@ -26,3 +26,5 @@ jobs:
           node tools/check-entry-history.mjs
       - name: Интеграционная проверка (настоящий сервер, временная база)
         run: node tools/check-personal-features.mjs
+      - name: Надёжное сохранение и вход (повторы, конфликты, перенос гостя)
+        run: node tools/check-sync.mjs

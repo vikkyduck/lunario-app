@@ -161,6 +161,17 @@ export const MIGRATIONS = [
   /* Код на почту выдаётся для разных дел: вход и подтверждение удаления аккаунта.
      Без явной цели код, присланный «подтвердите удаление», годился бы и для входа. */
   { v: 12, name: 'цель кода на почту (вход или удаление аккаунта)', up: (db) => addColumn(db, 'login_codes', 'purpose', "TEXT NOT NULL DEFAULT 'login'") },
+  /* Квитанции операций: повтор одного и того же действия не должен создавать вторую запись.
+     Клиент шлёт свой operationId; сохранённый ответ возвращается как есть, а тот же id с другим телом — это конфликт.
+     Колонка называется user_id, а не account_id, чтобы таблица попала под общую политику личных данных
+     (account-data.mjs) и её страж: у каждой таблицы с user_id должно быть явное правило удаления. */
+  { v: 13, name: 'квитанции операций — повтор не создаёт дубль', up: (db) => db.exec(`
+    CREATE TABLE IF NOT EXISTS sync_receipts (
+      user_id INTEGER NOT NULL, operation_id TEXT NOT NULL,
+      payload_hash TEXT NOT NULL, response_json TEXT NOT NULL, created_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, operation_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_receipts_created ON sync_receipts (created_at);`) },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
@@ -169,7 +180,7 @@ const REQUIRED = {
   users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
   entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text'], wishes: ['photo', 'photo_ts'],
-  events: ['user_id', 'day', 'type', 'age_band'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],
+  events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],
 };
 
 /* Провести базу до текущей версии. Возвращает номер версии; бросает ошибку, если шаг не прошёл. */

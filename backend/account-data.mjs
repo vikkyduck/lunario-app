@@ -19,6 +19,7 @@ export const PERSONAL_DATA = [
   { table: 'askesis_days', on: 'history', via: { table: 'askesis', key: 'askesis_id' } },
   { table: 'askesis', on: 'history' },
   { table: 'shelves', on: 'history', note: 'досье пересобирается из остального' },
+  { table: 'sync_receipts', on: 'history', note: 'квитанции операций: запись стёрта — и подтверждение о ней тоже' },
   { table: 'messages', on: 'account', via: { table: 'tickets', key: 'ticket_id' }, note: 'переписка с поддержкой' },
   { table: 'tickets', on: 'account' },
   { table: 'push_shown', on: 'account', via: { table: 'push_queue', key: 'item_id' } },

@@ -10,6 +10,7 @@ if [ "${SKIP_CHECKS:-}" != "1" ]; then
   echo "==> проверки перед выпуском (SKIP_CHECKS=1 — пропустить)"
   for f in backend/*.mjs tools/*.mjs; do node --check "$f" || { echo "❌ синтаксис: $f"; exit 1; }; done
   node tools/check-personal-features.mjs >/dev/null 2>&1 || { echo "❌ check-personal-features не прошёл — запустите node tools/check-personal-features.mjs"; exit 1; }
+  node tools/check-sync.mjs >/dev/null 2>&1 || { echo "❌ check-sync не прошёл — запустите node tools/check-sync.mjs"; exit 1; }
 fi
 # cities.db не в git: свежий клон без него не должен стереть серверный (rsync --delete)
 if ! ssh "$SERVER" 'test -s /opt/lunario-app/backend/cities.db' && [ ! -s backend/cities.db ]; then

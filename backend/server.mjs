@@ -46,6 +46,8 @@ import { createReportRunner } from './report-runner.mjs';
 import { createCabinetRoutes } from './http/cabinet-routes.mjs';
 import { HTML_HEADERS } from './http/headers.mjs';
 import { createIdentity } from './identity.mjs';
+import { AppError, publicError, saveJournalOperation, sweepReceipts } from './sync.mjs';
+import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } from './transfer.mjs';
 import { createPracticeRoutes } from './http/practice-routes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +66,11 @@ const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replac
 /* Какие события принимает /api/event и какие пишет сам обработчик — в реестре events.mjs */
 const {seal, open:open_} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
+
+/* Короткое ожидание, если база занята другим писателем (напоминания, отчёты, ночная копия). Без него редкая
+   встреча двух писателей даёт «database is locked» и 500 на ровном месте. Держим маленьким: node:sqlite синхронна,
+   и долгое ожидание встало бы колом во всём процессе — что не успело за секунду, честнее вернуть как 503. */
+db.exec('PRAGMA busy_timeout = 1000');
 
 /* Схема и её история — в schema.mjs: шаги по номерам, каждый в своей транзакции;
    порт слушается только после того, как миграции прошли и обязательные колонки на месте */
@@ -333,7 +340,7 @@ const userById = (id) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?
 const userByEmail = (email) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`).get(email);
 const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').get(id) || {}).photo || '';
 /* Кто человек — сессии устройства и коды на почту — в backend/identity.mjs */
-const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, issueLoginCode, checkLoginCode } =
+const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, issueLoginCode, checkLoginCode, verifyLogin } =
   createIdentity({ db, basePath: BASE, sha, clean, nowISO, userById, rolesFor });
 function touchStreak(u) {                       // серию продолжает любой ритуал за день
   const d = today();
@@ -539,38 +546,62 @@ const server = createServer(async (req, res) => {
         if (!allowRate(verifyRate, clientIp(req), 60)) return json(res, 429, { ok: false, error: 'too_often' });   /* перебор кодов по многим почтам с одного адреса */
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
-        const code = clean(b.code, 6);
-        const bad = checkLoginCode(email, code, 'login');
-        if (bad) return json(res, bad === 'too_many' ? 429 : 400, { ok: false, error: bad });
+        /* Код не режем: раньше clean(b.code, 6) обрезал «1234567» до «123456», и подходил не тот код, что в письме.
+           Всё остальное — проверка, привязка аккаунта, новая сессия, погашение кода — одной транзакцией в identity.mjs:
+           отказ посередине больше не оставляет человека без кода и без входа. */
+        const r = verifyLogin({
+          email, code: typeof b.code === 'string' ? b.code.trim() : '',
+          guest: u, ua: req.headers['user-agent'], currentToken: parseCookies(req).lunario_app,
+          /* анкету, заполненную только что на этом устройстве, переносим в найденный аккаунт — она про того же человека */
+          profileFields: { sql: `UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
+                                 consent_version=?, consent_ts=? WHERE id=?`,
+            values: (g, id) => [g.name, g.birth, g.birth_time, g.city, g.city_region, g.lat, g.lon, g.tz, g.consent_version, g.consent_ts, id] },
+          countGuestRecords: (id) => guestRecordCounts(db, id),
+          transferOffer: (guestId, accountId) => offerTransfer(guestId, accountId),
+        });
+        if (r.error) return json(res, r.error === 'too_many' ? 429 : 400, { ok: false, error: r.error });
+        /* Кука — только после COMMIT: при откате у человека не должно остаться куки несуществующей сессии. */
+        setSessionCookie(res, r.token);
+        const account = userById(r.accountId);
+        /* merged остаётся ради уже работающих клиентов: true означало «устройство переключилось на другой аккаунт».
+           Новое поле state говорит точнее, а transfer — что у гостя остались записи и их можно перенести. */
+        const merged = r.state === 'signed_in' || r.state === 'guest_transfer_required';
+        return json(res, 200, { ok: true, merged, state: r.state, user: publicUser(account),
+          ...(merged ? { day: dayPack(account, d) } : {}),
+          ...(r.transfer ? { transfer: { token: r.transfer, counts: r.counts } } : {}) });
+      }
 
-        /* личность подтверждена — токен устройства меняется в любом случае: старый, даже если утёк, больше не действует */
-        const rotate = (userId) => { db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(parseCookies(req).lunario_app || '')); newSession(userId, res, req.headers['user-agent']); };
-        let existing = userByEmail(email);
-        if (!existing) {
-          // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся
-          db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), u.id);
-          rotate(u.id);
-          return json(res, 200, { ok: true, merged: false, user: publicUser(userById(u.id)) });
-        }
-        if (existing.id === u.id) { rotate(u.id); return json(res, 200, { ok: true, merged: false, user: publicUser(existing) }); }
+      /* Записи, сделанные до входа, переносятся только по явному согласию: вход в аккаунт — не доказательство,
+         что гостевой дневник принадлежит тому же человеку (общий компьютер). Приглашение подписано и живёт полчаса. */
+      if (p === '/api/account/transfer' && req.method === 'POST') {
+        const b = await readBody(req);
+        const offer = readOffer(b.token);
+        if (!offer) return json(res, 400, { ok: false, error: 'bad_transfer_token' });
+        if (offer.accountId !== u.id) return json(res, 403, { ok: false, error: 'not_your_transfer' });
+        const done = transferGuestRecords(db, offer.guestId, offer.accountId);
+        if (!done.ok) return json(res, done.error === 'not_found' ? 404 : 409, { ok: false, error: done.error });
+        flushShelves(u.id, d); scheduleShelves(u.id, d, ['about', 'day', 'history']);
+        return json(res, 200, { ok: true, moved: done.moved, kept: done.kept, already: !!done.already });
+      }
 
-        // аккаунт с этой почтой уже есть — переключаем устройство на него; прежний токен устройства отзываем
-        rotate(existing.id);
-        if (u.onboarded && !existing.onboarded) {   // анкету только что заполнили на этом устройстве — она едет в найденный аккаунт
-          db.prepare(`UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
-                      consent_version=?, consent_ts=? WHERE id=?`)
-            .run(u.name, u.birth, u.birth_time, u.city, u.city_region, u.lat, u.lon, u.tz, u.consent_version, u.consent_ts, existing.id);
-          existing = userById(existing.id);
+      /* Кто я сейчас. Очередь спрашивает это перед каждой отправкой: если за время лежания в очереди человек
+         сменился, чужой черновик отправлять нельзя. Гостя здесь не заводим — на то и 401. */
+      if (p === '/api/auth/session' && req.method === 'GET')
+        return json(res, 200, { ok: true, accountId: u.id, signedIn: !!u.email, email: u.email || '' });
+
+      /* Запись дневника по имени операции: повтор с тем же именем возвращает ту же квитанцию и не создаёт дубль.
+         Обычный POST /api/journal остаётся как был — старый клиент ничего не заметит. */
+      if (p === '/api/sync/journal' && req.method === 'POST') {
+        const b = await readBody(req);
+        try {
+          const receipt = saveJournalOperation(db, u, b, { seal, day: d, now: nowISO(), track, touchStreak, dailyLimit: DAILY_WRITES });
+          res.once('finish', () => scheduleShelves(u.id, d, ['day']));
+          return json(res, 200, receipt);
+        } catch (e) {
+          const pub = publicError(e);
+          if (pub.status >= 500) logError(p, e.message);
+          return json(res, pub.status, { ok: false, error: pub.code, retryable: pub.retryable });
         }
-        const empty = !u.email && !db.prepare('SELECT 1 FROM entries WHERE user_id = ? LIMIT 1').get(u.id)
-          && !db.prepare('SELECT 1 FROM journal WHERE user_id = ? LIMIT 1').get(u.id)
-          && !u.photo && !u.preferences
-          && !['wishes','habits','askesis','moods'].some(table=>db.prepare(`SELECT 1 FROM ${table} WHERE user_id=? LIMIT 1`).get(u.id));
-        if (empty) {                              // пустой анонимный профиль этого устройства не копим
-          db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
-          db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
-        }
-        return json(res, 200, { ok: true, merged: true, user: publicUser(existing), day: dayPack(existing, d) });
       }
 
       if (p === '/api/auth/logout' && req.method === 'POST') {
