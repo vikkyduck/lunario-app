@@ -12,15 +12,13 @@ export async function checkExperience({browser,base,owner}){
   const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
   try{
     await page.goto(base+'/');await page.waitForSelector('#v-home.on');
-    await page.getByRole('button',{name:'Выбрать практики',exact:true}).click();
-    for(const title of ['Карта дня','Настроение дня','Дневник благодарности'])await page.locator('#ritual-box').getByRole('button',{name:title}).click();
-    assert.ok(await page.locator('#ritual-save').isDisabled());
-    for(const title of ['Вопрос дня','Дневник'])await page.locator('#ritual-box .ritual-option').filter({hasText:new RegExp('^'+title+'[＋0-9]$')}).click();
-    await page.locator('#ritual-save').click();await page.locator('#wg').waitFor({state:'hidden'});
-    assert.deepEqual((await owner.json('/preferences')).preferences.ritual,['tone','journal']);
-    await page.reload();await page.waitForSelector('#v-home.on');
-    assert.equal(await page.locator('#h-next').innerText(),'Ответить на вопрос дня →');
-    await page.locator('#h-next').click();await page.locator('#tone-a').fill('Длинный ответ для проверки чтения и поля. '.repeat(30));
+    /* инструменты: всё включаем через настройки, ритуала со счётчиком на главной больше нет */
+    await page.waitForFunction(()=>CAT&&CAT.tools&&CAT.tools.length);
+    const pr0=(await owner.json('/preferences')).preferences;await owner.json('/preferences','POST',{...pr0,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']});
+    await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&!document.querySelector('#v-home [data-feature=askesis]').hidden);
+    assert.equal(await page.locator('#h-next,.day-focus').count(),0);
+    await page.locator('#h-set-question').click();
+    await page.locator('#tone-a').fill('Длинный ответ для проверки чтения и поля. '.repeat(30));
     assert.ok(await page.locator('#tone-a').evaluate(e=>e.clientHeight>300&&e.scrollHeight<=e.clientHeight+2));
     assert.equal(await page.locator('#tone-a').evaluate(e=>getComputedStyle(e).fontSize),'18px');
     assert.equal(await page.locator('#tone-box .card').count(),0);
@@ -28,11 +26,10 @@ export async function checkExperience({browser,base,owner}){
     await page.setViewportSize({width:390,height:420});await page.waitForFunction(()=>Math.abs(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--visible-height'))-420)<2);
     const save=await page.locator('#tone-save').boundingBox();await shot('question-keyboard');assert.ok(save.y>=0&&save.y+save.height<=420,JSON.stringify(save));
     await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
-    await page.setViewportSize({width:390,height:844});await page.locator('#h-next').click();
+    await page.setViewportSize({width:390,height:844});await page.locator('#v-home .quick-actions button').filter({hasText:'Записать мысль'}).click();
     assert.ok(await page.locator('#v-practice.on #w-journal').count());assert.equal(await page.locator('#wg.on').count(),0);
     await page.locator('#j-text').fill('Сегодня я нашла время для себя');await page.getByRole('button',{name:'Сохранить запись',exact:true}).click();await page.locator('#journal-saved').waitFor();await close();
-    await page.locator('.app-nav [data-nav=home]').click();assert.ok(await page.locator('#h-next').isHidden());assert.equal(await page.locator('#h-progress').innerText(),'Ритуал на сегодня завершён');
-    await shot('ritual-complete-light');await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>document.querySelector('#h-next').hidden);
+    await page.locator('.app-nav [data-nav=home]').click();await shot('home-tools-light');await page.reload();await page.waitForSelector('#v-home.on');
     await page.locator('.app-nav [data-nav=history]').click();await page.locator('.timeline-entry').first().waitFor();
     assert.ok((await page.locator('#timeline-list').innerText()).includes('Сегодня я нашла время для себя'));
     await page.locator('#timeline-filters').getByRole('button',{name:'Вопрос дня',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-kind').length===1);
@@ -65,7 +62,7 @@ export async function checkExperience({browser,base,owner}){
       for(const key of ['habits','askesis','journal','tone','wishes']){await page.evaluate(k=>openWidget(k),key);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),key+' '+width);await close();}
       if(width===1440){await page.evaluate(()=>go('home'));await shot('home-desktop-'+theme);}
     }
-    await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('#h-next').evaluate(e=>getComputedStyle(e).animationName),'none');
-    assert.deepEqual(errors,[]);console.log('PASS: selected 2-step ritual with durable completion; growing answer and keyboard-sized viewport; real practice pages/back/drafts; direct filtered timeline/mood day; atomic wish image and completion; persistent themes; four widths in both themes.');
+    await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('#v-home .quick-actions button').first().evaluate(e=>getComputedStyle(e).animationName),'none');
+    assert.deepEqual(errors,[]);console.log('PASS: tools chosen through the catalog, no ritual counter; growing answer and keyboard-sized viewport; real practice pages/back/drafts; direct filtered timeline/mood day; atomic wish image and completion; persistent themes; four widths in both themes.');
   }finally{await ctx.close();}
 }

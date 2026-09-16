@@ -7,9 +7,6 @@ body.inner :is(input,textarea)::placeholder{color:var(--muted);opacity:1}
 body.inner textarea{font-size:18px;line-height:1.65;min-height:160px;resize:none;overflow:hidden}
 body.inner .quick-actions button{background:var(--surface);font-size:15px!important;min-height:100px}
 body.inner .wid b{font-size:17px;line-height:1.4}
-body.inner .day-focus{background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border-color:var(--line)}
-.day-focus .daily-statement{margin-bottom:20px}
-.day-focus .ritual-tools .section-caption{margin:0}
 body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.histbody p){font-size:var(--read-size)!important;line-height:1.7;color:var(--text)}
 body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.wid>span,.field label,.text-action,.rem-summary,.segmented button,.emotion-family,.mchip,.mood-own-row label,.hb-rule,.chip,.btn.sm,.observation>summary,.practice-create>summary){font-size:16px;line-height:1.5}
 body.inner .wpane :is(.hint,.msg,.saved-state){font-size:16px!important;color:var(--muted)}
@@ -36,14 +33,19 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 #practice-tools .rem-body{display:none}
 #w-journal>.eyebrow{display:none}
 #w-journal #m-journal{margin-top:40px}
-.ritual-tools{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
-#h-next[hidden]{display:none}
-#h-progress{font-size:16px;line-height:1.5;color:var(--muted)}
-#h-progress.ritual-finished{color:var(--ok);font-size:18px}
-.ritual-options{display:grid;gap:8px;margin:20px 0}
-.ritual-option{display:flex;align-items:center;justify-content:space-between;gap:20px;text-align:left;padding:16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--field);font:inherit;font-size:16px;color:var(--text);cursor:pointer}
-.ritual-option[aria-pressed=true]{border-color:var(--gold);background:var(--selected)}
-.ritual-option>span:last-child{flex:0 0 26px;text-align:center}
+/* Каталог инструментов: карточки по разделам, у каждой «Посмотреть» и «Добавить/Убрать» */
+.tools-group{margin-top:22px}.tools-group:first-child{margin-top:16px}
+.tools-group h3{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
+.tool-card{padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);margin-top:8px}
+.tool-card.on{border-color:rgba(217,184,104,.55)}
+.tool-card b{display:block;font-size:16px;font-weight:600;line-height:1.35}
+.tool-card p{margin:4px 0 0;font-size:14px;line-height:1.5;color:var(--muted)}
+.tool-actions{display:flex;justify-content:space-between;gap:12px;margin-top:4px}
+.tool-actions .text-action{min-height:40px;padding:6px 0;font-size:15px}
+.tool-card.on .tool-actions .text-action:not(.secondary){color:var(--muted)}
+.tools-link{margin:22px 0 0;text-align:center}
+.tools-link .text-action{color:var(--muted);font-size:15px}
+.tools-link .ico{width:18px;height:18px;background-color:currentColor}
 .diary-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:24px 0}
 .diary-actions .text-action{padding:8px}
 .diary-actions .btn{width:auto}
@@ -154,13 +156,6 @@ body.inner .compact-links .wid>span:empty{display:none}
 body.inner .compact-links .wid .dot{position:absolute;right:43px;top:22px}
 
 /* Today: one focal card, then quick actions and personal practices. */
-body.inner .day-focus{background:var(--surface);border-radius:var(--radius-panel);padding:24px}
-body.inner .day-focus .daily-statement{margin-bottom:20px}
-body.inner .day-focus .daily-statement #h-wish{font-size:24px;line-height:1.45;letter-spacing:-.025em;font-weight:500;text-wrap:pretty}
-body.inner .ritual-tools{border-top:1px solid var(--line);padding-top:14px;gap:4px 12px}
-body.inner .ritual-tools .text-action{font-size:15px}
-body.inner #h-progress{margin:6px 0 18px;font-size:15px}
-body.inner #h-progress.ritual-finished{color:var(--ok);font-size:17px;margin-bottom:0}
 body.inner .quick-actions{margin-top:14px;gap:10px}
 body.inner .quick-actions button{min-height:102px;padding:14px 8px;border:0;background:var(--accent-soft);border-radius:var(--r-l)}
 body.inner .quick-actions .ico{width:24px;height:24px}
@@ -295,22 +290,19 @@ body:not(.inner):not(.hello) .bg{display:none}
   body.inner .method-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   body.inner .method-grid .wid{display:flex;min-height:210px;gap:16px}
   body.inner .method-grid .wid>span.destination-arrow{position:absolute;top:22px;right:18px}
-  body.inner .day-focus .daily-statement #h-wish{font-size:26px}
 }
 /* «Обо мне»: на телефоне плитки в один столбец — «Совместимость» и «Нумерология» в полстолбца не помещаются и резались */
 @media(max-width:599px){body.inner .about-links{grid-template-columns:1fr}}
 @media(max-width:759px){
   body.inner .wg{border-radius:0;padding:calc(20px + env(safe-area-inset-top)) 20px env(safe-area-inset-bottom)}
   body.inner .wg-head{top:calc(-20px - env(safe-area-inset-top));padding-top:20px}
-  body.inner #wg:is([data-kind=appearance],[data-kind=ritual],[data-kind=askDate],[data-kind=practiceSettings]) .wg{height:auto;max-height:calc(var(--visible-height,100dvh) - 20px);bottom:var(--keyboard-gap,0px);top:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
+  body.inner #wg:is([data-kind=appearance],[data-kind=tools],[data-kind=askDate],[data-kind=practiceSettings]) .wg{height:auto;max-height:calc(var(--visible-height,100dvh) - 20px);bottom:var(--keyboard-gap,0px);top:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
   body.inner .app-nav{padding-bottom:calc(6px + env(safe-area-inset-bottom));height:calc(70px + env(safe-area-inset-bottom))}
   body.inner .wpane .hb-entry{grid-template-columns:1fr;gap:0}
   body.inner .wish-create-actions .btn{flex:1}
 }
 @media(max-width:370px){
   body.inner .wrap{padding-inline:16px}
-  body.inner .day-focus{padding:20px!important}
-  body.inner .day-focus .daily-statement #h-wish{font-size:22px}
   body.inner .quick-actions{grid-template-columns:1fr;gap:8px}
   body.inner .quick-actions button{min-height:56px;padding:12px 16px!important;flex-direction:row;justify-content:flex-start;gap:14px}
   body.inner .quick-actions button b{font-size:15px}

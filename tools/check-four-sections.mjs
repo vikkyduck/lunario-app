@@ -33,19 +33,38 @@ export async function checkFourSections({browser,base,owner}){
     }
     for(const mode of ['yesno','rune','spread']){await page.evaluate(()=>go('ask'));await page.locator(`#v-ask button[data-on="click:openAsk-${mode}"]`).click();await page.locator('#w-ask').waitFor();assert.ok(await page.locator('#a-go').evaluate(el=>!el.classList.contains('ghost')));await close();}
     for(const [alias,target] of [['today','home'],['around','home'],['me','about']]){await page.evaluate(v=>go(v),alias);assert.ok(await page.locator('#v-'+target).evaluate(el=>el.classList.contains('on')));}
-    await page.reload();await page.waitForSelector('#v-home.on');
-    assert.equal(await page.locator('#h-next').innerText(),'Открыть карту дня →');
-    await page.locator('#h-next').click();await page.locator('#t-open').click();await page.locator('#t-after').waitFor();await close();
-    assert.equal(await page.locator('#h-next').innerText(),'Отметить настроение →');
-    await page.locator('#h-next').click();assert.equal(await page.locator('.quick-mood').count(),6);assert.ok(await page.locator('#mood-detail').isHidden());
+    // ── Конструктор инструментов: новый человек видит стартовый набор, каталог добавляет и убирает плитки, записи целы ──
+    await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&CAT.tools.length);
+    const start=(await page.evaluate(()=>[...document.querySelectorAll('#v-home [data-feature],#v-history [data-feature]')].filter(e=>!e.hidden).map(e=>e.dataset.feature)));
+    assert.ok(start.includes('lunar')&&start.includes('card')&&start.includes('gratitude'),'start set + former ritual: '+start.join(','));
+    assert.ok(!start.includes('askesis')&&!start.includes('day')&&!start.includes('wishes'),'optional tools are hidden until chosen');
+    assert.ok(await page.locator('#v-home .feature-group').filter({hasText:'Мои практики'}).isHidden(),'empty group is hidden with its heading');
+    assert.equal(await page.locator('#h-next,#h-progress,.day-focus').count(),0,'no ritual counter on the home screen');
+    const habit=await owner.json('/habits','POST',{title:'Тест: до конструктора',rule:'каждый день'});
+    await page.locator('#v-home .tools-link button').click();await page.locator('#wg-body #w-tools .tool-card').first().waitFor();
+    assert.equal(await page.locator('#wg-eb').innerText(),'Мои инструменты');
+    const toolCard=(t)=>page.locator('#w-tools .tool-card').filter({has:page.locator('b',{hasText:new RegExp('^'+t+'$')})});
+    await toolCard('Дневник привычек').getByRole('button',{name:'Добавить',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#v-home [data-feature=habits]').hidden);
+    await toolCard('Карта дня').getByRole('button',{name:'Убрать',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#v-home [data-feature=card]').hidden);
+    assert.deepEqual((await owner.json('/preferences')).preferences.tools,['lunar','habits','gratitude'],'visible tools are saved in preferences');
+    await toolCard('Дневник привычек').getByRole('button',{name:'Посмотреть',exact:true}).click();await page.locator('#v-practice.on #w-habits').waitFor();
+    await page.locator('#habit-list').getByText('Тест: до конструктора',{exact:true}).waitFor();await close();
+    await page.evaluate(()=>openWidget('tools'));await toolCard('Дневник привычек').getByRole('button',{name:'Убрать',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#v-home [data-feature=habits]').hidden);await close();
+    assert.ok((await owner.json('/habits')).items.some(h=>h.id===habit.item?.id||h.title==='Тест: до конструктора'),'hiding a tool keeps its records');
+    await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&CAT.tools.length);
+    assert.ok(await page.locator('#v-home [data-feature=card]').isHidden()&&await page.locator('#v-home [data-feature=lunar]').isVisible(),'choice survives reload');
+    /* дальше сценарии открывают все плитки — включаем всё */
+    const prefsNow=(await owner.json('/preferences')).preferences;await owner.json('/preferences','POST',{...prefsNow,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']});
+    await page.reload();await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&!document.querySelector('#v-home [data-feature=askesis]').hidden);
+    await page.locator('#v-home [data-feature=card]').click();await page.locator('#t-open').click();await page.locator('#t-after').waitFor();await close();
+    await page.locator('#v-home [data-feature=mood]').click();assert.equal(await page.locator('.quick-mood').count(),6);assert.ok(await page.locator('#mood-detail').isHidden());
     await page.getByRole('button',{name:'Устала',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.mpick')?.textContent.includes('Устала'));
     assert.equal((await owner.json('/me')).mood,'quick:tired');
     const report=await owner.json('/mood/report');assert.ok(report.month.stats.some(s=>s.mood==='quick:tired'));
     await page.getByRole('button',{name:'Все эмоции',exact:true}).click();assert.equal(await page.locator('.mchip').count(),32);await close();
-    assert.equal(await page.locator('#h-next').innerText(),'Записать благодарность →');
-    await page.locator('#h-next').click();assert.ok(await page.locator('#v-history.on').count());await page.locator('#gr-text').fill('Себе за внимательность к себе');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await page.locator('#gr-box .saved-state').waitFor();await close();
-    await page.locator('.app-nav [data-nav=home]').click();assert.ok(await page.locator('#h-next').isHidden());assert.equal(await page.locator('#h-progress').innerText(),'Ритуал на сегодня завершён');
-    await page.locator('#h-set-question').click();await page.locator('#tone-a').fill('Я заметила свои потребности');await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();assert.ok(await page.locator('#h-next').isHidden());
+    await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history [data-feature=gratitude]').click();await page.locator('#gr-text').fill('Себе за внимательность к себе');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await page.locator('#gr-box .saved-state').waitFor();await close();
+    await page.locator('.app-nav [data-nav=home]').click();
+    await page.locator('#h-set-question').click();await page.locator('#tone-a').fill('Я заметила свои потребности');await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
     await page.evaluate(()=>{go('history');openWidget('journal');});await page.locator('#j-text').fill('Мой текст.');await page.locator('#j-dictate').click();
     await page.evaluate(()=>window.__speechQA.rec.onresult({resultIndex:0,results:[Object.assign([{transcript:'Продиктованное продолжение'}],{isFinal:true})]}));
     assert.equal(await page.locator('#j-text').inputValue(),'Мой текст. Продиктованное продолжение');await close();assert.equal(await page.evaluate(()=>window.__speechQA.aborts),1);assert.equal(await page.locator('#j-dictate').getAttribute('aria-pressed'),'false');assert.ok(await page.evaluate(()=>window.__speechQA.rec.onresult===null&&window.__speechQA.rec.onerror===null&&window.__speechQA.rec.onend===null));
@@ -67,6 +86,6 @@ export async function checkFourSections({browser,base,owner}){
     await page.evaluate(()=>go('account'));const download=page.waitForEvent('download');await page.getByRole('button',{name:/Скачать мои данные/}).click();const file=await download;assert.match(file.suggestedFilename(),/^lunario-.*\.pdf$/);
     const exported=await owner.json('/data/export');assert.ok(exported.journal.some(i=>i.text.includes('Продиктованное продолжение')));assert.ok(exported.journal.some(i=>i.kind==='gratitude'));assert.ok(exported.dailySets.length);assert.ok(!JSON.stringify(exported).includes('token_hash'));
     assert.deepEqual(errors,[]);
-    console.log('PASS: all features mapped to four sections; real next-step sequence; five quick moods plus full 32; question directions/draft/explicit submit; dictation lifecycle; lunar hierarchy; forecast note; personal export download.');
+    console.log('PASS: all features mapped to four sections; tools catalog (start set, add/remove, records kept, reload); five quick moods plus full 32; question directions/draft/explicit submit; dictation lifecycle; lunar hierarchy; forecast note; personal export download.');
   }finally{await ctx.close();}
 }

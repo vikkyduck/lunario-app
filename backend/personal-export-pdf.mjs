@@ -110,7 +110,7 @@ class Flow {
 }
 
 /* Точка входа: данные personalExport + подписи для кодов → Buffer с PDF */
-export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) => k, reminderTitle = (k) => k, headerPng = null } = {}) {
+export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) => k, reminderTitle = (k) => k, toolTitle = (k) => k, headerPng = null } = {}) {
   const doc = new PdfDocument({ title: 'Лунарио — мои данные' });
   const F = { regular: doc.addFont(fonts().regular), semibold: doc.addFont(fonts().semibold) };
   const flow = new Flow(doc, F);
@@ -152,7 +152,7 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   const pr = data.preferences || {};
   flow.section('Приложение', 'Настройки');
   flow.kv('Оформление', THEME[pr.theme] || pr.theme || '');
-  flow.kv('Мой ритуал', (pr.ritual || []).map((k) => ({ card: 'карта дня', mood: 'настроение', habits: 'привычки', gratitude: 'благодарность', tone: 'вопрос дня', journal: 'дневник' }[k] || k)).join(', '));
+  flow.kv('Мои инструменты', Array.isArray(pr.tools) ? (pr.tools.length ? pr.tools.map(toolTitle).join(', ') : 'только стартовый набор') : 'стартовый набор');
   flow.kv('Настройка контента', pr.topicsAll ? 'показывать всё' : (pr.topics || []).length ? pr.topics.map(topicTitle).join(', ') : 'как предложено');
   const rem = (data.reminders || []).filter((r) => r.enabled);
   flow.kv('Напоминания', rem.length ? rem.map((r) => `${reminderTitle(r.feature)} — ${r.time || ''}${r.freq === 'weekly' ? `, ${WEEKDAYS[r.weekday] || 'раз в неделю'}` : r.freq && r.freq !== 'daily' ? `, ${FREQ[r.freq] || r.freq}` : ''}`).join('; ') : 'выключены');

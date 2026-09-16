@@ -422,6 +422,21 @@ const NUM_DAY_FALLBACK = {
 
 /* ── Настрой дня ── */
 /* Пожелание дня в приветствии: «Вдохновения вам, Викки». Родительный падеж, без точки. */
+/* Инструменты: ключ | раздел (today/history) | название | описание | на старте. Запасной список — если файла нет */
+const TOOLS_FALLBACK = [
+  ['lunar', 'today', 'Лунный день', 'Рекомендация на день, символ и тема, полоска на 30 дней вперёд', 'да'],
+  ['card', 'today', 'Карта дня', 'Одна карта в день из 22 старших арканов — смысл и что с ним делать сегодня', 'нет'],
+  ['day', 'today', 'Прогноз по знаку', 'Общий тон дня и четыре стороны — работа, отношения, здоровье, деньги', 'нет'],
+  ['sky', 'today', 'На небе', 'Фазы Луны, затмения, ретроградные планеты и события на два месяца вперёд', 'нет'],
+  ['habits', 'today', 'Дневник привычек', 'Свой ритм для каждой привычки и ежедневные отметки', 'нет'],
+  ['askesis', 'today', 'Аскезы', 'Отказ или ограничение до своей даты, отметки по дням и заметки', 'нет'],
+  ['gratitude', 'history', 'Дневник благодарности', 'Кому и за что вы благодарны сегодня — запись с датой в дневнике', 'нет'],
+  ['wishes', 'history', 'Мои желания', 'Список желаний с фото и отметкой «исполнено»', 'нет'],
+  ['hmood', 'history', 'История настроений', 'Неделя по дням, месяц по долям и итог словами', 'нет'],
+  ['hentries', 'history', 'Мои вопросы и ответы', 'Всё, о чём спрашивали: «Да / Нет», руны, расклады и карты дня', 'нет'],
+];
+const toolsFrom = (rowsIn) => (rowsIn || TOOLS_FALLBACK).filter((c) => /^[a-z][a-z0-9-]{1,19}$/.test(c[0]) && ['today', 'history'].includes(c[1]))
+  .map(([key, section, title, text, start]) => ({ key, section, title, text: text || '', start: /^(да|yes|1)$/i.test(start || '') }));
 const AFFIRMATIONS_FALLBACK = [
   'Я разрешаю себе идти в своём темпе — этого достаточно.',
   'Мне не нужно быть удобной, чтобы меня любили.',
@@ -531,6 +546,7 @@ function build() {
   r.LUNAR_REF = ref ? { title: ref.name, caption: ref.fields['подпись'] || '', sections: Object.entries(ref.sections).map(([title, blocks]) => ({ title, blocks })) } : null;
   r.ASKESIS_IDEAS = lines('аскезы.txt') || ASKESIS_FALLBACK;
   r.HABIT_IDEAS = lines('привычки.txt') || HABITS_FALLBACK;
+  r.TOOLS = toolsFrom(rows('инструменты.txt', 4));
 
   /* Установки дня: номер | установка | вопрос. Каждому человеку — случайно и без повторов в течение года. */
   const setRows = rows('установки.txt', 3) || SETS_FALLBACK;
@@ -615,6 +631,7 @@ export const SKY = new Proxy({}, { get: (_, k) => Reflect.get(data.SKY, k) });
 export const NEWS = new Proxy([], { get: (_, k) => Reflect.get(data.NEWS, k) });
 export const ASKESIS_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.ASKESIS_IDEAS, k) });
 export const HABIT_IDEAS = new Proxy([], { get: (_, k) => Reflect.get(data.HABIT_IDEAS, k) });
+export const TOOLS = new Proxy([], { get: (_, k) => Reflect.get(data.TOOLS, k) });
 
 /* Правки в текстах подхватываются без перезапуска — через пару секунд после сохранения. */
 let reloadTimer = null;

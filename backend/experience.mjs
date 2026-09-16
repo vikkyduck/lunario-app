@@ -7,6 +7,7 @@ export function preferences(raw) {
 const topicKey = (k) => typeof k === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(k);
 export function validPreferences(value) {
   if (value && value.topics !== undefined && !(Array.isArray(value.topics) && value.topics.length <= 12 && value.topics.every(topicKey))) return false;
+  if (value && value.tools !== undefined && !(Array.isArray(value.tools) && value.tools.length <= 40 && value.tools.every(topicKey))) return false;   /* видимые инструменты: ключи из каталога */
   if (value && value.topicsAll !== undefined && typeof value.topicsAll !== 'boolean') return false;
   return value && ['system','light','dark'].includes(value.theme) && Array.isArray(value.ritual)
     && value.ritual.length >= 2 && value.ritual.length <= 3

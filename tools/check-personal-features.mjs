@@ -122,6 +122,14 @@ try {
   await owner.json('/preferences','POST',{...prefs,topics:[],topicsAll:false});
   assert.equal((await other.json('/preferences')).preferences.theme,'dark');
   for(const ritual of [[],['tone'],['tone','tone'],['tone','unknown'],['card','mood','tone','journal']])assert.equal((await owner.raw('/preferences','POST',{theme:'dark',ritual})).status,400);
+  /* Инструменты: каталог отдаёт список со стартовым набором; выбор хранится в настройках, чужие ключи отбрасываются, не-массив — ошибка */
+  const catTools=(await (await fetch(base+'/api/catalog')).json()).tools;assert.ok(Array.isArray(catTools)&&catTools.some(t=>t.key==='lunar'&&t.start)&&catTools.some(t=>t.key==='askesis'&&!t.start),'tools catalog with a start set');
+  assert.equal((await owner.json('/preferences')).preferences.tools,undefined,'no choice yet — client shows the start set');
+  await owner.json('/preferences','POST',{...prefs,tools:['askesis','nope','askesis','lunar']});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','lunar']);
+  await owner.json('/preferences','POST',{...prefs,topics:[]});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','lunar'],'saving other preferences keeps the tools');
+  assert.equal((await owner.raw('/preferences','POST',{...prefs,tools:'lunar'})).status,400);
+  await owner.json('/preferences','POST',{...prefs,tools:[]});assert.deepEqual((await owner.json('/preferences')).preferences.tools,[]);
+  await owner.json('/preferences','POST',{...prefs,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']});   /* дальше UI-сценарии открывают плитки с главной */
   const wishesBefore=(await owner.json('/wishes')).items.length;
   assert.equal((await owner.raw('/wishes','POST',{text:'Неверное фото',photo:'not-an-image'})).status,400);
   assert.equal((await owner.json('/wishes')).items.length,wishesBefore,'No orphan wish when its photo is invalid');
@@ -626,6 +634,7 @@ try {
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
       const [name, value] = owner.cookie.split('=');
       await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, secure: false, sameSite: 'Lax' }]);
+      { const pr=(await owner.json('/preferences')).preferences; await owner.json('/preferences','POST',{...pr,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']}); }   /* сценарии ниже открывают все плитки */
       const page = await ctx.newPage(); const errors = [];const close=async()=>{if(await page.locator('#wg.on').count())await page.locator('.wg-x').click();else{await page.locator('#practice-back').click();await page.locator('#v-practice').waitFor({state:'hidden'});}};
       page.on('pageerror', e => errors.push(e.message));
       await page.goto(base + '/', { waitUntil: 'domcontentloaded' });

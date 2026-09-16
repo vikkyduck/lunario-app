@@ -13,7 +13,9 @@ export async function checkUsabilityUI({browser,base,owner}){
   const open=async key=>{await page.evaluate(k=>openWidget(k),key);await page.locator(':is(#wg-body,#practice-body) #w-'+key).waitFor();};
   const capture=async label=>{if(process.env.LUNARIO_QA_SHOTS){await page.waitForFunction(()=>!document.getAnimations().some(a=>a.playState==='running'&&a.effect?.target?.classList?.contains('command-enter')));await mkdir(process.env.LUNARIO_QA_SHOTS,{recursive:true});await page.screenshot({path:join(process.env.LUNARIO_QA_SHOTS,label+'.png'),fullPage:false});}};
   try{
-    await page.goto(base+'/');await page.waitForSelector('#v-home.on');
+    /* плитки инструментов на главной видны только по выбору — включаем все, сценарий открывает их по названию */
+    { const pr=(await owner.json('/preferences')).preferences; await owner.json('/preferences','POST',{...pr,tools:['lunar','card','day','sky','habits','askesis','gratitude','wishes','hmood','hentries']}); }
+    await page.goto(base+'/');await page.waitForSelector('#v-home.on');await page.waitForFunction(()=>CAT&&CAT.tools&&!document.querySelector('#v-home [data-feature=habits]').hidden);
     const data=await owner.json('/me');
     assert.equal(await page.locator('#h-wish').innerText(),data.day.set.text);
     assert.ok((await page.locator('#h-wish').innerText()).endsWith(', '+data.user.name));

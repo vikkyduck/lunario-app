@@ -29,6 +29,8 @@ export const EVENTS = [
   E('lunar_view', 'Открыл лунный день', 'client', { core: true, section: 'Луна и небо', title: 'Лунный день' }),
   E('lunar_expand', 'Развернул раздел лунного дня', 'client'),
   E('topics_set', 'Выбрал темы чтения', 'client'),
+  E('tools_add', 'Добавил инструмент', 'client'),
+  E('tools_remove', 'Убрал инструмент с экрана', 'client'),
   E('topics_all', 'Переключил «показать всё»', 'client'),
   E('sky_view', 'Открыл «На небе»', 'client', { core: true, section: 'Луна и небо', title: 'На небе' }),
   E('worry_pick', 'Разобрал вопрос', 'client', { core: true, section: 'Свериться с собой', title: 'Разобрать вопрос' }),

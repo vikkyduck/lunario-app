@@ -60,18 +60,6 @@ body.inner .home-intro #h-wish{font-family:Onest,ui-sans-serif,system-ui,sans-se
 body.inner #h-set-question{color:var(--gold-2);font-size:15px;margin-top:14px;gap:12px}
 body.inner #h-set-question span{margin-left:8px}
 .today-layout{position:relative;z-index:1}
-body.inner .day-focus{position:relative;isolation:isolate;overflow:hidden;border:1px solid transparent;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:color-mix(in srgb,var(--gold) 58%,transparent);box-shadow:inset 0 1px 0 #fff5d921,0 14px 36px -24px #bd925663;backdrop-filter:none;-webkit-backdrop-filter:none;padding:28px;border-radius:var(--r-sheet)}
-body.inner .day-focus::before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(290px circle at var(--glass-x,0%) var(--glass-y,0%),var(--moon-shine),transparent 74%);pointer-events:none}
-body.inner .ritual-tools{border:0;padding:0;display:flex;align-items:flex-start;flex-direction:column;gap:0;margin-right:86px}
-body.inner .ritual-tools h2{margin:0;font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:25px;font-weight:600;line-height:1.5;letter-spacing:-.01em}
-body.inner .ritual-tools .text-action{font-size:14px;padding:4px 0;min-height:40px}
-body.inner .ritual-practices{max-width:80%;font-size:16px;line-height:1.65;color:var(--muted);margin:14px 0 16px;text-wrap:pretty}
-body.inner #h-progress{font-size:14px;margin:8px 0 18px;color:var(--muted)}
-body.inner #h-progress.ritual-finished{color:var(--ok);font-size:17px;margin-bottom:0}
-body.inner #h-next{width:100%;min-height:52px}
-.ritual-emblem{position:absolute;right:30px;top:30px;width:58px;height:86px;border:1px solid #e7c98da6;border-radius:var(--r-s);background:linear-gradient(135deg,#2a2150,#141126 67%);box-shadow:0 5px 16px #0c061342,inset 0 0 0 4px #21182b,inset 0 0 0 5px #c49f5a4d;transform:rotate(9deg);pointer-events:none}
-.ritual-emblem::before{content:'';position:absolute;inset:18px 8px;border:1px solid #e6c78a50;border-radius:50%}
-.ritual-emblem span{position:absolute;width:30px;height:30px;left:12px;top:24px;background:url('/app/assets/moon-hero.png') center/contain no-repeat;filter:drop-shadow(0 0 7px #dbba7538)}
 body.inner .quick-actions{gap:16px;margin-top:22px}
 body.inner .quick-actions button{min-height:98px;font-weight:400;padding:15px 10px;background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:var(--r-l)}
 body.inner .quick-actions button b{font-size:15px;font-weight:400;line-height:1.45}
@@ -94,9 +82,9 @@ body.inner .timeline-kind{font-size:13px;color:var(--gold-2)}
 body.inner .timeline-day{margin:30px 0 14px}
 body.inner .timeline-empty{background:var(--moon-reader);border:1px solid var(--line);box-shadow:var(--moon-shadow)}
 body.inner .wish-picture:not(:has(img)){background:var(--moon-empty);border-bottom:1px solid var(--line)}
-body.inner :is(.hb,.practice-card,.ritual-option){border-color:var(--line);background:var(--surface)}
+body.inner :is(.hb,.practice-card){border-color:var(--line);background:var(--surface)}
 body.inner :is(.emotion-family,.quick-mood){border-color:var(--line);background:var(--surface)}
-body.inner :is(.emotion-family.on,.quick-mood.on,.ritual-option[aria-pressed=true]){background:var(--selected);border-color:var(--gold)}
+body.inner :is(.emotion-family.on,.quick-mood.on){background:var(--selected);border-color:var(--gold)}
 body.inner .hb.on{border-color:color-mix(in srgb,var(--ok) 38%,transparent)}
 body.inner :is(.timeline-filters [aria-pressed=true],.chip.on,.chip[aria-pressed=true]){color:var(--gold-2);border-color:var(--gold);background:var(--selected)}
 html[data-theme] body.inner .app-nav{background:radial-gradient(180px circle at var(--glass-x,15%) var(--glass-y,0%),var(--moon-shine),transparent 80%),var(--moon-glass);border:1px solid var(--line);box-shadow:inset 0 1px 0 #fff3d92b,inset 0 -1px 0 #fff3d910,0 12px 34px #10091940;backdrop-filter:none;-webkit-backdrop-filter:none;border-radius:var(--r-xl)}
@@ -114,7 +102,6 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   body.inner .wrap{padding-top:38px}
   .today-layout{grid-template-columns:minmax(0,1.2fr) minmax(300px,1fr);gap:44px}
   .home-intro{padding-top:28px;padding-bottom:40px}
-  body.inner .day-focus{padding:30px}
   body.inner .today-side>.feature-group:first-child{margin-top:0}
   body.inner .today-side>.feature-group:first-child>h2{margin-top:0}
 }
@@ -127,11 +114,6 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   body.inner .wrap{padding-inline:22px;padding-top:calc(30px + env(safe-area-inset-top))}
   .home-intro{margin:0;padding-inline:0;grid-template-columns:minmax(0,1fr) 100px;gap:14px}
   body.inner .home-intro #h-wish{font-size:27px}
-  body.inner .day-focus{padding:24px}
-  body.inner .ritual-tools h2{font-size:24px}
-  body.inner .ritual-practices{max-width:95%;font-size:15px}
-  .ritual-emblem{right:24px;top:25px;width:52px;height:78px}
-  .ritual-emblem span{left:10px;top:22px;width:28px;height:28px}
   body.inner .wid{padding:22px}
   body.inner .compact-links .wid{padding:22px}
   body.inner .timeline-entry{padding:22px}
@@ -140,11 +122,6 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   body.inner .wrap{padding-inline:16px}
   .home-intro{grid-template-columns:minmax(0,1fr) 82px;gap:12px}
   body.inner .home-intro #h-wish{font-size:24px}
-  body.inner .day-focus{padding:20px!important}
-  body.inner .ritual-tools{margin-right:64px}
-  body.inner .ritual-tools h2{font-size:22px}
-  .ritual-emblem{right:20px;top:24px;width:45px;height:69px}
-  .ritual-emblem span{left:8px;top:20px;width:24px;height:24px}
   body.inner .quick-actions{grid-template-columns:1fr;gap:10px}
   body.inner .quick-actions button{min-height:56px}
   body.inner .wid{min-height:135px}
@@ -158,7 +135,7 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   body.inner .compact-links .wid:hover{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border-color:transparent;box-shadow:var(--moon-shadow),0 12px 28px -20px #dab57660;transform:translateY(-2px)}
   body.inner :is(.text-action,.back):hover{color:var(--gold-2)}
 }
-@media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-actions button):hover{transform:none}body.inner :is(.wid,.day-focus)::before{background:none}}
+@media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-actions button):hover{transform:none}body.inner :is(.wid)::before{background:none}}
 @media(prefers-reduced-transparency:reduce){html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}}
 
 /* A real layout gives the moon its own space at every width, including narrow desktop windows. */
@@ -204,8 +181,6 @@ body.inner :is(.field label,.text-action,.back,.rem-summary,.segmented button,.e
 body.inner :is(.wpane p,.timeline-entry p,.entry-text,.ask-support,.ln-text,.histbody p,textarea){font-weight:500}
 body.inner .wpane :is(.hint,.msg){font-size:17px!important}
 body.inner .quick-actions button b{font-size:17px;font-weight:600}
-body.inner :is(.ritual-practices,#h-progress){font-size:17px;font-weight:500;color:var(--text)}
-body.inner .ritual-tools .text-action{font-size:16px;font-weight:600}
 body.inner #h-set-question{font-size:18px;font-weight:600}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:18px;color:var(--text)}
 body.inner #home-sky .moonline b{font-weight:600}
@@ -221,7 +196,7 @@ body:not(.inner) #v-hello .trust{color:var(--muted);font-weight:500}
 
 /* Glass follows the brief without backdrop filtering: a highlight over a dense base.
    Edge reflections and shadows provide depth; only toast and widget scrim may blur. */
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
   isolation:isolate;overflow:hidden;
   background:var(--glass-bg);
   backdrop-filter:none;
@@ -233,20 +208,20 @@ body:not(.inner) #v-hello .trust{color:var(--muted);font-weight:500}
 }
 /* Explicit containing blocks keep reflections inside controls without backdrop-filter. */
 body.inner :is(.rem-summary,#home-sky .moonline,.wg-x,.quick-actions button){position:relative}
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;
   background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),rgba(255,255,255,.75) 0deg,rgba(244,223,168,.55) 40deg,rgba(255,255,255,.08) 110deg,rgba(255,255,255,.05) 220deg,rgba(244,223,168,.35) 300deg,rgba(255,255,255,.75) 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude;
   pointer-events:none;opacity:1;box-shadow:none;transform:none;animation:none;
 }
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
   content:'';display:block;position:absolute;inset:-40%;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(circle at var(--glass-x) var(--glass-y),rgba(255,255,255,.28) 0%,rgba(244,223,168,.14) 18%,transparent 46%);
   opacity:0;transition:opacity var(--t-slow) ease;transform:none;animation:none;
 }
 @media(hover:hover) and (pointer:fine){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):hover{
     transform:translateY(-2px);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.18),0 18px 44px -14px rgba(217,184,104,.4);
@@ -255,7 +230,7 @@ body.inner :is(.rem-summary,#home-sky .moonline,.wg-x,.quick-actions button){pos
 :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):active{transform:scale(.98)}
 /* Daylight glass: a dense light base, white bevel and a violet shadow.
    Diary cards share the material but stay still while reading. */
-html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
+html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
   isolation:isolate;
   background:var(--moon-panel);background-clip:padding-box;background-color:var(--glass-base);
   border:1px solid rgba(255,255,255,.75);
@@ -264,13 +239,13 @@ html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-f
   --glass-x:30%;--glass-y:0%;--glass-edge:0;
 }
 html[data-theme=light] body.inner :is(.timeline-entry,.timeline-empty,.profile-summary,.wish-card){position:relative;overflow:hidden}
-html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{
+html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:2px;z-index:-1;pointer-events:none;
   background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),#fff 0deg,#ffffffa6 55deg,#ffffff0a 120deg,#2a215033 210deg,#ffffff66 285deg,#fff 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
   opacity:1;box-shadow:none;transform:none;animation:none;
 }
-html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
+html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
   content:'';display:block;position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
   background:radial-gradient(300px circle at var(--glass-x) var(--glass-y),#ffffff85,transparent 72%);
   opacity:.28;transition:opacity var(--t) ease;transform:none;animation:none;
@@ -289,26 +264,24 @@ html[data-theme=light] body.inner .wpane .msg.err{color:var(--text)!important;ba
 html[data-theme=light] body.inner .danger-zone .warn{color:var(--text);background:#e9e2f4;padding-inline:14px}
 html[data-theme=light] body.inner .bar{background:#2a215014}
 html[data-theme=light] body.inner .bar i{background:linear-gradient(90deg,#2a2150,#8272b4)}
-html[data-theme=light] body.inner .ritual-emblem{border-color:#dfc365;box-shadow:0 5px 16px #352d5130,inset 0 0 0 4px #211b35,inset 0 0 0 5px #dfc36566}
-html[data-theme=light] body.inner .ritual-emblem::before{border-color:#dfc36580}
 @media(hover:hover) and (pointer:fine){
-  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.profile-summary,.wish-card):hover::after{opacity:.72}
+  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.profile-summary,.wish-card):hover::after{opacity:.72}
   html[data-theme=light] body.inner :is(.wid,.quick-actions button,.rem-summary):hover{box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 #2a21501c,0 18px 36px -18px #2a215057}
   html[data-theme=light] body.inner :is(.text-action,.back):hover{color:var(--text)}
 }
 @media(prefers-reduced-motion:reduce){
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary){transition:none}
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .rem-summary):is(:hover,:active){transform:none}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{display:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{display:none}
 }
 @media(prefers-reduced-transparency:reduce){
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .day-focus,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner .quick-actions button,body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 @media(prefers-reduced-motion:reduce){
-  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{display:none}
+  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{display:none}
 }
 @media(prefers-reduced-transparency:reduce){
-  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.day-focus,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+  html[data-theme=light] body.inner :is(.wid,.quick-actions button,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
 /* The account status dot lives outside the avatar and must not be clipped by the glass. */
 html[data-theme] body.inner #h-acct{overflow:visible}
@@ -396,3 +369,10 @@ body.inner #v-account .danger-zone{padding-top:0;border-top:0}
   body.inner #v-account .account-col>.account-group:last-child>:is(.compact-links,.rows){flex:1;grid-auto-rows:minmax(64px,1fr)}
   #v-account .profile-block>h2{display:block}
 }
+
+/* каталог инструментов: подписи разделов золотой капителью, карточки как панели */
+body.inner .wpane .tools-group h3{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
+body.inner .tool-card{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:var(--r-l);padding:16px 18px}
+body.inner .tool-card.on{border-color:color-mix(in srgb,var(--gold) 55%,transparent)}
+body.inner .wpane .tool-card p{font-size:15px;line-height:1.5;color:var(--muted);margin:4px 0 0}
+body.inner .wpane .tool-card b{font-size:17px}

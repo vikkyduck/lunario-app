@@ -24,7 +24,7 @@ function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on')
 /* Строка состояния под формой: пустая, подсказка или ошибка — одно место вместо className/classList в каждой форме */
 const showMsg=(el,text='',err=false)=>{ if(!el)return; el.className='msg'+(err?' err':''); el.textContent=text; };
 const LOADING='<p class="hint">Загружаем…</p>', LOAD_ERR='<p class="msg err">Не получилось загрузить.</p>';
-const COMMAND_SELECTOR = '.wid,.quick-actions button,.day-focus,.app-nav button,.moonline';
+const COMMAND_SELECTOR = '.wid,.quick-actions button,.app-nav button,.moonline';
 function revealCommands(root=document){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   root.querySelectorAll(COMMAND_SELECTOR).forEach((el) => {
@@ -42,7 +42,7 @@ document.addEventListener('pointerdown', (e) => {
 let lightFrame=0, lightTarget=null, lightEvent=null;
 document.addEventListener('pointermove',(e)=>{
   if(e.pointerType==='touch' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.day-focus,.wid,.moonline,.quick-actions button,.welcome-primary,.timeline-entry,.timeline-empty,.profile-summary,.wish-card'); lightEvent=e;
+  lightTarget=e.target.closest('.app-nav,.rem-summary,.acct,.wg-x,.wid,.moonline,.quick-actions button,.welcome-primary,.timeline-entry,.timeline-empty,.profile-summary,.wish-card'); lightEvent=e;
   if(lightFrame) return;
   lightFrame=requestAnimationFrame(()=>{
     if(lightTarget&&lightEvent){
@@ -108,7 +108,7 @@ function openLogin(){
    Отсюда — заголовки, строка уведомлений под заголовком, полный экран и переход по ?open= из уведомления. ── */
 const FEATURES = {
   card:{sec:'Ваш ритуал',title:'Карта дня',view:'home',reminder:'card'}, mood:{sec:'Сегодня',title:'Настроение дня',view:'home',reminder:'mood'},
-  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, ritual:{sec:'Сегодня',title:'Мой ритуал',view:'home'},
+  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'home'},
   habits:{sec:'Сегодня',title:'Дневник привычек',view:'home',page:true,reminder:'habits'}, askesis:{sec:'Сегодня',title:'Взять аскезу',view:'home',page:true,reminder:'askesis'},
   lunar:{sec:'Луна и небо',title:'Лунный день',view:'home',reminder:'lunar'}, sky:{sec:'Луна и небо',title:'На небе',view:'home',reminder:'sky'},
   worry:{sec:'Свериться с собой',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
@@ -146,7 +146,7 @@ function openWidget(k, title){
 }
 /* Что подгрузить при открытии панели; у виджетов без записи содержимое статично (карта дня рисуется с главной) */
 const WIDGET_LOADERS = {
-  ritual: () => paintRitual(), appearance: () => paintAppearance(), topics: () => paintTopics(), skyplace: () => paintSkyPlace(),
+  tools: () => paintTools(), appearance: () => paintAppearance(), topics: () => paintTopics(), skyplace: () => paintSkyPlace(),
   journal: () => { loadJournal(); prepareDictation(); requestAnimationFrame(() => growTextarea($('j-text'))); },
   wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(), hmood: () => loadMoodReport(),
   mood: () => { moodUI.precision=false; moodUI.mode='families'; renderMoods(); paintMoodExtra(); },
@@ -261,15 +261,6 @@ async function supSend(id){
   catch(e){ showMsg(msg, 'Не отправилось.', true); }
 }
 
-function paintNextStep(){
-  if(!S.day||!$('h-next'))return;
-  const next=ritualNext(),done=XP.prefs.ritual.filter(ritualDone).length;
-  $('h-ritual-practices').textContent=XP.prefs.ritual.map(key=>FEATURES[key].title).join(' · ');
-  $('h-next').hidden=!next;if(next)$('h-next').textContent=next.label+' →';
-  $('h-progress').classList.toggle('ritual-finished',!next);
-  $('h-progress').textContent=next?done+' из '+XP.prefs.ritual.length+' практик':'Ритуал на сегодня завершён';
-}
-function continueDay(){const next=ritualNext();if(next){go(next.view);openWidget(next.key);}}
 const MATERIAL_NOTE='Материалы Лунарио помогают посмотреть на ситуацию иначе и не заменяют медицинскую, психологическую или юридическую помощь.';
 document.querySelectorAll('[data-material-note]').forEach(el=>el.textContent=MATERIAL_NOTE);
 function showForecastNote(){
@@ -298,10 +289,10 @@ function paintHome(){
   $('h-cabs').hidden = !staff; $('h-cabs').closest('.row').classList.toggle('staff', staff); document.body.classList.toggle('staff', staff);
   $('h-moon').textContent = d.moon + (d.lunar ? ' · ' + ordinal(d.lunar.n) + ' лунный день' : '');
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
-  moonSetPhase(d.moonPhase);paintNextStep();
+  moonSetPhase(d.moonPhase);
 }
 function updatePracticeStatus(key, value){
-  document.querySelectorAll('[data-status="'+key+'"]').forEach(el=>el.textContent=value);paintNextStep();
+  document.querySelectorAll('[data-status="'+key+'"]').forEach(el=>el.textContent=value);
 }
 /* Точка у аватара: «Новое в приложении» этого месяца ещё не открывали */
 const newsSeen=()=>{ try{ return localStorage.getItem('lun_news_seen')===S.day.date.slice(0,7); }catch(e){ return true; } };
@@ -326,7 +317,7 @@ function refreshHomeStatus(force=false){
     if(S.user.id!==uid)return;
     S.journalDone=r.journal; S.answerDone=r.answer;
     habitsHomeStatus(r.habits); askesisHomeStatus(r.askesis); gratitudeHomeStatus(r.gratitude);
-    homeStatusAt=Date.now();paintNextStep();
+    homeStatusAt=Date.now();
   }).catch(()=>{}).finally(()=>{homeStatusRequest=null;});
   return homeStatusRequest;
 }
@@ -358,7 +349,7 @@ async function pickMood(id){
   try{
     const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id})});
     S.mood=r.mood; moodUI.own=ownMood(r.mood); renderMoods();
-    paintMoodStat(r.stats); paintMoodExtra(); paintNextStep();
+    paintMoodStat(r.stats); paintMoodExtra(); 
   }catch(e){ toast('Не удалось сохранить'); }
 }
 function paintMoodStat(stats){
@@ -716,7 +707,7 @@ async function saveJournal(){
     if($('j-text').value.trim()===t) $('j-text').value='';
     hap('done');
     const card=$('journal-card'); card.classList.remove('saved'); void card.offsetWidth; card.classList.add('saved');
-    $('journal-saved').hidden=false;$('journal-saved').textContent='Запись сохранена · '+fmtDay(r.item.day);toast('Запись сохранена');S.journalDone=true;paintNextStep();growTextarea($('j-text'));loadJournal();
+    $('journal-saved').hidden=false;$('journal-saved').textContent='Запись сохранена · '+fmtDay(r.item.day);toast('Запись сохранена');S.journalDone=true;growTextarea($('j-text'));loadJournal();
   } catch(e){ toast('Не удалось сохранить запись. Текст остался в поле.'); }
   finally { saveJournal.saving=false; }
 }
@@ -776,7 +767,7 @@ async function installApp(){ if(!deferred) return; track('installed'); deferred.
    а не из копий справочников в коде — источник у контента один, content.mjs. */
 const catalogFrom = (c) => ({ cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
   news: c.news || [], quickMoods: c.quickMoods || [], moods: c.moods || [], moodFamilies: c.moodFamilies || {}, legacyMoods: c.legacyMoods || {},
-  worries: c.worries || [], awards: c.awards || [], reminderTexts: c.reminderTexts || {} });
+  worries: c.worries || [], awards: c.awards || [], tools: c.tools || [], reminderTexts: c.reminderTexts || {} });
 let CAT = null, catPromise = null;
 try { const cached = localStorage.getItem('lun_catalog'); if (cached) CAT = catalogFrom(JSON.parse(cached)); } catch (e) {}
 function loadCatalog(){
@@ -837,7 +828,7 @@ function paintCard(){
   const c = pub ? (cardBy(pub.slug) || pub) : null;
   $('c-face').innerHTML = c ? `<img src="${esc(c.image)}?v=1" alt="${esc(c.name)}">` : '';
   $('t-after').innerHTML = c ? cardDayHtml(c, S.day.date, false) : '';
-  paintCardTile();paintNextStep();
+  paintCardTile();
 }
 function paintCardTile(){ const e = $('t-cardsub'); if (e && S.day) e.textContent = S.flipped && S.day.card ? S.day.card.name : '22 аркана: смысл и что с ним делать сегодня'; }
 function showFlipped(){
@@ -1858,7 +1849,7 @@ async function saveAnswer(){
   if(toneSaving)return;const t=($('tone-a').value||'').trim();
   if(t.length<3){toast('Напишите хотя бы пару слов');return;}
   toneSaving=true;$('tone-save').disabled=true;
-  try{const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})});toneDraft='';toneSaved=r.item;paintNextStep();toast('Записано в дневник');hap('ok');loadJournal();}
+  try{const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})});toneDraft='';toneSaved=r.item;toast('Записано в дневник');hap('ok');loadJournal();}
   catch(e){toast('Не получилось сохранить. Ваш текст остался в поле');}
   finally{toneSaving=false;paintTone();}
 }
@@ -2163,7 +2154,7 @@ async function paintNews(){
   box.replaceChildren();
   for(const key of keys){
     const root = featureRoot(key); if(!root) continue;
-    const tile = key==='around'?document.querySelector('[data-feature="lunar"]').cloneNode(true):root.cloneNode(true); tile.className='wid'; tile.removeAttribute('id'); tile.removeAttribute('data-on'); tile.removeAttribute('style');   /* обработчик клона — свой, ниже */
+    const tile = key==='around'?document.querySelector('[data-feature="lunar"]').cloneNode(true):root.cloneNode(true); tile.className='wid'; tile.hidden=false; tile.removeAttribute('id'); tile.removeAttribute('data-on'); tile.removeAttribute('style');   /* обработчик клона — свой, ниже */
     const section=root.dataset.nav||(root.dataset.feature==='account'?'account':'');   /* раздел: вкладка внизу или «Аккаунт» по кружку с фото */
     if(section){
       tile.replaceChildren();const icon=root.querySelector('.ico');const i=document.createElement('i');i.className=icon?icon.className:'ico person';tile.appendChild(i);
@@ -2186,7 +2177,7 @@ function startApp(){
   paintHome(); paintToday(); go(initialPractice==='journal'?'history':'home');
   if(FEATURES[initialPractice]?.page)openPractice(initialPractice); showPushInvitation(); refreshNativeAskesis();
   if (S.day.card) { showFlipped(); $('t-after').style.display = 'block'; }   /* карта на сегодня уже открыта — она в истории */
-  loadCatalog().then(() => { renderMoods(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); }).catch(() => {});
+  loadCatalog().then(() => { renderMoods(); applyTools(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); if (wgOpen === 'tools') paintTools(); }).catch(() => {});
   /* из уведомления приходят сразу в нужный раздел */
   try {
     const target = openTarget(new URLSearchParams(location.search).get('open') || '');

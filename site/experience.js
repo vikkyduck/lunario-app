@@ -1,8 +1,7 @@
 /* Reading, persistent preferences and full practice pages share the existing data and widgets. */
 /* Настройки приходят из /api/me (умолчания — в backend/experience.mjs); до этого форма пустая */
-const XP={prefs:{theme:'dark',ritual:[],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,ritualDraft:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
+const XP={prefs:{theme:'dark',ritual:[],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
 /* Практики ритуала: подпись кнопки «следующий шаг»; название и раздел — из реестра FEATURES */
-const RITUALS={card:'Открыть карту дня',mood:'Отметить настроение',habits:'Отметить привычки',gratitude:'Записать благодарность',tone:'Ответить на вопрос дня',journal:'Записать мысль'};
 function activeView(){return document.querySelector('.view.on')?.id.slice(2)||'home';}
 function rememberScroll(){XP.scroll[XP.page?'practice:'+XP.page:activeView()]=window.scrollY;}
 function restoreScroll(key){requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,XP.scroll[key]||0)));}
@@ -35,7 +34,7 @@ function refreshPracticeReminder(){
   loadReminders().then(()=>{if(XP.page!==key)return;const tools=$('practice-tools');tools.innerHTML=remBox(feature);paintRem(feature);const button=tools.querySelector('.rem-summary');if(button){button.setAttribute('data-on','click:openPracticeSettings-a0');button.dataset.a0=feature;   /* не onclick: под CSP атрибут-обработчик заблокируют */button.removeAttribute('aria-controls');button.setAttribute('aria-haspopup','dialog');button.removeAttribute('aria-expanded');button.lastElementChild.textContent='→';tools.replaceChildren(button);}}).catch(()=>{});
 }
 
-function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.theme);paintNextStep();}
+function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.theme);applyTools();}
 function applyTheme(mode){
   const theme=mode==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;
   document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;
@@ -54,18 +53,35 @@ async function saveTheme(theme){
   try{await savePreferences({...XP.prefs,theme});applyTheme(theme);paintAppearance();$('theme-state').textContent='Тема сохранена';}
   catch{toast('Не удалось сохранить тему. Попробуйте ещё раз');}finally{saveTheme.busy=false;}
 }
-function ritualDone(key){return {card:!!S.day?.card,mood:!!S.mood,habits:!!S.habitsReady&&S.habitsPending===0&&S.habitsCount>0,gratitude:!!S.gratitudeDone,tone:!!toneSaved||!!S.answerDone,journal:!!S.journalDone}[key];}
-function ritualNext(){const key=XP.prefs.ritual.find(k=>!ritualDone(k));return key?{key,view:FEATURES[key].view,label:RITUALS[key]}:null;}
-function paintRitual(){
-  if(!XP.ritualDraft)XP.ritualDraft=[...XP.prefs.ritual];
-  $('ritual-box').innerHTML=`<p class="hint">Выберите 2–3 практики. Они будут открываться с главной кнопки в выбранном порядке.</p><div class="ritual-options">${Object.keys(RITUALS).map((key)=>{const n=XP.ritualDraft.indexOf(key);return `<button data-on="click:toggleRitual-a0" data-a0="${key}" class="ritual-option" type="button" aria-pressed="${n>=0}"><span>${esc(FEATURES[key].title)}</span><span aria-hidden="true">${n>=0?n+1:'＋'}</span></button>`;}).join('')}</div><p id="ritual-count" class="hint" role="status">Выбрано ${XP.ritualDraft.length} из 3</p><button data-on="click:saveRitual" class="btn" id="ritual-save" ${XP.ritualDraft.length<2?'disabled':''}>Сохранить ритуал</button>`;
+/* ── Инструменты: что человек оставил на «Сегодня» и в «Дневнике». Список — prefs.tools; нет списка — стартовый набор из
+   каталога плюс прежний «ритуал» (чтобы у тех, кто уже пользуется, ничего не пропало). Только видимость: записи и напоминания не трогаются ── */
+const toolCatalog=()=>(CAT&&CAT.tools)||[];
+function toolsVisible(){
+  if(Array.isArray(XP.prefs.tools))return new Set(XP.prefs.tools);
+  return new Set([...toolCatalog().filter(t=>t.start).map(t=>t.key),...(XP.prefs.ritual||[])]);
 }
-function toggleRitual(key){const i=XP.ritualDraft.indexOf(key);if(i>=0)XP.ritualDraft.splice(i,1);else if(XP.ritualDraft.length<3)XP.ritualDraft.push(key);else{$('ritual-count').textContent='Уже выбраны 3 практики. Уберите одну, чтобы выбрать другую';return;}paintRitual();}
-async function saveRitual(){
-  if(saveRitual.busy)return;saveRitual.busy=true;$('ritual-save').disabled=true;
-  try{await savePreferences({...XP.prefs,ritual:[...XP.ritualDraft]});XP.ritualDraft=null;paintNextStep();closeWidget();toast('Ритуал сохранён');}
-  catch{toast('Не удалось сохранить. Ваш выбор остался');}finally{saveRitual.busy=false;if($('ritual-save'))$('ritual-save').disabled=false;}
+function applyTools(){
+  const vis=toolsVisible(),keys=new Set(toolCatalog().map(t=>t.key));
+  document.querySelectorAll('#v-home [data-feature],#v-history [data-feature]').forEach(el=>{const k=el.dataset.feature;if(keys.has(k))el.hidden=!vis.has(k);});
+  /* группа без единой видимой плитки прячется вместе с заголовком */
+  document.querySelectorAll('#v-home .feature-group,#v-history .diary-library').forEach(g=>{const tiles=[...g.querySelectorAll('[data-feature]')].filter(el=>keys.has(el.dataset.feature));if(tiles.length)g.hidden=tiles.every(el=>el.hidden);});
 }
+function paintTools(){
+  const box=$('tools-box');if(!box)return;
+  const vis=toolsVisible(),sections=[['today','Сегодня'],['history','Дневник']];
+  box.innerHTML=sections.map(([sec,name])=>{const items=toolCatalog().filter(t=>t.section===sec);if(!items.length)return '';
+    return `<section class="tools-group"><h3>${name}</h3>${items.map(t=>`<div class="tool-card${vis.has(t.key)?' on':''}"><b>${esc(t.title)}</b><p>${esc(t.text)}</p><div class="tool-actions"><button data-on="click:previewTool-a0" data-a0="${t.key}" class="text-action secondary" type="button">Посмотреть</button><button data-on="click:toggleTool-a0" data-a0="${t.key}" class="text-action" type="button" aria-pressed="${vis.has(t.key)}">${vis.has(t.key)?'Убрать':'Добавить'}</button></div></div>`).join('')}</section>`;}).join('');
+}
+async function toggleTool(key){
+  if(toggleTool.busy)return;toggleTool.busy=true;
+  const vis=toolsVisible(),add=!vis.has(key);if(add)vis.add(key);else vis.delete(key);
+  const tools=toolCatalog().map(t=>t.key).filter(k=>vis.has(k));
+  try{await savePreferences({...XP.prefs,tools});applyTools();paintTools();track(add?'tools_add':'tools_remove',key);
+    const t=toolCatalog().find(x=>x.key===key);toast(add?`${t?t.title:'Инструмент'} — в разделе «${t&&t.section==='history'?'Дневник':'Сегодня'}»`:'Убрано с экрана. Записи сохранены');}
+  catch{toast('Не удалось сохранить. Попробуйте ещё раз');}
+  finally{toggleTool.busy=false;}
+}
+function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidget(key);}
 
 const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['readings','Карты и ответы'],['practices','Практики'],['wishes','Желания']];
 function timelineText(text){return text.length>400?`<details class="timeline-long"><summary><span class="entry-text">${esc(text.slice(0,230))}…</span><span class="text-action">Читать полностью</span></summary><p class="entry-text">${esc(text)}</p></details>`:`<p class="entry-text">${esc(text)}</p>`;}
