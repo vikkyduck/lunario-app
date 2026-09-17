@@ -111,7 +111,7 @@ try {
   db.prepare("INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,'card',?,?,?,'{}')")
     .run(bobId, new Date().toISOString(), today, M('вопрос'), M('карта'), M('разбор'));
   const bobEntry = db.prepare('SELECT id FROM entries WHERE user_id = ?').get(bobId).id;
-  db.prepare('INSERT INTO daily_sets (user_id, day, idx, text, question) VALUES (?,?,0,?,?)').run(bobId, today, M('установка'), M('вопрос-дня'));
+  db.prepare('INSERT INTO daily_sets (user_id, day, idx, text, question) VALUES (?,?,0,?,?) ON CONFLICT(user_id, day) DO UPDATE SET text = excluded.text, question = excluded.question').run(bobId, today, M('установка'), M('вопрос-дня'));   /* /me уже снял пару дня — метка ложится поверх */
   console.log(`Б завёл ${marks.length} личных записей, у каждой своя метка.`);
 
   /* ── снимок всего личного, что есть у Б: после атаки должен совпасть до байта ── */
@@ -178,7 +178,8 @@ try {
   if ((await asAlice('/day')).status === 200) {
     await asAlice('/day', 'POST', { habits: [{ id: bobHabit, done: true }], askesis: [{ id: bobAskesis, kept: 0, note: 'пишу в чужую аскезу' }] });
     assert.equal(db.prepare('SELECT COUNT(*) c FROM habit_marks WHERE habit_id = ? AND day = ?').get(bobHabit, today).c, 0, 'чужая привычка не отмечена через карточку дня');
-    assert.equal(db.prepare('SELECT COUNT(*) c FROM askesis_days WHERE askesis_id = ? AND day = ?').get(bobAskesis, today).c, 0, 'в чужую аскезу не записано через карточку дня');
+    /* у Б уже есть своя отметка за сегодня (PATCH с заметкой выше) — проверяем, что чужая попытка «сорвалась» её не тронула */
+    assert.equal(db.prepare('SELECT kept FROM askesis_days WHERE askesis_id = ? AND day = ?').get(bobAskesis, today)?.kept, 1, 'в чужую аскезу не записано через карточку дня');
   }
 
   /* лента, досье, выгрузка, профиль */

@@ -133,10 +133,15 @@ const tpl = (key, vars) => {
   const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : '')).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
   return { title: fill(title), body: fill(body) };
 };
+/* День человека — тем же правилом, что сервер (userDay): пояс устройства из preferences.tz → пояс города из анкеты → Москва.
+   Иначе вечерний пуш «не видит» записанный день у тех, кто западнее Москвы, а утро снимает настрой на вчера у тех, кто восточнее. */
+export function userDayOf(u, atMs = Date.now()) {
+  const p = preferences(u.preferences);
+  return dayIn(p.tz && validTz(p.tz) ? p.tz : u.tz && validTz(u.tz) ? u.tz : MSK, atMs);
+}
 export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK) {
   if (!FEATURES[feature]) return null;
-  // Practice records use the same Moscow day as server.mjs; delivery time is user-local.
-  const d = dayIn(MSK, atMs), url = FEATURES[feature].url;
+  const d = userDayOf(u, atMs), url = FEATURES[feature].url;
   if (feature === 'morning') return morningNotification(u, d, atMs, tz);
   if (feature === 'evening') {
     if (dayRemembered(u.id, d)) return null;   /* день уже записан — не напоминаем */
@@ -189,7 +194,7 @@ export function nativePlan(u, feature, fromMs = Date.now()) {
   const tz = r.tz || MSK, items = []; let cursor = fromMs;
   for (let i = 0; i < 14; i++) {
     const at = nextAt(r, cursor); if (!at) break;
-    const day = dayIn(tz, at), n = feature === 'morning' ? morningNotification(u, dayIn(MSK, at), at, tz) : { ...tpl(feature), url: FEATURES[feature].url };
+    const day = dayIn(tz, at), n = feature === 'morning' ? morningNotification(u, userDayOf(u, at), at, tz) : { ...tpl(feature), url: FEATURES[feature].url };
     if (n) items.push({ date: day, ...n });
     cursor = at + 1000;
   }
