@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=68"></script>
+<script src="/app/boot.js?v=69"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -231,6 +231,7 @@ body.hello .heromoon{display:block}
 body.hello .sky.on{opacity:.3}
 body.hello .orb{opacity:.25}
 body.hello .cloud{display:none}
+body.hello :is(.orb,.moon-img){animation:none}
 body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,10,20,.7),rgba(11,10,20,.5) 60%,rgba(11,10,20,.08))}
 @media(min-width:600px) and (max-width:899px){
   body.hello .wrap{padding-left:40px;padding-right:40px}
@@ -310,11 +311,7 @@ body.inner .app-nav{display:grid}
   .wid:hover{border-color:rgba(217,184,104,.6)}
   #t-install{display:none!important}
   /* вход: шапка на всю ширину, содержание слева, Луна справа */
-  body.hello .wrap{padding:36px 48px}
-  #v-hello.on{min-height:calc(100dvh - 72px)}
-  #v-hello .hero{font-size:40px}
-  .heromoon{width:1000px;height:1000px;right:auto;left:calc(50% - 100px);top:calc(50% - 500px)}
-  body.hello .bg::after{background:linear-gradient(90deg,rgba(11,10,20,.6),rgba(11,10,20,.4) 40%,transparent 75%)}
+  /* вход: на широком экране приложение показывается в корпусе телефона (frame.css) — тот же макет, что на телефоне */
   #v-home h1{font-size:34px;max-width:760px}
   #v-home .row.hdr{gap:12px;align-items:flex-start}
   .moonline{max-width:560px;margin-top:18px}
@@ -655,11 +652,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=68">
-<link rel="stylesheet" href="/app/experience.css?v=68">
-<link rel="stylesheet" href="/app/moon-glass.css?v=68">
-<link rel="stylesheet" href="/app/compact.css?v=68">
-<link rel="stylesheet" href="/app/frame.css?v=68">
+<link rel="stylesheet" href="/app/theme.css?v=69">
+<link rel="stylesheet" href="/app/experience.css?v=69">
+<link rel="stylesheet" href="/app/moon-glass.css?v=69">
+<link rel="stylesheet" href="/app/compact.css?v=69">
+<link rel="stylesheet" href="/app/frame.css?v=69">
 </head>
 <body>
 <!-- статус-бар корпуса телефона на компьютере (frame.css); часы ставит app.js -->
@@ -947,13 +944,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=68"></script>
+<script src="/app/moon-logo.js?v=69"></script>
 
-<script type="module" src="/app/sky.js?v=68"></script>
+<script type="module" src="/app/sky.js?v=69"></script>
 
-<script src="/app/experience.js?v=68"></script>
-<script src="/app/app.js?v=68"></script>
-<script src="/app/handlers.js?v=68"></script>
-<script src="/app/on.js?v=68"></script>
+<script src="/app/experience.js?v=69"></script>
+<script src="/app/app.js?v=69"></script>
+<script src="/app/handlers.js?v=69"></script>
+<script src="/app/on.js?v=69"></script>
 </body>
 </html>

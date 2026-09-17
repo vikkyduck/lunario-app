@@ -13,6 +13,8 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "setSkin-this": function (event) { setSkin(this) },
   "morningDone": function (event) { morningDone() },
   "goDayCard": function (event) { goDayCard() },
+  "homePushConnect": function (event) { homePushConnect() },
+  "paintAllReminders": function (event) { paintAllReminders() },
   "goWeek": function (event) { goWeek() },
   "go-about": function (event) { go('about') },
   "openWidget-tone": function (event) { openWidget('tone') },

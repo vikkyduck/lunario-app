@@ -179,6 +179,9 @@ export const MIGRATIONS = [
   /* «Моя неделя»: связь «утренний настрой ↔ вечерняя запись» подтверждает сам человек — yes / no / unsure, одна отметка на день */
   { v: 15, name: 'что отозвалось за неделю', up: (db) => db.exec(`
     CREATE TABLE IF NOT EXISTS week_echoes (user_id INTEGER NOT NULL, day TEXT NOT NULL, verdict TEXT NOT NULL, ts TEXT NOT NULL, PRIMARY KEY (user_id, day));`) },
+  /* Когда устройство в последний раз откликнулось на сигнал (забрало тексты) — чтобы в «Уведомлениях» было видно,
+     доходят ли напоминания именно сюда, а не только «отправлено» */
+  { v: 16, name: 'отклик устройства на пуш', up: (db) => { addColumn(db, 'push_subs', 'last_sent', "TEXT DEFAULT ''"); addColumn(db, 'push_subs', 'last_wake', "TEXT DEFAULT ''"); } },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 

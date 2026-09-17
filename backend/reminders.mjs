@@ -229,7 +229,7 @@ export async function runDue(keys, log = console.log, deliver = sendPush) {
     for (const it of items) { db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url) VALUES (?,?,?,?,?,?)').run(uid, nowISO, it.feature, it.title, it.body, it.url); stat.queued++; }
     for (const s of subs) {
       try {
-        if (await deliver({ endpoint: s.endpoint }, keys)) { stat.sent++; db.prepare('UPDATE push_subs SET last_ok = ? WHERE endpoint = ?').run(nowISO.slice(0, 10), s.endpoint); }
+        if (await deliver({ endpoint: s.endpoint }, keys)) { stat.sent++; db.prepare('UPDATE push_subs SET last_ok = ?, last_sent = ? WHERE endpoint = ?').run(nowISO.slice(0, 10), nowISO, s.endpoint); }
         else { db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); stat.gone++; }
       } catch (e) { stat.failed++; log('не ушло:', e.message); }
     }

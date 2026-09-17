@@ -982,7 +982,9 @@ const server = createServer(async (req, res) => {
       if ((p === '/api/reminders/native-plan' || p === '/api/reminders/sky-plan' || p === '/api/reminders/askesis-plan') && req.method === 'GET')
         return json(res, 200, nativePlan(u, REMINDER_FEATURES[url.searchParams.get('feature')] ? url.searchParams.get('feature') : 'morning'));
       if (p === '/api/reminders' && req.method === 'GET')
-        return json(res, 200, { items: listReminders(u.id), push: { on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id = ?').get(u.id), key: PUSH.publicKey } });
+        return json(res, 200, { items: listReminders(u.id), push: { on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id = ?').get(u.id), key: PUSH.publicKey,
+          /* по устройствам: когда подключено, когда сервер последний раз доставил сигнал и когда устройство откликнулось */
+          devices: db.prepare('SELECT endpoint, created_at, last_sent, last_wake FROM push_subs WHERE user_id = ? ORDER BY created_at DESC').all(u.id) } });
       if (p === '/api/reminders' && req.method === 'POST') {
         const b = await readBody(req);
         const r = saveReminder(u.id, b);
@@ -1000,7 +1002,9 @@ const server = createServer(async (req, res) => {
       /* сигнал пришёл — service worker забирает тексты, которые ещё не показывал на этом устройстве */
       if (p === '/api/push/next' && req.method === 'POST') {
         const b = await readBody(req);
-        return json(res, 200, { items: pendingFor(u.id, clean(b.endpoint, 500)) });
+        const endpoint = clean(b.endpoint, 500);
+        if (endpoint) db.prepare('UPDATE push_subs SET last_wake = ? WHERE endpoint = ? AND user_id = ?').run(nowISO(), endpoint, u.id);   /* устройство откликнулось */
+        return json(res, 200, { items: pendingFor(u.id, endpoint) });
       }
 
       /* ── практики дня: что сделано сегодня, привычки, аскеза — backend/http/practice-routes.mjs ── */

@@ -82,8 +82,9 @@ html[data-skin=compact] body.inner .home-later{gap:8px;margin-top:20px}
 
 /* ── контролы: чипы 32px, кнопки 48px пилюлей, активный чип — заливка акцента с тёмным текстом (как в референсе) ── */
 html[data-skin=compact] body.inner :is(.chip,.chips .chip,.chips.flow .chip,.timeline-filters .chip){min-height:32px;padding:6px 12px;font-size:13px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--text);box-shadow:none}
-html[data-skin=compact] body.inner :is(.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:var(--gold-2);border-color:var(--gold-2);color:#1c1430;font-weight:600}
-html[data-theme=light][data-skin=compact] body.inner :is(.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#d7cff0;border-color:#d7cff0;color:#1d1738}
+/* активный чип: первый вариант в :is() задаёт специфичность выше базового правила строкой выше — иначе выбранное не отличить */
+html[data-skin=compact] body.inner :is(.chips.flow .chip.on,.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:var(--gold-2);border-color:var(--gold-2);color:#1c1430;font-weight:600}
+html[data-theme=light][data-skin=compact] body.inner :is(.chips.flow .chip.on,.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#d7cff0;border-color:#d7cff0;color:#1d1738}
 html[data-skin=compact] body.inner .btn{min-height:48px;border-radius:999px;font-size:15px;font-weight:600;box-shadow:none}
 html[data-skin=compact] body.inner .btn.sm{min-height:36px;font-size:13px}
 html[data-skin=compact] body.inner .text-action{font-size:14px;min-height:36px}
@@ -147,6 +148,7 @@ html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) h1:not(.wordmark
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) :is(p,li,label){font-size:15px;line-height:1.5}
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .hint{font-size:13px}
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .btn{min-height:48px;font-size:15px;border-radius:999px}
+html[data-skin=compact] #v-hello .cta .btn{min-height:56px;font-size:17px}
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .card{padding:16px;border-radius:var(--ck-radius);border:1px solid var(--line);box-shadow:none}
 html[data-skin=compact] .rhythm-row{padding:10px 0}
 html[data-skin=compact] .rhythm-row b{font-size:15px}
@@ -163,7 +165,7 @@ html[data-skin=compact] body.inner .app-nav{grid-template-columns:1fr 1fr 1.5fr 
 html[data-skin=compact] body.inner #timeline-list .timeline-empty,html[data-skin=compact] body.inner :is(#timeline-list) .timeline-empty::before{background:none;border:0;box-shadow:none;padding:6px 4px;margin:0;font-size:14px;line-height:1.5;color:var(--muted);content:none}   /* специфичность с ID — как у блока стекла, позже в каскаде */
 
 /* ── Светлая тема: активный чип — мягкое золото (как голубой в референсе, но в палитре Лунарио) ── */
-html[data-theme=light][data-skin=compact] body.inner :is(.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#efe0b3;border-color:#e4cf95;color:#2a2150}
+html[data-theme=light][data-skin=compact] body.inner :is(.chips.flow .chip.on,.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#efe0b3;border-color:#e4cf95;color:#2a2150}
 html[data-theme=light][data-skin=compact]{--selected:rgba(217,184,104,.22)}
 html[data-theme=light][data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid)::before{background:#f4ecd6}
 html[data-theme=light][data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid) .ico{background-color:#8a6d2a}
@@ -172,3 +174,12 @@ html[data-theme=light][data-skin=compact] body.inner .app-nav button.on{color:#2
 html[data-skin=compact] body.inner #v-account .rowbtn::before{content:'';display:block;position:static;inset:auto;width:40px;height:40px;border-radius:50%;background:var(--selected);grid-column:1;grid-row:1/span 2;justify-self:center;mask:none;-webkit-mask:none;padding:0;z-index:0;opacity:1;animation:none;transform:none}
 html[data-skin=compact] body.inner #v-account .rowbtn .ico{grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;width:20px;height:20px;margin:0;z-index:1}
 html[data-skin=compact] body.inner #v-account .rowbtn.warn::before{background:rgba(120,90,160,.14)}
+
+/* ── Каскадные поправки по ревью 17.09: капитель в Аккаунте, отступ строк в «Уведомлениях», подсказки в панелях,
+   точка новостей на кружке аккаунта, подписи строк «Ещё про этот день» ── */
+html[data-skin=compact] body.inner #v-account .account-group>h2{font-size:11px;line-height:1.3;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+html[data-skin=compact] body.inner .wpane .item{padding:12px 16px}
+html[data-skin=compact] body.inner .wpane p.hint{font-size:13px;line-height:1.5}
+html[data-skin=compact] body.inner .acct{overflow:visible}
+html[data-skin=compact] body.inner .acct img{border-radius:50%}
+html[data-skin=compact] body.inner .mini-grid .wid>span:not(.dot){text-align:left}

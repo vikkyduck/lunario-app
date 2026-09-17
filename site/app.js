@@ -6,8 +6,19 @@ let S = { user:null, day:null, mood:null, limits:null, mode:'yesno', flipped:fal
 const IOS_SHELL = document.documentElement.className.indexOf('ios-shell') !== -1;
 function nativePost(m){ try{ window.webkit.messageHandlers.lunario.postMessage(m); return true; }catch(e){ return false; } }
 const DEVICE_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })();
+/* Сервер перезапускается при выкладке на пару секунд — чтение не падает, а пробует ещё раз (502/503/504 или обрыв связи).
+   Только для GET: повтор записи мог бы продублировать её. */
+const RETRY_STATUS = new Set([502, 503, 504]), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const api = async (path, opts) => {
-  const r = await fetch(API + path, Object.assign({ headers:{'Content-Type':'application/json', 'X-Tz': DEVICE_TZ} }, opts));   /* «сегодня» считается по поясу устройства */
+  const init = Object.assign({ headers:{'Content-Type':'application/json', 'X-Tz': DEVICE_TZ} }, opts);   /* «сегодня» считается по поясу устройства */
+  const canRetry = !init.method || init.method === 'GET';
+  let r;
+  for (let attempt = 0; ; attempt++) {
+    try { r = await fetch(API + path, init); }
+    catch (e) { if (canRetry && attempt < 2 && navigator.onLine !== false) { await wait(1200 * (attempt + 1)); continue; } throw e; }
+    if (canRetry && RETRY_STATUS.has(r.status) && attempt < 2) { await wait(1200 * (attempt + 1)); continue; }
+    break;
+  }
   const j = await r.json().catch(()=>({}));
   if (r.status===401 && path!=='/me'){ location.reload(); throw Object.assign(new Error('no_session'), { code:'no_session', status:401 }); }   /* сессия истекла на сервере */
   if (!r.ok) throw Object.assign(new Error(j.error||'err'), { code:j.error, status:r.status });
@@ -305,7 +316,20 @@ function paintHomeLater(d){
     ? `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>День записан ✓</b><span class="later-go">Дополнить →</span></button>`
     : `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>Запомнить этот день</b><span class="later-go">В дневник →</span></button>`);
   if (dow === 0 || dow === 1) rows.push(`<button data-on="click:goWeek" class="later-row" type="button"><span class="eyebrow">${dow === 0 ? 'Воскресенье' : 'Понедельник'}</span><b>Неделя собралась</b><span class="later-go">Моя неделя →</span></button>`);
+  if (pushNudgeDue()) rows.unshift(`<button data-on="click:homePushConnect" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>На этом устройстве не подключены</b><span class="later-go">Включить →</span></button>`);
   box.hidden = !rows.length; box.innerHTML = rows.join('');
+}
+/* Расписание есть, а уведомления сюда не приходят: ячейка пропала после переустановки на экран «Домой» или это новый браузер.
+   Показываем, когда настройки уже загружены и разрешение не запрещено; после подключения строка исчезает. */
+function pushNudgeDue(){
+  if (!S.rem || !PUSH_OK || Notification.permission === 'denied') return false;
+  return Object.values(S.rem).some((r) => r.enabled) && !remDeviceReady();
+}
+async function homePushConnect(){
+  const btn = $('push-nudge'); if (!btn || btn.disabled) return; btn.disabled = true;
+  try { if (await connectPushDevice()) { toast('Уведомления подключены'); track('push_on', 'home'); } }
+  catch (e) { toast('Не удалось подключить уведомления. Попробуйте ещё раз'); }
+  finally { paintHomeLater(S.day); REM_ORDER.forEach(paintRem); }
 }
 function goDayCard(){ go('history'); requestAnimationFrame(() => $('day-card')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }
 function goWeek(){ go('history'); openWidget('week'); }
@@ -327,6 +351,7 @@ function paintHome(){
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('h-wish').textContent = d.set?.text || '';
   paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d);
+  if (!S.rem) loadReminders().then(() => paintHomeLater(S.day)).catch(() => {});   /* строка «не подключены» — когда расписание известно */
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
   if ($('ac-cabs')) $('ac-cabs').hidden = !staff; document.body.classList.toggle('staff', staff);   /* вход в кабинеты — строкой в Аккаунте, шапка без второго кружка */
@@ -1340,7 +1365,10 @@ async function syncPushDevice(){
   if (!PUSH_OK || Notification.permission !== 'granted') return;
   try {
     const reg = await withTimeout(navigator.serviceWorker.getRegistration('/app/'));
-    const sub = reg && await withTimeout(reg.pushManager.getSubscription());
+    /* Разрешение уже дано, а ячейки нет (переустановили на экран «Домой», браузер её сбросил) — заводим новую без вопросов:
+       спрашивать заново нечего, а без ячейки напоминания молча не приходят. */
+    const sub = reg && (await withTimeout(reg.pushManager.getSubscription())
+      || (S.pushKey && await withTimeout(reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:toBytes(S.pushKey) }))));
     if (sub) {
       // Attach this existing device subscription to the current signed-in account.
       await api('/push', {method:'POST',body:JSON.stringify({endpoint:sub.endpoint})});
@@ -1368,7 +1396,7 @@ function rhythmSkip(){track('rhythm_enable','none');go('home');}
 function loadReminders(force){
   if (S.rem && !force) return Promise.resolve(S.rem);
   if (remPromise && !force) return remPromise;
-  remPromise = api('/reminders').then(async r => { S.rem = Object.fromEntries(r.items.map(i => [i.feature, i])); S.pushKey = r.push.key; await syncPushDevice(); return S.rem; }).catch(e => { remPromise = null; throw e; });
+  remPromise = api('/reminders').then(async r => { S.rem = Object.fromEntries(r.items.map(i => [i.feature, i])); S.pushKey = r.push.key; S.pushDevices = r.push.devices || []; await syncPushDevice(); return S.rem; }).catch(e => { remPromise = null; throw e; });
   return remPromise;
 }
 const remBox = (f, full=false) => `<div class="rem" data-rem="${f}" data-full="${full}"></div>`;
@@ -1389,7 +1417,14 @@ function paintDeviceStatus(){
   box.textContent=IOS_SHELL?(IOS_BRIDGE<4?'Обновите приложение, чтобы проверить разрешение на уведомления':S.nativePermission==='granted'?'Уведомления разрешены на этом iPhone':S.nativePermission==='denied'?'Уведомления выключены в настройках iPhone → Лунарио → Уведомления':'При первом включении iPhone спросит разрешение')
     :!PUSH_OK?(IS_IOS?'На iPhone добавьте Лунарио на экран «Домой», откройте оттуда и включите уведомления':'Этот браузер не поддерживает пуш-уведомления')
     :Notification.permission==='denied'?'Уведомления заблокированы. Разрешите их в настройках сайта в браузере'
-    :S.pushOn?'Это устройство подключено':'При первом включении браузер спросит разрешение. Если расписание уже включено, подключите это устройство';
+    :S.pushOn?'Это устройство подключено'+deviceTrace():'При первом включении браузер спросит разрешение. Если расписание уже включено, подключите это устройство';
+}
+/* Что сервер знает про эту ячейку: когда последний раз отправлял сигнал и когда устройство за текстами приходило.
+   Если сигнал был, а отклика нет — уведомления глушит само устройство (режим «Не беспокоить», запрет для сайта). */
+function deviceTrace(){
+  const d=(S.pushDevices||[]).find(x=>x.endpoint===S.pushEndpoint); if(!d||!d.last_sent) return '';
+  const sent=fmtWhen(d.last_sent,{weekday:'short'}), wake=d.last_wake&&d.last_wake>=d.last_sent?fmtWhen(d.last_wake,{weekday:'short'}):'';
+  return ` · последний сигнал ${sent}` + (wake ? `, устройство откликнулось ${wake}` : ' — устройство не откликнулось. Проверьте, не включён ли режим «Не беспокоить» и разрешены ли уведомления для Лунарио');
 }
 function paintRem(f){
   const r=S.rem && S.rem[f];if(!r)return;
@@ -1531,7 +1566,8 @@ function cardNudge(){}
 /* «Напоминания» в аккаунте: все функции одним списком */
 async function paintAllReminders(){
   const box = $('rem-all'); box.innerHTML = LOADING;
-  try { await loadReminders(true); } catch (e) { box.innerHTML = LOAD_ERR; return; }
+  try { await loadReminders(true); }
+  catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить настройки уведомлений.</p><button data-on="click:paintAllReminders" type="button" class="btn ghost mt-3">Повторить</button>'; return; }
   box.innerHTML = `<p class="hint">Три напоминания: утром — настрой дня и ваше утро, вечером — запомнить день, в воскресенье — ваша неделя. Время — своё.</p><p id="rem-device-status" class="rem-status" role="status"></p>
     <div class="list mt-3">${REM_ORDER.map(f => `<div class="item"><b class="mb-2">${esc(S.rem[f].title)}</b>${remBox(f,true)}</div>`).join('')}</div>`;
   REM_ORDER.forEach(paintRem);
