@@ -79,7 +79,8 @@ function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidg
 
 /* ── Утро на «Сегодня»: ответ на «На что хочу обращать внимание каждое утро?». Выбранные плитки — в ленте «Ваше утро» и в утреннем пуше,
    остальные — маленькими квадратами ниже. Карта и руна, если выбраны, тянутся утром сами, и от них считается тема дня ── */
-const MORNING=[['card','Карта дня'],['dayrune','Руна дня'],['sky','Влияние планет'],['day','Прогноз дня'],['lunar','Луна'],['tone','Вопрос дня']];
+/* плитки утра и подписи их чипов — из разметки «Сегодня» (data-feature / data-chip): новая плитка добавляется там, списка здесь нет */
+const MORNING=[...document.querySelectorAll('#morning-more [data-feature][data-chip]')].map(el=>[el.dataset.feature,el.dataset.chip]);
 function morningChosen(){return Array.isArray(XP.prefs.morning)?XP.prefs.morning.filter(k=>MORNING.some(m=>m[0]===k)):['lunar','tone'];}
 /* Плитки переезжают между «Ваше утро» и «Всё про этот день» с места на место (FLIP): человек видит, куда ушла плитка, а не скачок.
    Чипы рисуются один раз и дальше только переключаются — фокус и озвучка «нажато» остаются на том же элементе */
@@ -94,6 +95,11 @@ function paintMorning(){
   for(const t of tiles)(chosen.includes(t.dataset.feature)?feed:more).appendChild(t);
   more.dataset.count=String(more.children.length);   /* сколько квадратов осталось — для ровных рядов на телефоне */
   feed.closest('.feature-group').hidden=!chosen.length;more.closest('.feature-group').hidden=chosen.length===MORNING.length;
+  /* вопрос задан, пока на него не ответили; после выбора — одна строка «Утром показываем…», развернуть можно всегда */
+  const answered=Array.isArray(XP.prefs.morning),collapsed=answered&&!XP.morningOpen;
+  const picker=$('morning-picker'),summary=$('morning-summary');
+  if(picker)picker.hidden=collapsed;if(summary){summary.hidden=!collapsed;$('morning-summary-list').textContent=chosen.length?chosen.map(k=>MORNING.find(m=>m[0]===k)[1]).join(' · '):'только настрой дня';}
+  if($('morning-empty'))$('morning-empty').hidden=chosen.length>0;if($('morning-done'))$('morning-done').hidden=!answered;
   if(!before)return;
   const dur=320,easing='cubic-bezier(.2,.7,.2,1)';
   for(const t of tiles){const a=before.get(t),b=t.getBoundingClientRect();if(!a.width||!b.width)continue;const dx=a.left-b.left,dy=a.top-b.top,sx=a.width/b.width,sy=a.height/b.height;
@@ -103,6 +109,8 @@ function paintMorning(){
     if(Math.abs(sx-1)>.15||Math.abs(sy-1)>.15)for(const c of t.children)c.animate([{opacity:0},{opacity:0,offset:.35},{opacity:1}],{duration:dur,easing:'ease-out'});   /* коробка тянется, содержимое проявляется — без «желе» в тексте */
     box.onfinish=box.oncancel=()=>{t.style.zIndex='';t.style.pointerEvents='';};}
 }
+function morningEdit(){XP.morningOpen=true;paintMorning();requestAnimationFrame(()=>$('morning-chips')?.querySelector('.chip')?.focus({preventScroll:true}));track('morning_edit');}
+function morningDone(){XP.morningOpen=false;paintMorning();requestAnimationFrame(()=>$('morning-summary')?.focus({preventScroll:true}));}
 /* Переключение — сразу на экране, сохранение — следом; нажатий может быть несколько подряд, истиной становится ответ на последнее.
    Не сохранилось — плитка возвращается. Карта или руна тянутся сразу; тема дня и настрой — с завтрашнего утра, об этом говорим. */
 const THEME_SOURCE={card:'по карте дня',dayrune:'по руне дня',sky:'по планетам'};
@@ -116,7 +124,7 @@ async function toggleMorning(key){
   if(set.has(key)&&THEME_SOURCE[key]){
     const src=MORNING.map(m=>m[0]).find(k=>THEME_SOURCE[k]&&set.has(k));   /* первый выбранный источник по порядку карта → руна → планеты */
     if(src===key)toast(`Настрой ${THEME_SOURCE[key]} — с завтрашнего утра`);
-    if(key==='card'||key==='dayrune'){try{const r=await api('/me');if(seq!==toggleMorning.seq)return;S.day=r.day;paintToday();paintMorningPostcard(S.day);}catch{}}
+    if(key==='card'||key==='dayrune'){try{const r=await api('/me');if(seq!==toggleMorning.seq)return;S.day=r.day;paintToday();paintMorningPostcard(S.day);paintHomeTheme(S.day);}catch{}}
   }
 }
 

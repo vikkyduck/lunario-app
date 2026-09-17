@@ -5,8 +5,9 @@ let S = { user:null, day:null, mood:null, limits:null, mode:'yesno', flipped:fal
    через мост WebKit; try/catch закрывает и его отсутствие (обычный браузер). */
 const IOS_SHELL = document.documentElement.className.indexOf('ios-shell') !== -1;
 function nativePost(m){ try{ window.webkit.messageHandlers.lunario.postMessage(m); return true; }catch(e){ return false; } }
+const DEVICE_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })();
 const api = async (path, opts) => {
-  const r = await fetch(API + path, Object.assign({ headers:{'Content-Type':'application/json'} }, opts));
+  const r = await fetch(API + path, Object.assign({ headers:{'Content-Type':'application/json', 'X-Tz': DEVICE_TZ} }, opts));   /* «сегодня» считается по поясу устройства */
   const j = await r.json().catch(()=>({}));
   if (r.status===401 && path!=='/me'){ location.reload(); throw Object.assign(new Error('no_session'), { code:'no_session', status:401 }); }   /* сессия истекла на сервере */
   if (!r.ok) throw Object.assign(new Error(j.error||'err'), { code:j.error, status:r.status });
@@ -287,7 +288,27 @@ async function exportPersonalData(){
 
 /* ── главная ── */
 const ordinal = (n) => n + '-й';
-/* «Сохранить себе на экран»: настрой дня, тема и вопрос — открыткой на экран блокировки; собирается заранее, как остальные */
+/* «Сохранить открытку»: настрой дня, тема и вопрос — открыткой на экран блокировки; собирается заранее, как остальные */
+/* строка над настроем: тема дня и откуда она — цепочка «источник → тема → настрой» видна, а не подразумевается */
+const THEME_SOURCE_LABEL = { card: 'по карте дня', dayrune: 'по руне дня', sky: 'по планетам', tone: 'по прогнозу дня' };
+function paintHomeTheme(d){
+  const el = $('h-theme'); if (!el) return;
+  const t = d.theme; el.hidden = !t || !d.set?.text;
+  if (t) el.textContent = `${t.title}${THEME_SOURCE_LABEL[t.source] ? ' · ' + THEME_SOURCE_LABEL[t.source] : ''}`;
+}
+/* вечером и по воскресеньям «Сегодня» знает, что дальше: записать день (или он уже записан), посмотреть неделю */
+function paintHomeLater(d){
+  const box = $('home-later'); if (!box || !d?.date) return;
+  const rows = [];
+  const dow = new Date(d.date + 'T12:00:00Z').getUTCDay(), evening = new Date().getHours() >= 18;
+  if (evening) rows.push(d.remembered
+    ? `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>День записан ✓</b><span class="later-go">Дополнить →</span></button>`
+    : `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>Запомнить этот день</b><span class="later-go">В дневник →</span></button>`);
+  if (dow === 0 || dow === 1) rows.push(`<button data-on="click:goWeek" class="later-row" type="button"><span class="eyebrow">${dow === 0 ? 'Воскресенье' : 'Понедельник'}</span><b>Неделя собралась</b><span class="later-go">Моя неделя →</span></button>`);
+  box.hidden = !rows.length; box.innerHTML = rows.join('');
+}
+function goDayCard(){ go('history'); requestAnimationFrame(() => $('day-card')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }
+function goWeek(){ go('history'); openWidget('week'); }
 let morningPc = { key: '', id: null };
 function paintMorningPostcard(d){
   const box = $('h-wish-actions'); if (!box) return;
@@ -296,7 +317,7 @@ function paintMorningPostcard(d){
   const key = [d.date, d.set.text, d.card?.name || '', d.rune?.name || ''].join('|');
   if (key !== morningPc.key) morningPc = { key, id: regRes({ type: 'morning', text: d.set.text, question: d.set.question || d.question || '', theme: d.theme?.title || '', day: d.date,
     moonPct: d.moonPct, waxing: (d.moonPhase || 0) < 0.5, card: d.card?.name || '', rune: d.rune?.name || '', lunar: d.lunar ? `${ordinal(d.lunar.n)} лунный день` : '' }) };
-  box.innerHTML = `<button data-on="click:savePostcard-a0" data-a0="${morningPc.id}" class="text-action" type="button" aria-label="Сохранить себе на экран"><span aria-hidden="true">✦ Сохранить<span class="hero-long"> себе на экран</span></span></button><button data-on="click:shareRes-a0" data-a0="${morningPc.id}" class="text-action secondary" type="button"><i class="ico share"></i>Поделиться</button>`;
+  box.innerHTML = `<button data-on="click:savePostcard-a0" data-a0="${morningPc.id}" class="text-action" type="button">Сохранить открытку</button><button data-on="click:shareRes-a0" data-a0="${morningPc.id}" class="text-action secondary" type="button"><i class="ico share"></i>Поделиться</button>`;
   /* открытка собирается, когда экран уже нарисован и главный поток свободен */
   (window.requestIdleCallback || ((f) => setTimeout(f, 400)))(preparePending, { timeout: 3000 });
 }
@@ -305,7 +326,7 @@ function paintHome(){
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('h-wish').textContent = d.set?.text || '';
-  paintMorningPostcard(d);
+  paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d);
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
   $('h-cabs').hidden = !staff; $('h-cabs').closest('.row').classList.toggle('staff', staff); document.body.classList.toggle('staff', staff);
@@ -362,9 +383,9 @@ function paintToday(){
   }).join('');
   $('t-daysub').textContent=d.forecast.title;
   if($('t-skysub'))$('t-skysub').textContent=d.sky?.title||'Фазы Луны, затмения, ретроградные планеты';   /* то же событие, что в утреннем пуше */
-  if(d.card&&!S.flipped)showFlipped();   /* утро вытянуло карту само — плитка и панель показывают её сразу */
+  if(d.card&&d.cardOpened&&!S.flipped)showFlipped();   /* карту уже открывали — панель показывает её; вытянутая утром ждёт переворота */
   if($('t-runesub'))$('t-runesub').textContent=d.rune?`${d.rune.name}${d.rune.keyword?' · '+d.rune.keyword:''}`:'Одна руна на день: образ и совет';
-  if($('t-tonesub'))$('t-tonesub').textContent=d.question||'Вопрос от Лунарио по теме дня';
+  if($('t-tonesub'))$('t-tonesub').textContent=d.question||'Вопрос по теме дня — ответ вечером в дневнике';
   if (wgOpen === 'tone') paintTone();
   renderMoods(); paintCardTile(); paintLunar(); loadNumerology();
 }
@@ -789,7 +810,7 @@ async function saveDayCard(){
   const body={text:$('dc-text').value,gratitude:$('dc-grat').value,answer:$('dc-answer').value,question:DC.state.question,moods:[...DC.moods,...own],
     habits:[...DC.habits].map(([id,done])=>({id,done})),askesis:[...DC.askesis].map(([id,v])=>({id,...(v.kept===null?{}:{kept:v.kept}),note:v.note||''}))};
   try{ DC.state=await api('/day',{method:'POST',body:JSON.stringify(body)}); paintDayCard(); hap('done');
-    $('dc-state').textContent='День сохранён ✦ Можно дополнить до полуночи'; toast('День сохранён ✦'); XP.timeline.dirty=true; loadTimeline(); S.mood=DC.state.moods[0]||null; }
+    $('dc-state').textContent='День сохранён ✦ Можно дополнить до полуночи'; toast('День сохранён ✦'); XP.timeline.dirty=true; loadTimeline(); S.mood=DC.state.moods[0]||null; if(S.day&&DC.state.saved.length){S.day.remembered=true;paintHomeLater(S.day);} }
   catch(e){ $('dc-state').textContent='Не удалось сохранить. Всё написанное осталось в полях — попробуйте ещё раз'; }
   finally{ saveDayCard.busy=false; btn.disabled=false; btn.textContent='Запомнить этот день'; }
 }
@@ -942,7 +963,7 @@ function paintCard(){
   $('t-after').innerHTML = c ? cardDayHtml(c, S.day.date, false) : '';
   paintCardTile();
 }
-function paintCardTile(){ const e = $('t-cardsub'); if (e && S.day) e.textContent = S.flipped && S.day.card ? S.day.card.name : '22 аркана: смысл и что с ним делать сегодня'; }
+function paintCardTile(){ const e = $('t-cardsub'); if (e && S.day) e.textContent = S.day.card ? S.day.card.name : 'Одна карта на день: смысл и что сделать сегодня'; }
 function showFlipped(){
   S.flipped = true;
   $('t-card').classList.add('flip'); $('t-card').classList.remove('glow');
@@ -1386,7 +1407,7 @@ function paintRem(f){
         <div class="chips flow mt-3" aria-label="Регулярность">${(f === 'week' ? ['weekly'] : ['daily','weekdays','weekly']).map(k => `<button data-on="click:remSave-a0-freq-a1" data-a0="${f}" data-a1="${k}" type="button" class="chip${r.freq === k ? ' on' : ''}" aria-pressed="${r.freq===k}">${FREQ_LABEL[k]}</button>`).join('')}</div>
         ${r.freq === 'weekly' ? `<div class="chips flow mt-2" aria-label="День недели">${WD_SHORT.map((w,i) => `<button data-on="click:remSave-a0-weekday-a1" data-a0="${f}" data-a1="${i+1}" type="button" class="chip${r.weekday === i+1 ? ' on' : ''}" aria-pressed="${r.weekday===i+1}">${w}</button>`).join('')}</div>` : ''}
         <p class="hint mt-3">Часовой пояс: ${esc(TZ || 'Europe/Moscow')}. Изменения сохраняются автоматически</p>
-        ${f==='evening' ? '<p class="hint mt-2">Если день уже записан, вечером не напоминаем</p>' : f==='morning' ? '<p class="hint mt-2">В утреннем пуше — настрой дня и то, что вы выбрали на «Сегодня»</p>' : ''}
+        ${f==='evening' ? '<p class="hint mt-2">Если день уже записан, вечером не напоминаем</p>' : f==='morning' ? '<p class="hint mt-2">В утреннем уведомлении — настрой дня и то, что вы выбрали на «Сегодня»</p>' : ''}
 
       </div>`;
   });
@@ -2257,24 +2278,41 @@ async function paintNews(){
   markNewsSeen(); track('news_view');
 }
 
+/* снимок последнего удачного /me — только для аккаунта, который уже прошёл анкету, и не старше суток */
+function offlineSnapshot(){
+  try { const s = JSON.parse(localStorage.getItem('lun_me') || 'null'); return s && s.r?.user?.onboarded && Date.now() - s.at < 26 * 3600e3 ? s : null; } catch(e) { return null; }
+}
 /* ── старт ── */
 function startApp(){
   const initialPractice=new URLSearchParams(location.search).get('practice');
   paintHome(); paintToday(); go(initialPractice==='journal'?'history':'home');
   if(FEATURES[initialPractice]?.page)openPractice(initialPractice); refreshNativeAskesis();
-  if (S.day.card) { showFlipped(); $('t-after').style.display = 'block'; }   /* карта на сегодня уже открыта — она в истории */
+  if (S.day.card && S.day.cardOpened) { showFlipped(); $('t-after').style.display = 'block'; }   /* карту уже открывали — она в истории; вытянутую утром ещё предстоит перевернуть */
   loadCatalog().then(() => { renderMoods(); applyTools(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); if (wgOpen === 'tools') paintTools(); }).catch(() => {});
   /* из уведомления приходят сразу в нужный раздел */
   try {
-    const target = openTarget(new URLSearchParams(location.search).get('open') || '');
-    if (target) { go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); }
+    const openKey = new URLSearchParams(location.search).get('open') || '', target = openTarget(openKey);
+    if (target) {
+      go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); track('push_open', openKey);
+      if (openKey === 'today' || openKey === 'morning') setTimeout(() => {   /* из утреннего уведомления — к своему утру, первая плитка подсвечена (после восстановления прокрутки в go) */
+        const feed = $('home-sky'); if (!feed || feed.hidden) return;
+        window.scrollTo({ top: feed.getBoundingClientRect().top + scrollY - 16, behavior: 'auto' });   /* сразу, без плавности: страница могла ещё не стать видимой */
+        const t = feed.querySelector('[data-feature]'); if (t) { t.classList.add('from-push'); setTimeout(() => t.classList.remove('from-push'), 1800); }
+      }, 250);
+    }
   } catch (e) {}
 }
 (async function(){
   if('serviceWorker' in navigator) ensurePushWorker().catch(()=>{});
+  let r;
   try{
-    const r = await api('/me');
+    try { r = await api('/me'); try { localStorage.setItem('lun_me', JSON.stringify({ at: Date.now(), r })); } catch(e) {} }
+    catch(e){   /* нет связи (а не отказ сервера) — сегодняшний пакет дня не меняется до полуночи, показываем последний сохранённый */
+      const snap = (!e.status && offlineSnapshot()) || null; if (!snap) throw e;
+      r = snap.r; S.offlineAt = snap.at;
+    }
     S.user=r.user; S.day=r.day; S.mood=r.mood; S.limits=r.limits; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;initExperience(r.preferences);
+    if (S.offlineAt) { const n = $('offline-note'); if (n) { n.hidden = false; n.textContent = `Без связи · показываем то, что было на ${new Date(S.offlineAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${r.day?.date !== new Date().toLocaleDateString('sv-SE') ? ', ' + fmtDay(r.day?.date) : ''}`; } }
     try{ if(r.user&&r.user.lat!=null) window.LunarioSky?.setProfile({lat:r.user.lat,lon:r.user.lon,name:r.user.city||''}); }catch(e){}
     registerWebMcp();
     try{ if(/[?&]app=1/.test(location.search)) localStorage.setItem('lun_app','1'); }catch(e){}

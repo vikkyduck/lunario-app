@@ -85,14 +85,15 @@ const server=createServer(async(req,res)=>{
       res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(body));return;
     }
     if(url.pathname==='/app/api/me' && req.method==='GET') {
-      let r=await fetch(apiBase+req.url,{headers:{cookie:req.headers.cookie||''}});
+      const tzHeader=req.headers['x-tz']?{'x-tz':String(req.headers['x-tz'])}:{};   /* пояс устройства — как в проде, иначе «сегодня» демо считалось бы по Москве */
+      let r=await fetch(apiBase+req.url,{headers:{cookie:req.headers.cookie||'',...tzHeader}});
       const cookies=r.headers.getSetCookie(); const cookie=cookies.length?cookies.map(c=>c.split(';')[0]).join('; '):req.headers.cookie||'';
       let body=await r.json();
       if(r.ok && !body.user.onboarded) {
         // Synthetic local fixture only: never submit the visitor's real profile or consent.
         const profile=await fetch(apiBase+'/app/api/profile',{method:'POST',headers:{cookie,'content-type':'application/json'},body:JSON.stringify({name:'Гость',birth:'1990-01-01',city:'Москва',consent:true})});
         if(!profile.ok) throw new Error('Demo profile could not be initialized');
-        body=await(await fetch(apiBase+req.url,{headers:{cookie}})).json();
+        body=await(await fetch(apiBase+req.url,{headers:{cookie,...tzHeader}})).json();
       }
       body.localPreview=true;
       if(cookies.length)res.setHeader('Set-Cookie',cookies.map(c=>c.replace(/; Secure/gi,'')));

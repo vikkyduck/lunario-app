@@ -38,7 +38,7 @@ import { natalChart } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
-import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, nativePlan, previewNotification } from './reminders.mjs';
+import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, nativePlan, previewNotification, dayRemembered } from './reminders.mjs';
 import { CLIENT_EVENTS } from './events.mjs';
 import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs';
 import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
@@ -139,6 +139,22 @@ console.log('Личные записи шифруются перед запис�
 
 /* Подарок за приглашение действует неделю и удваивает число подробных разборов. */
 const hasBonus = (u) => !!u.bonus_until && u.bonus_until >= today();
+/* «Сегодня» человека — по поясу его устройства (заголовок X-Tz, запоминается в preferences.tz), иначе по поясу города из анкеты,
+   иначе по Москве. Всё личное — настрой, карта, записи, неделя — считается этим днём; аналитика и кабинет остаются по Москве. */
+const tzOk = new Map();
+function validTz(tz) {
+  if (typeof tz !== 'string' || !/^[A-Za-z][\w+\-/]{1,60}$/.test(tz)) return false;
+  if (!tzOk.has(tz)) { try { new Intl.DateTimeFormat('ru-RU', { timeZone: tz }); tzOk.set(tz, true); } catch { tzOk.set(tz, false); } }
+  return tzOk.get(tz);
+}
+const userTz = (u) => { const p = u ? preferences(u.preferences) : {}; return validTz(p.tz) ? p.tz : validTz(u?.tz) ? u.tz : MSK; };
+const userDay = (u) => dayIn(userTz(u));
+/* пояс устройства сменился (переезд, поездка) — запоминаем, чтобы и пуши, и день считались по нему */
+function rememberTz(u, req) {
+  const tz = req.headers['x-tz']; if (!u || !validTz(tz)) return;
+  const p = preferences(u.preferences); if (p.tz === tz) return;
+  db.prepare('UPDATE users SET preferences = ? WHERE id = ?').run(JSON.stringify({ ...p, tz }), u.id); u.preferences = JSON.stringify({ ...p, tz });
+}
 const spreadLimit = (u) => (hasBonus(u) ? 4 : 2);
 
 /* Событие продукта: только тип, короткая деталь и возрастная когорта — без личных текстов */
@@ -246,7 +262,7 @@ const moonOf = (day) => moonState(Date.parse(day + 'T12:00:00Z'));
 const cardPublic = (a) => ({ slug: a.slug, name: a.name, keys: a.keys, question: a.question, today: a.today, image: a.image });
 const runePublic = (r) => ({ slug: r.slug, name: r.name, keyword: r.keyword, motto: r.motto, answer: r.answer, path: r.path, image: r.image });
 /* Карта дня тянется один раз в день и живёт в истории; до открытия её нет. */
-const Morning = createMorning({ db, C, track, nowISO, today });
+const Morning = createMorning({ db, C, track, nowISO, today: (u) => userDay(u) });
 const cardOfDay = (u, day) => { const a = Morning.cardOfDay(u, day); return a ? cardPublic(a) : null; };
 
 /* Тема дня → настрой и вопрос дня. Тему задаёт тон дня (пока человек не собрал утро из карты, руны и планет — тогда
@@ -285,8 +301,10 @@ function dayPack(u, day) {
       : { title: tone[0], text: tone[1], bars: tone[2] },
     affirmation: (W.materialForDay('affirmation', day) || {}).text || C.AFFIRMATIONS[hash32(seed + ':aff') % C.AFFIRMATIONS.length],
     set,                            /* настрой дня на главной и вопрос дня к нему — по теме дня */
-    theme: theme ? { key: theme.key, title: theme.title } : null,
+    theme: theme ? { key: theme.key, title: theme.title, source: Morning.themeSource(u, day, theme) } : null,
     morning: morningOf(preferences(u.preferences)),   /* выбранные плитки утра */
+    cardOpened: Morning.openedOf(u, day, 'card'),     /* утро вытянуло карту само — в панели она ждёт, пока её откроют */
+    remembered: dayRemembered(u.id, day),             /* день уже записан — вечерняя строка на «Сегодня» скажет об этом */
     rune: (() => { const r = runeOfDay(u, day); return r ? runePublic(r) : null; })(),
     sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */
     question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
@@ -353,7 +371,7 @@ const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').ge
 const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, issueLoginCode, checkLoginCode, verifyLogin } =
   createIdentity({ db, basePath: BASE, sha, clean, nowISO, userById, rolesFor });
 function touchStreak(u) {                       // серию продолжает любой ритуал за день
-  const d = today();
+  const d = userDay(u);
   if (u.streak_date === d) return u.streak;
   const next = u.streak_date === addDays(d, -1) ? u.streak + 1 : 1;
   db.prepare('UPDATE users SET streak = ?, streak_date = ? WHERE id = ?').run(next, d, u.id);
@@ -369,7 +387,7 @@ const publicUser = (u) => ({
   signedIn: !!u.email,
   sign: u.birth ? signOf(u.birth).name : '', onboarded: !!u.onboarded, streak: u.streak,
   photo: !!u.photo, photoTs: u.photo_ts || '',
-  streakToday: u.streak_date === today(), email: u.email,
+  streakToday: u.streak_date === userDay(u), email: u.email,
   roles: rolesFor(u.email),   /* сотрудники после входа попадают в кабинет */
 });
 
@@ -500,7 +518,8 @@ const server = createServer(async (req, res) => {
         if (!allowRate(anonRate, clientIp(req), ANON_RATE)) return json(res, 429, { ok: false, error: 'too_often' });
         u = getUser(req, res, true);
       }
-      const d = today();
+      if (u) rememberTz(u, req);
+      const d = u ? userDay(u) : today();   /* день человека — по его поясу; без аккаунта — по Москве */
       if (!u) {
         if (p === '/api/cabinet/me') { const cfg = getConfig(); return json(res, 200, { email: '', name: '', roles: [], isAdmin: false, mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom }); }
         return json(res, 401, { ok: false, error: 'no_session' });
@@ -682,7 +701,7 @@ const server = createServer(async (req, res) => {
           const toolKeys = new Set([...C.TOOLS].map((t) => t.key));
           const tools = Array.isArray(b.tools) ? [...new Set(b.tools.filter((k) => toolKeys.has(k)))] : (prev.tools ?? null);
           const morning = Array.isArray(b.morning) ? [...new Set(b.morning)] : (prev.morning ?? null);   /* плитки утра на «Сегодня» */
-          const value = {theme:b.theme,ritual:b.ritual,topics,topicsAll:b.topicsAll !== undefined ? !!b.topicsAll : !!prev.topicsAll,lunarViews:prev.lunarViews||0,...(tools ? {tools} : {}),...(morning ? {morning} : {})};
+          const value = {theme:b.theme,ritual:b.ritual,topics,topicsAll:b.topicsAll !== undefined ? !!b.topicsAll : !!prev.topicsAll,lunarViews:prev.lunarViews||0,...(tools ? {tools} : {}),...(morning ? {morning} : {}),...(prev.tz ? {tz:prev.tz} : {})};   /* tz — пояс устройства, ведёт сервер по заголовку */
           db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify(value),u.id);
           return json(res,200,{preferences:value});
         }

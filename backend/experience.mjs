@@ -1,8 +1,10 @@
 export const DEFAULT_PREFERENCES = {theme:'dark', ritual:['card','mood','gratitude'], topics:[], topicsAll:false, lunarViews:0};
 /* Утро на «Сегодня»: какие плитки человек выбрал в ответ на «На что хочу обращать внимание каждое утро?». Нет выбора — Луна и вопрос дня */
-export const MORNING_KEYS = ['card', 'dayrune', 'sky', 'day', 'lunar', 'tone'];
 export const DEFAULT_MORNING = ['lunar', 'tone'];
-export const morningOf = (prefs) => Array.isArray(prefs.morning) ? prefs.morning.filter((k) => MORNING_KEYS.includes(k)) : DEFAULT_MORNING;
+/* Ключи плиток задаёт разметка «Сегодня» (data-feature), сервер их не перечисляет — как и у инструментов Дневника:
+   проверяется только форма ключа, неизвестные ключи потребители (пуш, тема дня) просто не замечают. Новая плитка = разметка + панель */
+const morningKey = (k) => typeof k === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(k);
+export const morningOf = (prefs) => Array.isArray(prefs.morning) ? prefs.morning.filter(morningKey).slice(0, 10) : DEFAULT_MORNING;
 const practices = new Set(['card','mood','habits','gratitude','tone','journal']);
 export function preferences(raw) {
   try { return {...DEFAULT_PREFERENCES, ...JSON.parse(raw || '{}')}; }
@@ -12,8 +14,9 @@ const topicKey = (k) => typeof k === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(k
 export function validPreferences(value) {
   if (value && value.topics !== undefined && !(Array.isArray(value.topics) && value.topics.length <= 12 && value.topics.every(topicKey))) return false;
   if (value && value.tools !== undefined && !(Array.isArray(value.tools) && value.tools.length <= 40 && value.tools.every(topicKey))) return false;   /* видимые инструменты: ключи из каталога */
-  if (value && value.morning !== undefined && !(Array.isArray(value.morning) && value.morning.length <= 10 && value.morning.every((k) => MORNING_KEYS.includes(k)))) return false;
+  if (value && value.morning !== undefined && !(Array.isArray(value.morning) && value.morning.length <= 10 && value.morning.every(morningKey))) return false;
   if (value && value.topicsAll !== undefined && typeof value.topicsAll !== 'boolean') return false;
+  if (value && value.tz !== undefined && !(typeof value.tz === 'string' && value.tz.length <= 64)) return false;   /* пояс устройства — из заголовка X-Tz, сохраняется здесь */
   return value && ['system','light','dark'].includes(value.theme) && Array.isArray(value.ritual)
     && value.ritual.length >= 2 && value.ritual.length <= 3
     && new Set(value.ritual).size === value.ritual.length && value.ritual.every(k=>practices.has(k));

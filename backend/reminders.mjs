@@ -162,7 +162,7 @@ function morningNotification(u, d, atMs, tz) {
     if (k === 'sky' && pack.sky) lines.push(`Планеты — ${pack.sky.title}`);   /* то же событие, что задаёт тему и стоит на плитке */
     if (k === 'day' && pack.forecast) lines.push(`${pack.forecast.title} — ${firstSentence(pack.forecast.text)}`);
     if (k === 'lunar') { const ld = lunarDay(atMs, u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon); if (ld) { const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', '']; const topic = lunarTopicLine(u, ld.n); lines.push(`${ld.n}-й лунный день · ${name} — ${topic ? topic.text : firstSentence(advice)}`); } }
-    if (k === 'tone' && pack.question) lines.push(`Вопрос дня: ${pack.question}`);
+    if (k === 'tone' && pack.question) lines.push(`Вопрос дня — ${pack.question}`);
   }
   const title = pack.set ? pack.set.text : tpl('morning-пусто').title;
   return { title: title.slice(0, 120), body: (lines.join('\n') || (pack.theme ? pack.theme.title : '')).slice(0, 480), url };

@@ -36,7 +36,7 @@ export function drawDistinct(list, n) {
   return idx.slice(0, Math.min(n, idx.length)).map((i) => list[i]);
 }
 
-export function createMorning({ db, C, track, nowISO, today }) {
+export function createMorning({ db, C, track, nowISO, today }) {   /* today(u) — день человека по его поясу */
   const toneOfDay = (u, day) => C.DAY_TONES[hash32(`${u.id}:${day}:tone`) % C.DAY_TONES.length];
   const lastEntry = (u, day, kind) => db.prepare('SELECT data FROM entries WHERE user_id=? AND day=? AND kind=? ORDER BY id DESC LIMIT 1').get(u.id, day, kind);
   const cardOfDay = (u, day) => { const slug = (parseData(lastEntry(u, day, 'card')?.data) || {}).card; return slug ? [...C.ARCANA].find((c) => c.slug === slug) || null : null; };
@@ -45,13 +45,13 @@ export function createMorning({ db, C, track, nowISO, today }) {
   /* Утренняя карта и руна — по дню и человеку, а не из случайного мешочка: так план уведомлений на две недели вперёд
      (телефон) считает те же карты, что утром вытянет /me, и настрой снимается под них. Ручная вытяжка (/api/card) остаётся случайной. */
   const pickOf = (u, day, kind, list) => list[hash32(`${u.id}:${day}:${kind}`) % list.length];
-  const cardFor = (u, day) => cardOfDay(u, day) || (day > today() && chosenOf(u).includes('card') ? pickOf(u, day, 'card', [...C.ARCANA]) : null);
-  const runeFor = (u, day) => runeOfDay(u, day) || (day > today() && chosenOf(u).includes('dayrune') ? pickOf(u, day, 'dayrune', [...C.RUNES]) : null);
+  const cardFor = (u, day) => cardOfDay(u, day) || (day > today(u) && chosenOf(u).includes('card') ? pickOf(u, day, 'card', [...C.ARCANA]) : null);
+  const runeFor = (u, day) => runeOfDay(u, day) || (day > today(u) && chosenOf(u).includes('dayrune') ? pickOf(u, day, 'dayrune', [...C.RUNES]) : null);
 
   /* Выбранные карта и руна тянутся сами — чтобы тема дня была известна с утра, а не после клика.
      Запись помечена auto: в «Мои вопросы и ответы» она не показывается, пока человек её не открыл; событие — «вытянута», не «открыл». */
   function drawMorning(u, day) {
-    if (day !== today()) return;
+    if (day !== today(u)) return;
     const chosen = chosenOf(u);
     if (chosen.includes('card') && !cardOfDay(u, day)) {
       const a = pickOf(u, day, 'card', [...C.ARCANA]);
@@ -91,12 +91,24 @@ export function createMorning({ db, C, track, nowISO, today }) {
     const byText = set ? [...C.NASTROY].find((n) => raw(n[1]) === raw(set.statement || set.text)) : null;
     return (byText && themes.find((t) => t.key === byText[0])) || themeOfDay(u, day);
   }
+  /* Откуда взялась тема дня — для строки над настроем («Тихий день · по карте дня»): первый выбранный источник, чья тема совпала;
+     карта/руна, если их не выбирали, тему не задают; ничего не совпало — прогноз (тон дня) */
+  function themeSource(u, day, theme) {
+    if (!theme) return 'tone';
+    const chosen = chosenOf(u);
+    if (chosen.includes('card')) { const c = cardFor(u, day); if (c && C.themeOf('карта', c.slug) === theme.key) return 'card'; }
+    if (chosen.includes('dayrune')) { const r = runeFor(u, day); if (r && C.themeOf('руна', r.slug) === theme.key) return 'dayrune'; }
+    if (chosen.includes('sky')) { const k = skyKeyOf(day); if (k && C.themeOf('небо', k) === theme.key) return 'sky'; }
+    return 'tone';
+  }
+  /* открыл ли человек утреннюю карту/руну сам (пометка auto снимается при открытии) */
+  const openedOf = (u, day, kind) => { const row = lastEntry(u, day, kind); return !!row && !(parseData(row.data) || {}).auto; };
   /* лёгкий пакет утра — для утреннего пуша, плана телефона и подписей плиток; будущие дни считаются без записи в базу карт и рун */
   function pack(u, day) {
     drawMorning(u, day);
     const set = setOfDay(u, day), theme = themeFor(u, day, set), tone = toneOfDay(u, day);
-    return { day, set, theme: theme ? { key: theme.key, title: theme.title } : null, chosen: chosenOf(u), card: cardFor(u, day), rune: runeFor(u, day),
+    return { day, set, theme: theme ? { key: theme.key, title: theme.title, source: themeSource(u, day, theme) } : null, chosen: chosenOf(u), card: cardFor(u, day), rune: runeFor(u, day),
       sky: skyEventOf(day), forecast: { title: tone[0], text: tone[1] }, question: (set || {}).question || '' };
   }
-  return { toneOfDay, cardOfDay, runeOfDay, cardFor, runeFor, drawMorning, themeOfDay, setOfDay, themeFor, pack };
+  return { toneOfDay, cardOfDay, runeOfDay, cardFor, runeFor, openedOf, drawMorning, themeOfDay, themeSource, setOfDay, themeFor, pack };
 }

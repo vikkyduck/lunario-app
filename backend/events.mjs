@@ -35,6 +35,8 @@ export const EVENTS = [
   E('tools_add', 'Добавил инструмент', 'client'),
   E('morning_add', 'Выбрал плитку утра', 'client'),
   E('rhythm_view', 'Увидел экран трёх напоминаний', 'client'),
+  E('push_open', 'Пришёл из уведомления', 'client'),
+  E('morning_edit', 'Развернул выбор утра', 'client'),
   E('rhythm_enable', 'Включил напоминания после анкеты', 'client'),
   E('morning_remove', 'Убрал плитку утра', 'client'),
   E('tools_remove', 'Убрал инструмент с экрана', 'client'),

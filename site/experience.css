@@ -137,14 +137,13 @@ body.inner .toast{border-radius:var(--r-m);padding:12px 18px;line-height:1.5;box
 
 /* Destination cards: generous text and a consistent directional cue. */
 body.inner .wids{gap:18px}
-body.inner .wid{position:relative;min-height:142px;padding:20px;border-radius:var(--r-l);gap:10px;transition:background var(--t) ease,border-color var(--t) ease,transform var(--t) ease}
+body.inner .wid{position:relative}   /* размеры, поля и переходы плиток — moon-glass.css */
 body.inner .wid b{padding-right:20px;font-size:17px;line-height:1.4;letter-spacing:-.015em}
 body.inner .wid>span:not(.dot){font-size:15px;line-height:1.55;color:var(--muted)}
 body.inner .wid .ico{width:24px;height:24px;margin-bottom:4px}
 body.inner .wid>span.destination-arrow{position:absolute;right:18px;top:22px;color:var(--muted);font-size:20px;line-height:1;pointer-events:none}
 body.inner .compact-links{gap:0;border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;background:var(--surface)}
 body.inner .compact-links .wid{grid-template-columns:24px minmax(0,1fr) 18px;column-gap:14px;row-gap:4px;padding:18px;min-height:80px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent}
-body.inner .compact-links .wid:last-child{border-bottom:0}
 body.inner .compact-links .wid b{padding:0;font-size:16px}
 body.inner .compact-links .wid>span.destination-arrow{position:static;grid-column:3;grid-row:1/span 2;align-self:center;font-size:20px}
 body.inner .compact-links .wid .ico{width:24px;height:24px}
@@ -269,7 +268,7 @@ body:not(.inner) #v-hello .trust{font-size:14px}
 body:not(.inner):not(.hello) .bg{display:none}
 @media(hover:hover) and (pointer:fine){
   body.inner :is(.wid,.quick-mood,.emotion-family):hover{background:var(--hover);border-color:var(--control-border);transform:translateY(-2px)}
-  body.inner .compact-links .wid:hover{transform:none}
+  
   body.inner :is(.btn,.text-action,.back):hover{filter:brightness(1.04)}
   body.inner .text-action:hover{color:var(--text)}
 }

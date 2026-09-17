@@ -41,7 +41,7 @@
         method: body === undefined ? 'GET' : 'POST',
         body: body === undefined ? undefined : JSON.stringify(body),
         credentials: 'same-origin', cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', 'X-Tz': (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })() }, signal: controller.signal,
       });
       let data = null, parsed = true;
       try { data = await r.json(); } catch { parsed = false; }

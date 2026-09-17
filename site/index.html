@@ -26,7 +26,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=63"></script>
+<script src="/app/boot.js?v=64"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -319,10 +319,6 @@ body.inner .app-nav{display:grid}
   .moonline{max-width:560px;margin-top:18px}
   /* разделы: плитки по ширине, сколько влезает по 230px; последний ряд растягивается */
   .wids{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:28px}
-  .wid{padding:20px 18px 18px;min-height:150px;gap:8px;border-radius:var(--r-l)}
-  .wid .ico{width:30px;height:30px;margin-bottom:6px}
-  .wid b{font-size:16px}
-  .wid span{font-size:14px}
   .rows{grid-template-columns:repeat(2,1fr);gap:12px;margin-top:28px}
   .daycard{width:210px;height:334px}
   .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,92vw);max-height:88vh;border-radius:var(--r-sheet);
@@ -506,12 +502,6 @@ body.inner .app-nav{display:grid}
   backdrop-filter:none;-webkit-backdrop-filter:none;
   box-shadow:var(--glass-shadow),inset 0 0 0 .5px rgba(255,255,255,.07)
 }
-:is(.wid)::before{
-  content:'';position:absolute;z-index:0;inset:-1px;border-radius:inherit;pointer-events:none;opacity:.26;
-  background:radial-gradient(190px circle at var(--glass-x,28%) var(--glass-y,0%),rgba(255,255,255,.38),rgba(240,215,154,.1) 24%,transparent 62%);
-  box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.16),inset -1.5px -1.5px 1px rgba(91,70,145,.12);
-  transition:opacity var(--t-slow) ease
-}
 :is(.wid,.moonline)::after{
   content:'';position:absolute;z-index:0;left:var(--tap-x,50%);top:var(--tap-y,50%);width:18px;height:18px;border-radius:50%;
   background:radial-gradient(circle,rgba(255,244,207,.42) 0,rgba(217,184,104,.18) 38%,transparent 72%);
@@ -540,7 +530,6 @@ body.inner .app-nav{display:grid}
   :is(.wid,.moonline):hover{transform:none}
 }
 
-#v-home .moonline{margin-bottom:22px}
 .hb-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .hb-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
 .hb-columns .hb-rule{margin:0;font-size:13px;font-weight:400;color:var(--muted)}
@@ -548,7 +537,6 @@ body.inner .app-nav{display:grid}
 /* Спокойные поверхности для чтения, стекло — у навигации и коротких действий. */
 [hidden]{display:none!important}
 body.inner :is(.card,.item,.wid){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
-body.inner :is(.wid)::before{display:none}
 body.inner .card{border-radius:var(--r-l)}
 body.inner .btn{box-shadow:0 4px 14px rgba(217,184,104,.12);min-height:52px}
 body.inner .btn.sm{min-height:44px}
@@ -630,14 +618,10 @@ body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150
 .feature-group,.account-group{margin-top:30px}
 .feature-group>h2,.account-group>h2{font-size:18px;line-height:1.4;font-weight:600}
 .feature-group>.wids,.account-group>.wids{margin-top:12px}
-body.inner .wid{min-height:116px;padding:16px;background:rgba(31,27,45,.75);border-color:var(--line)}
-.wid .ico{width:24px;height:24px;margin-bottom:3px}
-.wid b{font-size:14px}
 body.inner .compact-links{grid-template-columns:1fr;gap:0;border-top:1px solid var(--line)}
 body.inner .compact-links .wid{display:grid;grid-template-columns:24px 1fr;align-items:center;gap:3px 12px;min-height:68px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:14px 2px}
 .compact-links .wid .ico{grid-column:1;grid-row:1/span 2;margin:0}
 .compact-links .wid b,.compact-links .wid>span:not(.dot){grid-column:2}
-.compact-links .wid::after{display:none}
 body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer;background:none;box-shadow:none;border:0;min-height:64px}
 #home-sky .moonline .grow{min-width:0;display:grid;gap:5px}
 #home-sky .moonline b{font-size:14px;line-height:1.5;font-weight:500}
@@ -670,9 +654,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=63">
-<link rel="stylesheet" href="/app/experience.css?v=63">
-<link rel="stylesheet" href="/app/moon-glass.css?v=63">
+<link rel="stylesheet" href="/app/theme.css?v=64">
+<link rel="stylesheet" href="/app/experience.css?v=64">
+<link rel="stylesheet" href="/app/moon-glass.css?v=64">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -682,7 +666,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 </div>
 <div class="wrap">
   <div class="section-head"><div class="wordmark compact-brand section-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div>
-    <button data-on="click:go-account" class="acct section-acct" type="button" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
+    <button data-on="click:go-account" class="acct section-acct" type="button" aria-label="Аккаунт: фото, уведомления, настройки">✦</button></div>
 
   <!-- ВХОД: личный профиль или вход по почте -->
   <section class="view" id="v-hello">
@@ -775,12 +759,17 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
     <div class="home-intro">
       <div class="home-moon" aria-hidden="true"><img src="/app/assets/moon-hero-560.webp" srcset="/app/assets/moon-hero-560.webp 560w, /app/assets/moon-hero-1120.webp 1120w" sizes="(max-width:370px) 82px, (max-width:599px) 100px, 260px" width="560" height="560" alt="" decoding="async"></div>
-      <div class="daily-statement"><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
+      <div class="daily-statement"><span class="eyebrow" id="h-theme" hidden></span><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
     </div>
     <!-- Утро: человек отвечает, на что хочет обращать внимание; выбранное — сверху, остальное — маленькими квадратами ниже -->
-    <section class="card morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint">Выберите, что показывать первым. Можно всё</p><div class="chips flow" id="morning-chips"></div></section>
-    <section class="feature-group" id="home-sky" data-feature="around"><h2>Ваше утро</h2><div class="wids compact-links" id="morning-feed"></div></section>
-    <section class="feature-group" id="morning-rest"><h2>Всё про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid" data-feature="card" type="button"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" type="button"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" type="button"><i class="ico star"></i><b>Влияние планет на сегодня</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос от Лунарио по теме дня — ответ вечером в дневнике</span></button></div></section>
+    <p class="hint offline-note" id="offline-note" hidden role="status"></p>
+    <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Выбранное — сверху и в утреннем уведомлении. Можно всё</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придёт только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="text-action" id="morning-done" type="button" hidden>Готово</button></div></section>
+    <!-- после выбора вопрос сворачивается в строку: экран — для чтения, не для настроек -->
+    <button data-on="click:morningEdit" class="morning-summary" id="morning-summary" type="button" hidden><span class="eyebrow">Утром показываем</span><b id="morning-summary-list"></b><span class="text-action" aria-hidden="true">Изменить</span></button>
+    <section class="feature-group" id="home-sky" data-feature="around"><h2>Моё утро</h2><div class="wids compact-links" id="morning-feed"></div></section>
+    <section class="feature-group" id="morning-rest"><h2>Ещё про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid" data-feature="card" data-chip="Карта дня" type="button"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">Одна карта на день: смысл и что сделать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" data-chip="Руна дня" type="button"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" data-chip="Планеты" type="button"><i class="ico star"></i><b>Влияние планет</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" data-chip="Прогноз дня" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" data-chip="Луна" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b class="moon-title">Луна</b><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" data-chip="Вопрос дня" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос по теме дня — ответ вечером в дневнике</span></button></div></section>
+    <!-- вечером и по воскресеньям страница знает, что дальше: записать день, посмотреть неделю -->
+    <div class="home-later" id="home-later" hidden></div>
   </section>
   <section class="view" id="v-ask"><h1>Свериться с собой</h1><p class="section-caption">Карты, руны, вопросы</p>
     <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button" aria-label="Разобрать вопрос"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения и отношение к себе</span></button></div><section class="feature-group"><h2>Выбрать способ</h2><div class="wids method-grid">
@@ -954,13 +943,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=63"></script>
+<script src="/app/moon-logo.js?v=64"></script>
 
-<script type="module" src="/app/sky.js?v=63"></script>
+<script type="module" src="/app/sky.js?v=64"></script>
 
-<script src="/app/experience.js?v=63"></script>
-<script src="/app/app.js?v=63"></script>
-<script src="/app/handlers.js?v=63"></script>
-<script src="/app/on.js?v=63"></script>
+<script src="/app/experience.js?v=64"></script>
+<script src="/app/app.js?v=64"></script>
+<script src="/app/handlers.js?v=64"></script>
+<script src="/app/on.js?v=64"></script>
 </body>
 </html>

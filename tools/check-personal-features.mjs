@@ -14,7 +14,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
-import { versionMismatch } from './bump-version.mjs';
+import { versionMismatch, shellGaps } from './bump-version.mjs';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = await mkdtemp(join(tmpdir(), 'lunario-personal-features-'));
@@ -133,7 +133,7 @@ try {
   /* Утро: выбранные плитки хранятся в настройках; карта и руна, если выбраны, тянутся при первом /me дня; тема дня — от них */
   { const fresh=account();await fresh.json('/me');await fresh.json('/profile','POST',{name:'Утро',birth:'1991-02-02',city:'Москва',consent:true});
     const me0=await fresh.json('/me');assert.deepEqual(me0.day.morning,['lunar','tone']);assert.ok(me0.day.set?.text&&me0.day.set.question&&me0.day.theme?.key,'настрой, вопрос и тема дня');assert.equal(me0.day.card,null);assert.equal(me0.day.rune,null);
-    assert.equal((await fresh.raw('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card','nope']})).status,400);
+    assert.equal((await fresh.raw('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card','Не ключ!']})).status,400);
     await fresh.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['dayrune','card']});
     const me1=await fresh.json('/me');assert.ok(me1.day.card&&me1.day.rune,'chosen card and rune are drawn by themselves');assert.deepEqual(me1.day.morning,['dayrune','card']);
     /* утро вытянуло само: в «Мои вопросы и ответы» такого нет и событие — «вытянута», а не «открыл»; открыл — появилось, событие один раз */
@@ -233,7 +233,7 @@ try {
   await owner.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card','lunar','tone']});
   const morning=reminders.notificationFor('morning',qaDB.prepare('SELECT * FROM users WHERE id=?').get(person.id));
   const meNow=await owner.json('/me');assert.equal(morning.title,meNow.day.set.text,'morning push title is the настрой of the day');
-  assert.ok(morning.body.includes('Карта дня — ')&&morning.body.includes('лунный день')&&morning.body.includes('Вопрос дня: '),morning.body);assert.equal(morning.url,'/app/?open=today');
+  assert.ok(morning.body.includes('Карта дня — ')&&morning.body.includes('лунный день')&&morning.body.includes('Вопрос дня — '),morning.body);assert.equal(morning.url,'/app/?open=today');
   await owner.json('/reminders','POST',{feature:'morning',enabled:true,time:'08:30'});
   const plan=await owner.json('/reminders/native-plan?feature=morning');assert.equal(plan.items.length,14);assert.ok(plan.items.every(i=>i.title&&i.url==='/app/?open=today'));
   /* план на будущие дни считает ту же карту, что утром вытянет /me, и настрой снимается под её тему — цепочка «карта → тема → настрой» не рвётся */
@@ -252,6 +252,13 @@ try {
     await skyP.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['sky']});
     qaDB.prepare('DELETE FROM daily_sets WHERE user_id=(SELECT id FROM users WHERE name=?)').run('Небо');const me3=await skyP.json('/me');
     if(skyKey&&C.themeOf('небо',skyKey))assert.equal(me3.day.theme.key,C.themeOf('небо',skyKey),'theme comes from the sky event');else assert.ok(me3.day.theme?.key,'quiet sky falls back to the tone of the day'); }
+  /* день человека — по поясу устройства (X-Tz), запоминается в preferences.tz; кривой заголовок — пояс города из анкеты или Москва */
+  { const far=account();await far.json('/me');await far.json('/profile','POST',{name:'Далеко',birth:'1990-06-06',city:'Москва',consent:true});
+    const dayAt=(tz)=>new Date().toLocaleDateString('sv-SE',{timeZone:tz});
+    const r1=await (await far.raw('/me','GET',undefined,{'X-Tz':'Pacific/Kiritimati'})).json();assert.equal(r1.day.date,dayAt('Pacific/Kiritimati'),'day follows the device timezone');assert.equal(r1.preferences.tz,'Pacific/Kiritimati','timezone remembered');
+    const r2=await (await far.raw('/me','GET',undefined,{'X-Tz':'Not/AZone'})).json();assert.equal(r2.day.date,dayAt('Pacific/Kiritimati'),'a bad header keeps the remembered timezone');
+    const r3=await (await far.raw('/me','GET',undefined,{'X-Tz':'Pacific/Niue'})).json();assert.equal(r3.day.date,dayAt('Pacific/Niue'),'a new device timezone wins');
+    await far.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card']});assert.equal((await far.json('/me')).preferences.tz,'Pacific/Niue','saving preferences keeps the timezone'); }
   /* вечер: пока день не записан — напоминаем; записали хоть что-то — молчим */
   const evPerson=account();await evPerson.json('/me');await evPerson.json('/profile','POST',{name:'Вечер',birth:'1994-04-04',city:'Москва',consent:true});
   const evRow=qaDB.prepare('SELECT * FROM users WHERE name=?').get('Вечер');
@@ -353,6 +360,7 @@ try {
   console.log('PASS: three reminder schedules, timezone, previews, device-specific test delivery and queue isolation.');
   // ── Одна версия оболочки: index.html, импорты sky.js и SHELL в sw.js должны совпадать ──
   assert.equal(versionMismatch(), null, 'Shell version must be the same in index.html, sky.js and sw.js');
+  assert.equal(shellGaps(), null, 'every shell css/js in index.html carries ?v= and is listed in SHELL of sw.js');
 
   // ── Политика личных данных: каждая таблица с user_id описана; удаление аккаунта уносит и переписку с поддержкой ──
   const { PERSONAL_DATA, tablesWithUser } = await import(pathToFileURL(join(fixture, 'backend/account-data.mjs')).href);
@@ -462,7 +470,7 @@ try {
   assert.equal(sky.moon.phase, nowMoon.name, 'Sky screen names the phase by the same rule');
   assert.ok(Math.abs(sky.moon.illumination - nowMoon.illumination) <= 1);
   assert.ok(MOON_NAMES.includes(meMoon.day.moon) && MOON_NAMES.includes(sky.moon.phase));
-  for (const [cycle, name] of [[0, 'Новолуние'], [0.06, 'Новолуние'], [0.07, 'Растущий серп'], [0.25, 'Первая четверть'], [0.5, 'Полнолуние'], [0.75, 'Последняя четверть'], [0.9, 'Старая Луна'], [0.95, 'Новолуние']]) assert.equal(moonPhaseName(cycle), name, `phase name at ${cycle}`);
+  for (const [cycle, name] of [[0, 'Новолуние'], [0.06, 'Новолуние'], [0.07, 'Растущий серп'], [0.25, 'Первая четверть'], [0.5, 'Полнолуние'], [0.75, 'Последняя четверть'], [0.9, 'Убывающий серп'], [0.95, 'Новолуние']]) assert.equal(moonPhaseName(cycle), name, `phase name at ${cycle}`);
   for (const at of ['2026-09-15T12:00:00Z', '2026-09-18T12:00:00Z', '2026-09-26T12:00:00Z']) { const m = moonState(Date.parse(at)); assert.ok(MOON_NAMES.includes(m.name) && m.illumination >= 0 && m.illumination <= 100, at); }
   const shelvesDay = (await evt.json('/shelves')).day;
   assert.equal(shelvesDay.moon, meMoon.day.moon, 'Dossier shows the same phase as the day pack');
