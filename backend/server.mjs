@@ -484,6 +484,9 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     let p = url.pathname;
+    /* iOS и Яндекс.Браузер при добавлении на экран «Домой» пробуют /apple-touch-icon.png в корне сайта; nginx отдаёт всё,
+       что начинается с /app, сюда — поэтому корневая иконка тоже наша, иначе на телефоне вместо луны буква «Л» */
+    if (/^\/apple-touch-icon(-precomposed)?(-\d+x\d+)?\.png$/.test(p)) return serveStatic(res, 'assets/apple-touch-icon.png', 86400, req.method === 'HEAD');
     if (p.startsWith(BASE)) p = p.slice(BASE.length) || '/';
     if (p === '' ) p = '/';
 

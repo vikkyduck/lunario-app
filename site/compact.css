@@ -113,3 +113,62 @@ html[data-skin=compact] body.inner .acct{width:38px;height:38px}
 html[data-skin=compact] body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{top:calc(16px + env(safe-area-inset-top));right:16px;width:38px;height:38px}
 @media(min-width:600px){html[data-skin=compact] body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:24px}}
 html[data-skin=compact] body.inner #v-home #h-acct{margin-top:0}
+
+/* ── Панели-виджеты (карта дня, руна, лунный день, разбор вопроса, «Моя неделя», настройки): та же сетка, что и экраны ── */
+html[data-skin=compact] body.inner .wg{padding-inline:16px;font-size:15px;line-height:1.5}
+html[data-skin=compact] body.inner .wg-head h2{font-size:20px;line-height:1.25;letter-spacing:-.015em}
+html[data-skin=compact] body.inner .wg-head{padding-bottom:14px;margin-bottom:18px}
+html[data-skin=compact] body.inner .wg-eb{font-size:11px;letter-spacing:.12em}
+html[data-skin=compact] body.inner .wpane .card{padding:16px;border-radius:var(--ck-radius)}
+html[data-skin=compact] body.inner :is(.wpane h3,.item b,.histhead b,.rem-lbl b){font-size:16px;line-height:1.35}
+html[data-skin=compact] body.inner .wpane .practice-question{font-size:18px!important;line-height:1.4}
+html[data-skin=compact] body.inner :is(.wpane p,.wpane li,.entry-text,.wpane .today){font-size:15px;line-height:1.55}
+html[data-skin=compact] body.inner :is(.hint,.section-caption,.field label,.saved-state,.wpane small){font-size:13px;line-height:1.5}
+html[data-skin=compact] body.inner .title-gold{font-size:20px}
+html[data-skin=compact] body.inner .big{font-size:40px}
+html[data-skin=compact] body.inner .kw{font-size:12px;letter-spacing:.1em}
+html[data-skin=compact] body.inner .wpane textarea,html[data-skin=compact] body.inner .wpane input:not([type=checkbox]):not([type=radio]):not([type=time]){font-size:15px;padding:10px 12px;border-radius:14px}
+html[data-skin=compact] body.inner .wpane .item{padding:12px 0}
+html[data-skin=compact] body.inner .week-part{padding:16px}
+html[data-skin=compact] body.inner .week-part h3{font-size:16px}
+html[data-skin=compact] body.inner .week-quote p{font-size:14px}
+html[data-skin=compact] body.inner .rem-summary{padding:12px 16px}
+html[data-skin=compact] body.inner .theme-option{font-size:13px}
+/* Аккаунт: профиль и группы */
+html[data-skin=compact] body.inner .profile-summary{padding:16px}
+html[data-skin=compact] body.inner .profile-summary h2{font-size:19px;margin-bottom:8px}
+html[data-skin=compact] body.inner .profile-summary>p{font-size:13px}
+html[data-skin=compact] body.inner .avatar{width:64px;height:64px;font-size:24px}
+html[data-skin=compact] body.inner #v-account .compact-links .wid b{font-size:16px}
+html[data-skin=compact] body.inner #v-account .compact-links .wid>span:not(.dot):not(.destination-arrow){font-size:13px}
+
+/* ── Онбординг, вход и экран трёх напоминаний: та же типографика ── */
+html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) h1:not(.wordmark){font-size:26px;line-height:1.2}
+html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) :is(p,li,label){font-size:15px;line-height:1.5}
+html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .hint{font-size:13px}
+html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .btn{min-height:48px;font-size:15px;border-radius:999px}
+html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .card{padding:16px;border-radius:var(--ck-radius);border:1px solid var(--line);box-shadow:none}
+html[data-skin=compact] .rhythm-row{padding:10px 0}
+html[data-skin=compact] .rhythm-row b{font-size:15px}
+html[data-skin=compact] .rhythm-row small{font-size:13px}
+html[data-skin=compact] .rhythm-row input[type=time]{padding:6px 8px;font-size:15px}
+html[data-skin=compact] .onb-head p{font-size:15px}
+html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .compact-brand{font-size:28px}
+
+/* ── Навигация: «Свериться с собой» в одну строку — колонка шире, подписи не переносятся ── */
+html[data-skin=compact] body.inner .app-nav{grid-template-columns:1fr 1fr 1.5fr 1fr}
+@media(min-width:360px){html[data-skin=compact] body.inner .app-nav button{white-space:nowrap}}
+
+/* ── Пустая лента Дневника — подсказка строкой, не карточка ── */
+html[data-skin=compact] body.inner #timeline-list .timeline-empty,html[data-skin=compact] body.inner :is(#timeline-list) .timeline-empty::before{background:none;border:0;box-shadow:none;padding:6px 4px;margin:0;font-size:14px;line-height:1.5;color:var(--muted);content:none}   /* специфичность с ID — как у блока стекла, позже в каскаде */
+
+/* ── Светлая тема: активный чип — мягкое золото (как голубой в референсе, но в палитре Лунарио) ── */
+html[data-theme=light][data-skin=compact] body.inner :is(.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#efe0b3;border-color:#e4cf95;color:#2a2150}
+html[data-theme=light][data-skin=compact]{--selected:rgba(217,184,104,.22)}
+html[data-theme=light][data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid)::before{background:#f4ecd6}
+html[data-theme=light][data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid) .ico{background-color:#8a6d2a}
+html[data-theme=light][data-skin=compact] body.inner .app-nav button.on{color:#2a2150}
+/* строки «Управление аккаунтом» — с тем же кружком под иконкой */
+html[data-skin=compact] body.inner #v-account .rowbtn::before{content:'';display:block;position:static;inset:auto;width:40px;height:40px;border-radius:50%;background:var(--selected);grid-column:1;grid-row:1/span 2;justify-self:center;mask:none;-webkit-mask:none;padding:0;z-index:0;opacity:1;animation:none;transform:none}
+html[data-skin=compact] body.inner #v-account .rowbtn .ico{grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;width:20px;height:20px;margin:0;z-index:1}
+html[data-skin=compact] body.inner #v-account .rowbtn.warn::before{background:rgba(120,90,160,.14)}

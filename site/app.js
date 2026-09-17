@@ -890,8 +890,8 @@ async function wipe(what){
 
 /* ── установка на телефон ── */
 let deferred=null;
-window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); $('t-install').style.display='flex'; });
-async function installApp(){ if(!deferred) return; track('installed'); deferred.prompt(); await deferred.userChoice; deferred=null; $('t-install').style.display='none'; }
+window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); $('t-install').hidden=false; });   /* строка, как остальные: раскладку задаёт CSS, не inline display */
+async function installApp(){ if(!deferred) return; track('installed'); deferred.prompt(); await deferred.userChoice; deferred=null; $('t-install').hidden=true; }
 
 /* ══════════ Карты Таро и руны: каталог, результаты, история, открытки ══════════ */
 /* Каталог: тексты и картинки карт и рун приходят одним запросом и дальше живут в памяти.

@@ -539,7 +539,7 @@ body.inner .list-rows .wid>span.destination-arrow{position:static;grid-column:3;
 
 /* ── Нижняя навигация (обе темы): 60px + safe-area один раз, иконки 24, подпись 11px (у «Свериться с собой» две строки),
       активный пункт — цветом, без заливки ── */
-html[data-theme] body.inner .app-nav{height:auto;padding:6px 6px;gap:2px;width:min(470px,calc(100% - 16px))}
+html[data-theme] body.inner .app-nav{height:auto;padding:6px 6px;gap:2px;width:min(470px,calc(100% - 16px));grid-template-columns:1fr 1fr 1.5fr 1fr}   /* «Свериться с собой» — колонка шире, подпись в одну строку */
 html[data-theme] body.inner .app-nav button{min-height:50px;padding:3px 2px 2px;gap:3px;justify-content:center;font-size:11px;line-height:1.15;font-weight:600;color:var(--muted);border-radius:var(--r-m)}
 html[data-theme] body.inner .app-nav .ico{width:24px;height:24px}
 html[data-theme] body.inner .app-nav button.on{background:none;box-shadow:none;color:var(--gold-2)}
