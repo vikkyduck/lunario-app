@@ -3,7 +3,7 @@
    У каждой сущности явное правило:
    · history — стирается и при очистке истории, и при удалении аккаунта;
    · account — только при удалении аккаунта (переписка с поддержкой, напоминания, устройства, сессии);
-   · keep    — остаётся: обезличенный факт для статистики, без текстов.
+   · keep    — остается: обезличенный факт для статистики, без текстов.
    Дочерние таблицы (via) стираются через родителя и стоят в списке раньше него.
    Новая таблица с user_id обязана попасть сюда — check-personal-features сверяет список со схемой базы. */
 export const PERSONAL_DATA = [
@@ -13,7 +13,7 @@ export const PERSONAL_DATA = [
   { table: 'journal', on: 'history', note: 'записи, благодарности, ответы на вопрос дня, рефлексии недели' },
   { table: 'week_echoes', on: 'history', note: '«отозвалось» — связь утреннего настроя с вечером, отмеченная самим человеком' },
   { table: 'wishes', on: 'history' },
-  { table: 'usage', on: 'history', note: 'дневной счётчик раскладов' },
+  { table: 'usage', on: 'history', note: 'дневной счетчик раскладов' },
   { table: 'daily_sets', on: 'history', note: 'какие установки дня уже выпадали' },
   { table: 'habit_awards', on: 'history', via: { table: 'habits', key: 'habit_id' } },
   { table: 'habit_marks', on: 'history', via: { table: 'habits', key: 'habit_id' } },
@@ -21,7 +21,7 @@ export const PERSONAL_DATA = [
   { table: 'askesis_days', on: 'history', via: { table: 'askesis', key: 'askesis_id' } },
   { table: 'askesis', on: 'history' },
   { table: 'shelves', on: 'history', note: 'досье пересобирается из остального' },
-  { table: 'sync_receipts', on: 'history', note: 'квитанции операций: запись стёрта — и подтверждение о ней тоже' },
+  { table: 'sync_receipts', on: 'history', note: 'квитанции операций: запись стерта — и подтверждение о ней тоже' },
   { table: 'messages', on: 'account', via: { table: 'tickets', key: 'ticket_id' }, note: 'переписка с поддержкой' },
   { table: 'tickets', on: 'account' },
   { table: 'push_shown', on: 'account', via: { table: 'push_queue', key: 'item_id' } },
@@ -51,7 +51,7 @@ function run(db, user, mode) {
 }
 /* «Очистить историю»: записи и практики стираются, аккаунт, почта, устройства и переписка с поддержкой остаются */
 export const clearHistory = (db, user) => run(db, user, 'history');
-/* «Удалить аккаунт»: всё личное, включая переписку с поддержкой; остаётся только обезличенная статистика */
+/* «Удалить аккаунт»: все личное, включая переписку с поддержкой; остается только обезличенная статистика */
 export const deleteAccount = (db, user) => run(db, user, 'account');
 
 /* Заброшенные анонимные аккаунты: без почты, без единой личной записи и без захода days дней — таким не о чем помнить.

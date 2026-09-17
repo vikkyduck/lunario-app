@@ -1,6 +1,6 @@
 /* Планировщик напоминаний. Запускается systemd-таймером раз в 5 минут:
    находит напоминания, у которых подошло время (в часовом поясе человека), собирает тексты,
-   кладёт их в очередь и будит браузеры пустым сигналом. Подробности — в reminders.mjs. */
+   кладет их в очередь и будит браузеры пустым сигналом. Подробности — в reminders.mjs. */
 import { DatabaseSync } from 'node:sqlite';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

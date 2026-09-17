@@ -3,11 +3,11 @@
    (молчит, если день уже записан); неделя — «Моя неделя: про что она». В пуш ничего не дописывается.
 
    Как доходит: планировщик (send-daily.mjs, раз в 5 минут) находит напоминания, у которых
-   подошло время, собирает текст, кладёт его в очередь push_queue и шлёт в браузер пустой
+   подошло время, собирает текст, кладет его в очередь push_queue и шлет в браузер пустой
    сигнал. Service worker по сигналу забирает тексты из очереди (/api/push/next) и показывает.
    Так личное не летит через чужие почтовые службы — только «проснись».
    В оболочке App Store веб-пуша нет: там те же настройки превращаются в локальные
-   уведомления телефона (NativeBridge.swift), сервер ничего не шлёт. */
+   уведомления телефона (NativeBridge.swift), сервер ничего не шлет. */
 import { tzOffsetMinutes } from './cities.mjs';
 import { lunarDay } from './lunar.mjs';
 import { sendPush } from './push.mjs';
@@ -52,8 +52,8 @@ export function initReminders(database, h = {}) {
   }
   migrateLegacyReminders();
 }
-/* Восемь поштучных → три. Утро берёт самое раннее время из включённых утренних, вечер — самое позднее из вечерних,
-   неделя — день и время отчёта по настроениям. Прежние строки выключаются, чтобы не срабатывать, но не удаляются. */
+/* Восемь поштучных → три. Утро берет самое раннее время из включенных утренних, вечер — самое позднее из вечерних,
+   неделя — день и время отчета по настроениям. Прежние строки выключаются, чтобы не срабатывать, но не удаляются. */
 export function migrateLegacyReminders() {
   const legacyKeys = Object.values(LEGACY).flat();
   const users = db.prepare(`SELECT DISTINCT user_id FROM reminders WHERE feature IN (${legacyKeys.map(() => '?').join(',')}) AND enabled = 1`).all(...legacyKeys).map((r) => r.user_id);
@@ -164,7 +164,7 @@ function morningNotification(u, d, atMs, tz) {
   for (const k of pack.chosen || []) {
     if (k === 'card' && pack.card) lines.push(`Карта дня — ${pack.card.name}${pack.card.keys ? ': ' + firstSentence(pack.card.keys) : ''}`);
     if (k === 'dayrune' && pack.rune) lines.push(`Руна дня — ${pack.rune.name}${pack.rune.keyword ? ': ' + pack.rune.keyword : ''}`);
-    if (k === 'sky' && pack.sky) lines.push(`Планеты — ${pack.sky.title}`);   /* то же событие, что задаёт тему и стоит на плитке */
+    if (k === 'sky' && pack.sky) lines.push(`Планеты — ${pack.sky.title}`);   /* то же событие, что задает тему и стоит на плитке */
     if (k === 'day' && pack.forecast) lines.push(`${pack.forecast.title} — ${firstSentence(pack.forecast.text)}`);
     if (k === 'lunar') { const ld = lunarDay(atMs, u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon); if (ld) { const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', '']; const topic = lunarTopicLine(u, ld.n); lines.push(`${ld.n}-й лунный день · ${name} — ${topic ? topic.text : firstSentence(advice)}`); } }
     if (k === 'tone' && pack.question) lines.push(`Вопрос дня — ${pack.question}`);
@@ -186,7 +186,7 @@ export function weekMoments(userId, d) {
     + db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ? AND day BETWEEN ? AND ?').get(userId, since, d).c;
 }
 
-/* Локальные уведомления телефона (оболочка App Store): план на 14 дней для одного из трёх напоминаний.
+/* Локальные уведомления телефона (оболочка App Store): план на 14 дней для одного из трех напоминаний.
    Утро — настрой каждого дня (пара снимается заранее, поэтому утром на «Сегодня» будет та же); вечер и неделя — общий текст. */
 export function nativePlan(u, feature, fromMs = Date.now()) {
   const r = listReminders(u.id).find((x) => x.feature === feature);
@@ -203,7 +203,7 @@ export function nativePlan(u, feature, fromMs = Date.now()) {
 
 export function previewNotification(u, feature) {
   if (!FEATURES[feature]) return null;
-  return notificationFor(feature, u) || (feature === 'evening' ? { ...tpl('evening'), url: FEATURES.evening.url } : feature === 'week' ? { ...tpl('week'), url: FEATURES.week.url } : null) || { title: FEATURES[feature].title, body: 'Пробное уведомление — всё готово к вашим напоминаниям', url: FEATURES[feature].url };
+  return notificationFor(feature, u) || (feature === 'evening' ? { ...tpl('evening'), url: FEATURES.evening.url } : feature === 'week' ? { ...tpl('week'), url: FEATURES.week.url } : null) || { title: FEATURES[feature].title, body: 'Пробное уведомление — все готово к вашим напоминаниям', url: FEATURES[feature].url };
 }
 
 /* ── планировщик: что подошло по времени — в очередь и в браузеры ── */
@@ -241,7 +241,7 @@ export async function runDue(keys, log = console.log, deliver = sendPush) {
   return stat;
 }
 
-/* Что показать по сигналу: свежие тексты, которые это устройство ещё не показывало. */
+/* Что показать по сигналу: свежие тексты, которые это устройство еще не показывало. */
 export function pendingFor(userId, endpoint) {
   const since = new Date(Date.now() - 3 * 3600e3).toISOString();
   const items = db.prepare("SELECT id, feature, title, body, url FROM push_queue WHERE user_id = ? AND ts >= ? AND (endpoint = '' OR endpoint = ?) ORDER BY id").all(userId, since, endpoint || '')

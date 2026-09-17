@@ -1,33 +1,32 @@
-/* Подсказки по приложению — экскурсия из восьми шагов (решение владелицы 18.09: «онбординг как в Клабс»).
-   Показывается один раз на главной: после анкеты и трёх напоминаний, а тем, кто уже в приложении, — при первом открытии
-   этой версии. Каждый шаг подсвечивает элемент экрана кольцом и ставит рядом карточку «N / 8 · текст · Пропустить · Далее».
-   Что уже видели — в настройках аккаунта (preferences.tour) и в localStorage этого устройства. Повторить — Аккаунт → «Подсказки». */
-const TOUR_V = 1;
+/* Подсказки по приложению — экскурсия по живому экрану (решение владелицы 18.09: «как в Клабс», но по нажатию, не сама).
+   Каждый шаг подсвечивает элемент кольцом и ставит рядом карточку «N / 8 · текст · Пропустить · Далее».
+   Короткий тур (три вкладки) — со строки «Где что» на «Сегодня», полный — из Аккаунта. Что уже видели — preferences.tour и localStorage. */
+const TOUR_V = 2;
+/* Полный тур — Аккаунт → «Подсказки по приложению». Короткий («где что», три вкладки) — строка на «Сегодня». */
 const TOUR_STEPS = [
-  { text: 'Это Лунарио. За полминуты покажем, где что находится — и как собрать свой ритм: что видеть утром и что записывать вечером.' },
-  { target: '#v-home .home-intro', text: 'Каждое утро здесь — настрой дня: одна фраза по теме дня. Её можно сохранить открыткой или отправить кому-то.' },
-  { target: '#morning-picker', text: 'Ритм собираете вы сами. Отметьте, что хотите видеть каждое утро: карту дня, руну, планеты, прогноз, Луну или вопрос дня. Выбранное — сверху и в утреннем уведомлении.' },
-  { target: '#home-sky', text: 'Здесь — ваше утро, только выбранное. Откройте карту или руну — это отметка дня; из таких отметок складывается история о вас.' },
-  { target: '.app-nav [data-nav=history]', text: 'Дневник. Вечером — «Запомнить этот день»: что произошло, что почувствовали, настроение. По воскресеньям здесь собирается «Моя неделя».' },
-  { target: '.app-nav [data-nav=ask]', text: 'Свериться с собой. Когда есть вопрос — разобрать его, спросить «Да / Нет» или посмотреть прогноз дня. Ответы остаются в дневнике.' },
-  { target: '.app-nav [data-nav=about]', text: 'Обо мне. Натальная карта, личный год, число рождения, совместимость — то, что известно о вас по дате рождения.' },
-  { target: '#h-acct', text: 'Аккаунт. Три напоминания — утро, вечер и воскресенье — приходят сами, когда вы их включите. Здесь же уведомления, тема и фото.', last: 'Настроить напоминания', done: 'Готово' },
+  { text: 'Лунарио — три минуты в день, чтобы замечать, что влияет на ваше состояние, без длинных дневников. Покажем, где что находится.' },
+  { target: '#h-acct', text: 'Аккаунт. Здесь настраивается ваш ежедневный ритм: три уведомления — утром настрой дня, вечером «запомнить день», раз в неделю история про вас. Время выбираете сами.' },
+  { target: '#v-home .home-intro', text: 'Утром приходит уведомление с настроем дня — фразой по теме дня. Открываете — и он здесь: можно сохранить открыткой или отправить кому-то.' },
+  { target: '#morning-picker', text: 'Здесь вы выбираете, что хотите видеть каждое утро в уведомлении и на этом экране: карту дня, руну, планеты, Луну, вопрос дня. Можно все.' },
+  { target: '#home-sky', text: 'Сюда попадает то, что вы выбрали. Каждое утро — только это, ничего лишнего.' },
+  { target: '.app-nav [data-nav=history]', short: true, text: 'Дневник. Вечером придет уведомление: записать мысли дня, что было важным, кого поблагодарить, отметить настроение. Заметки хранятся здесь по дням, а раз в неделю из них собирается «Моя неделя» — история про вас.' },
+  { target: '.app-nav [data-nav=ask]', short: true, text: 'Свериться с собой. Помимо ритма — инструменты на любой вопрос: разобрать его словами, спросить «Да / Нет», разложить руны или Таро. Ответы сохраняются.' },
+  { target: '.app-nav [data-nav=about]', short: true, text: 'Обо мне. Ваша папка о вас: натальная карта, личный год, нумерология, совместимость, тесты. Здесь копится все, что вы о себе узнали, — и со временем пополняется.' },
 ];
-const Tour = { i: -1, root: null, timer: 0 };
+const Tour = { i: -1, root: null, timer: 0, steps: TOUR_STEPS };
 
 const tourKey = () => 'lun_tour_' + (S.user?.id || '');
 function tourSeen(){ try { return Number(localStorage.getItem(tourKey())) >= TOUR_V || Number(XP.prefs?.tour) >= TOUR_V; } catch { return Number(XP.prefs?.tour) >= TOUR_V; } }
-/* Пора ли: человек в приложении, на «Сегодня», без открытой панели, экскурсию ещё не видел */
-function tourDue(){
-  return Tour.i < 0 && !!S.user && document.body.classList.contains('inner') && $('v-home')?.classList.contains('on')
-    && !$('wg-bg')?.classList.contains('on') && !tourSeen();
+/* Строка «Где что» на «Сегодня» — пока короткий тур не смотрели; сам по себе тур не запускается */
+function paintTourRow(){
+  const box = $('home-tour'); if (!box) return;
+  const due = !!S.user && !tourSeen(); box.hidden = !due;
+  box.innerHTML = due ? `<button data-on="click:tourShort" class="later-row" id="tour-row" type="button"><span class="eyebrow">Где что</span><b>Дневник · Свериться с собой · Обо мне</b><span class="later-go">Показать за 20 секунд →</span></button>` : '';
 }
-function tourMaybe(){
-  clearTimeout(Tour.timer);
-  Tour.timer = setTimeout(() => { if (tourDue()) tourStart(); }, 900);   /* главная успевает нарисоваться */
-}
-function tourStart(manual){
+function tourMaybe(){ clearTimeout(Tour.timer); Tour.timer = setTimeout(paintTourRow, 300); }
+function tourStart(manual, mode){
   if (Tour.i >= 0) return;
+  Tour.steps = mode === 'short' ? TOUR_STEPS.filter((st) => st.short) : TOUR_STEPS;
   if (!$('v-home')?.classList.contains('on')) go('home');
   if (!Tour.root) {
     const root = document.createElement('div'); root.className = 'tour'; root.id = 'tour';
@@ -39,10 +38,10 @@ function tourStart(manual){
     document.body.appendChild(root); Tour.root = root;
     addEventListener('resize', tourReposition); addEventListener('scroll', tourReposition, true); document.addEventListener('keydown', tourKeys);
   }
-  Tour.root.hidden = false; Tour.i = 0; track('tour_start', manual ? 'manual' : 'auto'); tourShow();
+  Tour.root.hidden = false; Tour.i = 0; track('tour_start', mode || 'full'); tourShow();
 }
 function tourShow(){
-  const st = TOUR_STEPS[Tour.i], n = TOUR_STEPS.length, last = Tour.i === n - 1;
+  const st = Tour.steps[Tour.i], n = Tour.steps.length, last = Tour.i === n - 1;
   $('tour-step').textContent = `${Tour.i + 1} / ${n}`; $('tour-text').textContent = st.text;
   $('tour-next').textContent = last ? (st.last || 'Готово') : 'Далее';
   Tour.root.querySelector('.tour-skip').textContent = last ? (st.done || 'Готово') : 'Пропустить';
@@ -78,15 +77,15 @@ function tourReposition(){
 }
 function tourNext(){
   if (Tour.i < 0) return; hap?.();
-  const st = TOUR_STEPS[Tour.i];
-  if (Tour.i === TOUR_STEPS.length - 1) { tourFinish('done'); if (st.last) openWidget('remind'); return; }
+  if (Tour.i === Tour.steps.length - 1) { tourFinish('done'); return; }
   Tour.i++; tourShow();
 }
-function tourSkip(){ if (Tour.i < 0) return; tourFinish(Tour.i === TOUR_STEPS.length - 1 ? 'done' : 'skip'); }
+function tourSkip(){ if (Tour.i < 0) return; tourFinish(Tour.i === Tour.steps.length - 1 ? 'done' : 'skip'); }
 function tourFinish(how){
   track('tour_' + how, String(Tour.i + 1)); Tour.i = -1; Tour.el = null; if (Tour.root) Tour.root.hidden = true;
   try { localStorage.setItem(tourKey(), String(TOUR_V)); } catch {}
-  if (Number(XP.prefs?.tour) < TOUR_V || XP.prefs?.tour === undefined) savePreferences({ ...XP.prefs, tour: TOUR_V }).catch(() => {});
+  if (!(Number(XP.prefs?.tour) >= TOUR_V)) savePreferences({ ...XP.prefs, tour: TOUR_V }).catch(() => {});
+  paintTourRow();
 }
 function tourKeys(e){
   if (Tour.i < 0) return;

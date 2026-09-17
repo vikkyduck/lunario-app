@@ -1,7 +1,7 @@
 /* Веб-уведомления «карта дня готова» без внешних библиотек.
-   Работает так: сервер один раз создаёт себе пару ключей (VAPID), браузер
-   подписывается и отдаёт адрес своей «почтовой ячейки», а мы стучимся в неё,
-   подписав запрос. Текст уведомления живёт в service worker — поэтому
+   Работает так: сервер один раз создает себе пару ключей (VAPID), браузер
+   подписывается и отдает адрес своей «почтовой ячейки», а мы стучимся в нее,
+   подписав запрос. Текст уведомления живет в service worker — поэтому
    письмо-запрос пустое и шифровать содержимое не нужно. */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -9,7 +9,7 @@ import { generateKeyPairSync, createSign, createPrivateKey, createPublicKey } fr
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 
-/* Адрес почтовой ячейки браузера задаёт клиент, а стучится по нему сервер. Поэтому принимаем только https
+/* Адрес почтовой ячейки браузера задает клиент, а стучится по нему сервер. Поэтому принимаем только https
    на стандартном порту, имя хоста (не IP) и не локальное имя — иначе сервер можно направить внутрь своей сети. */
 const LOCAL_HOST = /(^|\.)(localhost|local|internal|lan|home\.arpa|localdomain)$/i;
 export function pushEndpointOk(endpoint) {
@@ -68,7 +68,7 @@ function jwt(audience, keys, contact) {
   return `${head}.${body}.${b64url(Buffer.concat([fix(r), fix(s)]))}`;
 }
 
-/* Одно уведомление. Возвращает true, если ячейка приняла; false — если её больше нет. */
+/* Одно уведомление. Возвращает true, если ячейка приняла; false — если ее больше нет. */
 export async function sendPush(sub, keys, contact = 'mailto:hello@lunario.online') {
   if (!(await assertPublicEndpoint(sub.endpoint))) return false;   // адрес не публичный — ячейки для нас нет
   const url = new URL(sub.endpoint);

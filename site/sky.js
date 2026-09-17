@@ -1,11 +1,11 @@
-import {CONSTELLATIONS} from './constellations.js?v=70';
-import {MOSCOW, observer, visibleSky} from './sky-model.js?v=70';
+import {CONSTELLATIONS} from './constellations.js?v=71';
+import {MOSCOW, observer, visibleSky} from './sky-model.js?v=71';
 
 const canvas=document.getElementById('sky');
 const ctx=canvas?.getContext('2d');
 const motion=matchMedia('(prefers-reduced-motion: reduce)');
 let place=MOSCOW, timer, busy=false, measuredAt=0, permission, width=0, height=0, generation=0, profile=null;
-/* Откуда берём место — по убыванию приоритета: город, который человек указал сам (хранится только в этом браузере) →
+/* Откуда берем место — по убыванию приоритета: город, который человек указал сам (хранится только в этом браузере) →
    местоположение устройства, если человек сам нажал «Определить» или доступ уже был дан раньше → город из анкеты →
    грубая точка по часовому поясу → Москва. Диалог геолокации на загрузке не показываем: только по нажатию. */
 const TZ_PLACES={'Europe/Kaliningrad':[54.71,20.51,'Калининград'],'Europe/Moscow':[55.76,37.62,'Москва'],'Europe/Kirov':[58.6,49.66,'Киров'],
@@ -18,7 +18,7 @@ const TZ_PLACES={'Europe/Kaliningrad':[54.71,20.51,'Калининград'],'Eu
   'Asia/Kamchatka':[53.02,158.65,'Петропавловск-Камчатский'],'Asia/Anadyr':[64.73,177.5,'Анадырь'],'Europe/Minsk':[53.9,27.57,'Минск'],
   'Europe/Kiev':[50.45,30.52,'Киев'],'Europe/Kyiv':[50.45,30.52,'Киев'],'Asia/Almaty':[43.24,76.93,'Алматы'],'Asia/Tashkent':[41.3,69.24,'Ташкент'],
   'Asia/Bishkek':[42.87,74.59,'Бишкек'],'Asia/Yerevan':[40.18,44.51,'Ереван'],'Asia/Tbilisi':[41.69,44.8,'Тбилиси'],'Asia/Baku':[40.41,49.87,'Баку'],
-  'Europe/Chisinau':[47.01,28.86,'Кишинёв'],'Asia/Dushanbe':[38.56,68.77,'Душанбе'],'Asia/Ashgabat':[37.96,58.33,'Ашхабад'],'Europe/Riga':[56.95,24.11,'Рига'],
+  'Europe/Chisinau':[47.01,28.86,'Кишинев'],'Asia/Dushanbe':[38.56,68.77,'Душанбе'],'Asia/Ashgabat':[37.96,58.33,'Ашхабад'],'Europe/Riga':[56.95,24.11,'Рига'],
   'Europe/Vilnius':[54.69,25.28,'Вильнюс'],'Europe/Tallinn':[59.44,24.75,'Таллин'],'Asia/Jerusalem':[31.77,35.22,'Иерусалим'],'Europe/Istanbul':[41.01,28.98,'Стамбул'],
   'Asia/Dubai':[25.2,55.27,'Дубай'],'Europe/Belgrade':[44.79,20.46,'Белград'],'Europe/Berlin':[52.52,13.4,'Берлин'],'Europe/Stockholm':[59.33,18.07,'Стокгольм']};
 function savedCity(){ try{ const c=JSON.parse(localStorage.getItem('lun_sky_place')||'null'); return c&&Number.isFinite(c.lat)&&Number.isFinite(c.lon)?{lat:c.lat,lon:c.lon,name:c.name||'',source:'city'}:null; }catch{ return null; } }

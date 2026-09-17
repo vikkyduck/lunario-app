@@ -43,15 +43,15 @@ function applyTheme(mode){
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(XP.prefs.theme==='system')applyTheme('system');});
 function paintAppearance(){
-  $('appearance-box').innerHTML=`<p class="hint">Выберите тему для чтения</p><div class="theme-options">${[['light','Светлая'],['dark','Тёмная'],['system','Как на устройстве']].map(([key,label])=>`<button data-on="click:saveTheme-a0" data-a0="${key}" type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div><p class="saved-state" id="theme-state" role="status"></p>
-    <div class="skin-row"><label class="rhythm-row"><input data-on="change:setSkin-this" type="checkbox" id="skin-compact" ${document.documentElement.dataset.skin==='compact'?'checked':''}><span class="grow"><b>Компактный вид</b><small>Строки вместо плиток, меньше кегль, навигация у края. Выключить — вернётся обычный вид; помнится на этом устройстве</small></span></label></div>`;
+  $('appearance-box').innerHTML=`<p class="hint">Выберите тему для чтения</p><div class="theme-options">${[['light','Светлая'],['dark','Темная'],['system','Как на устройстве']].map(([key,label])=>`<button data-on="click:saveTheme-a0" data-a0="${key}" type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div><p class="saved-state" id="theme-state" role="status"></p>
+    <div class="skin-row"><label class="rhythm-row"><input data-on="change:setSkin-this" type="checkbox" id="skin-compact" ${document.documentElement.dataset.skin==='compact'?'checked':''}><span class="grow"><b>Компактный вид</b><small>Строки вместо плиток, меньше кегль, навигация у края. Выключить — вернется обычный вид; помнится на этом устройстве</small></span></label></div>`;
 }
 function setSkin(el){const on=!!el.checked;try{localStorage.setItem('lun_skin',on?'compact':'classic');}catch{}if(on)document.documentElement.dataset.skin='compact';else delete document.documentElement.dataset.skin;track(on?'skin_compact_on':'skin_compact_off');}
 async function savePreferences(value){const r=await api('/preferences',{method:'POST',body:JSON.stringify(value)});XP.prefs=r.preferences;return r;}
 async function saveTheme(theme){
   if(saveTheme.busy)return;saveTheme.busy=true;
   try{await savePreferences({...XP.prefs,theme});applyTheme(theme);paintAppearance();$('theme-state').textContent='Тема сохранена';}
-  catch{toast('Не удалось сохранить тему. Попробуйте ещё раз');}finally{saveTheme.busy=false;}
+  catch{toast('Не удалось сохранить тему. Попробуйте еще раз');}finally{saveTheme.busy=false;}
 }
 /* ── Инструменты: что человек оставил на «Сегодня» и в «Дневнике». Список — prefs.tools; нет списка — стартовый набор из
    каталога плюс прежний «ритуал» (чтобы у тех, кто уже пользуется, ничего не пропало). Только видимость: записи и напоминания не трогаются ── */
@@ -78,7 +78,7 @@ async function toggleTool(key){
   const tools=toolCatalog().map(t=>t.key).filter(k=>vis.has(k));
   try{await savePreferences({...XP.prefs,tools});applyTools();paintTools();track(add?'tools_add':'tools_remove',key);
     const t=toolCatalog().find(x=>x.key===key);toast(add?`${t?t.title:'Инструмент'} — в разделе «${t&&t.section==='history'?'Дневник':'Сегодня'}»`:'Убрано с экрана. Записи сохранены');}
-  catch{toast('Не удалось сохранить. Попробуйте ещё раз');}
+  catch{toast('Не удалось сохранить. Попробуйте еще раз');}
   finally{toggleTool.busy=false;}
 }
 function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidget(key);}
@@ -88,13 +88,13 @@ function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidg
 /* плитки утра и подписи их чипов — из разметки «Сегодня» (data-feature / data-chip): новая плитка добавляется там, списка здесь нет */
 const MORNING=[...document.querySelectorAll('#morning-more [data-feature][data-chip]')].map(el=>[el.dataset.feature,el.dataset.chip]);
 function morningChosen(){return Array.isArray(XP.prefs.morning)?XP.prefs.morning.filter(k=>MORNING.some(m=>m[0]===k)):['lunar','tone'];}
-/* Плитки переезжают между «Ваше утро» и «Всё про этот день» с места на место (FLIP): человек видит, куда ушла плитка, а не скачок.
+/* Плитки переезжают между «Ваше утро» и «Все про этот день» с места на место (FLIP): человек видит, куда ушла плитка, а не скачок.
    Чипы рисуются один раз и дальше только переключаются — фокус и озвучка «нажато» остаются на том же элементе */
 function paintMorning(){
   const chips=$('morning-chips'),feed=$('morning-feed'),more=$('morning-more');if(!chips||!feed||!more)return;
   const chosen=morningChosen(),tiles=MORNING.map(([k])=>document.querySelector('#v-home [data-feature="'+k+'"]')).filter(Boolean);
   const animate=$('v-home')?.classList.contains('on')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const before=animate?new Map(tiles.map(t=>[t,t.getBoundingClientRect()])):null;   /* где плитка видна сейчас — с учётом ещё идущего переезда */
+  const before=animate?new Map(tiles.map(t=>[t,t.getBoundingClientRect()])):null;   /* где плитка видна сейчас — с учетом еще идущего переезда */
   if(animate)for(const t of tiles)t.getAnimations().forEach(a=>a.cancel());          /* дальше меряем чистую раскладку */
   if(!chips.children.length)chips.innerHTML=MORNING.map(([k,label])=>`<button data-on="click:toggleMorning-a0" data-a0="${k}" type="button" class="chip">${label}</button>`).join('');
   for(const c of chips.children){const on=chosen.includes(c.dataset.a0);c.classList.toggle('on',on);c.setAttribute('aria-pressed',String(on));}
@@ -110,7 +110,7 @@ function paintMorning(){
   const dur=320,easing='cubic-bezier(.2,.7,.2,1)';
   for(const t of tiles){const a=before.get(t),b=t.getBoundingClientRect();if(!a.width||!b.width)continue;const dx=a.left-b.left,dy=a.top-b.top,sx=a.width/b.width,sy=a.height/b.height;
     if(Math.abs(dx)<1&&Math.abs(dy)<1&&Math.abs(sx-1)<.02&&Math.abs(sy-1)<.02)continue;
-    t.style.zIndex='2';t.style.pointerEvents='none';   /* летит поверх соседей, и наведение не ловит её на полпути */
+    t.style.zIndex='2';t.style.pointerEvents='none';   /* летит поверх соседей, и наведение не ловит ее на полпути */
     const box=t.animate([{transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,transformOrigin:'top left'},{transform:'none',transformOrigin:'top left'}],{duration:dur,easing});
     if(Math.abs(sx-1)>.15||Math.abs(sy-1)>.15)for(const c of t.children)c.animate([{opacity:0},{opacity:0,offset:.35},{opacity:1}],{duration:dur,easing:'ease-out'});   /* коробка тянется, содержимое проявляется — без «желе» в тексте */
     box.onfinish=box.oncancel=()=>{t.style.zIndex='';t.style.pointerEvents='';};}
@@ -126,7 +126,7 @@ async function toggleMorning(key){
   XP.prefs={...XP.prefs,morning};paintMorning();hap();
   const seq=toggleMorning.seq=(toggleMorning.seq||0)+1;
   try{const r=await api('/preferences',{method:'POST',body:JSON.stringify(XP.prefs)});if(seq!==toggleMorning.seq)return;XP.prefs=r.preferences;track(set.has(key)?'morning_add':'morning_remove',key);}
-  catch{if(seq!==toggleMorning.seq)return;XP.prefs={...XP.prefs,morning:was};paintMorning();toast('Не удалось сохранить выбор. Попробуйте ещё раз');return;}
+  catch{if(seq!==toggleMorning.seq)return;XP.prefs={...XP.prefs,morning:was};paintMorning();toast('Не удалось сохранить выбор. Попробуйте еще раз');return;}
   if(set.has(key)&&THEME_SOURCE[key]){
     const src=MORNING.map(m=>m[0]).find(k=>THEME_SOURCE[k]&&set.has(k));   /* первый выбранный источник по порядку карта → руна → планеты */
     if(src===key)toast(`Настрой ${THEME_SOURCE[key]} — с завтрашнего утра`);
@@ -134,7 +134,7 @@ async function toggleMorning(key){
   }
 }
 
-/* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живёт там), «Практики» — тоже:
+/* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живет там), «Практики» — тоже:
    отметки привычек и аскез вернутся в дневник своими фильтрами вместе с вечерней карточкой дня. Подписи записей — для всех видов. */
 const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['habits','Привычки'],['askesis','Аскезы'],['wishes','Желания']];
 const TIMELINE_LABELS={journal:'Запись',gratitude:'Благодарность',answer:'Вопрос дня',mood:'Настроение',readings:'Карты и ответы',habits:'Привычка',askesis:'Аскеза',wishes:'Желание',weekly:'Итог недели'};
@@ -174,7 +174,7 @@ function paintTimeline(){
 async function openTimelineEntry(index){
   const row=XP.timeline.items[index];if(!row)return;openWidget('timelineEntry');const box=$('timeline-entry-box');box.textContent='Загружаем…';
   try{const r=await api('/entries?id='+row.id);await loadCatalog();box.innerHTML=r.items[0]?entryHtml(r.items[0]):'<p>Запись не найдена</p>';preparePending();}
-  catch{box.textContent='Не получилось загрузить запись. Попробуйте открыть её ещё раз';}
+  catch{box.textContent='Не получилось загрузить запись. Попробуйте открыть ее еще раз';}
 }
 
 async function chooseWishPhoto(){const photo=await pickImage(1200,.82);if(!photo)return;XP.wishPhoto=photo;paintWishDraft();}

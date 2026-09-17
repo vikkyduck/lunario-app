@@ -1,6 +1,6 @@
 /* Утро: тема дня, настрой и вопрос к нему, карта и руна дня.
    Общий модуль для сервера (пакет дня на «Сегодня») и планировщика напоминаний (утренний пуш): оба должны считать
-   одно и то же. Тему задаёт первый выбранный источник — карта → руна → влияние планет (главное событие неба) → тон дня;
+   одно и то же. Тему задает первый выбранный источник — карта → руна → влияние планет (главное событие неба) → тон дня;
    выбранные карта и руна тянутся сами при первом открытии дня. Настрой к теме — из настрой.txt без повторов в течение года (daily_sets), тема исчерпана —
    по второму кругу. Выпавшая пара снимается на день и в течение дня не меняется. Зависимости — явным объектом. */
 import { randomInt } from 'node:crypto';
@@ -42,14 +42,14 @@ export function createMorning({ db, C, track, nowISO, today }) {   /* today(u) �
   const cardOfDay = (u, day) => { const slug = (parseData(lastEntry(u, day, 'card')?.data) || {}).card; return slug ? [...C.ARCANA].find((c) => c.slug === slug) || null : null; };
   const runeOfDay = (u, day) => { const slug = (parseData(lastEntry(u, day, 'dayrune')?.data) || {}).rune; return slug ? [...C.RUNES].find((r) => r.slug === slug) || null : null; };
   const chosenOf = (u) => morningOf(preferences(u.preferences));
-  /* Утренняя карта и руна — по дню и человеку, а не из случайного мешочка: так план уведомлений на две недели вперёд
-     (телефон) считает те же карты, что утром вытянет /me, и настрой снимается под них. Ручная вытяжка (/api/card) остаётся случайной. */
+  /* Утренняя карта и руна — по дню и человеку, а не из случайного мешочка: так план уведомлений на две недели вперед
+     (телефон) считает те же карты, что утром вытянет /me, и настрой снимается под них. Ручная вытяжка (/api/card) остается случайной. */
   const pickOf = (u, day, kind, list) => list[hash32(`${u.id}:${day}:${kind}`) % list.length];
   const cardFor = (u, day) => cardOfDay(u, day) || (day > today(u) && chosenOf(u).includes('card') ? pickOf(u, day, 'card', [...C.ARCANA]) : null);
   const runeFor = (u, day) => runeOfDay(u, day) || (day > today(u) && chosenOf(u).includes('dayrune') ? pickOf(u, day, 'dayrune', [...C.RUNES]) : null);
 
   /* Выбранные карта и руна тянутся сами — чтобы тема дня была известна с утра, а не после клика.
-     Запись помечена auto: в «Мои вопросы и ответы» она не показывается, пока человек её не открыл; событие — «вытянута», не «открыл». */
+     Запись помечена auto: в «Мои вопросы и ответы» она не показывается, пока человек ее не открыл; событие — «вытянута», не «открыл». */
   function drawMorning(u, day) {
     if (day !== today(u)) return;
     const chosen = chosenOf(u);
@@ -81,7 +81,7 @@ export function createMorning({ db, C, track, nowISO, today }) {   /* today(u) �
     return (pool.length && (dailySet(db, u, day, pool, { theme: key }) || dailySet(db, u, day, pool, { allowRepeat: true, theme: key })))
       || (all.length ? dailySet(db, u, day, all.map((n, i) => [i + 1, n[1], n[2]]), { allowRepeat: true }) : null);
   }
-  /* тема уже выпавшего настроя: в течение дня не меняется, даже если днём выбрать другой источник.
+  /* тема уже выпавшего настроя: в течение дня не меняется, даже если днем выбрать другой источник.
      Ключ темы хранится вместе с парой; для старых пар без ключа — по тексту строки (без подстановки имени) */
   function themeFor(u, day, set) {
     const themes = [...C.THEMES];
@@ -103,7 +103,7 @@ export function createMorning({ db, C, track, nowISO, today }) {   /* today(u) �
   }
   /* открыл ли человек утреннюю карту/руну сам (пометка auto снимается при открытии) */
   const openedOf = (u, day, kind) => { const row = lastEntry(u, day, kind); return !!row && !(parseData(row.data) || {}).auto; };
-  /* лёгкий пакет утра — для утреннего пуша, плана телефона и подписей плиток; будущие дни считаются без записи в базу карт и рун */
+  /* легкий пакет утра — для утреннего пуша, плана телефона и подписей плиток; будущие дни считаются без записи в базу карт и рун */
   function pack(u, day) {
     drawMorning(u, day);
     const set = setOfDay(u, day), theme = themeFor(u, day, set), tone = toneOfDay(u, day);

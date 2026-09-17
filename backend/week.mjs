@@ -33,7 +33,7 @@ export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList,
     const top = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3).map(([mood, count]) => ({ mood, count }));
     return { days, top, count: days.filter((x) => x.moods.length).length };
   }
-  /* Два-три фрагмента дословно: по одному на день (самый длинный), дни — разнесённые по неделе */
+  /* Два-три фрагмента дословно: по одному на день (самый длинный), дни — разнесенные по неделе */
   function savedOf(rows) {
     const byDay = new Map();
     for (const r of rows) { const cur = byDay.get(r.day); if (!cur || r.text.length > cur.text.length) byDay.set(r.day, r); }
@@ -56,7 +56,7 @@ export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList,
     }
     return out;
   }
-  /* Ритм: дни привычек (должна была / отметила) и аскез (держусь / сорвалась) — счёт, не оценка */
+  /* Ритм: дни привычек (должна была / отметила) и аскез (держусь / сорвалась) — счет, не оценка */
   function rhythmOf(uid, w, d) {
     const habits = new Map();
     for (const day of w.days) {
@@ -105,7 +105,7 @@ export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList,
     track(u, 'week_echo', verdict || 'clear');
     return { ok: true, day, verdict };
   }
-  /* Рефлексия недели — одна запись на неделю; пустой текст снимает её */
+  /* Рефлексия недели — одна запись на неделю; пустой текст снимает ее */
   function reflect(u, d, b) {
     const w = weekOf(d, b.week), text = cleanText(b.text, 2000);
     transaction(db, () => {

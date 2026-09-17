@@ -8,7 +8,7 @@ export function entryPage(db, userId, query, open) {
       AND (?='' OR (?='card' AND kind='card') OR (?='questions' AND kind<>'card'))
       AND (?<>0 OR data = '' OR NOT json_valid(data) OR json_extract(data, '$.auto') IS NOT 1)   /* у «да/нет» и старых записей data пустая — это не JSON */
     ORDER BY id DESC LIMIT 101`).all(userId,id,id,before,before,kind,kind,kind,id);
-  /* auto — утро вытянуло само, человек не открывал: в списке «о чём спрашивали» такого нет, по прямой ссылке (id) — есть */
+  /* auto — утро вытянуло само, человек не открывал: в списке «о чем спрашивали» такого нет, по прямой ссылке (id) — есть */
   const items = rows.slice(0,100).map(row => {
     let data = {}; try { data = JSON.parse(row.data || '{}'); } catch {}
     return {...row, question:open(row.question), data};

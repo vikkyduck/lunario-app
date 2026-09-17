@@ -1,7 +1,7 @@
 /* Кто человек: сессии устройства и коды на почту.
 
-   Одно место на всё, что отвечает за «это тот же человек»: кука сессии, срок её жизни, выдача и проверка
-   кода из письма. Раньше это жило посреди server.mjs вперемешку с расчётами и маршрутами.
+   Одно место на все, что отвечает за «это тот же человек»: кука сессии, срок ее жизни, выдача и проверка
+   кода из письма. Раньше это жило посреди server.mjs вперемешку с расчетами и маршрутами.
 
    Модуль не знает про HTTP-маршруты: ему передают req/res, он возвращает пользователя или null.
    Зависимости — явным объектом (db, шифрование, роли), как у createShelves и кабинета.
@@ -17,14 +17,14 @@ import { randomBytes } from 'node:crypto';
 
 export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rolesFor }) {
   const COOKIE = 'lunario_app';
-  /* Сессия живёт год с выдачи и полгода без входа; пользование отмечаем не чаще раза в 10 минут */
+  /* Сессия живет год с выдачи и полгода без входа; пользование отмечаем не чаще раза в 10 минут */
   const SESSION_MAX_MS = 365 * 864e5, SESSION_IDLE_MS = 180 * 864e5, SEEN_STEP_MS = 10 * 60000;
-  /* Сотруднику кабинет открывает аналитику и карточки людей, поэтому его токен не живёт вечно: не дольше 90 дней
+  /* Сотруднику кабинет открывает аналитику и карточки людей, поэтому его токен не живет вечно: не дольше 90 дней
      с выдачи и 45 дней без захода. Кука при этом скользящая, так что заново вводить код нужно раз в 90 дней, а не при
      каждом заходе. */
   const STAFF_MAX_MS = 90 * 864e5, STAFF_IDLE_MS = 45 * 864e5;
   /* Куку присылает клиент, и она бывает битой: «%» без двух цифр роняет decodeURIComponent. Одна испорченная кука
-     не должна ронять весь запрос — берём её как есть, а остальные читаем нормально. */
+     не должна ронять весь запрос — берем ее как есть, а остальные читаем нормально. */
   function parseCookies(req) {
     const out = {};
     for (const p of String(req.headers.cookie || '').split(';')) {
@@ -56,7 +56,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
         const now = Date.now(), age = now - Date.parse(sess.created_at), idle = now - Date.parse(sess.last_seen);
         const u = userById(sess.user_id);
         /* Порог у сотрудников короче. Проверку роли (запрос к staff) делаем только когда она способна изменить исход —
-           сессия уже старше сотруднического порога, но ещё в пределах пользовательского; свежие сессии её не касаются. */
+           сессия уже старше сотруднического порога, но еще в пределах пользовательского; свежие сессии ее не касаются. */
         const overStaff = age > STAFF_MAX_MS || idle > STAFF_IDLE_MS;
         const overUser = age > SESSION_MAX_MS || idle > SESSION_IDLE_MS;
         const expired = overUser || (overStaff && u && u.email && rolesFor(u.email).length);
@@ -96,7 +96,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
   const CODE = /^[0-9]{6}$/;
   const codeFormatOk = (code) => typeof code === 'string' && CODE.test(code);
 
-  /* Проверка кода: та же для входа и для удаления. Возвращает причину отказа или null, если код подошёл (и погашен). */
+  /* Проверка кода: та же для входа и для удаления. Возвращает причину отказа или null, если код подошел (и погашен). */
   function checkLoginCode(email, code, purpose = 'login') {
     if (!codeFormatOk(code)) return 'bad_code_format';
     const rec = db.prepare('SELECT * FROM login_codes WHERE email = ?').get(email);
@@ -111,12 +111,12 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
   /* Подтверждение кода — одной транзакцией.
 
      Раньше это шло вразнобой: код гасился одним запросом, почта привязывалась другим, сессия — третьим.
-     Отказ в середине оставлял человека без кода и без входа: код уже удалён, а почта ещё не привязана,
-     и повторить тем же кодом невозможно. Теперь либо всё, либо ничего.
+     Отказ в середине оставлял человека без кода и без входа: код уже удален, а почта еще не привязана,
+     и повторить тем же кодом невозможно. Теперь либо все, либо ничего.
 
      Два правила, которые легко нарушить:
-     · счётчик неверных попыток обязан сохраниться даже при отказе — поэтому при неверном коде мы не бросаем
-       исключение (оно откатило бы счётчик), а возвращаем решение и фиксируем транзакцию;
+     · счетчик неверных попыток обязан сохраниться даже при отказе — поэтому при неверном коде мы не бросаем
+       исключение (оно откатило бы счетчик), а возвращаем решение и фиксируем транзакцию;
      · токен новой сессии здесь только записывается в базу; кука ставится вызывающим и строго после COMMIT.
 
      Записи гостя сами никуда не переносятся: вход в чужой аккаунт — не повод отдать ему чужой дневник.
@@ -138,7 +138,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
       const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
       const revoke = () => { if (currentToken) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(currentToken)); };
 
-      if (!existing) {                       /* почты ещё нет — закрепляем за текущим аккаунтом, всё написанное остаётся */
+      if (!existing) {                       /* почты еще нет — закрепляем за текущим аккаунтом, все написанное остается */
         db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), guest.id);
         revoke();
         const token = createSession(guest.id, ua);
@@ -153,7 +153,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
       }
 
       /* Аккаунт с этой почтой есть, и это другой аккаунт. Анкету, заполненную только что на этом устройстве,
-         переносим — она про того же человека и в найденном аккаунте её нет. Записи не трогаем. */
+         переносим — она про того же человека и в найденном аккаунте ее нет. Записи не трогаем. */
       if (guest.onboarded && !existing.onboarded && profileFields) db.prepare(profileFields.sql).run(...profileFields.values(guest, existing.id));
       revoke();
       const token = createSession(existing.id, ua);
@@ -174,6 +174,6 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
   }
 
   return { parseCookies, setSessionCookie, clearSessionCookie, newSession, createSession, getUser, issueLoginCode, checkLoginCode, codeFormatOk, verifyLogin,
-    /* для проверок и отчётов: какая политика сейчас действует */
+    /* для проверок и отчетов: какая политика сейчас действует */
     policy: { SESSION_MAX_MS, SESSION_IDLE_MS, STAFF_MAX_MS, STAFF_IDLE_MS, SEEN_STEP_MS } };
 }

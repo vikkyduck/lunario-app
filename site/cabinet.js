@@ -52,7 +52,7 @@ async function loginVerify() {
   const code = $('l-code').value.trim(), msg = $('l-msg'); msg.className = 'msg';
   if (code.length !== 6) { msg.classList.add('err'); msg.textContent = 'Код состоит из шести цифр.'; return; }
   try { await api('/auth/verify', { method: 'POST', body: JSON.stringify({ email: loginEmail, code }) }); await boot(); }
-  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'wrong_code' ? 'Код не подошёл.' : e.code === 'expired' ? 'Код истёк — запросите новый.' : 'Не получилось войти.'; }
+  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'wrong_code' ? 'Код не подошел.' : e.code === 'expired' ? 'Код истек — запросите новый.' : 'Не получилось войти.'; }
 }
 async function logout() { await api('/auth/logout', { method: 'POST' }).catch(() => {}); location.reload(); }
 
@@ -67,7 +67,7 @@ function renderRoles() {
   $('who').innerHTML = `<span>${esc(me.name || '')}${me.name ? ' · ' : ''}${esc(me.email)}</span><a class="btn sm" href="/app/?app=1">В приложение</a><button data-on="click:logout" class="btn sm">Выйти</button>`;
   renderTeam();
 }
-const staffRows = (items) => items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="text-align:right">${s.locked ? '<span class="lock">защищён</span>' : `<button data-on="click:staffForm-a0" data-a0="${esc(s.email)}" class="btn sm">Изменить</button> <button data-on="click:staffDel-a0" data-a0="${esc(s.email)}" class="btn sm warn">Удалить</button>`}</td></tr>`).join('');
+const staffRows = (items) => items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="text-align:right">${s.locked ? '<span class="lock">защищен</span>' : `<button data-on="click:staffForm-a0" data-a0="${esc(s.email)}" class="btn sm">Изменить</button> <button data-on="click:staffDel-a0" data-a0="${esc(s.email)}" class="btn sm warn">Удалить</button>`}</td></tr>`).join('');
 async function renderTeam() {
   const box = $('team');
   if (!S.me.isAdmin) {
@@ -82,7 +82,7 @@ async function renderTeam() {
 }
 function staffForm(email) {
   const s = (S.staff || []).find((x) => x.email === email);
-  if (s && s.locked) { toast('Права защищённого администратора изменить нельзя'); return; }
+  if (s && s.locked) { toast('Права защищенного администратора изменить нельзя'); return; }
   openModal(`<div class="head"><div><span class="eyebrow">Доступы</span><h2 style="margin-top:6px">${s ? 'Изменить доступы' : 'Добавить участника'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
     <div class="row" style="margin-top:14px"><input id="st-name" placeholder="ФИО" maxlength="80" value="${esc(s ? s.name : '')}"><input id="st-email" type="email" placeholder="почта" maxlength="120" value="${esc(s ? s.email : '')}" ${s ? 'readonly' : ''}></div>
     <div class="chips" style="margin-top:12px" id="st-roles">${['marketing', 'product', 'content', 'support'].map((k) => { const on = s && s.roles.includes(k); return `<label class="chip${on ? ' on' : ''}"><input data-on="change:this-parentNode-classList-toggle-on-checked" type="checkbox" value="${k}" ${on ? 'checked' : ''}> ${ROLE_META[k][0]}</label>`; }).join('')}</div>
@@ -98,7 +98,7 @@ function renderMenu() {
 }
 function showHome() { show('home'); history.replaceState(null, '', '#'); }
 
-/* ── страница отчёта ── */
+/* ── страница отчета ── */
 async function openPage(p) {
   S.page = p; renderMenu(); history.replaceState(null, '', `#${S.role}/${p}`);
   const box = $('report');
@@ -161,7 +161,7 @@ const EXTRAS = {
     const r = await api('/cabinet/backups');
     const ageH = (t) => (t ? (Date.now() - Date.parse(t)) / 36e5 : null);
     const fresh = (t) => t !== null && ageH(t) !== null && ageH(t) < 26;
-    const when = (t) => (t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'ещё не было');
+    const when = (t) => (t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'еще не было');
     const mbs = (b) => (b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' КБ' : (b / 1048576).toFixed(1).replace('.', ',') + ' МБ');
     const kp = (title, t, sub) => ({ title, value: t ? when(t) : null, unit: '', sub: sub || (t ? (fresh(t) ? 'свежая' : 'старше суток — проверьте cron') : ''), state: t ? 'ok' : 'nodata' });
     const rows = r.items.map((f) => `<tr><td>${f.kind === 'db' ? 'База и полочки' : 'Тексты и картинки'}</td><td>${when(f.ts)}</td><td>${mbs(f.size)}</td><td>${r.admin ? `<a class="btn sm" href="/app/api/cabinet/backups/download?name=${encodeURIComponent(f.name)}">Скачать</a>` : ''}</td></tr>`).join('');
@@ -175,19 +175,19 @@ const EXTRAS = {
     const r = await api('/cabinet/campaigns'); S.campaigns = r.items;
     $('extra').innerHTML = `<div class="row" style="justify-content:flex-end;margin-top:14px"><button data-on="click:campaignForm-0" class="btn gold sm fixed">+ Новая кампания</button></div>
       <div class="tbl"><div class="scroll"><table><thead><tr><th>Кампания</th><th>UTM</th><th>Обещание · размещение</th><th>Расходы</th><th>Даты</th><th>Ссылка</th><th></th></tr></thead><tbody>${r.items.map((c) => `<tr><td><b>${esc(c.name)}</b><small>${esc((c.created_by || '').split('@')[0])}</small></td><td>${esc([c.source, c.medium, c.campaign, c.content].filter(Boolean).join(' / '))}</td><td>${esc(c.promise) || '—'}<small>${esc(c.placement)}</small></td><td class="num">${fmt(Math.round(c.cost))} ₽</td><td>${c.start_day || '—'}${c.end_day ? ' — ' + c.end_day : ''}</td><td><button data-on="click:copy-link" class="btn sm" data-link="${esc(utmLink(c))}">Скопировать</button></td><td class="num"><button data-on="click:campaignForm-a0" data-a0="${c.id}" class="btn sm">Изменить</button> <button data-on="click:campaignDel-a0" data-a0="${c.id}" class="btn sm warn">✕</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Кампаний пока нет. Заведите первую — и получите ссылку с UTM.</td></tr>'}</tbody></table></div>
-      <p class="note">Ссылка ведёт в приложение; лендинг тоже пробрасывает UTM в приложение, так что можно вести и на lunario.online. Расходы и обещание нужны, чтобы в «Привлечении» посчиталась цена регистрации и удержанного.</p></div>`;
+      <p class="note">Ссылка ведет в приложение; лендинг тоже пробрасывает UTM в приложение, так что можно вести и на lunario.online. Расходы и обещание нужны, чтобы в «Привлечении» посчиталась цена регистрации и удержанного.</p></div>`;
   },
   async materials() {
     const r = await api('/cabinet/materials'); S.materials = r; const st = (k) => `<span class="pill" style="${k === 'published' ? 'border-color:rgba(168,236,198,.6);color:var(--ok)' : k === 'draft' ? 'opacity:.7' : ''}">${esc(r.statuses[k] || k)}</span>`;
     $('extra').innerHTML = `<div class="row" style="justify-content:flex-end;margin-top:14px"><button data-on="click:materialForm-0" class="btn gold sm fixed">+ Новый материал</button></div>
-      <div class="tbl"><div class="scroll"><table><thead><tr><th>Материал</th><th>Тип · раздел</th><th>Дата показа</th><th>Статус</th><th>Изменён</th><th></th></tr></thead><tbody>${r.items.map((m) => `<tr><td><b>${esc(m.title || m.text.slice(0, 60))}</b>${m.image ? `<small><a href="${esc(m.image)}" target="_blank">картинка</a></small>` : ''}</td><td>${esc(r.kinds[m.kind] || m.kind)}<small>${esc(m.section)}</small></td><td>${m.show_day || 'каждый день'}</td><td>${st(m.status)}</td><td>${fmtTs(m.updated_at)}<small>${esc((m.created_by || '').split('@')[0])}</small></td><td class="num"><button data-on="click:materialForm-a0" data-a0="${m.id}" class="btn sm">Открыть</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Материалов пока нет.</td></tr>'}</tbody></table></div></div>`;
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>Материал</th><th>Тип · раздел</th><th>Дата показа</th><th>Статус</th><th>Изменен</th><th></th></tr></thead><tbody>${r.items.map((m) => `<tr><td><b>${esc(m.title || m.text.slice(0, 60))}</b>${m.image ? `<small><a href="${esc(m.image)}" target="_blank">картинка</a></small>` : ''}</td><td>${esc(r.kinds[m.kind] || m.kind)}<small>${esc(m.section)}</small></td><td>${m.show_day || 'каждый день'}</td><td>${st(m.status)}</td><td>${fmtTs(m.updated_at)}<small>${esc((m.created_by || '').split('@')[0])}</small></td><td class="num"><button data-on="click:materialForm-a0" data-a0="${m.id}" class="btn sm">Открыть</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Материалов пока нет.</td></tr>'}</tbody></table></div></div>`;
   },
   async media() {
     const r = await api('/cabinet/media'); const mb = (b) => (b / 1048576).toFixed(1) + ' МБ';
     const card = (m) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default${m.archived ? ';opacity:.7' : ''}">${!m.archived && m.type.startsWith('image/') && m.type !== 'image/svg+xml' ? `<img src="/app/uploads/${esc(m.file)}" alt="" loading="lazy" style="width:100%;height:120px;object-fit:cover;border-radius:10px">` : `<div style="height:60px;display:grid;place-items:center;color:var(--faint)">${m.archived ? 'в архиве' : esc(m.type)}</div>`}<span style="margin-top:8px">${esc(m.name)}<br><small>${Math.round(m.size / 1024)} КБ · ${fmtTs(m.created_at)}${m.archived ? ' · сгружен ' + fmtTs(m.archived_at) : ''}</small></span>
       <div class="row" style="margin-top:8px;gap:6px">${m.archived ? `<button data-on="click:mediaArchive-a0-false" data-a0="${m.id}" class="btn sm">Вернуть</button>` : `<button data-on="click:copy-link" class="btn sm" data-link="${location.origin}/app/uploads/${esc(m.file)}">Ссылка</button><button data-on="click:mediaArchive-a0-true" data-a0="${m.id}" class="btn sm" title="убрать с сервера в архив: ссылка перестанет работать, файл и запись сохранятся">Сгрузить</button>`}<a class="btn sm" href="/app/api/cabinet/media/download?id=${m.id}">Скачать</a><button data-on="click:mediaDel-a0" data-a0="${m.id}" class="btn sm warn fixed">✕</button></div></div>`;
     const live = r.items.filter((m) => !m.archived), arch = r.items.filter((m) => m.archived);
-    $('extra').innerHTML = `<div class="kpis" style="margin-top:14px">${kpiCard({ title: 'Отдаётся пользователям', value: +mb(r.totals.live).replace(',', '.').split(' ')[0], unit: 'МБ', sub: `${live.length} файлов · в приложение попадает только то, что вставлено в опубликованный материал`, state: 'ok' })}${kpiCard({ title: 'В архиве на сервере', value: +mb(r.totals.archived).split(' ')[0], unit: 'МБ', sub: `${arch.length} файлов · не отдаются, можно вернуть или скачать`, state: 'ok' })}</div>
+    $('extra').innerHTML = `<div class="kpis" style="margin-top:14px">${kpiCard({ title: 'Отдается пользователям', value: +mb(r.totals.live).replace(',', '.').split(' ')[0], unit: 'МБ', sub: `${live.length} файлов · в приложение попадает только то, что вставлено в опубликованный материал`, state: 'ok' })}${kpiCard({ title: 'В архиве на сервере', value: +mb(r.totals.archived).split(' ')[0], unit: 'МБ', sub: `${arch.length} файлов · не отдаются, можно вернуть или скачать`, state: 'ok' })}</div>
       <div class="notice">Приложение у пользователей хранит только оболочку (шрифты, иконки, ~1 МБ); картинки материалов грузятся по сети при показе и на телефоне не оседают. Чтобы облегчить сервер, сгружайте файлы, которые больше не нужны в приложении: запись и доступ к скачиванию останутся.</div>
       <div class="viz" style="margin-top:14px"><h3>Загрузить</h3><div class="row" style="margin-top:10px"><input type="file" id="m-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,application/pdf" style="padding:8px"><button data-on="click:mediaUpload" class="btn gold fixed">Загрузить</button><span class="hint" id="m-msg"></span></div><p class="hint">До 5 МБ. Для картинок в приложении лучше WebP или JPG шириной до 1600px — они в разы легче PNG.</p></div>
       <h3 style="margin-top:18px">Активные</h3><div class="files" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${live.map(card).join('') || '<p class="empty">Файлов пока нет.</p>'}</div>
@@ -204,12 +204,12 @@ const EXTRAS = {
     const f = S.filters.tstatus || '';
     const rows = q.filter((t) => !f || t.status === f);
     $('extra').innerHTML = `<div class="chips" style="margin-top:14px">${[['', 'Все'], ...Object.entries(st)].map(([k, v]) => `<span data-on="click:S-filters-tstatus-a0-EXTRAS-tickets" data-a0="${k}" class="chip${f === k ? ' on' : ''}">${esc(v)}</span>`).join('')}</div>
-      <div class="tbl"><div class="scroll"><table><thead><tr><th>№</th><th>Пользователь</th><th>Тема</th><th>Статус</th><th>Приоритет</th><th>Первый ответ</th><th>Последнее</th><th></th></tr></thead><tbody>${rows.map((t) => `<tr><td class="num">${t.id}${t.unread ? ` <span class="pill" style="color:var(--gold-2)">${t.unread} нов.</span>` : ''}</td><td>${esc(t.user.name) || '—'}<small>${esc(t.user.email) || 'без почты'} · id ${t.user.id}</small></td><td><b>${esc(t.subject)}</b><small>${esc(t.topic)}</small></td><td>${esc(t.statusName)}</td><td>${t.priority === 'high' ? '<span style="color:var(--warn)">высокий</span>' : 'обычный'}</td><td>${t.firstReplyMin === null ? (t.status === 'resolved' ? '—' : '<span style="color:var(--warn)">ждёт</span>') : `${t.firstReplyMin} мин ${t.slaOk ? '<span class="up">✓</span>' : '<span class="down">поздно</span>'}`}</td><td>${fmtTs(t.last_at)}<small>${t.last_by === 'support' ? 'мы' : 'пользователь'}</small></td><td class="num"><button data-on="click:ticketOpen-a0" data-a0="${t.id}" class="btn sm">Открыть чат</button></td></tr>`).join('') || '<tr><td colspan="8" class="empty">Обращений нет.</td></tr>'}</tbody></table></div></div>`;
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>№</th><th>Пользователь</th><th>Тема</th><th>Статус</th><th>Приоритет</th><th>Первый ответ</th><th>Последнее</th><th></th></tr></thead><tbody>${rows.map((t) => `<tr><td class="num">${t.id}${t.unread ? ` <span class="pill" style="color:var(--gold-2)">${t.unread} нов.</span>` : ''}</td><td>${esc(t.user.name) || '—'}<small>${esc(t.user.email) || 'без почты'} · id ${t.user.id}</small></td><td><b>${esc(t.subject)}</b><small>${esc(t.topic)}</small></td><td>${esc(t.statusName)}</td><td>${t.priority === 'high' ? '<span style="color:var(--warn)">высокий</span>' : 'обычный'}</td><td>${t.firstReplyMin === null ? (t.status === 'resolved' ? '—' : '<span style="color:var(--warn)">ждет</span>') : `${t.firstReplyMin} мин ${t.slaOk ? '<span class="up">✓</span>' : '<span class="down">поздно</span>'}`}</td><td>${fmtTs(t.last_at)}<small>${t.last_by === 'support' ? 'мы' : 'пользователь'}</small></td><td class="num"><button data-on="click:ticketOpen-a0" data-a0="${t.id}" class="btn sm">Открыть чат</button></td></tr>`).join('') || '<tr><td colspan="8" class="empty">Обращений нет.</td></tr>'}</tbody></table></div></div>`;
   },
   async ai() {
     const r = await api('/cabinet/ai');
     $('extra').innerHTML = `<div class="cfg-sec"><h3>Провайдеры ИИ</h3><p class="hint">Ключи хранятся зашифрованными и наружу не отдаются — виден только хвост. Проверка живая у GPT и Gemini; у Алисы и ГигаЧата — OAuth, сработает при первом вызове.</p>
-      <div class="files" style="margin-top:10px">${r.items.map((p) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default"><div class="row"><b style="flex:1">${esc(p.label)}</b>${p.hasKey ? `<span class="pill" style="${p.check_ok === 1 ? 'color:var(--ok);border-color:rgba(168,236,198,.6)' : p.check_ok === 0 ? 'color:var(--warn)' : ''}">${p.check_ok === 1 ? 'проверен' : p.check_ok === 0 ? 'ошибка' : 'не проверен'}</span>` : '<span class="pill" style="opacity:.6">не подключён</span>'}</div>
+      <div class="files" style="margin-top:10px">${r.items.map((p) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default"><div class="row"><b style="flex:1">${esc(p.label)}</b>${p.hasKey ? `<span class="pill" style="${p.check_ok === 1 ? 'color:var(--ok);border-color:rgba(168,236,198,.6)' : p.check_ok === 0 ? 'color:var(--warn)' : ''}">${p.check_ok === 1 ? 'проверен' : p.check_ok === 0 ? 'ошибка' : 'не проверен'}</span>` : '<span class="pill" style="opacity:.6">не подключен</span>'}</div>
         <small>${esc(p.hint)}${p.hasKey ? ` · ключ ${esc(p.keyTail)} · модель ${esc(p.model)}` : ''}${p.check_note ? ` · ${esc(p.check_note)}` : ''}</small>
         <div style="display:grid;gap:6px;margin-top:8px"><input id="ai-key-${p.provider}" placeholder="${p.hasKey ? 'новый ключ (пусто — оставить прежний)' : 'API-ключ'}" autocomplete="off"><div class="row"><input id="ai-model-${p.provider}" value="${esc(p.model)}" placeholder="модель"><input id="ai-extra-${p.provider}" value="${esc(p.extra)}" placeholder="доп. (folder id / scope)"></div>
         <div class="row"><button data-on="click:aiSave-a0" data-a0="${p.provider}" class="btn gold sm fixed">Сохранить</button>${p.hasKey ? `<button data-on="click:aiCheck-a0" data-a0="${p.provider}" class="btn sm fixed">Проверить</button><button data-on="click:aiDel-a0" data-a0="${p.provider}" class="btn sm warn fixed">Убрать</button>` : ''}</div></div></div>`).join('')}</div></div>`;
@@ -235,7 +235,7 @@ async function campaignSave(id) {
   if (!r.ok) { $('cp-msg').textContent = r.error === 'no_name' ? 'Нужно название.' : r.error === 'no_utm' ? 'Нужен хотя бы utm_source или utm_campaign.' : 'Не сохранилось.'; return; }
   toast('Сохранено'); closeModal(); EXTRAS.campaigns();
 }
-async function campaignDel(id) { if (!confirm('Удалить кампанию? Люди, пришедшие по её UTM, останутся в базе.')) return; await api('/cabinet/campaigns?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.campaigns(); }
+async function campaignDel(id) { if (!confirm('Удалить кампанию? Люди, пришедшие по ее UTM, останутся в базе.')) return; await api('/cabinet/campaigns?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.campaigns(); }
 function materialForm(id) {
   const r = S.materials, m = (r.items || []).find((x) => x.id === id) || {};
   openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${id ? 'Изменить' : 'Новый материал'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
@@ -244,7 +244,7 @@ function materialForm(id) {
     ${field('Текст', `<textarea id="mt-text" style="min-height:160px;font-family:inherit">${esc(m.text || '')}</textarea>`)}
     ${field('Картинка (ссылка из «Картинки и файлы»)', `<input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/…">`)}
     <div class="row">${field('Дата показа (пусто — каждый день)', `<input id="mt-day" type="date" value="${m.show_day || ''}">`)}${field('Статус', `<select id="mt-status">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${(m.status || 'draft') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}</div>
-    <p class="hint">«Вопрос дня» и «Аффирмация» в статусе «Опубликован» подменяют текст в «Моём дне» у всех — в указанный день или каждый день, если дата пуста.</p>
+    <p class="hint">«Вопрос дня» и «Аффирмация» в статусе «Опубликован» подменяют текст в «Моем дне» у всех — в указанный день или каждый день, если дата пуста.</p>
     <div class="row"><button data-on="click:materialSave-a0" data-a0="${id}" class="btn gold fixed">Сохранить</button>${id ? `<button data-on="click:materialDel-a0" data-a0="${id}" class="btn sm warn fixed">Удалить</button>` : ''}<span class="hint" id="mt-msg"></span></div></div>`);
 }
 async function materialSave(id) {
@@ -265,7 +265,7 @@ async function backupNow() {
   finally { b.disabled = false; }
 }
 async function mediaArchive(id, on) { const r = await api('/cabinet/media/archive', { method: 'POST', body: JSON.stringify({ id, on }) }); toast(r.ok ? (on ? 'Сгружено в архив' : 'Возвращено') : 'Не получилось'); EXTRAS.media(); }
-async function mediaDel(id) { if (!confirm('Удалить файл насовсем? Если он ещё может понадобиться — лучше «Сгрузить»: запись и скачивание останутся.')) return; await api('/cabinet/media?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.media(); }
+async function mediaDel(id) { if (!confirm('Удалить файл насовсем? Если он еще может понадобиться — лучше «Сгрузить»: запись и скачивание останутся.')) return; await api('/cabinet/media?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.media(); }
 function taskForm(id) {
   const r = S.tasks, t = (r.items || []).find((x) => x.id === id) || {};
   openModal(`<div class="head"><div><span class="eyebrow">Беклог</span><h2 style="margin-top:6px">${id ? 'Изменить задачу' : 'Новая задача'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
@@ -280,7 +280,7 @@ async function taskSave(id) {
   const r = await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id, title: $('tk-title').value, text: $('tk-text').value, role: $('tk-role').value, priority: $('tk-priority').value, due_day: $('tk-due').value, assignee: $('tk-assignee').value, status: t.status || 'new' }) });
   if (!r.ok) { $('tk-msg').textContent = 'Нужно название задачи.'; return; } toast('Сохранено'); closeModal(); EXTRAS.backlog();
 }
-async function taskStatus(id, status) { await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id, status, onlyStatus: true }) }); toast('Статус обновлён'); EXTRAS.backlog(); }
+async function taskStatus(id, status) { await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id, status, onlyStatus: true }) }); toast('Статус обновлен'); EXTRAS.backlog(); }
 async function taskDel(id) { if (!confirm('Удалить задачу?')) return; await api('/cabinet/tasks?id=' + id, { method: 'DELETE' }); EXTRAS.backlog(); }
 async function ticketOpen(id) {
   openModal('<p class="empty">Открываем…</p>');
@@ -401,17 +401,17 @@ function exportCsv() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `lunario-${r.key}-${r.period.from}-${r.period.to}.csv`; a.click();
 }
 
-/* ── сохранённые отчёты (в этом браузере) ── */
+/* ── сохраненные отчеты (в этом браузере) ── */
 const savedKey = 'lun_cab_saved';
 const savedList = () => { try { return JSON.parse(localStorage.getItem(savedKey) || '[]'); } catch { return []; } };
 function saveReport() {
   const list = savedList(); list.unshift({ role: S.role, page: S.page, period: S.period, filters: { ...S.filters }, ts: new Date().toISOString(), title: (S.me.reports[S.page] || [S.page])[0] });
-  try { localStorage.setItem(savedKey, JSON.stringify(list.slice(0, 50))); toast('Отчёт сохранён'); } catch { toast('Браузер не сохранил отчёт'); }
+  try { localStorage.setItem(savedKey, JSON.stringify(list.slice(0, 50))); toast('Отчет сохранен'); } catch { toast('Браузер не сохранил отчет'); }
 }
 function renderSaved() {
   const list = savedList();
-  $('report').innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">Сохранённые отчёты</h1><p style="margin-top:6px">Отчёты с фильтрами, сохранённые в этом браузере</p></div></div>` +
-    (list.length ? `<div class="tbl"><div class="scroll"><table><thead><tr><th>Отчёт</th><th>Кабинет</th><th>Период</th><th>Фильтры</th><th>Когда</th><th></th></tr></thead><tbody>${list.map((s, i) => `<tr><td>${esc(s.title)}</td><td>${esc((ROLE_META[s.role] || [s.role])[0])}</td><td>${esc(/^\d+d$/.test(s.period) ? daysWord(parseInt(s.period)) : s.period)}</td><td>${esc(Object.values(s.filters).filter(Boolean).join(', ') || '—')}</td><td>${new Date(s.ts).toLocaleString('ru-RU')}</td><td class="num"><button data-on="click:openSaved-a0" data-a0="${i}" class="btn sm">Открыть</button> <button data-on="click:delSaved-a0" data-a0="${i}" class="btn sm warn">Убрать</button></td></tr>`).join('')}</tbody></table></div></div>` : '<p class="empty" style="margin-top:14px">Сохранённых отчётов пока нет. Откройте отчёт, выберите фильтры и нажмите «☆ Сохранить».</p>');
+  $('report').innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">Сохраненные отчеты</h1><p style="margin-top:6px">Отчеты с фильтрами, сохраненные в этом браузере</p></div></div>` +
+    (list.length ? `<div class="tbl"><div class="scroll"><table><thead><tr><th>Отчет</th><th>Кабинет</th><th>Период</th><th>Фильтры</th><th>Когда</th><th></th></tr></thead><tbody>${list.map((s, i) => `<tr><td>${esc(s.title)}</td><td>${esc((ROLE_META[s.role] || [s.role])[0])}</td><td>${esc(/^\d+d$/.test(s.period) ? daysWord(parseInt(s.period)) : s.period)}</td><td>${esc(Object.values(s.filters).filter(Boolean).join(', ') || '—')}</td><td>${new Date(s.ts).toLocaleString('ru-RU')}</td><td class="num"><button data-on="click:openSaved-a0" data-a0="${i}" class="btn sm">Открыть</button> <button data-on="click:delSaved-a0" data-a0="${i}" class="btn sm warn">Убрать</button></td></tr>`).join('')}</tbody></table></div></div>` : '<p class="empty" style="margin-top:14px">Сохраненных отчетов пока нет. Откройте отчет, выберите фильтры и нажмите «☆ Сохранить».</p>');
 }
 function openSaved(i) { const s = savedList()[i]; if (!s) return; S.period = s.period; S.filters = { ...s.filters }; if (S.me.menus[s.role] && (S.me.roles.includes(s.role))) { S.role = s.role; } openPage(s.page); }
 function delSaved(i) { const l = savedList(); l.splice(i, 1); localStorage.setItem(savedKey, JSON.stringify(l)); renderSaved(); }
@@ -454,8 +454,8 @@ async function costDel(id) { if (!confirm('Убрать строку расхо�
 /* ── контент: файлы и правка ── */
 function contentFiles(r) {
   const files = r.files || [];
-  return `<div class="notice">Тексты приложения — обычные файлы: одна строка — одна запись, поля через «|». Строки с решёткой # — заметки, приложение их не читает. Сохранение публикует сразу: статусов «черновик / на проверке / запланирован» пока нет.</div>
-    <div class="files">${files.map((f) => `<button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="file"><span>${esc(f.name)}<br><small>${f.lines} записей · изменён ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
+  return `<div class="notice">Тексты приложения — обычные файлы: одна строка — одна запись, поля через «|». Строки с решеткой # — заметки, приложение их не читает. Сохранение публикует сразу: статусов «черновик / на проверке / запланирован» пока нет.</div>
+    <div class="files">${files.map((f) => `<button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="file"><span>${esc(f.name)}<br><small>${f.lines} записей · изменен ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
 }
 async function editFile(name) {
   openModal('<p class="empty">Открываем…</p>');
@@ -472,7 +472,7 @@ async function saveFile(name) {
 }
 
 /* ── конструктор кабинетов (админ): состав дашбордов, названия, периоды, блоки сводки ── */
-const BLOCK_NAMES = { new_users: 'Новые с подтверждённой почтой', activation: 'Активация за 24 часа', active: 'Активные за день, неделю и месяц', repeat: 'Повторное использование', retention: 'Возвраты D1, D7 и 4-я неделя', features: 'Использование функций', costs: 'Расходы за месяц', problems: 'Требуют внимания' };
+const BLOCK_NAMES = { new_users: 'Новые с подтвержденной почтой', activation: 'Активация за 24 часа', active: 'Активные за день, неделю и месяц', repeat: 'Повторное использование', retention: 'Возвраты D1, D7 и 4-я неделя', features: 'Использование функций', costs: 'Расходы за месяц', problems: 'Требуют внимания' };
 let CFG = null;
 async function cfgOpen(role) {
   const c = await api('/cabinet/config');
@@ -490,7 +490,7 @@ function cfgRender() {
   const periods = `<div class="chips" style="margin-top:8px">${c.periods.map((d) => `<span class="chip on">${daysWord(d)} <button data-on="click:cfgPeriod-a0-false" data-a0="${d}" class="btn sm warn" style="min-height:22px;padding:0 6px;font-size:12px;border:0;background:none">✕</button></span>`).join('')}</div>
     <div class="row" style="margin-top:8px"><input id="cfg-days" type="number" min="1" max="365" placeholder="дней, например 60" style="max-width:220px"><button data-on="click:cfgPeriod-cfg-days-value-true" class="btn sm fixed">+ Добавить период</button></div>
     <p class="hint">Набор кнопок периода одинаков во всех кабинетах. Сравнение всегда с предыдущим таким же отрезком.</p>`;
-  const blocks = r === 'admin' ? `<div class="cfg-sec"><h3>Блоки единого дашборда</h3><p class="hint">Порядок — как в списке. Снятый блок исчезает со сводки, отчёт за ним остаётся в меню.</p><div class="chips" style="margin-top:8px">${c.defaults.blocks.map((k) => `<label class="chip${c.blocks.includes(k) ? ' on' : ''}"><input data-on="change:cfgBlock-a0-checked" data-a0="${k}" type="checkbox" ${c.blocks.includes(k) ? 'checked' : ''}> ${esc(BLOCK_NAMES[k] || k)}</label>`).join('')}</div></div>` : '';
+  const blocks = r === 'admin' ? `<div class="cfg-sec"><h3>Блоки единого дашборда</h3><p class="hint">Порядок — как в списке. Снятый блок исчезает со сводки, отчет за ним остается в меню.</p><div class="chips" style="margin-top:8px">${c.defaults.blocks.map((k) => `<label class="chip${c.blocks.includes(k) ? ' on' : ''}"><input data-on="change:cfgBlock-a0-checked" data-a0="${k}" type="checkbox" ${c.blocks.includes(k) ? 'checked' : ''}> ${esc(BLOCK_NAMES[k] || k)}</label>`).join('')}</div></div>` : '';
   openModal(`<div class="head"><div><span class="eyebrow">Конструктор кабинетов</span><h2 style="margin-top:6px">Что видит роль</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
     <div class="row" style="margin-top:12px"><select data-on="change:CFG-role-value-cfgRender">${Object.entries(ROLE_META).filter(([k]) => k !== 'user').map(([k, [nm]]) => `<option value="${k}" ${k === r ? 'selected' : ''}>${nm}</option>`).join('')}</select><span class="hint fixed">${c.custom ? `изменено ${esc((c.updated.updated_by || '').split('@')[0])} · ${(c.updated.updated_at || '').slice(0, 10)}` : 'настройки по умолчанию'}</span></div>
     <div class="cfg-sec"><h3>Дашборды в кабинете «${esc(ROLE_META[r][0])}»</h3><p class="hint">Порядок в списке — порядок в меню. Убранный дашборд для этой роли закрывается и на сервере.</p><div class="cfg-list">${list}</div>${add}</div>
@@ -535,14 +535,14 @@ async function staffSave() {
   const roles = [...$('st-roles').querySelectorAll('input:checked')].map((i) => i.value), msg = $('st-msg');
   try {
     const r = await api('/cabinet/staff', { method: 'POST', body: JSON.stringify({ name: $('st-name').value.trim(), email: $('st-email').value.trim(), roles }) });
-    if (!r.ok) { msg.textContent = r.error === 'admin_locked' ? 'Права защищённого администратора изменить нельзя.' : 'Проверьте почту.'; return; }
+    if (!r.ok) { msg.textContent = r.error === 'admin_locked' ? 'Права защищенного администратора изменить нельзя.' : 'Проверьте почту.'; return; }
     toast('Сохранено'); closeModal(); refreshStaff();
   } catch (e) { msg.textContent = 'Не получилось сохранить.'; }
 }
 async function staffDel(email) {
   if (!confirm(`Убрать доступ у ${email}?`)) return;
   const r = await api('/cabinet/staff?email=' + encodeURIComponent(email), { method: 'DELETE' });
-  if (!r.ok) toast('Права защищённого администратора изменить нельзя'); else { toast('Доступ убран'); closeModal(); refreshStaff(); }
+  if (!r.ok) toast('Права защищенного администратора изменить нельзя'); else { toast('Доступ убран'); closeModal(); refreshStaff(); }
 }
 
 /* ── старт ── */
@@ -554,7 +554,7 @@ async function boot() {
     show('login');
     $('who').innerHTML = me.email ? `<span>${esc(me.email)}</span><button data-on="click:logout" class="btn sm">Выйти</button>` : '';
     $('l-box').innerHTML = me.email
-      ? `<p style="font-size:15px;color:#e8e2f5">У почты <b>${esc(me.email)}</b> нет доступа к кабинетам.</p><p class="hint">Доступ выдаёт админ. Приложение открыто как обычно.</p><a class="btn gold" style="width:100%;margin-top:14px" href="/app/?app=1">В приложение</a>`
+      ? `<p style="font-size:15px;color:#e8e2f5">У почты <b>${esc(me.email)}</b> нет доступа к кабинетам.</p><p class="hint">Доступ выдает админ. Приложение открыто как обычно.</p><a class="btn gold" style="width:100%;margin-top:14px" href="/app/?app=1">В приложение</a>`
       : '';
     if (!me.email) renderLogin('email');
     return;

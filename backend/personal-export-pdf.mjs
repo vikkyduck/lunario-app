@@ -25,9 +25,9 @@ const ECHO = { yes: 'отозвалось', no: 'не связано', unsure: '
 const THEME = { dark: 'ночная', light: 'светлая', system: 'как в системе' };
 const FREQ = { daily: 'каждый день', weekly: 'раз в неделю', events: 'по событиям на небе' };
 const WEEKDAYS = ['', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
-const ASK_STATUS = { active: 'идёт', done: 'выполнена', failed: 'прервана', stopped: 'остановлена' };
+const ASK_STATUS = { active: 'идет', done: 'выполнена', failed: 'прервана', stopped: 'остановлена' };
 
-/* Поток вёрстки: страницы A4, поля, перенос блоков на новую страницу, колонтитулы */
+/* Поток верстки: страницы A4, поля, перенос блоков на новую страницу, колонтитулы */
 class Flow {
   constructor(doc, fonts, headerImage) {
     this.doc = doc; this.f = fonts; this.header = headerImage;
@@ -126,11 +126,11 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   } else y -= 20;
   const center = (font, size, text, yy, color, spacing = 0) => page.text(font, size, (flow.W - font.width(text, size, spacing)) / 2, yy, text, color, { spacing });
   center(F.semibold, 8.5, 'МОИ ДАННЫЕ', y - 8, C.gold, 1.6); y -= 30;
-  center(F.semibold, 24, 'Всё, что хранит Лунарио', y - 18, C.text); y -= 36;
+  center(F.semibold, 24, 'Все, что хранит Лунарио', y - 18, C.text); y -= 36;
   const when = fmtDay((data.exportedAt || new Date().toISOString()).slice(0, 10));
   center(F.regular, 11, [name, `выгрузка от ${when}`].filter(Boolean).join(' · '), y - 10, C.muted); y -= 30;
   flow.y = y;
-  flow.para('Здесь всё, что вы доверили приложению: анкета, записи дневника, желания, привычки и аскезы, настроения, вопросы с ответами и настройки. На сервере личные тексты хранятся зашифрованными — этот файл их расшифрованная копия, берегите его как бумажный дневник.', { size: 10.5, color: C.muted, lh: 1.55, after: 10 });
+  flow.para('Здесь все, что вы доверили приложению: анкета, записи дневника, желания, привычки и аскезы, настроения, вопросы с ответами и настройки. На сервере личные тексты хранятся зашифрованными — этот файл их расшифрованная копия, берегите его как бумажный дневник.', { size: 10.5, color: C.muted, lh: 1.55, after: 10 });
 
   /* ── профиль ── */
   flow.section('Профиль', 'Обо мне');
@@ -141,7 +141,7 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
       flow.page.text(F.semibold, 14, flow.mx + s + 14, flow.y - 22, name || 'Без имени', C.text);
       flow.page.text(F.regular, 10.5, flow.mx + s + 14, flow.y - 40, [p.birth ? fmtDay(p.birth) : '', p.city].filter(Boolean).join(' · '), C.muted);
       flow.y -= s + 14;
-    } catch { /* фото не в JPEG — обойдёмся строками */ }
+    } catch { /* фото не в JPEG — обойдемся строками */ }
   }
   flow.kv('Имя', name);
   flow.kv('Дата рождения', p.birth ? fmtDay(p.birth) + (p.birthTime ? `, ${p.birthTime}` : '') : '');
@@ -154,7 +154,7 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   flow.section('Приложение', 'Настройки');
   flow.kv('Оформление', THEME[pr.theme] || pr.theme || '');
   flow.kv('Мои инструменты', Array.isArray(pr.tools) ? (pr.tools.length ? pr.tools.map(toolTitle).join(', ') : 'только стартовый набор') : 'стартовый набор');
-  flow.kv('Настройка контента', pr.topicsAll ? 'показывать всё' : (pr.topics || []).length ? pr.topics.map(topicTitle).join(', ') : 'как предложено');
+  flow.kv('Настройка контента', pr.topicsAll ? 'показывать все' : (pr.topics || []).length ? pr.topics.map(topicTitle).join(', ') : 'как предложено');
   const rem = (data.reminders || []).filter((r) => r.enabled);
   flow.kv('Напоминания', rem.length ? rem.map((r) => `${reminderTitle(r.feature)} — ${r.time || ''}${r.freq === 'weekly' ? `, ${WEEKDAYS[r.weekday] || 'раз в неделю'}` : r.freq && r.freq !== 'daily' ? `, ${FREQ[r.freq] || r.freq}` : ''}`).join('; ') : 'выключены');
 

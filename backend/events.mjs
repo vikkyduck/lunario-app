@@ -1,12 +1,12 @@
-/* Реестр событий продукта — один источник для трёх потребителей:
+/* Реестр событий продукта — один источник для трех потребителей:
    · сервер — какие ключи принимать от браузера (/api/event) и какие писать сам;
-   · отчёты кабинета — названия, разделы и список «содержательных действий» (DAU/WAU/MAU, активация, возвраты);
+   · отчеты кабинета — названия, разделы и список «содержательных действий» (DAU/WAU/MAU, активация, возвраты);
    · аналитика — тип и короткая деталь, без личных текстов.
 
-   source: 'server' — событие пишет обработчик операции, когда результат подтверждён (запись сохранена, карта вытянута);
+   source: 'server' — событие пишет обработчик операции, когда результат подтвержден (запись сохранена, карта вытянута);
            'client' — впечатление интерфейса (открыл экран, поделился), приходит через /api/event.
    core:   содержательное действие — по нему считаются активность, активация и возвраты.
-   section/title: строка в отчёте «Функции»; событие без раздела в таблицу функций не попадает. */
+   section/title: строка в отчете «Функции»; событие без раздела в таблицу функций не попадает. */
 const E = (key, name, source, o = {}) => ({ key, name, source, core: !!o.core, section: o.section || '', title: o.title || '' });
 
 export const EVENTS = [
@@ -34,26 +34,26 @@ export const EVENTS = [
   E('topics_set', 'Выбрал темы чтения', 'client'),
   E('tools_add', 'Добавил инструмент', 'client'),
   E('morning_add', 'Выбрал плитку утра', 'client'),
-  E('rhythm_view', 'Увидел экран трёх напоминаний', 'client'),
-  E('push_open', 'Пришёл из уведомления', 'client'),
+  E('rhythm_view', 'Увидел экран трех напоминаний', 'client'),
+  E('push_open', 'Пришел из уведомления', 'client'),
   E('morning_edit', 'Развернул выбор утра', 'client'),
   E('skin_compact_on', 'Включил компактный вид (тест)', 'client'),
   E('skin_compact_off', 'Выключил компактный вид (тест)', 'client'),
   E('rhythm_enable', 'Включил напоминания после анкеты', 'client'),
   E('morning_remove', 'Убрал плитку утра', 'client'),
   E('tools_remove', 'Убрал инструмент с экрана', 'client'),
-  E('topics_all', 'Переключил «показать всё»', 'client'),
+  E('topics_all', 'Переключил «показать все»', 'client'),
   E('sky_view', 'Открыл «На небе»', 'client', { core: true, section: 'Луна и небо', title: 'На небе' }),
   E('worry_pick', 'Разобрал вопрос', 'client', { core: true, section: 'Свериться с собой', title: 'Разобрать вопрос' }),
   E('ask_yesno', 'Спросил «Да / Нет»', 'server', { core: true, section: 'Свериться с собой', title: 'Да / Нет' }),
   E('ask_rune', 'Вытянул руну', 'server', { core: true, section: 'Свериться с собой', title: 'Руны' }),
   E('ask_spread', 'Сделал расклад', 'server', { core: true, section: 'Свериться с собой', title: 'Таро' }),
-  E('spread_limit', 'Упёрся в лимит раскладов', 'client'),
+  E('spread_limit', 'Уперся в лимит раскладов', 'client'),
   E('journal_add', 'Сделал запись', 'server', { core: true, section: 'Дневник', title: 'Дневник' }),
   E('gratitude_add', 'Записал благодарность', 'server', { core: true, section: 'Дневник', title: 'Дневник благодарности' }),
   E('wish_add', 'Добавил желание', 'server', { core: true, section: 'Дневник', title: 'Мои желания' }),
   E('wish_photo', 'Добавил фото к желанию', 'server'),
-  E('moodreport_view', 'Открыл отчёт по настроениям', 'client', { core: true, section: 'Дневник', title: 'История настроений' }),
+  E('moodreport_view', 'Открыл отчет по настроениям', 'client', { core: true, section: 'Дневник', title: 'История настроений' }),
   E('week_view', 'Открыл «Мою неделю»', 'server', { core: true, section: 'Дневник', title: 'Моя неделя' }),
   E('week_echo', 'Отметил, отозвалось ли утро', 'server'),
   E('week_reflect', 'Записал рефлексию недели', 'server', { core: true }),
@@ -63,7 +63,7 @@ export const EVENTS = [
   E('share_card', 'Поделился результатом', 'client', { section: 'Социальное', title: 'Поделиться' }),
   E('card_download', 'Скачал открытку', 'client', { section: 'Социальное', title: 'Открытка на телефон' }),
   E('invite_copy', 'Скопировал приглашение', 'client', { section: 'Социальное', title: 'Позвать подругу' }),
-  E('invite_used', 'Пришёл по приглашению', 'server'),
+  E('invite_used', 'Пришел по приглашению', 'server'),
   E('reminder_on', 'Включил напоминание', 'server', { section: 'Аккаунт', title: 'Уведомления' }),
   E('reminder_off', 'Выключил напоминание', 'server'),
   E('reminder_test', 'Прислал пробное напоминание', 'server'),
@@ -72,14 +72,14 @@ export const EVENTS = [
   E('installed', 'Установил на телефон', 'client', { section: 'Аккаунт', title: 'Установка на телефон' }),
   E('support_new', 'Написал в поддержку', 'server', { section: 'Аккаунт', title: 'Чат поддержки' }),
   E('news_view', 'Открыл «Новое в приложении»', 'client'),
-  E('utm_seen', 'Пришёл с UTM-меткой', 'server'),
+  E('utm_seen', 'Пришел с UTM-меткой', 'server'),
 ];
 
 export const EVENT_BY_KEY = Object.fromEntries(EVENTS.map((e) => [e.key, e]));
-/* Что принимает /api/event: только впечатления интерфейса. Подтверждённые действия пишет сам обработчик. */
+/* Что принимает /api/event: только впечатления интерфейса. Подтвержденные действия пишет сам обработчик. */
 export const CLIENT_EVENTS = new Set(EVENTS.filter((e) => e.source === 'client').map((e) => e.key));
 /* Содержательные действия — для активности, активации и возвратов */
 export const CORE_EVENTS = EVENTS.filter((e) => e.core).map((e) => e.key);
 export const EVENT_NAMES = Object.fromEntries(EVENTS.map((e) => [e.key, e.name]));
-/* Строки отчёта «Функции»: ключ, раздел, название */
+/* Строки отчета «Функции»: ключ, раздел, название */
 export const FEATURE_EVENTS = EVENTS.filter((e) => e.section);

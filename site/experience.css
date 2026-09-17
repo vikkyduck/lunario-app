@@ -357,6 +357,15 @@ body.inner input.compact{font-size:14px}
 .rhythm-row .grow{min-width:0}.rhythm-row b{display:block;font-size:17px;font-weight:600}.rhythm-row small{display:block;font-size:14px;line-height:1.4;color:var(--muted)}
 .rhythm-row input[type=time]{width:auto;flex:0 0 auto;padding:8px 10px;font-size:16px}
 .rhythm-card .btn{margin-top:18px;width:100%}
+/* мастер после анкеты: два шага */
+.rhythm-card>.eyebrow{display:block;margin-bottom:6px}
+.rhythm-card .rh-title{margin:0 0 6px;font-size:22px;line-height:1.2;font-weight:600}
+.rhythm-card>.hint{margin:0 0 6px}
+.rh-list{margin-top:6px}
+.rhythm-row small{text-wrap:pretty}
+.rh-foot{margin:14px 0 0;text-align:center;text-wrap:balance}
+.rhythm-card .utility-actions{justify-content:center;margin-top:6px}
+#v-rhythm .onb-head p{color:var(--muted)}
 
 /* ── Подсказки по приложению (tour.js): затемнение, кольцо вокруг элемента, карточка «N / 8» ── */
 .tour{position:fixed;inset:0;z-index:400}

@@ -1,8 +1,8 @@
 /* Маленький генератор PDF без зависимостей — для выгрузки «Скачать мои данные».
-   Умеет ровно то, что нужно документу в стиле Лунарио: страницы A4 с тёмным фоном и мягким свечением,
+   Умеет ровно то, что нужно документу в стиле Лунарио: страницы A4 с темным фоном и мягким свечением,
    шрифт TrueType с кириллицей (встраивается целиком, кодировка Identity-H, ToUnicode для поиска и копирования),
-   картинки PNG (с прозрачностью) и JPEG, скруглённые панели с прозрачностью, линии, текст с переносами.
-   Всё пишется руками по спецификации PDF 1.7: объекты, потоки с FlateDecode, таблица xref. */
+   картинки PNG (с прозрачностью) и JPEG, скругленные панели с прозрачностью, линии, текст с переносами.
+   Все пишется руками по спецификации PDF 1.7: объекты, потоки с FlateDecode, таблица xref. */
 import { deflateSync, inflateSync } from 'node:zlib';
 
 /* ── TrueType: коды символов → глифы и ширины. Нужны таблицы head, hhea, hmtx, maxp, cmap; остальное едет в PDF как есть ── */
@@ -90,7 +90,7 @@ export function decodePng(buf, { half = false } = {}) {
   }
   return { width: W, height: H, gray, rgb, alpha };
 }
-/* JPEG: размер из первого SOF-маркера; поток кладётся в PDF как есть (DCTDecode) */
+/* JPEG: размер из первого SOF-маркера; поток кладется в PDF как есть (DCTDecode) */
 export function jpegSize(buf) {
   if (buf[0] !== 0xff || buf[1] !== 0xd8) throw new Error('не JPEG');
   for (let p = 2; p < buf.length;) {
@@ -201,7 +201,7 @@ export class PdfDocument {
   }
 }
 
-/* Рисование на странице. Координаты — как в PDF: начало внизу слева, y растёт вверх. */
+/* Рисование на странице. Координаты — как в PDF: начало внизу слева, y растет вверх. */
 class PageWriter {
   constructor(page, doc) { this.page = page; this.doc = doc; }
   _op(s) { this.page.ops.push(s); }
@@ -214,7 +214,7 @@ class PageWriter {
       + `${num(x + r)} ${num(y + h)} l ${num(x + r - k)} ${num(y + h)} ${num(x)} ${num(y + h - r + k)} ${num(x)} ${num(y + h - r)} c `
       + `${num(x)} ${num(y + r)} l ${num(x)} ${num(y + r - k)} ${num(x + r - k)} ${num(y)} ${num(x + r)} ${num(y)} c h`;
   }
-  /* Панель: заливка и/или обводка с прозрачностью, скруглённые углы */
+  /* Панель: заливка и/или обводка с прозрачностью, скругленные углы */
   panel(x, y, w, h, { radius = 10, fill = null, fillAlpha = 1, stroke = null, strokeAlpha = 1, lineWidth = 0.75 } = {}) {
     const gs = this.doc._state(fillAlpha, strokeAlpha);
     const ops = [`q /${gs} gs`];

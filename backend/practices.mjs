@@ -6,7 +6,7 @@ const WD_RULES = [[1, /(^|[^а-я])(пн|понедельн)/], [2, /(^|[^а-я]
 const WORD_NUM = { один: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5, шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10, пару: 2, пара: 2 };
 const numIn = (t, re) => { const m = re.exec(t); if (!m) return null; const v = m[1]; return /^\d+$/.test(v) ? Number(v) : WORD_NUM[v] || null; };
 export function parseRule(text) {
-  const t = String(text || '').toLowerCase().replace(/ё/g, 'е').replace(/[.,!]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const t = String(text || '').toLowerCase().replace(/е/g, 'е').replace(/[.,!]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t || /кажд(ый|ого|ое|ую) ?(день|дня|утро|вечер|ночь|сутки)|ежеднев|daily|всегда|постоянно|утром|вечером|перед сном|на ночь|за завтраком|раз в день|в день/.test(t)) return 'daily';
   if (/будн|рабоч/.test(t)) return 'weekdays';
   if (/выходн/.test(t)) return 'weekend';
@@ -21,16 +21,16 @@ export function parseRule(text) {
   if (/недел/.test(t)) return times && times > 7 ? 'free' : times && times > 1 ? 'times:' + times : 'weekly';
   if (/месяц|ежемес/.test(t)) return times && times > 31 ? 'free' : times && times > 1 ? 'mtimes:' + times : 'monthly';
   if (/год|ежегод/.test(t)) return 'free';
-  return 'free';   /* непонятный ритм не подгоняем под ежедневный — привычка ждёт отметки, когда нужно человеку */
+  return 'free';   /* непонятный ритм не подгоняем под ежедневный — привычка ждет отметки, когда нужно человеку */
 }
 const RULE_LABEL = (rule) => rule === 'daily' ? 'каждый день' : rule === 'weekdays' ? 'по будням' : rule === 'weekend' ? 'по выходным' : rule === 'alt' ? 'через день'
-  : rule === 'weekly' ? 'раз в неделю' : rule === 'monthly' ? 'раз в месяц' : rule === 'free' ? 'в своём ритме' : rule.startsWith('times:') ? `${rule.slice(6)} раза в неделю`
+  : rule === 'weekly' ? 'раз в неделю' : rule === 'monthly' ? 'раз в месяц' : rule === 'free' ? 'в своем ритме' : rule.startsWith('times:') ? `${rule.slice(6)} раза в неделю`
   : rule.startsWith('mtimes:') ? `${rule.slice(7)} раза в месяц` : rule.startsWith('every:') ? `каждые ${rule.slice(6)} дн.`
   : rule.startsWith('days:') ? rule.slice(5).split(',').map((n) => ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'][Number(n)]).join(', ') : rule;
 const wdOf = (day) => ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;     // 1 — понедельник … 7 — воскресенье
 const habitStart = h => dayIn(MSK, Date.parse(h.created_at));
 const weekStart = (day) => addDays(day, 1 - wdOf(day));
-/* нужно ли делать привычку в этот день; для недельных и месячных — «ещё не сделана в этом периоде» */
+/* нужно ли делать привычку в этот день; для недельных и месячных — «еще не сделана в этом периоде» */
 function habitDue(h, day, marks) {
   const r = h.rule || 'daily', wd = wdOf(day);
   if (r === 'daily') return true;
@@ -39,7 +39,7 @@ function habitDue(h, day, marks) {
   if (r === 'alt') return Math.round((Date.parse(day) - Date.parse(habitStart(h))) / 864e5) % 2 === 0;
   if (r.startsWith('days:')) return r.slice(5).split(',').map(Number).includes(wd);
   if (r === 'free') return true;
-  if (r.startsWith('every:')) {   /* каждые N дней: отсчёт от первой отметки, до неё — от дня добавления */
+  if (r.startsWith('every:')) {   /* каждые N дней: отсчет от первой отметки, до нее — от дня добавления */
     const n = Math.max(2, Number(r.slice(6))), first = [...marks].sort()[0] || habitStart(h);
     const diff = Math.round((Date.parse(day) - Date.parse(first)) / 864e5);
     return diff >= 0 && diff % n === 0 || marks.has(day);
@@ -82,7 +82,7 @@ export function habitStreak(h, d, marks) {
     for (let k = 1; k < 120; k++) { m--; if (m === 0) { m = 12; y--; } if (months.has(`${y}-${String(m).padStart(2, '0')}`)) n++; else break; }
     return n;
   }
-  let n = 0, cur = marks.has(d) ? d : addDays(d, -1);      // сегодня ещё не отмечено — считаем до вчера
+  let n = 0, cur = marks.has(d) ? d : addDays(d, -1);      // сегодня еще не отмечено — считаем до вчера
   const born = habitStart(h);
   for (let k = 0; k < 4000 && cur >= born; k++) {
     if (habitDue(h, cur, marks)) { if (marks.has(cur)) n++; else break; }
@@ -105,7 +105,7 @@ function habitList(userId, d) {
       week: week.map((day) => ({ day, done: marks.has(day), due: habitDue(h, day, marks) })) };
   });
 }
-/* Аскезы: отказ или ограничение до выбранной даты. Истёкшие закрываются сами; заметки-наблюдения — по желанию. */
+/* Аскезы: отказ или ограничение до выбранной даты. Истекшие закрываются сами; заметки-наблюдения — по желанию. */
 function askesisList(userId, d) {
   for (const a of db.prepare("SELECT id, until FROM askesis WHERE user_id = ? AND status = 'active'").all(userId))
     if (a.until && a.until < d) db.prepare("UPDATE askesis SET status = 'done', finished_at = ? WHERE id = ?").run(a.until, a.id);

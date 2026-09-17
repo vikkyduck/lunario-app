@@ -2,8 +2,8 @@
    Настройки — из окружения (файл /opt/lunario-app/.env, читается systemd):
      SMTP_HOST=smtp.yandex.ru  SMTP_PORT=465  SMTP_USER=you@example.ru
      SMTP_PASS=<пароль приложения>  SMTP_FROM="Лунарио <hello@example.ru>"
-   Пароль приложения создаётся в id.yandex.ru → Безопасность → Пароли приложений
-   и доступа к самому ящику не даёт. */
+   Пароль приложения создается в id.yandex.ru → Безопасность → Пароли приложений
+   и доступа к самому ящику не дает. */
 import { connect } from 'node:tls';
 
 const CFG = () => ({
@@ -21,9 +21,9 @@ function talk(sock, expect, line) {
     let buf = '';
     const onData = (d) => {
       buf += d.toString('utf8');
-      if (!/\r\n$/.test(buf)) return;                       // ждём конца ответа
+      if (!/\r\n$/.test(buf)) return;                       // ждем конца ответа
       const last = buf.trim().split('\r\n').pop();
-      if (/^\d{3}-/.test(last)) return;                     // многострочный ответ ещё не закончен
+      if (/^\d{3}-/.test(last)) return;                     // многострочный ответ еще не закончен
       sock.off('data', onData); sock.off('error', rej);
       const code = Number(buf.slice(0, 3));
       if (expect && !expect.includes(code)) return rej(new Error(`SMTP ${code}: ${buf.trim().slice(0, 120)}`));
@@ -113,7 +113,7 @@ export async function verifySmtp() {
 }
 
 /* Письмо с кодом входа — в стиле бренда, без обещаний и давления.
-   Выглядит как обложка lunario.online: ночь, золото, луна со звёздами.
+   Выглядит как обложка lunario.online: ночь, золото, луна со звездами.
    Луна и «Лунарио» шрифтом Comfortaa — картинкой (веб-шрифты почта режет),
    лежит в site/assets/mail/ и грузится по абсолютному адресу.
    Верстка таблицами и inline-стилями; rgba и градиенты — с фолбэком
@@ -121,11 +121,11 @@ export async function verifySmtp() {
 const MAIL_ASSETS = 'https://lunario.online/app/assets/mail';
 const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 /* Письмо о новом доступе к рабочему кабинету — тот же визуальный язык, что у письма
-   с кодом входа. Код в нём настоящий и рабочий 15 минут: приходит, когда админ
+   с кодом входа. Код в нем настоящий и рабочий 15 минут: приходит, когда админ
    назначает человеку роль, чтобы тот мог сразу войти в /app/cabinet. */
 export function staffMail(roleNames, code) {
   const rolesLine = roleNames.join(', ');
-  const text = `Вам открыли доступ к рабочему кабинету Лунарио: ${rolesLine}.\n\nВаш код для входа: ${code}\n\nОткройте lunario.online/app/cabinet, укажите эту почту и введите код. Код действует 15 минут — если он истечёт, на странице входа можно запросить новый.`;
+  const text = `Вам открыли доступ к рабочему кабинету Лунарио: ${rolesLine}.\n\nВаш код для входа: ${code}\n\nОткройте lunario.online/app/cabinet, укажите эту почту и введите код. Код действует 15 минут — если он истечет, на странице входа можно запросить новый.`;
   const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>Доступ к кабинету Лунарио: ${code}</title></head>
 <body style="margin:0;padding:0;background-color:#0b0a14;font-family:${FONT}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0a14" style="background-color:#0b0a14;background-image:linear-gradient(180deg,#141126 0%,#0b0a14 70%)"><tr><td align="center" style="padding:24px 14px 36px">
@@ -143,7 +143,7 @@ export function staffMail(roleNames, code) {
         </tr></table>
       </td></tr></table>
       <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:#b9b2cf">Откройте <span style="color:#f0d79a">lunario.online/app/cabinet</span>, укажите эту почту и введите код — он действует 15 минут.</p>
-      <p style="margin:16px 0 0;font-family:${FONT};font-size:13.5px;line-height:1.6;color:#8f87ad">Если это письмо неожиданно, просто удалите его: без кода ничего не произойдёт.</p>
+      <p style="margin:16px 0 0;font-family:${FONT};font-size:13.5px;line-height:1.6;color:#8f87ad">Если это письмо неожиданно, просто удалите его: без кода ничего не произойдет.</p>
     </td></tr>
     <tr><td align="center" style="padding:6px 0 0;line-height:0">
       <img src="${MAIL_ASSETS}/stars.png?v=1" width="440" height="56" alt="" style="display:block;width:100%;max-width:440px;height:auto;border:0;outline:none">
@@ -158,9 +158,9 @@ export function staffMail(roleNames, code) {
 
 /* Подтверждение удаления аккаунта. Отдельное письмо и отдельная цель кода: код из этого письма
    не открывает вход, а код входа не удаляет аккаунт. Тон спокойный, без запугивания — но прямо
-   сказано, что произойдёт и что делать, если человек этого не просил. */
+   сказано, что произойдет и что делать, если человек этого не просил. */
 export function deleteMail(code) {
-  const text = `Код для подтверждения удаления аккаунта Лунарио: ${code}\n\nПосле ввода кода будут удалены профиль, дневник, желания, привычки, аскезы, настроения, история вопросов и переписка с поддержкой. Восстановить их будет нельзя.\n\nКод действует 15 минут. Если вы не запрашивали удаление — просто удалите это письмо, с аккаунтом ничего не произойдёт.`;
+  const text = `Код для подтверждения удаления аккаунта Лунарио: ${code}\n\nПосле ввода кода будут удалены профиль, дневник, желания, привычки, аскезы, настроения, история вопросов и переписка с поддержкой. Восстановить их будет нельзя.\n\nКод действует 15 минут. Если вы не запрашивали удаление — просто удалите это письмо, с аккаунтом ничего не произойдет.`;
   const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>Подтверждение удаления аккаунта Лунарио</title></head>
 <body style="margin:0;padding:0;background-color:#0b0a14;font-family:${FONT}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0a14" style="background-color:#0b0a14;background-image:linear-gradient(180deg,#141126 0%,#0b0a14 70%)"><tr><td align="center" style="padding:24px 14px 36px">
@@ -177,7 +177,7 @@ export function deleteMail(code) {
         </tr></table>
       </td></tr></table>
       <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:#b9b2cf">После ввода кода будут удалены профиль, дневник, желания, привычки, аскезы, настроения, история вопросов и переписка с поддержкой. Восстановить их будет нельзя.</p>
-      <p style="margin:16px 0 0;font-family:${FONT};font-size:13.5px;line-height:1.6;color:#8f87ad">Если вы не запрашивали удаление, просто удалите это письмо: без кода с аккаунтом ничего не произойдёт.</p>
+      <p style="margin:16px 0 0;font-family:${FONT};font-size:13.5px;line-height:1.6;color:#8f87ad">Если вы не запрашивали удаление, просто удалите это письмо: без кода с аккаунтом ничего не произойдет.</p>
     </td></tr>
     <tr><td align="center" style="padding:6px 0 0;line-height:0">
       <img src="${MAIL_ASSETS}/stars.png?v=1" width="440" height="56" alt="" style="display:block;width:100%;max-width:440px;height:auto;border:0;outline:none">
@@ -191,7 +191,7 @@ export function deleteMail(code) {
 }
 
 export function loginMail(code) {
-  const text = `Ваш код для входа в Лунарио: ${code}\n\nКод действует 15 минут. Если вы не запрашивали вход — просто удалите это письмо, ничего не произойдёт.`;
+  const text = `Ваш код для входа в Лунарио: ${code}\n\nКод действует 15 минут. Если вы не запрашивали вход — просто удалите это письмо, ничего не произойдет.`;
   const html = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>Код входа в Лунарио: ${code}</title></head>
 <body style="margin:0;padding:0;background-color:#0b0a14;font-family:${FONT}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0a14" style="background-color:#0b0a14;background-image:linear-gradient(180deg,#141126 0%,#0b0a14 70%)"><tr><td align="center" style="padding:24px 14px 36px">
@@ -208,7 +208,7 @@ export function loginMail(code) {
         </tr></table>
       </td></tr></table>
       <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:#b9b2cf">Код действует 15 минут. Введите его в приложении — записи, дневник и серия дней перенесутся на это устройство.</p>
-      <p style="margin:16px 0 0;font-family:${FONT};font-size:13.5px;line-height:1.6;color:#8f87ad">Если вы не запрашивали вход, просто удалите это письмо: без кода ничего не произойдёт.</p>
+      <p style="margin:16px 0 0;font-family:${FONT};font-size:13.5px;line-height:1.6;color:#8f87ad">Если вы не запрашивали вход, просто удалите это письмо: без кода ничего не произойдет.</p>
     </td></tr>
     <tr><td align="center" style="padding:6px 0 0;line-height:0">
       <img src="${MAIL_ASSETS}/stars.png?v=1" width="440" height="56" alt="" style="display:block;width:100%;max-width:440px;height:auto;border:0;outline:none">

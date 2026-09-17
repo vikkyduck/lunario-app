@@ -3,13 +3,13 @@ import { inSign as inSignPhrase } from './astro.mjs';
 import { ISO_DAY, addDays, plural } from './util.mjs';
 /* Лунарио — «полочки»: личное досье каждого человека.
 
-   Всё, что приложение знает о человеке, раскладывается по трём полкам —
+   Все, что приложение знает о человеке, раскладывается по трем полкам —
    «Обо мне», «Мой день», «Истории» — и лежит в таблице shelves: одна запись на полку.
    Собирается из тех же таблиц, что и экраны (users, entries, moods, journal, wishes,
    habits, askesis), пересобирается после каждого действия и не позже начала нового дня.
    Личные тексты внутри зашифрованы тем же ключом, что дневник.
 
-   Это единый источник контекста для гаданий и гороскопов: context() отдаёт досье
+   Это единый источник контекста для гаданий и гороскопов: context() отдает досье
    объектом, contextText() — текстом для ИИ. Почты и идентификаторов в тексте нет.
    Сюда никогда не попадает ничего чужого: только то, что человек сам оставил в приложении. */
 
@@ -20,7 +20,7 @@ const ELEMENT = {
   'Рак': 'вода', 'Скорпион': 'вода', 'Рыбы': 'вода',
 };
 /* «Солнце в Овне»: знак в предложном падеже для текста досье */
-const TOPIC_RU = { work: 'работа', money: 'деньги', love: 'отношения', health: 'здоровье', move: 'дом и переезд', study: 'учёба', self: 'о себе' };
+const TOPIC_RU = { work: 'работа', money: 'деньги', love: 'отношения', health: 'здоровье', move: 'дом и переезд', study: 'учеба', self: 'о себе' };
 const KIND_RU = { yesno: '«Да / Нет»', rune: 'руна', runes: 'расклад рун', spread: 'расклад Таро', card: 'карта дня', dayrune: 'руна дня' };
 const SHELVES = ['about', 'day', 'history'];
 const SHELF_VERSION = 2;   /* форма полок; старые — пересобираются при чтении */
@@ -28,7 +28,7 @@ const SHELF_VERSION = 2;   /* форма полок; старые — перес
 const fmt = (d) => (d ? String(d).split('-').reverse().join('.') : '');
 const short = (s, n = 160) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
-/* deps — то, что уже есть в server.mjs: база, шифрование, тексты и расчёты. Модуль ничего не дублирует. */
+/* deps — то, что уже есть в server.mjs: база, шифрование, тексты и расчеты. Модуль ничего не дублирует. */
 export function createShelves(deps) {
   const { db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal, MOOD_RU, nowISO } = deps;
 
@@ -43,7 +43,7 @@ export function createShelves(deps) {
   const get = db.prepare('SELECT shelf, json, day, updated_at FROM shelves WHERE user_id = ?');
   const userById = db.prepare('SELECT * FROM users WHERE id = ?');
 
-  /* ── «Обо мне»: анкета и всё, что из неё считается ── */
+  /* ── «Обо мне»: анкета и все, что из нее считается ── */
   const readingInterests = (u) => {
     const topics = preferences(u.preferences).topics || [];
     return topics.filter((k) => !C.READING_META.has(k)).map((k) => { const t = [...C.READING_TOPICS].find((x) => x.key === k); return t ? t.label : ''; }).filter(Boolean);
@@ -144,9 +144,9 @@ export function createShelves(deps) {
   }
 
   const BUILD = { about: buildAbout, day: buildDay, history: buildHistory };
-  /* Пересобрать полки и положить в базу. u — строка users или её id; only — какие полки (по умолчанию все три).
+  /* Пересобрать полки и положить в базу. u — строка users или ее id; only — какие полки (по умолчанию все три).
      Частичная пересборка возможна, только если остальные полки уже сегодняшние и нужной формы —
-     иначе собирается всё: полки за вчера или старого формата дособирать нельзя. */
+     иначе собирается все: полки за вчера или старого формата дособирать нельзя. */
   function rebuild(uOrId, d, only = SHELVES) {
     const u = typeof uOrId === 'object' ? uOrId : userById.get(uOrId);
     if (!u) return null;
@@ -196,7 +196,7 @@ export function createShelves(deps) {
     L.push(`${who.join(', ') || 'Имя не указано'}. ${born}`);
     if (a.sign && a.sign.trait) L.push(`Черта знака: ${a.sign.trait}.`);
     if (a.destiny) L.push(`Число судьбы ${a.destiny.n} — ${a.destiny.title}. ${a.destiny.text}`);
-    if (a.year) L.push(`Личный год ${a.year.n}${a.year.planet ? ` (${a.year.planet} · ${a.year.energy})` : ''}, с ${fmt(a.year.from)} по ${fmt(addDays(a.year.to, -1))}. ${a.year.text}${a.year.next ? ` Следующий, год ${a.year.next.n}, начнётся ${fmt(a.year.next.from)}.` : ''}`);
+    if (a.year) L.push(`Личный год ${a.year.n}${a.year.planet ? ` (${a.year.planet} · ${a.year.energy})` : ''}, с ${fmt(a.year.from)} по ${fmt(addDays(a.year.to, -1))}. ${a.year.text}${a.year.next ? ` Следующий, год ${a.year.next.n}, начнется ${fmt(a.year.next.from)}.` : ''}`);
     if (a.natal && (a.natal.sun || a.natal.moon)) L.push(`Натальная карта: Солнце ${a.natal.sun ? inSignPhrase(a.natal.sun) : 'в —'}${a.natal.moon ? `, Луна ${inSignPhrase(a.natal.moon)}${a.natal.moonUncertain ? ' (знак зависит от времени рождения)' : ''}` : ''}${a.natal.asc ? `, Асцендент ${inSignPhrase(a.natal.asc)}` : ''}${a.natal.timeKnown ? '' : '; время рождения не указано, дома не считаются'}.`);
     if (a.interests && a.interests.length) L.push(`Интересы (выбранные темы чтения): ${a.interests.join(', ')}.`);
     L.push(`В Лунарио с ${fmt(a.since)}${a.streak ? `, серия ${a.streak} ${plural(a.streak, 'день', 'дня', 'дней')} подряд` : ''}.`);
@@ -209,7 +209,7 @@ export function createShelves(deps) {
     if (dy.moon) now.push(dy.moon.toLowerCase());
     if (dy.lunar) now.push(`${dy.lunar.n}-й лунный день${dy.lunar.title ? ` — ${dy.lunar.title}` : ''}`);
     if (dy.forecast) now.push(`тон дня — ${dy.forecast.toLowerCase()}`);
-    L.push(now.length ? now.join('; ') + '.' : 'Сегодня отметок ещё нет.');
+    L.push(now.length ? now.join('; ') + '.' : 'Сегодня отметок еще нет.');
     const wk = dy.week.filter((w) => w.moodRu);
     if (wk.length) L.push(`Неделя: ${wk.map((w) => `${fmt(w.day).slice(0, 5)} — ${w.moodRu}`).join(', ')}.`);
     if (dy.moodMonth.length) L.push(`За месяц чаще всего — ${dy.moodMonth[0].moodRu} (${dy.moodMonth[0].n} из ${dy.moodMonth.reduce((s, m) => s + m.n, 0)}).`);

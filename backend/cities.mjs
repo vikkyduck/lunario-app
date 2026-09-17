@@ -1,4 +1,4 @@
-/* Справочник населённых пунктов: GeoNames (CC BY 4.0), собран в cities.db.
+/* Справочник населенных пунктов: GeoNames (CC BY 4.0), собран в cities.db.
    Ищем по префиксу диапазоном — индекс отрабатывает мгновенно даже на 487k строк. */
 import { DatabaseSync } from 'node:sqlite';
 import { join, dirname } from 'node:path';
@@ -7,11 +7,11 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const db = new DatabaseSync(process.env.CITIES_DB || join(__dirname, 'cities.db'), { readOnly: true });
 
-const norm = (s) => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[^0-9a-zа-я\s-]/gi, '').trim();
+const norm = (s) => String(s).toLowerCase().replace(/е/g, 'е').replace(/[^0-9a-zа-я\s-]/gi, '').trim();
 const HI = '￿';
 const row = (r) => ({ name: r.name, region: r.region, country: r.country, lat: r.lat, lon: r.lon, tz: r.tz, pop: r.pop });
 
-/* Приоритет: точное совпадение → крупные города → всё остальное */
+/* Приоритет: точное совпадение → крупные города → все остальное */
 const qPrefix = db.prepare(`
   SELECT name, region, country, lat, lon, tz, pop FROM cities
   WHERE norm >= ? AND norm < ?
@@ -46,7 +46,7 @@ export function findCities(q, limit = 8) {
 
 export function cityByName(name) {
   const raw = String(name || '');
-  // «Арсеньев, Приморский край» и «г. Арсеньев» — берём сам город; регион помогает выбрать из одноимённых
+  // «Арсеньев, Приморский край» и «г. Арсеньев» — берем сам город; регион помогает выбрать из одноименных
   const [cityPart, regionPart = ''] = raw.split(',').map((x) => x.trim());
   const n = norm(cityPart.replace(/^(г|гор|город|пос|с|д|ст)\.?\s+/i, ''));
   if (!n) return null;
@@ -57,7 +57,7 @@ export function cityByName(name) {
   return row(r);
 }
 
-/* Смещение пояса на конкретный момент — с учётом исторических правил перевода часов */
+/* Смещение пояса на конкретный момент — с учетом исторических правил перевода часов */
 export function tzOffsetMinutes(tz, isoLocal) {
   try {
     const d = new Date(isoLocal + 'Z');

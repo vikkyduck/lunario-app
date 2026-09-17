@@ -1,6 +1,6 @@
 /* Рабочие данные кабинетов: то, что сотрудники вносят сами и что потом считают дашборды.
    Кампании и UTM (маркетолог), материалы и картинки (контент), ИИ-провайдеры и беклог (продуктолог),
-   обращения и чат с пользователем (поддержка). Всё — в той же базе, что и приложение.
+   обращения и чат с пользователем (поддержка). Все — в той же базе, что и приложение.
    Тексты сообщений шифруются тем же ключом, что и дневник; ключи ИИ — тоже. */
 
 import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync } from 'node:fs';
@@ -120,7 +120,7 @@ export function mediaList() {
   const live = items.filter((m) => !m.archived).reduce((s, m) => s + m.size, 0), archived = items.filter((m) => m.archived).reduce((s, m) => s + m.size, 0);
   return { items, totals: { live, archived, count: items.length } };
 }
-/* сгрузить: файл уезжает в архив (не отдаётся по ссылке, не попадает к пользователям), запись остаётся; вернуть можно в любой момент */
+/* сгрузить: файл уезжает в архив (не отдается по ссылке, не попадает к пользователям), запись остается; вернуть можно в любой момент */
 export function mediaArchive(id, on) {
   const m = one('SELECT * FROM media WHERE id = ?', Number(id)); if (!m) return { ok: false, error: 'not_found' };
   const from = join(UPLOADS, m.archived ? 'archive' : '', m.file), to = join(UPLOADS, on ? 'archive' : '', m.file);
@@ -213,7 +213,7 @@ export function taskStatus(id, status, by, own = []) {
 export function taskRemove(id) { db.prepare('DELETE FROM tasks WHERE id = ?').run(Number(id)); return { ok: true }; }
 
 /* ── обращения и чат ── */
-export const TICKET_STATUS = { new: 'Новое', open: 'В работе', waiting: 'Ждём ответа', resolved: 'Решено' };
+export const TICKET_STATUS = { new: 'Новое', open: 'В работе', waiting: 'Ждем ответа', resolved: 'Решено' };
 export const TICKET_TOPICS = ['Вход и код', 'Анкета и профиль', 'Расклады и ответы', 'Напоминания', 'Удаление данных', 'Оплата', 'Идея или пожелание', 'Прочее'];
 const SLA_FIRST_MIN = 30;   // цель: первый ответ за 30 минут
 const msg = (m) => ({ id: m.id, who: m.who, author: m.who === 'support' ? (m.author.split('@')[0] || 'поддержка') : '', text: open_(m.text), ts: m.ts });

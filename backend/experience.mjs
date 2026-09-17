@@ -1,7 +1,7 @@
 export const DEFAULT_PREFERENCES = {theme:'dark', ritual:['card','mood','gratitude'], topics:[], topicsAll:false, lunarViews:0};
 /* Утро на «Сегодня»: какие плитки человек выбрал в ответ на «На что хочу обращать внимание каждое утро?». Нет выбора — Луна и вопрос дня */
 export const DEFAULT_MORNING = ['lunar', 'tone'];
-/* Ключи плиток задаёт разметка «Сегодня» (data-feature), сервер их не перечисляет — как и у инструментов Дневника:
+/* Ключи плиток задает разметка «Сегодня» (data-feature), сервер их не перечисляет — как и у инструментов Дневника:
    проверяется только форма ключа, неизвестные ключи потребители (пуш, тема дня) просто не замечают. Новая плитка = разметка + панель */
 const morningKey = (k) => typeof k === 'string' && /^[a-z][a-z0-9-]{1,19}$/.test(k);
 export const morningOf = (prefs) => Array.isArray(prefs.morning) ? prefs.morning.filter(morningKey).slice(0, 10) : DEFAULT_MORNING;

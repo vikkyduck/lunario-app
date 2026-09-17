@@ -1,7 +1,7 @@
-/* Схема базы приложения и её история — одно место вместо ALTER TABLE, разбросанных по модулям.
+/* Схема базы приложения и ее история — одно место вместо ALTER TABLE, разбросанных по модулям.
 
-   Как устроено. MIGRATIONS — последовательные шаги с номером; номер последнего применённого лежит в
-   PRAGMA user_version, поэтому на следующем запуске пройденные шаги не выполняются. Каждый шаг идёт
+   Как устроено. MIGRATIONS — последовательные шаги с номером; номер последнего примененного лежит в
+   PRAGMA user_version, поэтому на следующем запуске пройденные шаги не выполняются. Каждый шаг идет
    в своей транзакции: упал — откатился целиком, сервер не стартует (лучше не подняться, чем работать
    на половине схемы). Шаги идемпотентны: база, которую до нумерации вели прежним кодом, имеет
    user_version = 0 и проходит все шаги без вреда — колонка уже есть, значит, пропускаем.
@@ -9,10 +9,10 @@
 
    Таблицы кабинетов, напоминаний, очереди пушей, установок дня и полок создают свои модули
    (cabinet, workspace, reminders, daily-sets, shelves): у них CREATE TABLE IF NOT EXISTS без истории,
-   и их использует ещё и отдельный процесс send-daily. Всё, что касается users и личных таблиц, — здесь. */
+   и их использует еще и отдельный процесс send-daily. Все, что касается users и личных таблиц, — здесь. */
 
 const columns = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
-/* ALTER TABLE ADD COLUMN, если колонки ещё нет — безопасно и для баз, где она появилась раньше */
+/* ALTER TABLE ADD COLUMN, если колонки еще нет — безопасно и для баз, где она появилась раньше */
 export function addColumn(db, table, col, def) {
   if (!columns(db, table).includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 }
@@ -94,7 +94,7 @@ const BASE_SQL = `
 
 export const MIGRATIONS = [
   { v: 1, name: 'базовые таблицы', up: (db) => db.exec(BASE_SQL) },
-  { v: 2, name: 'приглашения: свой код у каждого и кто кого привёл', up(db) {
+  { v: 2, name: 'приглашения: свой код у каждого и кто кого привел', up(db) {
     addColumn(db, 'users', 'ref_code', "TEXT DEFAULT ''");
     addColumn(db, 'users', 'invited_by', 'INTEGER');
     addColumn(db, 'users', 'bonus_until', "TEXT DEFAULT ''");
@@ -111,8 +111,8 @@ export const MIGRATIONS = [
   { v: 5, name: 'координаты и часовой пояс города — для натальной карты', up(db) {
     for (const [col, def] of [['lat', 'REAL'], ['lon', 'REAL'], ['tz', "TEXT DEFAULT ''"], ['city_region', "TEXT DEFAULT ''"]]) addColumn(db, 'users', col, def);
   } },
-  /* Раньше кука была самим аккаунтом (users.token_hash) — переносим её в сессии, чтобы один аккаунт открывался
-     на нескольких устройствах. UNIQUE на token_hash не даёт завести второй анонимный профиль — пересобираем таблицу;
+  /* Раньше кука была самим аккаунтом (users.token_hash) — переносим ее в сессии, чтобы один аккаунт открывался
+     на нескольких устройствах. UNIQUE на token_hash не дает завести второй анонимный профиль — пересобираем таблицу;
      все остальные колонки, в том числе добавленные шагами выше, переезжают как есть — иначе они бы пропали. */
   { v: 6, name: 'сессии вместо token_hash в users', up(db) {
     if (columns(db, 'users').includes('token_hash')) {
@@ -143,11 +143,11 @@ export const MIGRATIONS = [
     CREATE INDEX IF NOT EXISTS idx_wishes_user ON wishes (user_id, id);
     CREATE INDEX IF NOT EXISTS idx_habits_user ON habits (user_id);
     CREATE INDEX IF NOT EXISTS idx_askesis_user ON askesis (user_id);`) },
-  /* Раньше эту колонку добавлял кабинет: момент подтверждения почты — точка отсчёта когорт в отчётах */
+  /* Раньше эту колонку добавлял кабинет: момент подтверждения почты — точка отсчета когорт в отчетах */
   { v: 9, name: 'момент подтверждения почты (email_at)', up(db) {
     if (columns(db, 'users').includes('email_at')) return;
     db.exec("ALTER TABLE users ADD COLUMN email_at TEXT DEFAULT ''");
-    // у тех, кто уже с почтой, момент подтверждения берём из события входа, иначе — из даты создания
+    // у тех, кто уже с почтой, момент подтверждения берем из события входа, иначе — из даты создания
     db.exec(`UPDATE users SET email_at = COALESCE(
       (SELECT MIN(ts) FROM events e WHERE e.user_id = users.id AND e.type = 'login_done'), created_at)
       WHERE email <> '' AND email_at = ''`);
@@ -156,24 +156,24 @@ export const MIGRATIONS = [
   { v: 10, name: 'UTM-метки первого визита', up(db) {
     for (const c of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'first_ref']) addColumn(db, 'users', c, "TEXT DEFAULT ''");
   } },
-  /* Отчёты ищут первое действие человека и активность по дням; (user_id, ts) закрывает MIN(ts) по индексу */
+  /* Отчеты ищут первое действие человека и активность по дням; (user_id, ts) закрывает MIN(ts) по индексу */
   { v: 11, name: 'индекс событий по человеку и времени', up: (db) => db.exec('CREATE INDEX IF NOT EXISTS idx_events_user_ts ON events (user_id, ts)') },
-  /* Код на почту выдаётся для разных дел: вход и подтверждение удаления аккаунта.
+  /* Код на почту выдается для разных дел: вход и подтверждение удаления аккаунта.
      Без явной цели код, присланный «подтвердите удаление», годился бы и для входа. */
   { v: 12, name: 'цель кода на почту (вход или удаление аккаунта)', up: (db) => addColumn(db, 'login_codes', 'purpose', "TEXT NOT NULL DEFAULT 'login'") },
   /* Квитанции операций: повтор одного и того же действия не должен создавать вторую запись.
-     Клиент шлёт свой operationId; сохранённый ответ возвращается как есть, а тот же id с другим телом — это конфликт.
+     Клиент шлет свой operationId; сохраненный ответ возвращается как есть, а тот же id с другим телом — это конфликт.
      Колонка называется user_id, а не account_id, чтобы таблица попала под общую политику личных данных
-     (account-data.mjs) и её страж: у каждой таблицы с user_id должно быть явное правило удаления. */
-  { v: 13, name: 'квитанции операций — повтор не создаёт дубль', up: (db) => db.exec(`
+     (account-data.mjs) и ее страж: у каждой таблицы с user_id должно быть явное правило удаления. */
+  { v: 13, name: 'квитанции операций — повтор не создает дубль', up: (db) => db.exec(`
     CREATE TABLE IF NOT EXISTS sync_receipts (
       user_id INTEGER NOT NULL, operation_id TEXT NOT NULL,
       payload_hash TEXT NOT NULL, response_json TEXT NOT NULL, created_at TEXT NOT NULL,
       PRIMARY KEY (user_id, operation_id)
     );
     CREATE INDEX IF NOT EXISTS idx_receipts_created ON sync_receipts (created_at);`) },
-  /* Вечером можно отметить несколько настроений, хоть все (решение владелицы 16.09). Первое остаётся «главным» в moods —
-     отчёты и старые экраны продолжают работать, а полный список живёт здесь. */
+  /* Вечером можно отметить несколько настроений, хоть все (решение владелицы 16.09). Первое остается «главным» в moods —
+     отчеты и старые экраны продолжают работать, а полный список живет здесь. */
   { v: 14, name: 'несколько настроений за день', up: (db) => db.exec(`
     CREATE TABLE IF NOT EXISTS mood_marks (user_id INTEGER NOT NULL, day TEXT NOT NULL, mood TEXT NOT NULL, PRIMARY KEY (user_id, day, mood));`) },
   /* «Моя неделя»: связь «утренний настрой ↔ вечерняя запись» подтверждает сам человек — yes / no / unsure, одна отметка на день */
@@ -193,9 +193,9 @@ const REQUIRED = {
   events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],
 };
 
-/* Провести базу до текущей версии. Возвращает номер версии; бросает ошибку, если шаг не прошёл. */
+/* Провести базу до текущей версии. Возвращает номер версии; бросает ошибку, если шаг не прошел. */
 export function migrate(db, log = console.log) {
-  db.exec('PRAGMA journal_mode = WAL');   // вне транзакции: внутри неё режим журнала не меняется
+  db.exec('PRAGMA journal_mode = WAL');   // вне транзакции: внутри нее режим журнала не меняется
   let current = db.prepare('PRAGMA user_version').get().user_version;
   /* База новее кода — так бывает после отката выпуска (rollback.sh). Шаги только добавляют колонки и индексы
      (удалять — отдельным выпуском, когда код их уже не читает), поэтому прежний код работает на новой базе как есть:

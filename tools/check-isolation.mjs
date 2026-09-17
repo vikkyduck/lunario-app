@@ -83,7 +83,7 @@ try {
   cities.close();
   await start();
   const db = new DatabaseSync(join(fixture, 'data/app.db'));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });   /* день человека сервер считает по Москве (заголовка X-Tz тут нет), а не по UTC — иначе проверка падала между 00:00 и 03:00 МСК */
 
   /* ── Б заводит данные каждого вида; в каждом — своя метка ── */
   const marks = [];

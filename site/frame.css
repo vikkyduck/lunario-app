@@ -17,8 +17,10 @@ html.framed body:not(.inner) .wrap{height:100%;overflow:auto;padding:74px 24px 4
 html.framed body.hello .wrap{display:flex;flex-direction:column;min-height:0;max-width:none}
 html.framed #v-hello.on{flex:1;min-height:0}
 /* невысокое окно: корпус ниже, луна меньше — приветствие всё равно на один экран */
-@media(max-height:780px){html.framed #v-hello .heromoon{width:132px}html.framed #v-hello .hello-stage{gap:14px;padding-block:8px}}
-@media(max-height:660px){html.framed #v-hello .heromoon{width:96px}html.framed #v-hello .gifts{gap:12px}}
+html.framed #v-hello .heromoon{width:148px}
+html.framed #v-hello .hello-stage{gap:16px;padding-block:8px}
+@media(max-height:900px){html.framed #v-hello .heromoon{width:116px}html.framed #v-hello .hello-claim{font-size:22px;margin-bottom:12px}html.framed #v-hello .gifts{gap:10px}html.framed #v-hello .cta{margin-top:18px}}
+@media(max-height:790px){html.framed #v-hello .heromoon{display:none}}
 
 /* ── статус-бар: часы слева, островок по центру, сеть и батарея справа; всё декоративное ── */
 html.framed .frame-bar{position:fixed;top:0;left:0;right:0;height:58px;z-index:500;pointer-events:none;display:flex;align-items:center;justify-content:space-between;padding:0 34px}

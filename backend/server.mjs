@@ -62,7 +62,7 @@ const SITE_DIR = process.env.SITE_DIR || join(__dirname, '..', 'site');
 const DATA_DIR = process.env.DATA_DIR || join(__dirname, '..', 'data');
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });   /* до ключей пушей и шифрования — они пишут сюда при первом запуске */
 const BASE = process.env.BASE_PATH || '/app';
-/* Резервные копии: ночью — cron (тот же backup.mjs), днём — кнопка в кабинете админа */
+/* Резервные копии: ночью — cron (тот же backup.mjs), днем — кнопка в кабинете админа */
 const BACKUP_DIR = process.env.BACKUP_DIR || join(__dirname, '..', 'backups');
 const Backup = createBackup({ dataDir: DATA_DIR, contentDir: CONTENT_DIR, backupDir: BACKUP_DIR });
 const CONSENT_VERSION = '2026-08-23';
@@ -72,12 +72,12 @@ const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replac
 const {seal, open:open_} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
-/* Короткое ожидание, если база занята другим писателем (напоминания, отчёты, ночная копия). Без него редкая
-   встреча двух писателей даёт «database is locked» и 500 на ровном месте. Держим маленьким: node:sqlite синхронна,
-   и долгое ожидание встало бы колом во всём процессе — что не успело за секунду, честнее вернуть как 503. */
+/* Короткое ожидание, если база занята другим писателем (напоминания, отчеты, ночная копия). Без него редкая
+   встреча двух писателей дает «database is locked» и 500 на ровном месте. Держим маленьким: node:sqlite синхронна,
+   и долгое ожидание встало бы колом во всем процессе — что не успело за секунду, честнее вернуть как 503. */
 db.exec('PRAGMA busy_timeout = 1000');
 
-/* Схема и её история — в schema.mjs: шаги по номерам, каждый в своей транзакции;
+/* Схема и ее история — в schema.mjs: шаги по номерам, каждый в своей транзакции;
    порт слушается только после того, как миграции прошли и обязательные колонки на месте */
 migrate(db);
 verifySchema(db);
@@ -100,10 +100,10 @@ function sendDataUrl(res, dataUrl) {
 
 const {habitList, askesisList} = createPractices(db, open_);
 initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d), morningPack: (u, d) => Morning.pack(u, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
-initCabinet(db);   /* таблицы кабинетов; колонки users ведёт schema.mjs */
+initCabinet(db);   /* таблицы кабинетов; колонки users ведет schema.mjs */
 initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
-/* Отчёты и дашборд кабинета — в отдельном потоке: SQLite синхронна, и один отчёт не должен задерживать запросы приложения */
+/* Отчеты и дашборд кабинета — в отдельном потоке: SQLite синхронна, и один отчет не должен задерживать запросы приложения */
 const Reports = createReportRunner({ dataDir: DATA_DIR, inline: { overview, report } });
 
 /* ── утилиты ── */
@@ -113,7 +113,7 @@ const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().sl
 /* Многострочные тексты (дневник, заметки, обращения): переносы строк — часть текста, убираем только прочие управляющие символы */
 const cleanText = (s, max) => String(s ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b-\x1f]/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const sha = (s) => createHash('sha256').update(s).digest('hex');
-// сотруднику, которому только что назначили роль, шлём код входа сразу — не нужно самому запрашивать
+// сотруднику, которому только что назначили роль, шлем код входа сразу — не нужно самому запрашивать
 async function notifyStaffAccess(email, roleKeys) {
   const names = (roleKeys || []).filter((r) => r !== 'user' && r in ROLES && r !== 'admin').map((r) => ROLES[r]);
   if (!names.length || !mailLive()) return;
@@ -129,10 +129,10 @@ async function notifyStaffAccess(email, roleKeys) {
 /* Возрастная когорта вместо точного возраста: ядро аудитории 35+ смотрим отдельно,
    но саму дату рождения в аналитику не тащим. */
 /* Личные тексты — вопросы, дневник, желания — лежат в базе зашифрованными.
-   Ключ берётся из APP_SECRET в .env и в базу никогда не попадает: у того, кто
+   Ключ берется из APP_SECRET в .env и в базу никогда не попадает: у того, кто
    получит только файл базы, останется набор нечитаемых строк.
    Записи, сделанные до включения шифрования, читаются как есть. */
-/* Ключ создаётся сам при первом запуске и лежит рядом с базой, доступный только root.
+/* Ключ создается сам при первом запуске и лежит рядом с базой, доступный только root.
    Файл базы без этого файла бесполезен. Терять ключ нельзя — записи станут нечитаемыми,
    поэтому он попадает в резервную копию вместе с базой. */
 console.log('Личные записи шифруются перед записью в базу');
@@ -140,7 +140,7 @@ console.log('Личные записи шифруются перед запис�
 /* Подарок за приглашение действует неделю и удваивает число подробных разборов. */
 const hasBonus = (u) => !!u.bonus_until && u.bonus_until >= today();
 /* «Сегодня» человека — по поясу его устройства (заголовок X-Tz, запоминается в preferences.tz), иначе по поясу города из анкеты,
-   иначе по Москве. Всё личное — настрой, карта, записи, неделя — считается этим днём; аналитика и кабинет остаются по Москве. */
+   иначе по Москве. Все личное — настрой, карта, записи, неделя — считается этим днем; аналитика и кабинет остаются по Москве. */
 const tzOk = new Map();
 function validTz(tz) {
   if (typeof tz !== 'string' || !/^[A-Za-z][\w+\-/]{1,60}$/.test(tz)) return false;
@@ -184,7 +184,7 @@ let smtpOk = false;
 if (mailReady()) {
   verifySmtp().then((r) => {
     smtpOk = r.ok;
-    console.log(r.ok ? 'SMTP: авторизация прошла — вход по почте включён'
+    console.log(r.ok ? 'SMTP: авторизация прошла — вход по почте включен'
                      : `SMTP: авторизация НЕ прошла (${r.error}) — вход по почте скрыт`);
   });
 } else console.log('SMTP: не настроен — вход по почте скрыт');
@@ -192,7 +192,7 @@ const mailLive = () => smtpOk;
 
 const codeRate = new Map(), codeRateEmail = new Map(), codeRateAll = { n: 0, t: 0 }, verifyRate = new Map(), anonRate = new Map();
 /* Сколько анонимных аккаунтов заводим с одного адреса за окно и сколько записей принимаем от одного аккаунта:
-   людям этого хватает с запасом, а скрипту не даёт раздуть базу. ANON_RATE — для проверок. */
+   людям этого хватает с запасом, а скрипту не дает раздуть базу. ANON_RATE — для проверок. */
 const ANON_RATE = Number(process.env.ANON_RATE || 30), DAILY_WRITES = 100, WISHES_MAX = 300;
 const RATE_WINDOW_MS = 10 * 60000;
 function allowRate(map, key, max) {
@@ -230,7 +230,7 @@ function signOf(birth) {                       // birth: YYYY-MM-DD
 const digits = (s) => String(s).replace(/\D/g, '').split('').map(Number);
 function reduceNum(n) { while (n > 9 && n !== 11 && n !== 22) n = digits(n).reduce((a, b) => a + b, 0); return n; }
 const destinyNum = (birth) => reduceNum(digits(birth).reduce((a, b) => a + b, 0));
-function numFormula(birth) {                    // показываем арифметику: её можно проверить руками
+function numFormula(birth) {                    // показываем арифметику: ее можно проверить руками
   const [y, m, d] = birth.split('-');
   const seq = (d + m + y).split('').map(Number);
   const chain = [seq.reduce((a, b) => a + b, 0)];
@@ -241,7 +241,7 @@ function personalYear(birth, year) {
   const [, mm, dd] = birth.split('-').map(Number);
   return reduceNum(digits(`${dd}${mm}${year}`).reduce((a, b) => a + b, 0));
 }
-/* Личный год живёт от дня рождения до дня рождения: до него в календарном году действует число прошлого
+/* Личный год живет от дня рождения до дня рождения: до него в календарном году действует число прошлого
    года, с него — новое. Родившийся 6 апреля 1984 в 2026-м до 6 апреля проживает год 1, с 6 апреля — год 2.
    Число всегда 1–9: тексты и картинки есть только для них, мастер-числа 11 и 22 сводятся дальше. */
 function personalYearAt(birth, day) {
@@ -255,17 +255,17 @@ function personalYearAt(birth, day) {
   };
 }
 const dayNum = (day) => { let n = reduceNum(digits(day).reduce((a, b) => a + b, 0)); return n > 9 ? reduceNum(digits(n).reduce((a, b) => a + b, 0)) : n; };
-/* Фаза Луны — из lunar.mjs (ряды Меёса), та же модель, что у «На небе» и лунного дня */
+/* Фаза Луны — из lunar.mjs (ряды Мееса), та же модель, что у «На небе» и лунного дня */
 const moonOf = (day) => moonState(Date.parse(day + 'T12:00:00Z'));
 
-/* ── карты и руны: что уходит на экран (тексты экран берёт из каталога по коду) ── */
+/* ── карты и руны: что уходит на экран (тексты экран берет из каталога по коду) ── */
 const cardPublic = (a) => ({ slug: a.slug, name: a.name, keys: a.keys, question: a.question, today: a.today, image: a.image });
 const runePublic = (r) => ({ slug: r.slug, name: r.name, keyword: r.keyword, motto: r.motto, answer: r.answer, path: r.path, image: r.image });
-/* Карта дня тянется один раз в день и живёт в истории; до открытия её нет. */
+/* Карта дня тянется один раз в день и живет в истории; до открытия ее нет. */
 const Morning = createMorning({ db, C, track, nowISO, today: (u) => userDay(u) });
 const cardOfDay = (u, day) => { const a = Morning.cardOfDay(u, day); return a ? cardPublic(a) : null; };
 
-/* Тема дня → настрой и вопрос дня. Тему задаёт тон дня (пока человек не собрал утро из карты, руны и планет — тогда
+/* Тема дня → настрой и вопрос дня. Тему задает тон дня (пока человек не собрал утро из карты, руны и планет — тогда
    первый выбранный источник). Настрой к теме выпадает без повторов в течение года; тема исчерпана — по второму кругу.
    Выпавшая пара запоминается в daily_sets, поэтому в течение дня не меняется. */
 initDailySets(db);
@@ -286,13 +286,13 @@ function dayPack(u, day) {
   drawMorning(u, day);
   const set = setOfDay(u, day);
   const sign = u.birth ? signOf(u.birth) : null;
-  /* тема дня — та, к которой подобран уже выпавший настрой; сегодня она не меняется, даже если днём выбрать другой источник */
+  /* тема дня — та, к которой подобран уже выпавший настрой; сегодня она не меняется, даже если днем выбрать другой источник */
   const tone = toneOfDay(u, day), moon = moonOf(day), theme = themeFor(u, day, set);
   return {
     date: day,
     moon: moon.name,
     moonPhase: +moon.cycle.toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
-    // освещённость диска, а не доля цикла: при фазе 0.65 диск освещён на 79 %, не на 65
+    // освещенность диска, а не доля цикла: при фазе 0.65 диск освещен на 79 %, не на 65
     moonPct: moon.illumination,
     card: cardOfDay(u, day),
     sign: sign ? sign.name : '',
@@ -303,7 +303,7 @@ function dayPack(u, day) {
     set,                            /* настрой дня на главной и вопрос дня к нему — по теме дня */
     theme: theme ? { key: theme.key, title: theme.title, source: Morning.themeSource(u, day, theme) } : null,
     morning: morningOf(preferences(u.preferences)),   /* выбранные плитки утра */
-    cardOpened: Morning.openedOf(u, day, 'card'),     /* утро вытянуло карту само — в панели она ждёт, пока её откроют */
+    cardOpened: Morning.openedOf(u, day, 'card'),     /* утро вытянуло карту само — в панели она ждет, пока ее откроют */
     remembered: dayRemembered(u.id, day),             /* день уже записан — вечерняя строка на «Сегодня» скажет об этом */
     rune: (() => { const r = runeOfDay(u, day); return r ? runePublic(r) : null; })(),
     sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */
@@ -312,19 +312,19 @@ function dayPack(u, day) {
   };
 }
 /* Лунный день считается по месту рождения из анкеты (там же часовой пояс);
-   без координат — Москва, как и всё остальное время в приложении. */
+   без координат — Москва, как и все остальное время в приложении. */
 function lunarPack(u) {
   try {
     const ld = lunarDay(Date.now(), u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon);
     if (!ld) return null;
     const [title, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', ''];
-    const info = C.LUNAR_INFO.find((d) => d.n === ld.n);   /* тема и картинка — на открытку; само описание экран берёт из /api/lunar-days */
+    const info = C.LUNAR_INFO.find((d) => d.n === ld.n);   /* тема и картинка — на открытку; само описание экран берет из /api/lunar-days */
     return { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || MSK), title, advice,
       theme: info ? info.theme : '', symbol: info ? info.symbol : '', image: info ? info.image : '' };
   } catch (e) { return null; }
 }
 const topicOf = (q) => (C.TOPICS.find(([, re]) => re.test(q)) || ['self'])[0];
-/* «На небе» считает события на 62 дня вперёд — держим результат пять минут на часовой пояс */
+/* «На небе» считает события на 62 дня вперед — держим результат пять минут на часовой пояс */
 const skyMemo = new Map();
 function skyCached(tz) {
   const key = tz + ':' + Math.floor(Date.now() / 300000);
@@ -335,33 +335,33 @@ const testRate = new Map();
 const PUSH_DEVICES = 10;   /* сколько ячеек уведомлений держим у одного аккаунта */
 const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : String(k); } });
 const moodTone = (k) => { const m = C.moodInfo(k); return m ? m.tone : '0'; };
-/* Неделя по отметкам настроения — для «Итогов недели» и отчёта по настроениям */
+/* Неделя по отметкам настроения — для «Итогов недели» и отчета по настроениям */
 function weekSummary(u) {
   const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
   const moods = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day>=? GROUP BY mood ORDER BY c DESC').all(u.id, since);
   const days = db.prepare('SELECT COUNT(DISTINCT day) c FROM moods WHERE user_id=? AND day>=?').get(u.id, since).c;
   const total = moods.reduce((s, m) => s + m.c, 0);
   let summary = '';
-  if (!total) summary = 'На этой неделе вы ещё не отмечали состояние. Одна отметка в день — и через неделю здесь появится картина.';
+  if (!total) summary = 'На этой неделе вы еще не отмечали состояние. Одна отметка в день — и через неделю здесь появится картина.';
   else {
     const top = moods[0];
     const share = Math.round((top.c / total) * 100);
     summary = `Вы отмечались ${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'}. Чаще всего — ${MOOD_RU[top.mood]}: ${share}% отметок.`;
     const plus = moods.filter((m) => moodTone(m.mood) === '+').reduce((s, m) => s + m.c, 0);
     const minus = moods.filter((m) => moodTone(m.mood) === '-').reduce((s, m) => s + m.c, 0);
-    if (plus / total >= 0.6) summary += ' Неделя выдалась ровной и тёплой.';
+    if (plus / total >= 0.6) summary += ' Неделя выдалась ровной и теплой.';
     else if (minus / total >= 0.6) summary += ' Неделя была непростой — это видно по отметкам.';
   }
   return { since, moods, days, total, summary };
 }
-/* ── Привычки: регулярность задаёт человек словами, мы её понимаем ──
+/* ── Привычки: регулярность задает человек словами, мы ее понимаем ──
    daily — каждый день; weekdays — по будням; weekend — по выходным; alt — через день;
    days:1,3,5 — в выбранные дни недели (1 — понедельник); weekly — раз в неделю; times:N — N раз в неделю;
    monthly — раз в месяц. Непонятную формулировку сохраняем как свободный ритм. */
 const validEndDate = (value, today) => ISO_DAY.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value && value >= today;
 
 /* ── пользователь ── */
-/* Фото — картинка до 300 КБ; в объект аккаунта берём только признак, саму картинку читает /api/photo.
+/* Фото — картинка до 300 КБ; в объект аккаунта берем только признак, саму картинку читает /api/photo.
    Колонки перечислены явно (после всех миграций), чтобы SELECT не поднимал и не декодировал фото на каждом запросе */
 const USER_COLS = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name).filter((c) => c !== 'photo').join(', ') + ", (photo <> '') AS photo";
 const userById = (id) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`).get(id);
@@ -391,7 +391,7 @@ const publicUser = (u) => ({
   roles: rolesFor(u.email),   /* сотрудники после входа попадают в кабинет */
 });
 
-/* Тело больше max — не читаем дальше, но соединение не рвём: сначала человеку уходит 413 (см. catch внизу), потом сокет закрывается */
+/* Тело больше max — не читаем дальше, но соединение не рвем: сначала человеку уходит 413 (см. catch внизу), потом сокет закрывается */
 function readBody(req, max = 32768) {
   return new Promise((resolve, reject) => {
     let size = 0, done = false; const chunks = [];
@@ -431,11 +431,11 @@ function natalFor(u) {
   const tzOff = u.tz ? tzOffsetMinutes(u.tz, `${u.birth}T${time || '12:00'}:00`) : 0;
   const chart = natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
   chart.tz = u.tz || ''; chart.city = u.city || ''; chart.cityFound = u.lat != null;
-  chart.tzNote = u.tz ? `${u.tz}, UTC${tzOff >= 0 ? '+' : '−'}${Math.abs(tzOff) / 60}` + (time ? '' : ' (полдень)') : 'пояс не определён — время взято как UTC';
+  chart.tzNote = u.tz ? `${u.tz}, UTC${tzOff >= 0 ? '+' : '−'}${Math.abs(tzOff) / 60}` + (time ? '' : ' (полдень)') : 'пояс не определен — время взято как UTC';
   return chart;
 }
 const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalFor, MOOD_RU, nowISO });
-/* после этих действий полки пересобираются — уже после того, как ответ ушёл человеку; у каждого маршрута — только те полки,
+/* после этих действий полки пересобираются — уже после того, как ответ ушел человеку; у каждого маршрута — только те полки,
    которых он касается: анкета меняет «Обо мне» (с натальной картой) и «Мой день», карта дня и вопросы — день и «Истории»,
    настроение, дневник, желания и практики — только «Мой день» */
 const SHELF_TOUCH = {
@@ -457,7 +457,7 @@ function flushShelves(uid, d) { const p = shelfTimers.get(uid); if (p) { clearTi
 const sweep = () => { try { const n = sweepAbandoned(db); if (n) console.log(`Аккаунты: убрано заброшенных анонимных — ${n}`); } catch (e) { console.log('Аккаунты: уборка не прошла —', e.message); } };
 setTimeout(sweep, 60000).unref();
 setInterval(sweep, 24 * 3600 * 1000).unref();
-/* У тех, кто пришёл раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
+/* У тех, кто пришел раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
 setTimeout(() => {
   const ids = db.prepare('SELECT id FROM users WHERE onboarded = 1 AND id NOT IN (SELECT user_id FROM shelves)').all().map((r) => r.id);
   if (!ids.length) return;
@@ -468,7 +468,7 @@ setTimeout(() => {
 }, 3000).unref();
 
 /* Кабинеты сотрудников — отдельный HTTP-слой со своими зависимостями (backend/http/cabinet-routes.mjs).
-   Собирается здесь, где всё перечисленное уже определено. */
+   Собирается здесь, где все перечисленное уже определено. */
 const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig,
   REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, Backup, W,
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
@@ -484,7 +484,7 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
     let p = url.pathname;
-    /* iOS и Яндекс.Браузер при добавлении на экран «Домой» пробуют /apple-touch-icon.png в корне сайта; nginx отдаёт всё,
+    /* iOS и Яндекс.Браузер при добавлении на экран «Домой» пробуют /apple-touch-icon.png в корне сайта; nginx отдает все,
        что начинается с /app, сюда — поэтому корневая иконка тоже наша, иначе на телефоне вместо луны буква «Л» */
     if (/^\/apple-touch-icon(-precomposed)?(-\d+x\d+)?\.png$/.test(p)) return serveStatic(res, 'assets/apple-touch-icon.png', 86400, req.method === 'HEAD');
     if (p.startsWith(BASE)) p = p.slice(BASE.length) || '/';
@@ -509,7 +509,7 @@ const server = createServer(async (req, res) => {
     }
 
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.
-       Закрыта паролем; личных текстов внутри нет — только счётчики. */
+       Закрыта паролем; личных текстов внутри нет — только счетчики. */
 
 
     /* ── API ── */
@@ -561,7 +561,7 @@ const server = createServer(async (req, res) => {
         if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) return json(res, 400, { ok: false, error: 'bad_email' });
         if (!allowRate(codeRate, clientIp(req), 5)) return json(res, 429, { ok: false, error: 'too_often' });
         /* на один адрес — не больше 3 кодов за окно, а всего с сервера — не больше 200: чужую почту не бомбим,
-           репутацию отправителя не сжигаем, даже если адрес клиента подменён */
+           репутацию отправителя не сжигаем, даже если адрес клиента подменен */
         if (!allowRate(codeRateEmail, email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
         if (Date.now() - codeRateAll.t > RATE_WINDOW_MS) { codeRateAll.n = 0; codeRateAll.t = Date.now(); }
         if (++codeRateAll.n > 200) return json(res, 429, { ok: false, error: 'too_often' });
@@ -583,7 +583,7 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
         /* Код не режем: раньше clean(b.code, 6) обрезал «1234567» до «123456», и подходил не тот код, что в письме.
-           Всё остальное — проверка, привязка аккаунта, новая сессия, погашение кода — одной транзакцией в identity.mjs:
+           Все остальное — проверка, привязка аккаунта, новая сессия, погашение кода — одной транзакцией в identity.mjs:
            отказ посередине больше не оставляет человека без кода и без входа. */
         const r = verifyLogin({
           email, code: typeof b.code === 'string' ? b.code.trim() : '',
@@ -599,7 +599,7 @@ const server = createServer(async (req, res) => {
         /* Кука — только после COMMIT: при откате у человека не должно остаться куки несуществующей сессии. */
         setSessionCookie(res, r.token);
         const account = userById(r.accountId);
-        /* merged остаётся ради уже работающих клиентов: true означало «устройство переключилось на другой аккаунт».
+        /* merged остается ради уже работающих клиентов: true означало «устройство переключилось на другой аккаунт».
            Новое поле state говорит точнее, а transfer — что у гостя остались записи и их можно перенести. */
         const merged = r.state === 'signed_in' || r.state === 'guest_transfer_required';
         return json(res, 200, { ok: true, merged, state: r.state, user: publicUser(account),
@@ -608,7 +608,7 @@ const server = createServer(async (req, res) => {
       }
 
       /* Записи, сделанные до входа, переносятся только по явному согласию: вход в аккаунт — не доказательство,
-         что гостевой дневник принадлежит тому же человеку (общий компьютер). Приглашение подписано и живёт полчаса. */
+         что гостевой дневник принадлежит тому же человеку (общий компьютер). Приглашение подписано и живет полчаса. */
       if (p === '/api/account/transfer' && req.method === 'POST') {
         const b = await readBody(req);
         const offer = readOffer(b.token);
@@ -625,8 +625,8 @@ const server = createServer(async (req, res) => {
       if (p === '/api/auth/session' && req.method === 'GET')
         return json(res, 200, { ok: true, accountId: u.id, signedIn: !!u.email, email: u.email || '' });
 
-      /* Запись дневника по имени операции: повтор с тем же именем возвращает ту же квитанцию и не создаёт дубль.
-         Обычный POST /api/journal остаётся как был — старый клиент ничего не заметит. */
+      /* Запись дневника по имени операции: повтор с тем же именем возвращает ту же квитанцию и не создает дубль.
+         Обычный POST /api/journal остается как был — старый клиент ничего не заметит. */
       if (p === '/api/sync/journal' && req.method === 'POST') {
         const b = await readBody(req);
         try {
@@ -646,7 +646,7 @@ const server = createServer(async (req, res) => {
         clearSessionCookie(res);
         return json(res, 200, { ok: true });
       }
-      /* «Выйти на всех устройствах»: отзыв всех сессий аккаунта — если телефон потерян или токен утёк */
+      /* «Выйти на всех устройствах»: отзыв всех сессий аккаунта — если телефон потерян или токен утек */
       if (p === '/api/auth/logout-all' && req.method === 'POST') {
         const gone = db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id).changes;
         clearSessionCookie(res);
@@ -660,7 +660,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/event' && req.method === 'POST') {
         const b = await readBody(req);
         const type = clean(b.t, 40);
-        if (!CLIENT_EVENTS.has(type)) return json(res, 400, { ok: false });   // подтверждённые действия пишет сам обработчик
+        if (!CLIENT_EVENTS.has(type)) return json(res, 400, { ok: false });   // подтвержденные действия пишет сам обработчик
         track(u, type, clean(b.d, 60));
         if (type === 'lunar_view') {   /* сколько раз открывал лунный день: ряд тем появляется со второго открытия */
           const pr = preferences(u.preferences); if ((pr.lunarViews || 0) < 99) db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify({ ...pr, lunarViews: (pr.lunarViews || 0) + 1 }), u.id);
@@ -699,12 +699,12 @@ const server = createServer(async (req, res) => {
           if (!validPreferences(b)) return json(res,400,{error:'bad_preferences'});
           const prev = preferences(u.preferences), known = new Set([...C.READING_TOPICS].map((t) => t.key));
           const topics = b.topics ? [...new Set(b.topics.filter((k) => known.has(k)))] : (prev.topics || []);
-          /* lunarViews — служебный счётчик, его ведёт сервер по событию lunar_view; с клиента не принимается */
+          /* lunarViews — служебный счетчик, его ведет сервер по событию lunar_view; с клиента не принимается */
           /* tools — какие инструменты человек оставил на экранах; нет поля — стартовый набор из каталога (видимость, не данные) */
           const toolKeys = new Set([...C.TOOLS].map((t) => t.key));
           const tools = Array.isArray(b.tools) ? [...new Set(b.tools.filter((k) => toolKeys.has(k)))] : (prev.tools ?? null);
           const morning = Array.isArray(b.morning) ? [...new Set(b.morning)] : (prev.morning ?? null);   /* плитки утра на «Сегодня» */
-          const value = {theme:b.theme,ritual:b.ritual,topics,topicsAll:b.topicsAll !== undefined ? !!b.topicsAll : !!prev.topicsAll,lunarViews:prev.lunarViews||0,...(tools ? {tools} : {}),...(morning ? {morning} : {}),...(prev.tz ? {tz:prev.tz} : {}),...(Number.isInteger(b.tour) ? {tour:b.tour} : prev.tour ? {tour:prev.tour} : {})};   /* tz — пояс устройства, ведёт сервер по заголовку; tour — подсказки уже показаны */
+          const value = {theme:b.theme,ritual:b.ritual,topics,topicsAll:b.topicsAll !== undefined ? !!b.topicsAll : !!prev.topicsAll,lunarViews:prev.lunarViews||0,...(tools ? {tools} : {}),...(morning ? {morning} : {}),...(prev.tz ? {tz:prev.tz} : {}),...(Number.isInteger(b.tour) ? {tour:b.tour} : prev.tour ? {tour:prev.tour} : {})};   /* tz — пояс устройства, ведет сервер по заголовку; tour — подсказки уже показаны */
           db.prepare('UPDATE users SET preferences=? WHERE id=?').run(JSON.stringify(value),u.id);
           return json(res,200,{preferences:value});
         }
@@ -808,18 +808,18 @@ const server = createServer(async (req, res) => {
       if (p === '/api/mood' && req.method === 'POST') {
         const b = await readBody(req);
         const mood = clean(b.mood, 30);
-        const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* своё слово: «own:собранно» */
+        const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* свое слово: «own:собранно» */
         if (!own && !C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
         db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
         db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);   /* карточка дня показывает все отмеченные */
-        track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* своё слово — личный текст, в аналитику не идёт */
+        track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* свое слово — личный текст, в аналитику не идет */
         const month = d.slice(0, 7);
         const stats = db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, month + '%');
         return json(res, 200, { ok: true, mood, stats, streak: touchStreak(u) });
       }
 
       /* Дневник: обычная запись, благодарность («кому и за что я благодарна сегодня») или ответ на вопрос дня.
-         Всё лежит в одной ленте, вид записи подписан. */
+         Все лежит в одной ленте, вид записи подписан. */
       if (p === '/api/journal') {
         if (req.method === 'PATCH') {
           const b = await readBody(req), text = cleanText(b.text, 2000);
@@ -851,7 +851,7 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { items: rows.map((r) => ({ ...r, text: open_(r.text), title: open_(r.title || '') })), today: !!(kind && rows.find((r) => r.day === d)) });
       }
 
-      /* Фото у желания — картинка для визуализации. Уменьшается в телефоне, хранится как есть, отдаётся только хозяйке. */
+      /* Фото у желания — картинка для визуализации. Уменьшается в телефоне, хранится как есть, отдается только хозяйке. */
       if (p === '/api/wishes/photo') {
         const id = Number(url.searchParams.get('id') || 0);
         if (req.method === 'GET') {
@@ -870,7 +870,7 @@ const server = createServer(async (req, res) => {
         if (req.method === 'DELETE') db.prepare("UPDATE wishes SET photo = '', photo_ts = '' WHERE id = ? AND user_id = ?").run(id, u.id);
         return json(res, 200, { items: wishList(u.id) });
       }
-      /* Своё фото в аккаунте — показывается в кружке в правом верхнем углу */
+      /* Свое фото в аккаунте — показывается в кружке в правом верхнем углу */
       if (p === '/api/photo') {
         if (req.method === 'GET') { const photo = userPhoto(u.id); if (!photo) { res.writeHead(404); return res.end(); } return sendDataUrl(res, photo); }
         if (req.method === 'POST') {
@@ -904,7 +904,7 @@ const server = createServer(async (req, res) => {
         return json(res, 200, entryPage(db,u.id,url.searchParams,open_));
 
 
-      /* Напоминание утром: браузер даёт адрес своей ячейки, мы его храним. */
+      /* Напоминание утром: браузер дает адрес своей ячейки, мы его храним. */
       if (p === '/api/push' && req.method === 'GET')
         return json(res, 200, { key: PUSH.publicKey, on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id=?').get(u.id) });
       if (p === '/api/push' && req.method === 'POST') {
@@ -913,7 +913,7 @@ const server = createServer(async (req, res) => {
         if (!pushEndpointOk(endpoint)) return json(res, 400, { ok: false, error: 'bad_endpoint' });
         const holder = db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(endpoint);
         /* Ячейка уже у другого аккаунта — не перехватываем: иначе тот, кто узнал чужой адрес, молча забрал бы себе
-           чужие уведомления. Выход из аккаунта ячейку НЕ освобождает — её снимает только «выключить уведомления»
+           чужие уведомления. Выход из аккаунта ячейку НЕ освобождает — ее снимает только «выключить уведомления»
            (DELETE /api/push). Поэтому на общем браузере второй человек включит свои после того, как первый выключит
            у себя; приложение так ему и говорит (pushSubscribe в site/app.js, ответ endpoint_taken). */
         if (holder && holder.user_id !== u.id) return json(res, 409, { ok: false, error: 'endpoint_taken' });
@@ -957,7 +957,7 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true, until });
       }
 
-      /* Отчёт по настроениям: неделя по дням, месяц по долям, итог словами */
+      /* Отчет по настроениям: неделя по дням, месяц по долям, итог словами */
       if (p === '/api/mood/report' && req.method === 'GET') {
         const w = weekSummary(u);
         const week = [];
@@ -999,7 +999,7 @@ const server = createServer(async (req, res) => {
         if (r.ok) track(u, 'reminder_test', b.feature);
         return json(res, r.ok ? 200 : 400, r);
       }
-      /* сигнал пришёл — service worker забирает тексты, которые ещё не показывал на этом устройстве */
+      /* сигнал пришел — service worker забирает тексты, которые еще не показывал на этом устройстве */
       if (p === '/api/push/next' && req.method === 'POST') {
         const b = await readBody(req);
         const endpoint = clean(b.endpoint, 500);
@@ -1043,7 +1043,7 @@ const server = createServer(async (req, res) => {
         return json(res, 200, {
           total, rings, you: a.name, other: o.name,
           // черта знака в контенте может уже начинаться с «вы …» — не дублируем обращение
-          text: `${a.name} и ${o.name}. ${/^вы\s/i.test(a.trait) ? a.trait[0].toUpperCase() + a.trait.slice(1) : 'Вы ' + a.trait}; партнёр — ${o.trait}. Это союз, который растёт, когда каждый уважает темп другого.`,
+          text: `${a.name} и ${o.name}. ${/^вы\s/i.test(a.trait) ? a.trait[0].toUpperCase() + a.trait.slice(1) : 'Вы ' + a.trait}; партнер — ${o.trait}. Это союз, который растет, когда каждый уважает темп другого.`,
         });
       }
 
@@ -1076,7 +1076,7 @@ const server = createServer(async (req, res) => {
 
     /* ── статика ── */
     /* картинки контента: /app/content/tarot/fool.jpg → <папка контента>/картинки/таро/fool.jpg.
-       Папка контента живёт отдельно от кода (на сервере — /opt/lunario-content) и в git не попадает. */
+       Папка контента живет отдельно от кода (на сервере — /opt/lunario-content) и в git не попадает. */
     if (p.startsWith('/content/') && (req.method === 'GET' || req.method === 'HEAD')) {
       const [kind, file] = p.slice('/content/'.length).split('/');
       const dir = IMAGE_DIRS[kind];

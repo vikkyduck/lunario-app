@@ -6,8 +6,8 @@ let S = { user:null, day:null, mood:null, limits:null, mode:'yesno', flipped:fal
 const IOS_SHELL = document.documentElement.className.indexOf('ios-shell') !== -1;
 function nativePost(m){ try{ window.webkit.messageHandlers.lunario.postMessage(m); return true; }catch(e){ return false; } }
 const DEVICE_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })();
-/* Сервер перезапускается при выкладке на пару секунд — чтение не падает, а пробует ещё раз (502/503/504 или обрыв связи).
-   Только для GET: повтор записи мог бы продублировать её. */
+/* Сервер перезапускается при выкладке на пару секунд — чтение не падает, а пробует еще раз (502/503/504 или обрыв связи).
+   Только для GET: повтор записи мог бы продублировать ее. */
 const RETRY_STATUS = new Set([502, 503, 504]), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const api = async (path, opts) => {
   const init = Object.assign({ headers:{'Content-Type':'application/json', 'X-Tz': DEVICE_TZ} }, opts);   /* «сегодня» считается по поясу устройства */
@@ -69,10 +69,10 @@ document.addEventListener('pointermove',(e)=>{
     lightFrame=0;
   });
 },{passive:true});
-/* Вибрация: tap — нажатие, ok — сохранено, done — шаг завершён */
+/* Вибрация: tap — нажатие, ok — сохранено, done — шаг завершен */
 const HAP = { tap: 9, ok: [0, 12], done: [0, 14, 45, 22] };
 function hap(kind = 'tap'){
-  // в оболочке вибрация идёт через Taptic Engine — navigator.vibrate на iOS не работает
+  // в оболочке вибрация идет через Taptic Engine — navigator.vibrate на iOS не работает
   if (IOS_SHELL && nativePost({ type:'haptic', kind: kind === 'tap' ? 'tap' : 'success' })) return;
   try{ if(navigator.vibrate) navigator.vibrate(HAP[kind] || HAP.tap); }catch(e){}
 }
@@ -117,7 +117,7 @@ function openLogin(){
   go('login'); track('login_open');
 }
 
-/* ── реестр функций: раздел и название панели, где живёт (view), полноэкранная практика (page), ключ напоминания (reminder).
+/* ── реестр функций: раздел и название панели, где живет (view), полноэкранная практика (page), ключ напоминания (reminder).
    Отсюда — заголовки, строка уведомлений под заголовком, полный экран и переход по ?open= из уведомления. ── */
 const FEATURES = {
   card:{sec:'Сегодня',title:'Карта дня',view:'home'}, mood:{sec:'Дневник',title:'Настроение дня',view:'history'},
@@ -135,7 +135,7 @@ const FEATURES = {
   skyplace:{sec:'Аккаунт',title:'Геолокация',view:'account'}, appinfo:{sec:'Аккаунт',title:'О приложении',view:'account'}, terms:{sec:'Аккаунт',title:'Условия использования',view:'account'},
   askDate:{sec:'Взять аскезу',title:'Передвинуть дату'},
 };
-/* Цель из ?open= в уведомлении: ключ функции или ключ её напоминания (moodreport → История настроений) */
+/* Цель из ?open= в уведомлении: ключ функции или ключ ее напоминания (moodreport → История настроений) */
 function openTarget(key){
   if(key==='news')return ['news',''];
   if(key==='today'||key==='morning')return ['home',''];          /* утренний пуш — на «Сегодня» */
@@ -195,7 +195,7 @@ document.addEventListener('keydown',e=>{
 });
 function focusSelectedTab(label){document.querySelector('.segmented[aria-label="'+label+'"] [aria-selected="true"]')?.focus({preventScroll:true});}
 
-/* ── натальная карта: расчёт на сервере, здесь только вывод ── */
+/* ── натальная карта: расчет на сервере, здесь только вывод ── */
 let natalCache = null;
 /* ── руна дня: одна на день, тянется на сервере при первом открытии и дальше показывается та же ── */
 async function loadDayRune(){
@@ -204,7 +204,7 @@ async function loadDayRune(){
     const [r]=await Promise.all([api('/dayrune',{method:'POST'}),loadCatalog()]);
     box.innerHTML=runesHtml({layout:'one',runes:[r.rune.slug],live:[r.rune],q:'',day:r.day});preparePending();
     const sub=$('t-runesub');if(sub)sub.textContent=`${r.rune.name}${r.rune.keyword?' · '+r.rune.keyword:''}`;
-  }catch(e){box.innerHTML='<p class="msg err">Не получилось вытянуть руну. Попробуйте ещё раз.</p>';}
+  }catch(e){box.innerHTML='<p class="msg err">Не получилось вытянуть руну. Попробуйте еще раз.</p>';}
 }
 async function loadNatal(){
   const box = $('natal-box');
@@ -214,7 +214,7 @@ async function loadNatal(){
     const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
     const points = c.points && c.points.length ? `<h3 class="mt-4">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
     const houses = c.houses ? `<h3 class="mt-4">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.signOf)}</small></td></tr>`).join('')}</tbody></table>`
-      : `<div class="card mt-3"><p>${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: её знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? (c.city ? `Город «${esc(c.city)}» не нашёлся в базе — откройте анкету и выберите его из подсказок, по нему считаются дома и часовой пояс. ` : 'Укажите город рождения в аккаунте — по нему считаются дома и часовой пояс. ') : ''}<button data-on="click:closeWidget-go-account-openWidget-edit" class="btn ghost sm mt-3">Дополнить анкету</button></p></div>`;
+      : `<div class="card mt-3"><p>${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: ее знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? (c.city ? `Город «${esc(c.city)}» не нашелся в базе — откройте анкету и выберите его из подсказок, по нему считаются дома и часовой пояс. ` : 'Укажите город рождения в аккаунте — по нему считаются дома и часовой пояс. ') : ''}<button data-on="click:closeWidget-go-account-openWidget-edit" class="btn ghost sm mt-3">Дополнить анкету</button></p></div>`;
     const aspects = c.aspects.length ? `<h3 class="mt-4">Аспекты</h3><div class="hbars mt-2">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small class="faint">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
     const sun = c.planets[0], moon = c.planets[1];
     box.innerHTML = `<div class="card sec"><p class="eyebrow">Западная традиция · тропический зодиак${c.houses ? ' · ' + esc(c.houses.system) : ''}</p>
@@ -222,8 +222,8 @@ async function loadNatal(){
         <p class="hint">${fmtDay(c.input.birth)}${c.timeKnown ? ' ' + c.input.time : ' · время не указано'}${c.city ? ' · ' + esc(c.city) : ''}${c.hasPlace ? ` (${c.input.lat.toFixed(2)}°, ${c.input.lon.toFixed(2)}°)` : ''} · ${esc(c.tzNote || '')} · UTC ${c.input.utc}</p></div>
       <h3 class="mt-4">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
       ${points}${houses}${aspects}
-      <p class="hint mt-3">${esc(c.precision)} Трактовка карты появится позже — сейчас важно, что расчёт верный.</p>`;
-  }catch(e){ box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без неё карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
+      <p class="hint mt-3">${esc(c.precision)} Трактовка карты появится позже — сейчас важно, что расчет верный.</p>`;
+  }catch(e){ box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без нее карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
 }
 
 /* ── чат с поддержкой: список обращений, новое обращение, переписка ── */
@@ -274,7 +274,7 @@ async function supThread(id){
     const th = $('sup-thread'); th.scrollTop = th.scrollHeight;
     $('h-supdot').hidden = true;
     supTimer = setTimeout(()=>{ if(supTicket===id && wgOpen==='support') supThread(id); }, 15000);   /* пока чат открыт — обновляем раз в 15 секунд */
-  }catch(e){ if(supTicket!==id||wgOpen!=='support')return;const msg=$('sup-msg2');if(msg)msg.textContent='Не удалось обновить сообщения. Ваш текст сохранён в поле';else box.innerHTML='<p class="msg err">Не получилось открыть обращение. <button data-on="click:supThread-a0" data-a0="'+id+'" class="text-action">Повторить</button></p>'; }
+  }catch(e){ if(supTicket!==id||wgOpen!=='support')return;const msg=$('sup-msg2');if(msg)msg.textContent='Не удалось обновить сообщения. Ваш текст сохранен в поле';else box.innerHTML='<p class="msg err">Не получилось открыть обращение. <button data-on="click:supThread-a0" data-a0="'+id+'" class="text-action">Повторить</button></p>'; }
 }
 async function supSend(id){
   const text = $('sup-reply').value.trim(), msg = $('sup-msg2'); showMsg(msg); if(!text) return;
@@ -295,7 +295,7 @@ async function exportPersonalData(){
   try{const r=await fetch(API+'/data/export.pdf');if(r.status===401){location.reload();return;}if(!r.ok)throw new Error('export');
     const blob=await r.blob(),url=URL.createObjectURL(blob);   /* читаемый PDF в стиле Лунарио; JSON для переноса — GET /api/data/export */
     const link=document.createElement('a');link.href=url;link.download='lunario-'+S.day.date+'.pdf';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Файл с вашими данными подготовлен');
-  }catch(e){toast('Не удалось скачать данные. Попробуйте ещё раз');}finally{exportPersonalData.busy=false;}
+  }catch(e){toast('Не удалось скачать данные. Попробуйте еще раз');}finally{exportPersonalData.busy=false;}
 }
 
 /* ── главная ── */
@@ -324,20 +324,22 @@ function paintHomeLater(d){
 function paintPushNudge(){
   const box = $('home-push'); if (!box) return;
   const due = pushNudgeDue(); box.hidden = !due; if (!due) { box.innerHTML = ''; return; }
-  box.innerHTML = Notification.permission === 'denied'
+  box.innerHTML = !PUSH_OK
+    ? `<button data-on="click:openWidget-remind" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>Придут с экрана «Домой»</b><span class="later-go">Как добавить →</span></button>`
+    : Notification.permission === 'denied'
     ? `<button data-on="click:openWidget-remind" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>В этом браузере запрещены</b><span class="later-go">Как разрешить →</span></button>`
     : `<button data-on="click:homePushConnect" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>На этом устройстве не подключены</b><span class="later-go">Включить →</span></button>`;
 }
 /* Расписание есть, а уведомления сюда не приходят: ячейка пропала после переустановки на экран «Домой» или это новый браузер.
    Показываем, когда настройки уже загружены и разрешение не запрещено; после подключения строка исчезает. */
 function pushNudgeDue(){
-  if (!S.rem || !PUSH_OK) return false;
+  if (!S.rem || IOS_SHELL || (!PUSH_OK && !IS_IOS)) return false;   /* iPhone в Safari — тоже показываем: там путь через экран «Домой» */
   return Object.values(S.rem).some((r) => r.enabled) && !remDeviceReady();
 }
 async function homePushConnect(){
   const btn = $('push-nudge'); if (!btn || btn.disabled) return; btn.disabled = true;
   try { if (await connectPushDevice()) { toast('Уведомления подключены'); track('push_on', 'home'); } }
-  catch (e) { toast('Не удалось подключить уведомления. Попробуйте ещё раз'); }
+  catch (e) { toast('Не удалось подключить уведомления. Попробуйте еще раз'); }
   finally { paintPushNudge(); REM_ORDER.forEach(paintRem); }
 }
 function goDayCard(){ go('history'); requestAnimationFrame(() => $('day-card')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }
@@ -364,14 +366,14 @@ function paintHome(){
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
   if ($('ac-cabs')) $('ac-cabs').hidden = !staff; document.body.classList.toggle('staff', staff);   /* вход в кабинеты — строкой в Аккаунте, шапка без второго кружка */
-  $('h-moon').innerHTML = esc(d.moon) + (d.lunar ? ' · <span class="nowrap">' + esc(ordinal(d.lunar.n)) + ' лунный день</span>' : '');   /* «6-й» не рвётся по дефису */
+  $('h-moon').innerHTML = esc(d.moon) + (d.lunar ? ' · <span class="nowrap">' + esc(ordinal(d.lunar.n)) + ' лунный день</span>' : '');   /* «6-й» не рвется по дефису */
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
   moonSetPhase(d.moonPhase);
 }
 function updatePracticeStatus(key, value){
   document.querySelectorAll('[data-status="'+key+'"]').forEach(el=>el.textContent=value);
 }
-/* Точка у аватара: «Новое в приложении» этого месяца ещё не открывали */
+/* Точка у аватара: «Новое в приложении» этого месяца еще не открывали */
 const newsSeen=()=>{ try{ return localStorage.getItem('lun_news_seen')===S.day.date.slice(0,7); }catch(e){ return true; } };
 function paintNewsDot(){ const seen=newsSeen(); document.querySelectorAll('.news-dot').forEach(dot=>{dot.hidden=seen;}); }
 function markNewsSeen(){ try{ localStorage.setItem('lun_news_seen',S.day.date.slice(0,7)); }catch(e){} paintNewsDot(); }
@@ -417,7 +419,7 @@ function paintToday(){
   }).join('');
   $('t-daysub').textContent=d.forecast.title;
   if($('t-skysub'))$('t-skysub').textContent=d.sky?.title||'Фазы Луны, затмения, ретроградные планеты';   /* то же событие, что в утреннем пуше */
-  if(d.card&&d.cardOpened&&!S.flipped)showFlipped();   /* карту уже открывали — панель показывает её; вытянутая утром ждёт переворота */
+  if(d.card&&d.cardOpened&&!S.flipped)showFlipped();   /* карту уже открывали — панель показывает ее; вытянутая утром ждет переворота */
   if($('t-runesub'))$('t-runesub').textContent=d.rune?`${d.rune.name}${d.rune.keyword?' · '+d.rune.keyword:''}`:'Одна руна на день: образ и совет';
   if($('t-tonesub'))$('t-tonesub').textContent=d.question||'Вопрос по теме дня — ответ вечером в дневнике';
   if (wgOpen === 'tone') paintTone();
@@ -453,7 +455,7 @@ function blocksHtml(blocks){
   for (const b of blocks || []) {
     if (b.t === 'li') {
       const tag = b.n ? 'ol' : 'ul';
-      if (b.lvl && list && list.tag !== 'table') {          /* вложенный пункт живёт внутри предыдущего */
+      if (b.lvl && list && list.tag !== 'table') {          /* вложенный пункт живет внутри предыдущего */
         if (!list.sub) { out.push('<ul>'); list.sub = true; }
         out.push(`<li>${inl(b.text)}</li>`); continue;
       }
@@ -470,7 +472,7 @@ function blocksHtml(blocks){
   }
   close(); return out.join('');
 }
-/* Год живёт от дня рождения до дня рождения — так и подписываем:
+/* Год живет от дня рождения до дня рождения — так и подписываем:
    «с 6 апреля 2026 по 5 апреля 2027», строкой ниже — «с 6 апреля 2027 по 5 апреля 2028 — год 3» */
 const ruDate = (d, withYear) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}) }).replace(/\s*г\.$/, '');
 const dayBefore = (d) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() - 1); return t.toISOString().slice(0, 10); };
@@ -503,7 +505,7 @@ function askErrorText(e){
   if(e.code==='limit') track('spread_limit');
   return e.code==='limit' ? 'Разборы на сегодня закончились. Карта дня, «Да/Нет» и руны остаются без ограничений.'
     : e.code==='short_question' ? 'Напишите вопрос целиком, так вы потом вспомните, что вас волновало.'
-    : 'Не получилось. Попробуйте ещё раз.';
+    : 'Не получилось. Попробуйте еще раз.';
 }
 $('a-go').onclick=async()=>{
   const q=$('a-q').value.trim(), msg=$('a-msg'); showMsg(msg);
@@ -519,10 +521,10 @@ $('a-go').onclick=async()=>{
    Три места отличаются только контейнером и тем, что делать после проверки кода (onDone). ── */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
 const AUTH_ERRORS = {
-  send: { too_often: 'Слишком часто. Попробуйте через несколько минут.', mail_off: 'Отправка почты ещё не настроена.', send_failed: 'Письмо не ушло. Проверьте адрес или попробуйте позже.', _: 'Не получилось отправить код.' },
-  verify: { wrong_code: 'Код не подошёл. Проверьте письмо.', expired: 'Код истёк — запросите новый.', too_many: 'Слишком много попыток. Запросите новый код.', _: 'Не получилось войти.' },
+  send: { too_often: 'Слишком часто. Попробуйте через несколько минут.', mail_off: 'Отправка почты еще не настроена.', send_failed: 'Письмо не ушло. Проверьте адрес или попробуйте позже.', _: 'Не получилось отправить код.' },
+  verify: { wrong_code: 'Код не подошел. Проверьте письмо.', expired: 'Код истек — запросите новый.', too_many: 'Слишком много попыток. Запросите новый код.', _: 'Не получилось войти.' },
   /* тот же код, но другое дело: здесь отказ означает, что аккаунт остался на месте */
-  del: { wrong_code: 'Код не подошёл — аккаунт не удалён.', expired: 'Код истёк — начните удаление заново.', too_many: 'Слишком много попыток. Начните удаление заново.', no_code: 'Код не найден — начните удаление заново.', _: 'Не получилось удалить аккаунт.' },
+  del: { wrong_code: 'Код не подошел — аккаунт не удален.', expired: 'Код истек — начните удаление заново.', too_many: 'Слишком много попыток. Начните удаление заново.', no_code: 'Код не найден — начните удаление заново.', _: 'Не получилось удалить аккаунт.' },
 };
 const authErrorText = (e, step) => AUTH_ERRORS[step][e && e.code] || AUTH_ERRORS[step]._;
 /* сотрудник: кабинет открывается по умолчанию, пока человек не нажал «В приложение» — выбор запоминается на устройстве */
@@ -583,8 +585,8 @@ function renderAuth(){
     S.user = r.user; toast('Почта сохранена — доступ не потеряется'); renderAuth(); loadAccount();
   } });
 }
-/* До анкеты — «Уже пользовались?» на анкете и экран входа: профиль нашёлся — перезагрузка открывает приложение;
-   почта новая — привязана к этому устройству, остаётся заполнить анкету (почту в ней уже не спрашиваем) */
+/* До анкеты — «Уже пользовались?» на анкете и экран входа: профиль нашелся — перезагрузка открывает приложение;
+   почта новая — привязана к этому устройству, остается заполнить анкету (почту в ней уже не спрашиваем) */
 function obDone(r){
   if (r.user && r.user.onboarded) { location.reload(); return; }
   S.user = r.user;
@@ -641,7 +643,7 @@ async function saveWeekReflection(){
   if(saveWeekReflection.busy||!WK.data)return;saveWeekReflection.busy=true;const btn=$('wk-reflect-save');btn.disabled=true;
   try{const r=await api('/week/reflect',{method:'POST',body:JSON.stringify({week:WK.data.week.start,text:$('wk-reflect').value})});WK.data.reflection=r;
     $('wk-reflect-state').textContent=r.text?'Сохранено ✦ Строка в дневнике под датой воскресенья':'Строка снята';hap('ok');XP.timeline.dirty=true;}
-  catch(e){$('wk-reflect-state').textContent='Не удалось сохранить. Текст остался в поле — попробуйте ещё раз';}
+  catch(e){$('wk-reflect-state').textContent='Не удалось сохранить. Текст остался в поле — попробуйте еще раз';}
   finally{saveWeekReflection.busy=false;btn.disabled=false;}
 }
 /* по воскресеньям и понедельникам «Моя неделя» — первой плиткой Дневника */
@@ -683,7 +685,7 @@ async function addWish(){
 async function toggleWish(id){
   hap();
   try { renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
-  catch(e){ toast('Не удалось изменить отметку желания. Попробуйте ещё раз.'); }
+  catch(e){ toast('Не удалось изменить отметку желания. Попробуйте еще раз.'); }
 }
 /* Подсказки и диктовка — в «Записать мысль» (j) и в первой ячейке карточки дня (dc): одна механика, разные поля */
 const DICT_SCOPES={j:{text:'j-text',btn:'j-dictate',note:'j-speech-note'},dc:{text:'dc-text',btn:'dc-dictate',note:'dc-speech-note'}};
@@ -709,13 +711,13 @@ function journalDictate(scope='j'){
   const rec=new Recognition();journalSpeech=rec;rec.lang='ru-RU';rec.interimResults=false;
   $(c.btn).textContent='Остановить диктовку';$(c.btn).setAttribute('aria-pressed','true');
   rec.onresult=e=>{if(journalSpeech!==rec)return;const el=$(c.text);for(let i=e.resultIndex||0;i<e.results.length;i++)if(e.results[i].isFinal!==false)el.value+=(el.value.trim()?' ':'')+e.results[i][0].transcript;el.value=el.value.slice(0,2000);growTextarea(el);};
-  rec.onerror=e=>{if(journalSpeech!==rec||e.error==='aborted')return;toast(e.error==='not-allowed'?'Разрешите микрофон в настройках браузера или используйте клавиатуру':'Не удалось распознать речь. Попробуйте ещё раз');};
+  rec.onerror=e=>{if(journalSpeech!==rec||e.error==='aborted')return;toast(e.error==='not-allowed'?'Разрешите микрофон в настройках браузера или используйте клавиатуру':'Не удалось распознать речь. Попробуйте еще раз');};
   rec.onend=()=>{if(journalSpeech!==rec)return;journalSpeech=null;prepareDictation();};
   try{rec.start();}catch(e){stopJournalDictation();toast('Не удалось включить диктовку');}
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&journalSpeech)stopJournalDictation();});
 async function compat(){
-  const b=$('m-cdate').value; if(!b){ toast('Укажите дату партнёра'); return; }
+  const b=$('m-cdate').value; if(!b){ toast('Укажите дату партнера'); return; }
   try{
     const r=await api('/compat',{method:'POST',body:JSON.stringify({birth:b})});
     $('m-cres').style.display='block';
@@ -763,7 +765,7 @@ attachCity('o-city','o-city-list','o-geo');
 $('o-go').onclick=async()=>{
   const msg=$('o-msg'); showMsg(msg);
   const birth=$('o-birth').value;
-  if(!birth){ showMsg(msg, 'Укажите дату рождения — без неё подсказки будут общими.', true); return; }
+  if(!birth){ showMsg(msg, 'Укажите дату рождения — без нее подсказки будут общими.', true); return; }
   const email=$('o-email').value.trim().toLowerCase();
   if(S.mailReady && !EMAIL_RE.test(email)){ showMsg(msg, 'Проверьте адрес почты.', true); return; }
   if(!$('o-consent').checked){ showMsg(msg, 'Чтобы продолжить, подтвердите согласие на обработку данных.', true); return; }
@@ -779,16 +781,16 @@ $('o-go').onclick=async()=>{
     }catch(e){
       last=e;
       if (e.status) break;
-      if (attempt===1){ $('o-go').textContent='Связь прервалась, пробуем ещё раз…'; await new Promise(r=>setTimeout(r,1200)); }
+      if (attempt===1){ $('o-go').textContent='Связь прервалась, пробуем еще раз…'; await new Promise(r=>setTimeout(r,1200)); }
     }
   }
   $('o-go').disabled=false; $('o-go').textContent='Открыть мой день';
   showMsg(msg, last && last.code==='no_consent' ? 'Подтвердите согласие на обработку данных.'
     : last && last.code==='bad_birth' ? 'Проверьте дату рождения.'
     : last && last.status ? 'Сервер не принял анкету. Напишите нам, если повторится.'
-    : 'Не удалось связаться с сервером — похоже, пропала сеть. Данные не потеряны: нажмите ещё раз.', true);
+    : 'Не удалось связаться с сервером — похоже, пропала сеть. Данные не потеряны: нажмите еще раз.', true);
 };
-/* В анкете указана почта: код — на том же экране; не ушёл — не держим человека на пороге, почту можно привязать в «Аккаунте» */
+/* В анкете указана почта: код — на том же экране; не ушел — не держим человека на пороге, почту можно привязать в «Аккаунте» */
 async function obSendCode(email){
   try { await requestCode(email); }
   catch (e) { toast(authErrorText(e, 'send')); finishOnboarding(); return; }
@@ -801,7 +803,7 @@ async function obSendCode(email){
 }
 
 /* ── разделы: данные подгружаются при входе ── */
-/* На экране «Дневник» видны лента и счётчик желаний; итоги, вопросы и записи виджеты грузят сами при открытии */
+/* На экране «Дневник» видны лента и счетчик желаний; итоги, вопросы и записи виджеты грузят сами при открытии */
 function loadHistory(){ if(!XP.timeline.items.length||XP.timeline.dirty)loadTimeline(); loadWishes(); loadDayCard(); paintWeekTop(); }
 
 /* ══════════ Карточка дня «Запомнить этот день»: ячейки-вопросы, настроение, привычки, аскеза — один запрос, разные типы ══════════ */
@@ -809,7 +811,7 @@ const DC={state:null,moods:new Set(),own:'',habits:new Map(),askesis:new Map()};
 async function loadDayCard(){
   if(!$('day-card'))return;
   try{ DC.state=await api('/day'); paintDayCard(); }
-  catch(e){ if($('dc-state'))$('dc-state').textContent='Не удалось загрузить сегодняшний день. Попробуйте ещё раз'; }
+  catch(e){ if($('dc-state'))$('dc-state').textContent='Не удалось загрузить сегодняшний день. Попробуйте еще раз'; }
 }
 function paintDayCard(){
   const s=DC.state;if(!s||!$('day-card'))return;
@@ -844,8 +846,8 @@ async function saveDayCard(){
   const body={text:$('dc-text').value,gratitude:$('dc-grat').value,answer:$('dc-answer').value,question:DC.state.question,moods:[...DC.moods,...own],
     habits:[...DC.habits].map(([id,done])=>({id,done})),askesis:[...DC.askesis].map(([id,v])=>({id,...(v.kept===null?{}:{kept:v.kept}),note:v.note||''}))};
   try{ DC.state=await api('/day',{method:'POST',body:JSON.stringify(body)}); paintDayCard(); hap('done');
-    $('dc-state').textContent='День сохранён ✦ Можно дополнить до полуночи'; toast('День сохранён ✦'); XP.timeline.dirty=true; loadTimeline(); S.mood=DC.state.moods[0]||null; if(S.day&&DC.state.saved.length){S.day.remembered=true;paintHomeLater(S.day);} }
-  catch(e){ $('dc-state').textContent='Не удалось сохранить. Всё написанное осталось в полях — попробуйте ещё раз'; }
+    $('dc-state').textContent='День сохранен ✦ Можно дополнить до полуночи'; toast('День сохранен ✦'); XP.timeline.dirty=true; loadTimeline(); S.mood=DC.state.moods[0]||null; if(S.day&&DC.state.saved.length){S.day.remembered=true;paintHomeLater(S.day);} }
+  catch(e){ $('dc-state').textContent='Не удалось сохранить. Все написанное осталось в полях — попробуйте еще раз'; }
   finally{ saveDayCard.busy=false; btn.disabled=false; btn.textContent='Запомнить этот день'; }
 }
 const loadWishes=()=>api('/wishes').then(renderWishes).catch(()=>{});
@@ -857,7 +859,7 @@ function loadAccount(){
   const u=S.user; paintAvatar();
   $('ac-name').textContent=u.name||'Мой профиль';
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
-  $('ac-mail-sub').textContent=u.email||'Сохранённые записи доступны на других устройствах';   /* почта, по которой вошли, — прямо в ряду «Вход по почте» */
+  $('ac-mail-sub').textContent=u.email||'Сохраненные записи доступны на других устройствах';   /* почта, по которой вошли, — прямо в ряду «Вход по почте» */
 }
 function loadJournal(){
   api('/journal').then(r=>{
@@ -898,11 +900,11 @@ async function saveProfile(){
     toast('Данные обновлены'); closeWidget();
     paintHome(); paintToday(); loadAccount();
   }catch(e){
-    showMsg(msg, e.code==='bad_birth' ? 'Проверьте дату рождения.' : 'Не получилось сохранить. Попробуйте ещё раз.', true);
+    showMsg(msg, e.code==='bad_birth' ? 'Проверьте дату рождения.' : 'Не получилось сохранить. Попробуйте еще раз.', true);
   }
 }
 /* Удаление необратимо, поэтому у аккаунта с почтой оно подтверждается кодом из письма — как и вход.
-   Аккаунту без почты подтверждать нечем: остаётся только вопрос на экране. */
+   Аккаунту без почты подтверждать нечем: остается только вопрос на экране. */
 async function wipe(what){
   const isAcc=what==='account';
   if(!confirm(isAcc?'Удалить аккаунт и все данные? Это необратимо.':'Очистить всю историю вопросов, дневник и желания?')) return;
@@ -924,13 +926,13 @@ async function wipe(what){
 
 /* ── установка на телефон ── */
 let deferred=null;
-window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); $('t-install').hidden=false; });   /* строка, как остальные: раскладку задаёт CSS, не inline display */
+window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); $('t-install').hidden=false; });   /* строка, как остальные: раскладку задает CSS, не inline display */
 async function installApp(){ if(!deferred) return; track('installed'); deferred.prompt(); await deferred.userChoice; deferred=null; $('t-install').hidden=true; }
 
 /* ══════════ Карты Таро и руны: каталог, результаты, история, открытки ══════════ */
 /* Каталог: тексты и картинки карт и рун приходят одним запросом и дальше живут в памяти.
    Ответы сервера несут только коды и названия — по кодам экран находит полные тексты. */
-/* Последний удачный каталог остаётся в браузере: без сети настроения, награды и вопросы берутся из него,
+/* Последний удачный каталог остается в браузере: без сети настроения, награды и вопросы берутся из него,
    а не из копий справочников в коде — источник у контента один, content.mjs. */
 const catalogFrom = (c) => ({ cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
   news: c.news || [], quickMoods: c.quickMoods || [], moods: c.moods || [], moodFamilies: c.moodFamilies || {}, legacyMoods: c.legacyMoods || {},
@@ -1017,7 +1019,7 @@ async function openCard(){
     paintCard(); hap('ok');
     showFlipped();
     setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
-  }catch(e){ toast('Не получилось открыть карту — попробуйте ещё раз'); $('t-open').disabled = false; }
+  }catch(e){ toast('Не получилось открыть карту — попробуйте еще раз'); $('t-open').disabled = false; }
   S.opening = false;
 }
 
@@ -1091,7 +1093,7 @@ function yesnoHtml(p){
 }
 
 /* ── свериться: способ и расклад ── */
-const LABELS = { yesno: 'О чём спрашиваете', rune: 'О чём спрашиваете руны', spread: 'Ваш вопрос к картам' };
+const LABELS = { yesno: 'О чем спрашиваете', rune: 'О чем спрашиваете руны', spread: 'Ваш вопрос к картам' };
 const MODE_TITLE = { yesno: 'Да / Нет', rune: 'Руны', spread: 'Таро' };
 const LAYOUT_ORDER = { rune: ['one', 'three', 'cross', 'elements'], spread: ['three', 'fork', 'celtic'] };
 function openAsk(m){ setMode(m); openWidget('ask', MODE_TITLE[m]); setTimeout(() => $('a-q').focus(), 350); }
@@ -1155,7 +1157,7 @@ async function loadEntries(more=false){
     if(request!==entriesView.request)return;
     S.entries=more?[...(S.entries||[]),...r.items]:r.items;entriesView.next=r.next??null;
     box.innerHTML=S.entries.map((i,n)=>`<div class="item hist" id="he-${n}"><button data-on="click:toggleEntry-a0" data-a0="${n}" class="histhead" type="button" aria-expanded="false" aria-controls="hb-${n}"><span><b>${esc(i.question||i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question&&i.title.length<=48?' · '+esc(i.title):''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
-      || `<p class="hint">${entriesView.kind==='questions'?'Здесь появятся ваши вопросы и ответы. Карты дня доступны в соседней вкладке.':entriesView.kind==='card'?'Вы ещё не открывали карту дня.':'Записей пока нет.'}</p>`;
+      || `<p class="hint">${entriesView.kind==='questions'?'Здесь появятся ваши вопросы и ответы. Карты дня доступны в соседней вкладке.':entriesView.kind==='card'?'Вы еще не открывали карту дня.':'Записей пока нет.'}</p>`;
     $('entries-more').hidden=entriesView.next===null;
   }catch{
     if(request!==entriesView.request)return;
@@ -1302,9 +1304,9 @@ async function drawPostcard(p){
         pcGlyph(ctx, it.path, x + cw / 2, y + ch / 2, 150, 12);
       }
       const P = L.pos[i] || {};
-      if (across) {   /* карта поперёк первой: подпись — в пустом углу схемы */
+      if (across) {   /* карта поперек первой: подпись — в пустом углу схемы */
         const lx = x0 + (3 * cw + 2 * gap) / 2, ly = y0 + 3 * (ch + lab + gap) + ch / 2 - 10;
-        const yy = drawText(ctx, '2 · ' + (P.name || '') + ' · поперёк первой', lx, ly, { size: 17, color: '#b9b2cf', maxW: 3 * cw + 2 * gap, lh: 1.15 });
+        const yy = drawText(ctx, '2 · ' + (P.name || '') + ' · поперек первой', lx, ly, { size: 17, color: '#b9b2cf', maxW: 3 * cw + 2 * gap, lh: 1.15 });
         drawText(ctx, it.name, lx, yy + 2, { size: 19, weight: 600, color: '#e9c77e', maxW: 3 * cw + 2 * gap, lh: 1.1 });
         continue;
       }
@@ -1336,7 +1338,7 @@ async function savePostcard(id){
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: 'Лунарио' }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
   }
-  /* Safari без меню: показываем картинку — её можно зажать и сохранить в Фото */
+  /* Safari без меню: показываем картинку — ее можно зажать и сохранить в Фото */
   if (IS_IOS) { showPostcard(await blobToDataUrl(p.blob)); return; }
   const url = URL.createObjectURL(p.blob); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000); toast('Открытка сохранена в загрузки');
@@ -1374,7 +1376,7 @@ async function syncPushDevice(){
   if (!PUSH_OK || Notification.permission !== 'granted') return;
   try {
     const reg = await withTimeout(navigator.serviceWorker.getRegistration('/app/'));
-    /* Разрешение уже дано, а ячейки нет (переустановили на экран «Домой», браузер её сбросил) — заводим новую без вопросов:
+    /* Разрешение уже дано, а ячейки нет (переустановили на экран «Домой», браузер ее сбросил) — заводим новую без вопросов:
        спрашивать заново нечего, а без ячейки напоминания молча не приходят. */
     const sub = reg && (await withTimeout(reg.pushManager.getSubscription())
       || (S.pushKey && await withTimeout(reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:toBytes(S.pushKey) }))));
@@ -1387,18 +1389,42 @@ async function syncPushDevice(){
 }
 const invitationKey = () => 'lun_push_invite_' + S.user.id;
 /* ── Три напоминания после анкеты: первое, что человек настраивает; то же — в Аккаунт → Уведомления ── */
-function finishOnboarding(){ startApp(); go('rhythm'); track('rhythm_view'); }
+/* Мастер после анкеты (решение владелицы 18.09): шаг 1 — что показывать каждое утро (та же настройка, что чипы на «Сегодня»),
+   шаг 2 — когда напоминать и «Включить напоминания» — нажатие, на которое телефон спрашивает разрешение. */
+function finishOnboarding(){ startApp(); rhythmStep(1); go('rhythm'); track('rhythm_view'); }
+function rhythmStep(n){
+  const v=$('v-rhythm'); if(!v)return; v.dataset.step=String(n);
+  $('rh-step-1').hidden=n!==1; $('rh-step-2').hidden=n!==2;
+  if(n===1){ const chosen=new Set(Array.isArray(XP.prefs?.morning)?morningChosen():['card','lunar','tone']); v.querySelectorAll('[data-morning]').forEach(i=>{ i.checked=chosen.has(i.dataset.morning); }); }   /* еще не выбирали — карта, Луна и вопрос дня */
+  if(n===2){ const note=$('rh-device-note'); if(note) note.textContent=rhythmDeviceNote(); }
+  scrollToTop(0);
+}
+/* На iPhone в Safari пуши не приходят — только с экрана «Домой»; человеку лучше узнать это здесь, а не через три дня тишины */
+function rhythmDeviceNote(){
+  if(IOS_SHELL) return 'Уведомления придут на этот iPhone. Время можно поменять потом в Аккаунте';
+  if(IS_IOS && !PUSH_OK) return 'На iPhone уведомления приходят только с экрана «Домой»: Поделиться → «На экран Домой». Расписание сохраним сейчас, подключить устройство можно оттуда';
+  if(!PUSH_OK) return 'Этот браузер не показывает уведомления — расписание сохраним, а подключить можно с телефона';
+  return 'Уведомления придут на это устройство. Время можно поменять потом в Аккаунте';
+}
+async function rhythmNext(){
+  const btn=$('rh-next'); if(btn.disabled)return; btn.disabled=true;
+  const morning=[...document.querySelectorAll('#rh-morning-list [data-morning]')].filter(i=>i.checked).map(i=>i.dataset.morning);
+  try{ await savePreferences({...XP.prefs, morning}); paintMorning(); track('rhythm_morning', morning.join('|')||'none'); }
+  catch(e){ toast('Не удалось сохранить выбор — его можно поменять на «Сегодня»'); }
+  finally{ btn.disabled=false; rhythmStep(2); }
+}
 async function rhythmEnable(){
   if(rhythmEnable.busy)return;rhythmEnable.busy=true;const btn=$('rh-go');btn.disabled=true;btn.textContent='Включаем…';
   const chosen=REM_ORDER.filter(f=>$('rh-'+f).checked);
   try{
     await loadReminders(true);
-    const device=chosen.length?await connectPushDevice():true;   /* разрешение спрашивается прямо на этом нажатии */
+    let device=true;
+    if(chosen.length){ try{ device=await connectPushDevice(); }catch{ device=false; } }   /* разрешение спрашивается прямо на этом нажатии */
     for(const f of chosen)await remSave(f,{enabled:true,time:$('rh-time-'+f).value||S.rem[f].time,...(f==='week'?{freq:'weekly',weekday:7}:{})});
     track('rhythm_enable',chosen.join('|'));
-    if(chosen.length&&!device)toast('Расписание сохранено. Уведомления на этом устройстве подключите в Аккаунте');
+    if(chosen.length&&device)toast('Напоминания включены');
   }catch(e){toast('Не удалось сохранить напоминания — их можно включить в Аккаунте');}
-  finally{rhythmEnable.busy=false;btn.disabled=false;btn.textContent='Включить';go('home');}
+  finally{rhythmEnable.busy=false;btn.disabled=false;btn.textContent='Включить напоминания';go('home');}
 }
 function rhythmSkip(){track('rhythm_enable','none');go('home');}
 
@@ -1409,7 +1435,7 @@ function loadReminders(force){
   return remPromise;
 }
 const remBox = (f, full=false) => `<div class="rem" data-rem="${f}" data-full="${full}"></div>`;
-/* Строка уведомлений под заголовком виджета: настройки подгружаются, если ещё не были */
+/* Строка уведомлений под заголовком виджета: настройки подгружаются, если еще не были */
 const remRefresh = (f) => loadReminders().then(() => paintRem(f)).catch(() => {});
 const remText = (r) => r.freq === 'events' ? 'когда что-то происходит, в ' + r.time : r.time + ' · ' + (r.freq === 'weekly' ? WD_ON[r.weekday - 1] : FREQ_LABEL[r.freq].toLowerCase());
 function remDeviceReady(){
@@ -1433,7 +1459,7 @@ function paintDeviceStatus(){
 function deviceTrace(){
   const d=(S.pushDevices||[]).find(x=>x.endpoint===S.pushEndpoint); if(!d||!d.last_sent) return '';
   const sent=fmtWhen(d.last_sent,{weekday:'short'}), wake=d.last_wake&&d.last_wake>=d.last_sent?fmtWhen(d.last_wake,{weekday:'short'}):'';
-  return ` · последний сигнал ${sent}` + (wake ? `, устройство откликнулось ${wake}` : ' — устройство не откликнулось. Проверьте, не включён ли режим «Не беспокоить» и разрешены ли уведомления для Лунарио');
+  return ` · последний сигнал ${sent}` + (wake ? `, устройство откликнулось ${wake}` : ' — устройство не откликнулось. Проверьте, не включен ли режим «Не беспокоить» и разрешены ли уведомления для Лунарио');
 }
 function paintRem(f){
   const r=S.rem && S.rem[f];if(!r)return;
@@ -1473,7 +1499,7 @@ async function remConnect(f){
   if (remBusy[f]) return;
   remBusy[f]=true; paintRem(f);
   try { if (await connectPushDevice()) { if(IOS_SHELL) await nativeSchedule(f); toast('Это устройство подключено'); } }
-  catch(e) { toast('Не удалось подключить уведомления. Попробуйте ещё раз'); }
+  catch(e) { toast('Не удалось подключить уведомления. Попробуйте еще раз'); }
   finally { remBusy[f]=false; REM_ORDER.forEach(paintRem); }
 }
 async function remToggle(f){
@@ -1488,7 +1514,7 @@ async function remToggle(f){
       if (!S.rem[f].enabled) toast('Уведомления выключены');
       else if (device) toast('Напомним ' + remText(S.rem[f]));   /* иначе connectPushDevice уже объяснил, чего не хватает этому устройству */
     }
-  } catch(e) { toast('Не удалось включить уведомления. Попробуйте ещё раз'); }
+  } catch(e) { toast('Не удалось включить уведомления. Попробуйте еще раз'); }
   finally { remBusy[f]=false; REM_ORDER.forEach(paintRem); }
 }
 async function remSave(f, patch){
@@ -1557,7 +1583,7 @@ async function nativeSchedule(f){
   if (IOS_BRIDGE>=4 && r.enabled && S.nativePermission!=='granted') return;
   if (IOS_BRIDGE < 2) { if (f === 'morning') nativePost({ type: 'reminder', on: r.enabled }); return; }
   const [hh, mm] = r.time.split(':').map(Number);
-  /* у телефона нет подстановок — берём заголовок из текстов напоминаний, если он без {скобок}, иначе запасной */
+  /* у телефона нет подстановок — берем заголовок из текстов напоминаний, если он без {скобок}, иначе запасной */
   const rt = CAT && CAT.reminderTexts && CAT.reminderTexts[f==='morning'?'morning-пусто':f], nt = NATIVE_TEXT_FALLBACK[f];
   const msg = { type: 'schedule', id: f, on: r.enabled, hour: hh, minute: mm, freq: r.freq, weekday: r.weekday, title: rt && !/[{}]/.test(rt[0]) ? rt[0] : nt[0], body: rt && !/[{}]/.test(rt[1]) ? rt[1] : nt[1] };
   if (IOS_BRIDGE >= 3 && r.enabled) { const plan=await api('/reminders/native-plan?feature='+f); msg.messages=plan.items; msg.tz=plan.tz||TZ; }   /* утро — настрой каждого дня заранее */
@@ -1580,7 +1606,7 @@ async function paintAllReminders(){
   const box = $('rem-all'); box.innerHTML = LOADING;
   try { await loadReminders(true); }
   catch (e) { box.innerHTML = '<p class="msg err">Не получилось загрузить настройки уведомлений.</p><button data-on="click:paintAllReminders" type="button" class="btn ghost mt-3">Повторить</button>'; return; }
-  box.innerHTML = `<p class="hint">Три напоминания: утром — настрой дня и ваше утро, вечером — запомнить день, в воскресенье — ваша неделя. Время — своё.</p><p id="rem-device-status" class="rem-status" role="status"></p>
+  box.innerHTML = `<p class="hint">Три напоминания: утром — настрой дня и ваше утро, вечером — запомнить день, в воскресенье — ваша неделя. Время — свое.</p><p id="rem-device-status" class="rem-status" role="status"></p>
     <div class="list mt-3">${REM_ORDER.map(f => `<div class="item"><b class="mb-2">${esc(S.rem[f].title)}</b>${remBox(f,true)}</div>`).join('')}</div>`;
   REM_ORDER.forEach(paintRem);
   if (IOS_SHELL && IOS_BRIDGE >= 2) nativePost({ type: 'scheduleStatus' });
@@ -1595,7 +1621,7 @@ function paintMoodExtra(){
   preparePending();
 }
 
-/* ══════════ Отчёт по настроениям: неделя по дням, месяц по долям ══════════ */
+/* ══════════ Отчет по настроениям: неделя по дням, месяц по долям ══════════ */
 const MONTHS_RU = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 const monthName = (key) => { const [y, m] = key.split('-'); return MONTHS_RU[Number(m) - 1] + ' ' + y; };
 async function loadMoodReport(){
@@ -1638,13 +1664,13 @@ function paintLunarWidget(){
   box.innerHTML=`<div class="lunar-heading"><h3>${ordinal(l.n)} лунный день</h3>${l.title?`<p class="practice-question">${esc(l.title)}</p>`:''}<p>${esc(lunarPeriodCompact(l))}</p></div>
     ${l.advice?`<div class="card practice-card"><h3>Рекомендация</h3><p>${esc(l.advice)}</p></div>`:''}
     <div id="ln-art"><p class="hint">Загружаем главу справочника…</p></div>${actionsHtml(id,true)}
-    <details class="lunar-period"><summary>Период и место расчёта</summary><p>${esc(l.period)}</p><p>По месту рождения из профиля: ${esc(S.user.city||'Москва')}. Часовой пояс: ${esc(S.user.tz||'Europe/Moscow')}</p></details>
+    <details class="lunar-period"><summary>Период и место расчета</summary><p>${esc(l.period)}</p><p>По месту рождения из профиля: ${esc(S.user.city||'Москва')}. Часовой пояс: ${esc(S.user.tz||'Europe/Moscow')}</p></details>
     <details class="lunar-library"><summary>Все 30 лунных дней</summary><div id="ln-days"></div><div id="ln-preview"></div><div id="ln-ref"></div></details>`;
-  XP.lunarSeenAtOpen=(XP.prefs.lunarViews||0)>=1;   /* ряд тем — со второго открытия: смотрим счётчик до того, как засчитать это открытие */
+  XP.lunarSeenAtOpen=(XP.prefs.lunarViews||0)>=1;   /* ряд тем — со второго открытия: смотрим счетчик до того, как засчитать это открытие */
   preparePending();track('lunar_view','topics:'+(topicsAll()?'all':((XP.prefs.topics||[]).length||'default')));XP.prefs.lunarViews=(XP.prefs.lunarViews||0)+1;
-  loadLunarDays().then(()=>{paintLunarArticle();$('ln-ref').innerHTML=lunarRefHtml(LUN.reference);}).catch(()=>{if($('ln-art'))$('ln-art').innerHTML='<p class="hint">Справочник не загрузился. Откройте лунный день ещё раз</p>';});
+  loadLunarDays().then(()=>{paintLunarArticle();$('ln-ref').innerHTML=lunarRefHtml(LUN.reference);}).catch(()=>{if($('ln-art'))$('ln-art').innerHTML='<p class="hint">Справочник не загрузился. Откройте лунный день еще раз</p>';});
 }
-/* ── Темы чтения: человек выбирает разделы, остальное — под заголовками-свёртками. Ряд тем появляется со второго открытия. ── */
+/* ── Темы чтения: человек выбирает разделы, остальное — под заголовками-свертками. Ряд тем появляется со второго открытия. ── */
 const META_TOPICS=new Set(['symbol','advice','live']);
 function topicList(){return (LUN&&LUN.topics)||[];}
 function topicsChosen(){const t=XP.prefs.topics||[];return t.length?t:topicList().filter(x=>x.def).map(x=>x.key);}
@@ -1653,18 +1679,18 @@ function topicsRowVisible(){return !!XP.lunarSeenAtOpen||!!XP.topicsShown;}
 function topicsRowHtml(){
   const chosen=new Set(topicsChosen()),all=topicsAll();
   return `<div class="chips flow ln-topics" role="group" aria-label="Темы чтения">${topicList().map(t=>`<button data-on="click:toggleTopic-a0" data-a0="${t.key}" type="button" class="chip${chosen.has(t.key)?' on':''}${META_TOPICS.has(t.key)?' meta':''}" aria-pressed="${chosen.has(t.key)}">${esc(t.label)}</button>`).join('')}</div>
-    <div class="ln-all"><span>${all?'Показаны все разделы':'Показаны выбранные темы'}</span><button data-on="click:setTopicsAll-a0" data-a0="${all?'false':'true'}" type="button">${all?'Только выбранное':'Показать всё'}</button></div>`;
+    <div class="ln-all"><span>${all?'Показаны все разделы':'Показаны выбранные темы'}</span><button data-on="click:setTopicsAll-a0" data-a0="${all?'false':'true'}" type="button">${all?'Только выбранное':'Показать все'}</button></div>`;
 }
 async function toggleTopic(key){
   const cur=new Set(topicsChosen());if(cur.has(key))cur.delete(key);else cur.add(key);
   const topics=topicList().map(t=>t.key).filter(k=>cur.has(k));
   try{await savePreferences({...XP.prefs,topics});track('topics_set',topics.join(','));hap();}
-  catch{toast('Не удалось сохранить выбор. Попробуйте ещё раз');return;}
+  catch{toast('Не удалось сохранить выбор. Попробуйте еще раз');return;}
   paintLunarArticle();if($('topics-box'))paintTopics();
 }
 async function setTopicsAll(on){
   try{await savePreferences({...XP.prefs,topicsAll:!!on});track('topics_all',on?'on':'off');}
-  catch{toast('Не удалось сохранить. Попробуйте ещё раз');return;}
+  catch{toast('Не удалось сохранить. Попробуйте еще раз');return;}
   XP.topicsShown=true;paintLunarArticle();if($('topics-box'))paintTopics();
 }
 function paintLunarArticle(){
@@ -1674,13 +1700,13 @@ function paintLunarArticle(){
   showLunarDay(l.n);preparePending();
 }
 function trackExpand(el,key){if(el.open)track('lunar_expand',key);}
-/* Открытка: одна выбранная содержательная тема — её заголовок и первая фраза вместо общей рекомендации */
+/* Открытка: одна выбранная содержательная тема — ее заголовок и первая фраза вместо общей рекомендации */
 function lunarTopicLine(n){
   const content=topicsChosen().filter(k=>!META_TOPICS.has(k));if(content.length!==1||!LUN)return '';
   const d=LUN.days.find(x=>x.n===n),s=d&&(d.sections||[]).find(x=>x.key===content[0]),para=s&&s.blocks.find(b=>b.t==='p');
   if(!para)return '';const m=String(para.text).match(/^.+?[.!?…](\s|$)/);return s.title+': '+(m?m[0]:para.text).trim();
 }
-/* WebMCP: если браузер даёт агентам доступ к инструментам страницы (navigator.modelContext), объявляем два безопасных:
+/* WebMCP: если браузер дает агентам доступ к инструментам страницы (navigator.modelContext), объявляем два безопасных:
    что за день сегодня и переход в раздел. Личные записи наружу не отдаются. */
 function registerWebMcp(){
   try{
@@ -1711,8 +1737,8 @@ function paintSkyPlace(){
 /* Виджет «Настройка контента» (темы чтения) в «Аккаунте» */
 function paintTopics(){
   const box=$('topics-box');if(!box)return;
-  if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не удалось загрузить темы. Откройте ещё раз</p>';});return;}
-  box.innerHTML=`<p class="hint">Лунный день показывается выбранными разделами, остальные свёрнуты под заголовками. Выбор действует на экране, в напоминании и на открытке.</p>${topicsRowHtml()}`;
+  if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не удалось загрузить темы. Откройте еще раз</p>';});return;}
+  box.innerHTML=`<p class="hint">Лунный день показывается выбранными разделами, остальные свернуты под заголовками. Выбор действует на экране, в напоминании и на открытке.</p>${topicsRowHtml()}`;
 }
 /* Глава дня: иллюстрация, номер и тема, вступление сразу, разделы с подзаголовками — под «Читать полностью». */
 function lunarDayHtml(d, today, primary=false){
@@ -1760,7 +1786,7 @@ function paintSky(){
   const ev = (e, cls) => `<div class="item skyev${cls ? ' ' + cls : ''}"><b>${esc(e.title)}</b><small>${fmtWhen(e.at)}</small>${e.note ? `<p class="mt-2">${esc(e.note)}</p>` : ''}</div>`;
   box.innerHTML = `<div class="card center"><span class="eyebrow">Сегодня</span>
       <div class="title-gold mt-2">${esc(s.moon.phase)} ${esc(s.moon.signIn)}</div>
-      <p class="mt-1">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растёт' : 'убывает'} · Солнце ${esc(s.sun.signIn)}</p>
+      <p class="mt-1">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растет' : 'убывает'} · Солнце ${esc(s.sun.signIn)}</p>
       <p class="t2">${s.retro.length ? s.retro.map(r => `${r.symbol} ${esc(r.name)} — ${r.adj}`).join(' · ') : 'Ретроградных планет сейчас нет'}</p>
     </div>
     ${s.today.length ? `<div class="list mt-3">${s.today.map(e => ev(e, 'now')).join('')}</div>` : ''}
@@ -1769,7 +1795,7 @@ function paintSky(){
     <span class="eyebrow mt-4">Ближайшие недели</span>
     <div class="list mt-2">${s.upcoming.map(e => ev(e)).join('')}</div>
     ${actionsHtml(id, true)}
-    <p class="hint mt-3 center">Фазы и планеты рассчитаны астрономически. Затмения — по положению Луны у узлов, без учёта видимости из вашего города.</p>`;
+    <p class="hint mt-3 center">Фазы и планеты рассчитаны астрономически. Затмения — по положению Луны у узлов, без учета видимости из вашего города.</p>`;
   paintRem('sky'); preparePending();
 }
 
@@ -1801,7 +1827,7 @@ async function shareRes(id){
   else { try { await navigator.clipboard.writeText(t); toast('Скопировано — можно поделиться'); } catch(e) { toast('Не удалось скопировать. Разрешите доступ к буферу обмена'); } }
 }
 
-/* диск Луны с настоящей освещённостью */
+/* диск Луны с настоящей освещенностью */
 function pcMoonDisc(ctx, cx, cy, R, illum, waxing){
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = '#2a2150'; ctx.fill();
@@ -1813,7 +1839,7 @@ function pcMoonDisc(ctx, cx, cy, R, illum, waxing){
   ctx.restore();
 }
 async function drawPostcardExtra(ctx, p){
-  if (p.type === 'morning') {   /* утро: луна как сегодня, тема, настрой крупно, вопрос курсивом, внизу — что ещё выбрано на утро */
+  if (p.type === 'morning') {   /* утро: луна как сегодня, тема, настрой крупно, вопрос курсивом, внизу — что еще выбрано на утро */
     pcMoonDisc(ctx, 540, 400, 150, p.moonPct ?? 50, p.waxing);
     let y = drawText(ctx, (p.theme || 'НАСТРОЙ ДНЯ').toUpperCase(), 540, 660, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
     y = drawText(ctx, p.text, 540, y + 40, { size: p.text.length > 70 ? 44 : 56, weight: 600, color: '#f5f2ea', maxW: 900, lh: 1.25 });
@@ -1921,13 +1947,13 @@ async function drawPostcardExtra(ctx, p){
   return false;
 }
 /* ══════════ Круг эмоций Плутчика: восемь лепестков по три оттенка и восемь сочетаний — список и цвета из каталога ══════════ */
-/* какой лепесток рисовать у сочетания — по тому, что в нём звучит громче */
+/* какой лепесток рисовать у сочетания — по тому, что в нем звучит громче */
 const DYAD_FACE = { optimism:'joy', love:'joy', submission:'anticipation', awe:'surprise', disappointment:'sadness', remorse:'sadness', contempt:'anger', aggressiveness:'anger' };
 const MOUTH = { joy:'M11.5 18.5q4.5 4.5 9 0', trust:'M12 19q4 3 8 0', fear:'M11.5 19q2.2-2 4.5 0t4.5 0', surprise:'M13.8 19.2a2.2 2.2 0 1 0 4.4 0a2.2 2.2 0 1 0-4.4 0',
   sadness:'M11.5 20.5q4.5-4 9 0', disgust:'M11.5 19.5q2 1.6 4.5 0t4.5 0', anger:'M11.5 20.5q4.5-3 9 0', anticipation:'M12.5 19.5h7' };
 const moodList = () => CAT?.moods || [];
 const moodFams = () => CAT?.moodFamilies || {};
-/* своё слово: хранится как «own:слово» — на экране и в отчёте показывается как есть, без лепестка */
+/* свое слово: хранится как «own:слово» — на экране и в отчете показывается как есть, без лепестка */
 const ownMood = (key) => typeof key === 'string' && key.startsWith('own:') ? key.slice(4) : '';
 function moodInfo(key){ const quick=quickMoods().find(m=>m.key===key);if(quick)return quick; if(key==='displeasure') return {key,label:'неудовольствие',family:'disgust',tone:'-'}; if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = (CAT?.legacyMoods || {})[key] || key; return moodList().find(m => m.key === k) || null; }
 const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : String(k); } });
@@ -1949,9 +1975,9 @@ function renderMoods(){
   $('t-moods').className='mood-picker';
   if(!quickMoods().length){$('t-moods').innerHTML=`<p class="practice-question">Как вы сейчас?</p><p class="hint">Список настроений не загрузился. <button data-on="click:loadCatalog-then-renderMoods-catch-toast-Нет-связи" type="button" class="text-action">Повторить</button></p>`;return;}
   $('t-moods').innerHTML=`<p class="practice-question">Как вы сейчас?</p>
-    <div class="quick-moods">${quickMoods().map(m=>`<button data-on="click:quickMood-a0" data-a0="${m.key}" type="button" class="quick-mood${S.mood===m.key?' on':''}" aria-pressed="${S.mood===m.key}">${moodSvg(m.key,30)}<span>${esc(m.label)}</span></button>`).join('')}<button data-on="click:moodOwn" type="button" class="quick-mood"><i class="ico pen"></i><span>Своё слово</span></button></div>
+    <div class="quick-moods">${quickMoods().map(m=>`<button data-on="click:quickMood-a0" data-a0="${m.key}" type="button" class="quick-mood${S.mood===m.key?' on':''}" aria-pressed="${S.mood===m.key}">${moodSvg(m.key,30)}<span>${esc(m.label)}</span></button>`).join('')}<button data-on="click:moodOwn" type="button" class="quick-mood"><i class="ico pen"></i><span>Свое слово</span></button></div>
     ${cur?`<div class="mpick saved-state" role="status">${moodSvg(S.mood,36)}<div><b>Сегодня — ${esc(cur.label)}</b><small>Сохранено · ${fmtDay(S.day.date)}. Можно выбрать другое</small></div></div>`:''}
-    <div class="mood-own-row" ${moodUI.ownOpen?'':'hidden'}><label for="mood-own">Своё настроение</label><div class="row"><input data-on="input:moodUI-own-value keydown:if-event-key-Enter-pickOwnMood" id="mood-own" aria-label="Своё настроение" maxlength="24" placeholder="Например: собранно" value="${esc(moodUI.own??ownMood(S.mood))}"><button data-on="click:pickOwnMood" class="btn sm" aria-label="Сохранить своё настроение">Сохранить</button></div></div>
+    <div class="mood-own-row" ${moodUI.ownOpen?'':'hidden'}><label for="mood-own">Свое настроение</label><div class="row"><input data-on="input:moodUI-own-value keydown:if-event-key-Enter-pickOwnMood" id="mood-own" aria-label="Свое настроение" maxlength="24" placeholder="Например: собранно" value="${esc(moodUI.own??ownMood(S.mood))}"><button data-on="click:pickOwnMood" class="btn sm" aria-label="Сохранить свое настроение">Сохранить</button></div></div>
     <div class="utility-actions"><button data-on="click:moodDetails" type="button" class="text-action secondary">${cur?'Хотите назвать точнее?':'Назвать точнее'}</button><button data-on="click:moodDetails-all" type="button" class="text-action secondary">Все эмоции</button></div>
     <div id="mood-detail" ${moodUI.precision?'':'hidden'}><div class="segmented" role="tablist" aria-label="Выбор эмоций"><button data-on="click:moodMode-families" role="tab" aria-selected="${moodUI.mode==='families'}">Основные эмоции</button><button data-on="click:moodMode-all" role="tab" aria-selected="${moodUI.mode==='all'}">Все эмоции</button></div>
     ${moodUI.mode==='families'?`
@@ -1962,7 +1988,7 @@ function renderMoods(){
     </div>`;
 }
 
-/* смайлик настроения на открытке — лепесток даёт рот и цвет */
+/* смайлик настроения на открытке — лепесток дает рот и цвет */
 function pcSmiley(ctx, mood, cx, cy, size){
   const k = size / 32, color = moodColor(mood);
   ctx.save(); ctx.translate(cx - size / 2, cy - size / 2); ctx.scale(k, k);
@@ -1980,18 +2006,18 @@ const hubReady=(q)=>q.length>=10&&/\s/.test(q);   /* тот же порог, ч�
 function renderHub(){
   const w=$('t-worry');if(!w)return;
   w.innerHTML=`<div class="card hubq"><p>Темы</p><div class="chips flow" id="hub-chips">${HUB_TOPICS.map(([label],i)=>`<button data-on="click:hubTopic-a0" data-a0="${i}" type="button" class="chip${hubDraft.topic===i?' on':''}" aria-pressed="${hubDraft.topic===i}">${label}</button>`).join('')}</div>
-    <div class="field"><label for="hub-q">Что именно сейчас не даёт покоя?</label><textarea data-on="input:hubDraft-text-value-hubCheck" id="hub-q" maxlength="300" placeholder="Опишите своими словами…">${esc(hubDraft.text)}</textarea><p class="hint" id="hub-hint" role="status"></p></div>
+    <div class="field"><label for="hub-q">Что именно сейчас не дает покоя?</label><textarea data-on="input:hubDraft-text-value-hubCheck" id="hub-q" maxlength="300" placeholder="Опишите своими словами…">${esc(hubDraft.text)}</textarea><p class="hint" id="hub-hint" role="status"></p></div>
     <div id="hub-opts"><span class="eyebrow">Как получить ответ</span><div class="chips flow">${HUB_OPTS.map(([key,,label])=>`<button data-on="click:hubMethod-a0" data-a0="${key}" type="button" class="chip${hubDraft.kind===key?' on':''}" data-kind="${key}" aria-pressed="${hubDraft.kind===key}">${label}</button>`).join('')}</div>
     <button data-on="click:hubAsk" type="button" class="btn" id="hub-go">Получить ответ</button></div></div><div id="hub-res" hidden></div>`;
   hubCheck();
 }
 function hubTopic(index){
   const previous=HUB_TOPICS[hubDraft.topic]?.[1];
-  if(!hubReady(hubDraft.text.trim())||hubDraft.text===previous)hubDraft.text=HUB_TOPICS[index][1];   /* пустое или слишком короткое своё — заменяем вопросом темы */
+  if(!hubReady(hubDraft.text.trim())||hubDraft.text===previous)hubDraft.text=HUB_TOPICS[index][1];   /* пустое или слишком короткое свое — заменяем вопросом темы */
   hubDraft.topic=index;renderHub();$('hub-q').focus();
 }
 function hubMethod(kind){hubDraft.kind=kind;document.querySelectorAll('#hub-opts .chip').forEach(b=>{const on=b.dataset.kind===kind;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
-/* инструменты видны всегда; пока вопрос короче нескольких слов — кнопка ждёт и подсказывает, что дописать */
+/* инструменты видны всегда; пока вопрос короче нескольких слов — кнопка ждет и подсказывает, что дописать */
 function hubCheck(){const v=$('hub-q').value.trim(),ok=hubReady(v);$('hub-go').disabled=!ok;$('hub-hint').textContent=ok||!v?'':'Напишите вопрос целиком, так вы потом вспомните, что вас волновало';}
 async function hubAsk(){
   if(hubAsk.busy)return;const q=$('hub-q').value.trim();if(!hubReady(q)){hubCheck();return;}
@@ -2027,7 +2053,7 @@ async function saveAnswer(){
   if(toneSaving)return;const t=($('tone-a').value||'').trim();
   if(t.length<3){toast('Напишите хотя бы пару слов');return;}
   toneSaving=true;$('tone-save').disabled=true;
-  try{const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})});toneDraft='';toneSaved={id:r.item.id,day:r.item.day,text:r.item.text};toast(r.updated?'Ответ обновлён в дневнике':'Записано в дневник');hap('ok');loadJournal();XP.timeline.dirty=true;}
+  try{const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})});toneDraft='';toneSaved={id:r.item.id,day:r.item.day,text:r.item.text};toast(r.updated?'Ответ обновлен в дневнике':'Записано в дневник');hap('ok');loadJournal();XP.timeline.dirty=true;}
   catch(e){toast('Не получилось сохранить. Ваш текст остался в поле');}
   finally{toneSaving=false;paintTone();}
 }
@@ -2056,7 +2082,7 @@ function paintGratitude(){
       <button data-on="click:saveGratitude" type="button" class="btn sm" ${gratitudeSaving?'disabled':''}>${gratitudeSaving?'Сохраняем…':'Сохранить'}</button>
       ${todayItem?`<button data-on="click:gratitudeEdit-null-gratitudeDraft-paintGratitude" type="button" class="text-action secondary">Отмена</button>`:''}`}</div>
     ${todayItem && !editing?actionsHtml(id,true):''}
-    ${r.items.filter(i=>i.id!==todayItem?.id).length?moreBlock(r.items.filter(i=>i.id!==todayItem?.id).slice(0,30).map(i=>`<div class="item"><small>${fmtDay(i.day)}</small><p class="entry-text">${esc(i.text)}</p></div>`).join(''),'Прошлые благодарности'):'<p class="hint">Запись остаётся здесь и в Дневнике, вместе с датой</p>'}`;
+    ${r.items.filter(i=>i.id!==todayItem?.id).length?moreBlock(r.items.filter(i=>i.id!==todayItem?.id).slice(0,30).map(i=>`<div class="item"><small>${fmtDay(i.day)}</small><p class="entry-text">${esc(i.text)}</p></div>`).join(''),'Прошлые благодарности'):'<p class="hint">Запись остается здесь и в Дневнике, вместе с датой</p>'}`;
   gratitudeHomeStatus(!!todayItem);
   paintRem('gratitude');preparePending();
 }
@@ -2112,7 +2138,7 @@ function paintHabits(){
     </div>${habitView==='all' && hbEditing!==h.id?`<button data-on="click:habitEdit-a0" data-a0="${h.id}" type="button" class="text-action icon-action" aria-label="Изменить: ${esc(h.title)}">✎</button>`:''}</div>`;
   box.innerHTML=`<div class="segmented" role="tablist" aria-label="Дневник привычек"><button data-on="click:habitTab-today" type="button" role="tab" aria-controls="habit-list" aria-selected="${habitView==='today'}">Сегодня</button><button data-on="click:habitTab-all" type="button" role="tab" aria-controls="habit-list" aria-selected="${habitView==='all'}">Все привычки</button></div>
     <div id="habit-list" role="tabpanel" aria-label="${habitView==='today'?'Сегодня':'Все привычки'}">
-      <p class="practice-progress" role="status">${!HB.length?'Добавьте первую привычку':habitView==='all'?'Мои привычки':!due.length?'На сегодня ничего не запланировано':done===due.length?'Всё на сегодня отмечено ✓':'Отмечено '+done+' из '+due.length}</p>
+      <p class="practice-progress" role="status">${!HB.length?'Добавьте первую привычку':habitView==='all'?'Мои привычки':!due.length?'На сегодня ничего не запланировано':done===due.length?'Все на сегодня отмечено ✓':'Отмечено '+done+' из '+due.length}</p>
       <div class="list">${items.map(row).join('')}</div>
       ${habitView==='all'&&items.some(h=>h.week.some(w=>!w.due))?'<p class="hint habit-calendar-key">Пунктир — свободный день. При необходимости его тоже можно отметить</p>':''}
     </div>
@@ -2149,7 +2175,7 @@ async function habitRemove(id){
   try { const r = await api('/habits?id=' + id, { method: 'DELETE' }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; paintHabits(); } catch (e) { toast('Не получилось'); }
 }
 
-/* ══════════ Взять аскезу: отказ до выбранной даты, счёт дней, заметки по желанию ══════════ */
+/* ══════════ Взять аскезу: отказ до выбранной даты, счет дней, заметки по желанию ══════════ */
 let AS = null, askForm = {};
 async function loadAskesis(){
   const box = $('as-box'); if (!AS) box.innerHTML = LOADING;
@@ -2180,7 +2206,7 @@ function paintAskesis(){
       ${a.today?`<div class="saved-state" role="status">Наблюдение сохранено · ${fmtDay(today)}</div><p class="entry-text">${esc(a.today.text)}</p>`:''}
       <details data-on="toggle:askPanelToggle-this-a0" data-a0="${a.id}" class="observation" ${askNoteOpen[a.id]?'open':''}>
         <summary data-on="click:toggleAskPanel-event-this-a0" data-a0="${a.id}">${a.today?'Изменить наблюдение':'Добавить наблюдение'}</summary>
-        <div class="field"><label for="as-note-${a.id}">Что заметила сегодня · необязательно</label><textarea data-on="input:askNoteDrafts-a0-value" data-a0="${a.id}" id="as-note-${a.id}" maxlength="500" placeholder="Несколько слов о своём опыте…">${esc(askNoteDrafts[a.id]??a.today?.text??'')}</textarea></div>
+        <div class="field"><label for="as-note-${a.id}">Что заметила сегодня · необязательно</label><textarea data-on="input:askNoteDrafts-a0-value" data-a0="${a.id}" id="as-note-${a.id}" maxlength="500" placeholder="Несколько слов о своем опыте…">${esc(askNoteDrafts[a.id]??a.today?.text??'')}</textarea></div>
         <button data-on="click:askNote-a0" data-a0="${a.id}" type="button" class="btn sm">Сохранить наблюдение</button>
       </details>
       ${a.notes.length?moreBlock(a.notes.slice().reverse().map(n=>`<p><small>${fmtDay(n.day)}</small><br>${esc(n.text)}</p>`).join(''),`Мои наблюдения · ${a.notes.length}`):''}
@@ -2322,11 +2348,11 @@ async function paintNews(){
     tile.onclick=()=>{const current=featureRoot(key);if(!current)return;if(current.dataset.nav){current.click();return;}go(current.closest('.view')?.id.slice(2)||'home');if(key==='around')current.scrollIntoView({behavior:'smooth',block:'start'});else current.click();};
     box.appendChild(tile);
   }
-  if(!box.children.length) box.innerHTML='<p class="hint">В этом месяце новинок ещё не было</p>';
+  if(!box.children.length) box.innerHTML='<p class="hint">В этом месяце новинок еще не было</p>';
   markNewsSeen(); track('news_view');
 }
 
-/* снимок последнего удачного /me — только для аккаунта, который уже прошёл анкету, и не старше суток */
+/* снимок последнего удачного /me — только для аккаунта, который уже прошел анкету, и не старше суток */
 function offlineSnapshot(){
   try { const s = JSON.parse(localStorage.getItem('lun_me') || 'null'); return s && s.r?.user?.onboarded && Date.now() - s.at < 26 * 3600e3 ? s : null; } catch(e) { return null; }
 }
@@ -2338,7 +2364,7 @@ function startApp(){
   const initialPractice=new URLSearchParams(location.search).get('practice');
   paintHome(); paintToday(); go(initialPractice==='journal'?'history':'home');
   if(FEATURES[initialPractice]?.page)openPractice(initialPractice); refreshNativeAskesis();
-  if (S.day.card && S.day.cardOpened) { showFlipped(); $('t-after').style.display = 'block'; }   /* карту уже открывали — она в истории; вытянутую утром ещё предстоит перевернуть */
+  if (S.day.card && S.day.cardOpened) { showFlipped(); $('t-after').style.display = 'block'; }   /* карту уже открывали — она в истории; вытянутую утром еще предстоит перевернуть */
   loadCatalog().then(() => { renderMoods(); applyTools(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); if (wgOpen === 'tools') paintTools(); }).catch(() => {});
   /* из уведомления приходят сразу в нужный раздел */
   try {
@@ -2349,7 +2375,7 @@ function startApp(){
       go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); track('push_open', openKey);
       if (openKey === 'today' || openKey === 'morning') setTimeout(() => {   /* из утреннего уведомления — к своему утру, первая плитка подсвечена (после восстановления прокрутки в go) */
         const feed = $('home-sky'); if (!feed || feed.hidden) return;
-        scrollToTop(feed.getBoundingClientRect().top + scrollTopNow() - 16);   /* сразу, без плавности: страница могла ещё не стать видимой */
+        scrollToTop(feed.getBoundingClientRect().top + scrollTopNow() - 16);   /* сразу, без плавности: страница могла еще не стать видимой */
         const t = feed.querySelector('[data-feature]'); if (t) { t.classList.add('from-push'); setTimeout(() => t.classList.remove('from-push'), 1800); }
       }, 250);
     }
@@ -2360,7 +2386,7 @@ function startApp(){
   let r;
   try{
     try { r = await api('/me'); try { localStorage.setItem('lun_me', JSON.stringify({ at: Date.now(), r })); } catch(e) {} }
-    catch(e){   /* нет связи (а не отказ сервера) — сегодняшний пакет дня не меняется до полуночи, показываем последний сохранённый */
+    catch(e){   /* нет связи (а не отказ сервера) — сегодняшний пакет дня не меняется до полуночи, показываем последний сохраненный */
       const snap = (!e.status && offlineSnapshot()) || null; if (!snap) throw e;
       r = snap.r; S.offlineAt = snap.at;
     }
