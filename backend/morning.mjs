@@ -87,7 +87,7 @@ export function createMorning({ db, C, track, nowISO, today }) {   /* today(u) �
     const themes = [...C.THEMES];
     const stored = set?.theme ? themes.find((t) => t.key === set.theme) : null;
     if (stored) return stored;
-    const raw = (t) => String(t || '').replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim();
+    const raw = (t) => String(t || '').replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').replace(/[.]+\s*$/, '').trim();
     const byText = set ? [...C.NASTROY].find((n) => raw(n[1]) === raw(set.statement || set.text)) : null;
     return (byText && themes.find((t) => t.key === byText[0])) || themeOfDay(u, day);
   }

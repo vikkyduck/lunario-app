@@ -39,8 +39,10 @@ function applyTheme(mode){
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(XP.prefs.theme==='system')applyTheme('system');});
 function paintAppearance(){
-  $('appearance-box').innerHTML=`<p class="hint">Выберите тему для чтения</p><div class="theme-options">${[['light','Светлая'],['dark','Тёмная'],['system','Как на устройстве']].map(([key,label])=>`<button data-on="click:saveTheme-a0" data-a0="${key}" type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div><p class="saved-state" id="theme-state" role="status"></p>`;
+  $('appearance-box').innerHTML=`<p class="hint">Выберите тему для чтения</p><div class="theme-options">${[['light','Светлая'],['dark','Тёмная'],['system','Как на устройстве']].map(([key,label])=>`<button data-on="click:saveTheme-a0" data-a0="${key}" type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div><p class="saved-state" id="theme-state" role="status"></p>
+    <div class="skin-row"><label class="rhythm-row"><input data-on="change:setSkin-this" type="checkbox" id="skin-compact" ${document.documentElement.dataset.skin==='compact'?'checked':''}><span class="grow"><b>Компактный вид</b><small>Тестовый: строки вместо плиток, меньше кегль, навигация у края. Только на этом устройстве</small></span></label></div>`;
 }
+function setSkin(el){const on=!!el.checked;try{localStorage.setItem('lun_skin',on?'compact':'classic');}catch{}if(on)document.documentElement.dataset.skin='compact';else delete document.documentElement.dataset.skin;track(on?'skin_compact_on':'skin_compact_off');}
 async function savePreferences(value){const r=await api('/preferences',{method:'POST',body:JSON.stringify(value)});XP.prefs=r.preferences;return r;}
 async function saveTheme(theme){
   if(saveTheme.busy)return;saveTheme.busy=true;

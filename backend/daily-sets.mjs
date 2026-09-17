@@ -35,8 +35,10 @@ export function dailySet(db, user, day, sets, { allowRepeat = false, theme = '' 
     row = db.prepare('SELECT * FROM daily_sets WHERE user_id=? AND day=?').get(user.id, day);
   }
   const name = String(user.name || '').trim();
-  const text = name ? row.text.replaceAll('{Имя}', name) : row.text.replace(/,?\s*\{Имя\}/g, '');
+  /* настрой — заголовок: точка в конце не показывается (владелица: «убирать все точки в заголовках»); вопрос остаётся с «?» */
+  const noDot = (t) => t.replace(/[.]+\s*$/, '');
+  const text = noDot(name ? row.text.replaceAll('{Имя}', name) : row.text.replace(/,?\s*\{Имя\}/g, ''));
   // Keep the issued source and personalized text intact; the calm daily card has no appended salutation.
-  const statement = row.text.replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim();
+  const statement = noDot(row.text.replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim());
   return { n: row.idx + 1, text, statement, question: row.question, theme: row.theme || '' };
 }

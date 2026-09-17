@@ -37,6 +37,8 @@ export const EVENTS = [
   E('rhythm_view', 'Увидел экран трёх напоминаний', 'client'),
   E('push_open', 'Пришёл из уведомления', 'client'),
   E('morning_edit', 'Развернул выбор утра', 'client'),
+  E('skin_compact_on', 'Включил компактный вид (тест)', 'client'),
+  E('skin_compact_off', 'Выключил компактный вид (тест)', 'client'),
   E('rhythm_enable', 'Включил напоминания после анкеты', 'client'),
   E('morning_remove', 'Убрал плитку утра', 'client'),
   E('tools_remove', 'Убрал инструмент с экрана', 'client'),

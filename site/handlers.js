@@ -10,6 +10,7 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "openCabinet-return-false": function (event) { openCabinet();return false },
   "go-account": function (event) { go('account') },
   "morningEdit": function (event) { morningEdit() },
+  "setSkin-this": function (event) { setSkin(this) },
   "morningDone": function (event) { morningDone() },
   "goDayCard": function (event) { goDayCard() },
   "goWeek": function (event) { goWeek() },
