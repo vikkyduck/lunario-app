@@ -388,7 +388,8 @@ body.inner #home-sky .moonline{margin:0;padding:24px;gap:14px;align-items:flex-s
 body.inner #home-sky .moonline .grow{min-width:0}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:18px;line-height:1.45}
 body.inner #home-sky .moonline .lunar-advice{font-size:16px;line-height:1.55}
-body.inner #home-sky .moonline .lunar-arrow{color:var(--muted);font-size:20px}
+body.inner #home-sky .moonline .lunar-arrow{color:var(--gold-2);font-size:20px}   /* та же стрелка, что у соседних плиток */
+html[data-theme=light] body.inner #home-sky .moonline .lunar-advice{color:var(--muted)}   /* в светлой теме подписи всех плиток ряда — одним цветом */
 body.inner .mini-grid{grid-auto-rows:1fr;gap:14px}
 body.inner .mini-grid .wid,body.inner .mini-grid .moonline{min-height:104px;height:100%;padding:16px 10px;border-radius:var(--r-xl)}
 /* квадрат Луны — тот же материал, что у соседей, без отступов-пережитков и с подписью тем же кеглем */
