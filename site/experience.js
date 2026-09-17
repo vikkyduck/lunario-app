@@ -81,30 +81,43 @@ function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidg
    остальные — маленькими квадратами ниже. Карта и руна, если выбраны, тянутся утром сами, и от них считается тема дня ── */
 const MORNING=[['card','Карта дня'],['dayrune','Руна дня'],['sky','Влияние планет'],['day','Прогноз дня'],['lunar','Луна'],['tone','Вопрос дня']];
 function morningChosen(){return Array.isArray(XP.prefs.morning)?XP.prefs.morning.filter(k=>MORNING.some(m=>m[0]===k)):['lunar','tone'];}
-/* Плитки переезжают между «Ваше утро» и «Всё про этот день» с места на место (FLIP): человек видит, куда ушла плитка, а не скачок */
+/* Плитки переезжают между «Ваше утро» и «Всё про этот день» с места на место (FLIP): человек видит, куда ушла плитка, а не скачок.
+   Чипы рисуются один раз и дальше только переключаются — фокус и озвучка «нажато» остаются на том же элементе */
 function paintMorning(){
   const chips=$('morning-chips'),feed=$('morning-feed'),more=$('morning-more');if(!chips||!feed||!more)return;
   const chosen=morningChosen(),tiles=MORNING.map(([k])=>document.querySelector('#v-home [data-feature="'+k+'"]')).filter(Boolean);
   const animate=$('v-home')?.classList.contains('on')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const before=animate?new Map(tiles.map(t=>[t,t.getBoundingClientRect()])):null;
-  chips.innerHTML=MORNING.map(([k,label])=>`<button data-on="click:toggleMorning-a0" data-a0="${k}" type="button" class="chip${chosen.includes(k)?' on':''}" aria-pressed="${chosen.includes(k)}">${label}</button>`).join('');
+  const before=animate?new Map(tiles.map(t=>[t,t.getBoundingClientRect()])):null;   /* где плитка видна сейчас — с учётом ещё идущего переезда */
+  if(animate)for(const t of tiles)t.getAnimations().forEach(a=>a.cancel());          /* дальше меряем чистую раскладку */
+  if(!chips.children.length)chips.innerHTML=MORNING.map(([k,label])=>`<button data-on="click:toggleMorning-a0" data-a0="${k}" type="button" class="chip">${label}</button>`).join('');
+  for(const c of chips.children){const on=chosen.includes(c.dataset.a0);c.classList.toggle('on',on);c.setAttribute('aria-pressed',String(on));}
   for(const t of tiles)(chosen.includes(t.dataset.feature)?feed:more).appendChild(t);
+  more.dataset.count=String(more.children.length);   /* сколько квадратов осталось — для ровных рядов на телефоне */
   feed.closest('.feature-group').hidden=!chosen.length;more.closest('.feature-group').hidden=chosen.length===MORNING.length;
   if(!before)return;
+  const dur=320,easing='cubic-bezier(.2,.7,.2,1)';
   for(const t of tiles){const a=before.get(t),b=t.getBoundingClientRect();if(!a.width||!b.width)continue;const dx=a.left-b.left,dy=a.top-b.top,sx=a.width/b.width,sy=a.height/b.height;
     if(Math.abs(dx)<1&&Math.abs(dy)<1&&Math.abs(sx-1)<.02&&Math.abs(sy-1)<.02)continue;
-    t.animate([{transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,transformOrigin:'top left'},{transform:'none',transformOrigin:'top left'}],{duration:320,easing:'cubic-bezier(.2,.7,.2,1)'});}
+    t.style.zIndex='2';t.style.pointerEvents='none';   /* летит поверх соседей, и наведение не ловит её на полпути */
+    const box=t.animate([{transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,transformOrigin:'top left'},{transform:'none',transformOrigin:'top left'}],{duration:dur,easing});
+    if(Math.abs(sx-1)>.15||Math.abs(sy-1)>.15)for(const c of t.children)c.animate([{opacity:0},{opacity:0,offset:.35},{opacity:1}],{duration:dur,easing:'ease-out'});   /* коробка тянется, содержимое проявляется — без «желе» в тексте */
+    box.onfinish=box.oncancel=()=>{t.style.zIndex='';t.style.pointerEvents='';};}
 }
-/* Переключение — сразу на экране, сохранение — следом; не сохранилось — плитка возвращается */
+/* Переключение — сразу на экране, сохранение — следом; нажатий может быть несколько подряд, истиной становится ответ на последнее.
+   Не сохранилось — плитка возвращается. Карта или руна тянутся сразу; тема дня и настрой — с завтрашнего утра, об этом говорим. */
+const THEME_SOURCE={card:'по карте дня',dayrune:'по руне дня',sky:'по планетам'};
 async function toggleMorning(key){
-  if(toggleMorning.busy)return;toggleMorning.busy=true;
   const was=morningChosen(),set=new Set(was);if(set.has(key))set.delete(key);else set.add(key);
   const morning=MORNING.map(m=>m[0]).filter(k=>set.has(k));
   XP.prefs={...XP.prefs,morning};paintMorning();hap();
-  try{await savePreferences({...XP.prefs,morning});track(set.has(key)?'morning_add':'morning_remove',key);
-    if(set.has(key)&&(key==='card'||key==='dayrune')){const r=await api('/me');S.day=r.day;paintToday();}   /* карта или руна тянутся сразу; тема дня — с завтрашнего утра */
-  }catch{XP.prefs={...XP.prefs,morning:was};paintMorning();toast('Не удалось сохранить. Попробуйте ещё раз');}
-  finally{toggleMorning.busy=false;}
+  const seq=toggleMorning.seq=(toggleMorning.seq||0)+1;
+  try{const r=await api('/preferences',{method:'POST',body:JSON.stringify(XP.prefs)});if(seq!==toggleMorning.seq)return;XP.prefs=r.preferences;track(set.has(key)?'morning_add':'morning_remove',key);}
+  catch{if(seq!==toggleMorning.seq)return;XP.prefs={...XP.prefs,morning:was};paintMorning();toast('Не удалось сохранить выбор. Попробуйте ещё раз');return;}
+  if(set.has(key)&&THEME_SOURCE[key]){
+    const src=MORNING.map(m=>m[0]).find(k=>THEME_SOURCE[k]&&set.has(k));   /* первый выбранный источник по порядку карта → руна → планеты */
+    if(src===key)toast(`Настрой ${THEME_SOURCE[key]} — с завтрашнего утра`);
+    if(key==='card'||key==='dayrune'){try{const r=await api('/me');if(seq!==toggleMorning.seq)return;S.day=r.day;paintToday();paintMorningPostcard(S.day);}catch{}}
+  }
 }
 
 /* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живёт там), «Практики» — тоже:

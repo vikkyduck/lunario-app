@@ -26,7 +26,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=62"></script>
+<script src="/app/boot.js?v=63"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -522,7 +522,7 @@ body.inner .app-nav{display:grid}
 :is(.wid,.moonline).reward>.ico{animation:reward-icon .5s var(--sp)}
 @keyframes reward-ring{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(18)}}
 @keyframes reward-icon{0%,100%{transform:none}42%{transform:translateY(-2px) scale(1.1);filter:drop-shadow(0 0 9px rgba(240,215,154,.55))}}
-.command-enter{animation:command-enter var(--t) var(--sp) both}
+.command-enter{animation:command-enter var(--t) var(--sp) backwards}
 @keyframes command-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .wg-bg.on .wg{animation:panel-open var(--t-slow) var(--sp)}
 @keyframes panel-open{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -559,6 +559,7 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 :is(button,input,textarea,summary,a):focus-visible{outline:2px solid var(--gold-2);outline-offset:3px}
 .text-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 4px;background:none;border:0;color:var(--gold-2);font:inherit;font-size:14px;line-height:1.4;cursor:pointer;text-align:left}
 .text-action.secondary{color:var(--muted)}
+.nowrap{white-space:nowrap}
 .text-action:disabled{opacity:.55;cursor:default}
 .utility-actions{display:flex;gap:6px 20px;flex-wrap:wrap;align-items:center;margin-top:16px;padding-top:8px;border-top:1px solid var(--line)}
 .utility-actions .ico{width:17px;height:17px}
@@ -669,9 +670,9 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=62">
-<link rel="stylesheet" href="/app/experience.css?v=62">
-<link rel="stylesheet" href="/app/moon-glass.css?v=62">
+<link rel="stylesheet" href="/app/theme.css?v=63">
+<link rel="stylesheet" href="/app/experience.css?v=63">
+<link rel="stylesheet" href="/app/moon-glass.css?v=63">
 </head>
 <body>
 <div class="bg" aria-hidden="true">
@@ -700,7 +701,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
         <button data-on="click:openForm" class="btn welcome-primary"><span>Создать профиль</span><span aria-hidden="true">→</span></button>
       </div>
     </div>
-    <div class="heromoon" aria-hidden="true"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" fetchpriority="high" decoding="async"></div>
+    <div class="heromoon" aria-hidden="true"><img src="/app/assets/moon-hero-1120.webp" srcset="/app/assets/moon-hero-560.webp 560w, /app/assets/moon-hero-1120.webp 1120w" sizes="760px" width="1120" height="1120" alt="" fetchpriority="high" decoding="async"></div>
     </div>
     <p class="trust">Записи хранятся в России<br>и видны только вам.</p>
   </section>
@@ -773,13 +774,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <a data-on="click:openCabinet-return-false" class="cabs" id="h-cabs" href="/app/cabinet" hidden aria-label="Вернуться в кабинеты">← Кабинеты</a>
       <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
     <div class="home-intro">
-      <div class="home-moon" aria-hidden="true"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" decoding="async"></div>
+      <div class="home-moon" aria-hidden="true"><img src="/app/assets/moon-hero-560.webp" srcset="/app/assets/moon-hero-560.webp 560w, /app/assets/moon-hero-1120.webp 1120w" sizes="(max-width:370px) 82px, (max-width:599px) 100px, 260px" width="560" height="560" alt="" decoding="async"></div>
       <div class="daily-statement"><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
     </div>
     <!-- Утро: человек отвечает, на что хочет обращать внимание; выбранное — сверху, остальное — маленькими квадратами ниже -->
     <section class="card morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint">Выберите, что показывать первым. Можно всё</p><div class="chips flow" id="morning-chips"></div></section>
     <section class="feature-group" id="home-sky" data-feature="around"><h2>Ваше утро</h2><div class="wids compact-links" id="morning-feed"></div></section>
-    <section class="feature-group" id="morning-rest"><h2>Всё про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid" data-feature="card" type="button" aria-label="Карта дня"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" type="button" aria-label="Руна дня"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" type="button" aria-label="Влияние планет на сегодня"><i class="ico star"></i><b>Влияние планет на сегодня</b><span>Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" type="button" aria-label="Прогноз дня"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" type="button" aria-label="Влияние Луны на сегодня"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" type="button" aria-label="Вопрос дня"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос от Лунарио по теме дня — ответ вечером в дневнике</span></button></div></section>
+    <section class="feature-group" id="morning-rest"><h2>Всё про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid" data-feature="card" type="button"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">22 аркана: смысл и что с ним делать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" type="button"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" type="button"><i class="ico star"></i><b>Влияние планет на сегодня</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос от Лунарио по теме дня — ответ вечером в дневнике</span></button></div></section>
   </section>
   <section class="view" id="v-ask"><h1>Свериться с собой</h1><p class="section-caption">Карты, руны, вопросы</p>
     <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button" aria-label="Разобрать вопрос"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения и отношение к себе</span></button></div><section class="feature-group"><h2>Выбрать способ</h2><div class="wids method-grid">
@@ -953,13 +954,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=62"></script>
+<script src="/app/moon-logo.js?v=63"></script>
 
-<script type="module" src="/app/sky.js?v=62"></script>
+<script type="module" src="/app/sky.js?v=63"></script>
 
-<script src="/app/experience.js?v=62"></script>
-<script src="/app/app.js?v=62"></script>
-<script src="/app/handlers.js?v=62"></script>
-<script src="/app/on.js?v=62"></script>
+<script src="/app/experience.js?v=63"></script>
+<script src="/app/app.js?v=63"></script>
+<script src="/app/handlers.js?v=63"></script>
+<script src="/app/on.js?v=63"></script>
 </body>
 </html>

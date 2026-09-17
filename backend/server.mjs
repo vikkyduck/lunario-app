@@ -51,7 +51,7 @@ import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } fro
 import { createPracticeRoutes } from './http/practice-routes.mjs';
 import { createDay } from './day.mjs';
 import { createWeek } from './week.mjs';
-import { createMorning, hash32, parseData, drawDistinct } from './morning.mjs';
+import { createMorning, skyEventOf, hash32, parseData, drawDistinct } from './morning.mjs';
 import { createDayRoutes } from './http/day-routes.mjs';
 import { createWeekRoutes } from './http/week-routes.mjs';
 
@@ -254,6 +254,15 @@ const cardOfDay = (u, day) => { const a = Morning.cardOfDay(u, day); return a ? 
    Выпавшая пара запоминается в daily_sets, поэтому в течение дня не меняется. */
 initDailySets(db);
 const { toneOfDay, runeOfDay, drawMorning, setOfDay, themeFor } = Morning;
+/* Человек открыл то, что утро вытянуло само: снимаем пометку auto (запись появляется в «Мои вопросы и ответы»)
+   и пишем «открыл» — один раз в день, чтобы автоматическая вытяжка не считалась действием человека */
+function markOpened(u, day, kind, event, detail) {
+  const row = db.prepare('SELECT id, data FROM entries WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(u.id, day, kind);
+  if (!row) return;
+  const data = parseData(row.data) || {};
+  if (data.auto) { delete data.auto; db.prepare('UPDATE entries SET data = ? WHERE id = ?').run(JSON.stringify(data), row.id); }
+  if (!db.prepare('SELECT 1 FROM events WHERE user_id = ? AND day = ? AND type = ? LIMIT 1').get(u.id, day, event)) track(u, event, detail);
+}
 
 /* ── персональный день ── */
 function dayPack(u, day) {
@@ -279,6 +288,7 @@ function dayPack(u, day) {
     theme: theme ? { key: theme.key, title: theme.title } : null,
     morning: morningOf(preferences(u.preferences)),   /* выбранные плитки утра */
     rune: (() => { const r = runeOfDay(u, day); return r ? runePublic(r) : null; })(),
+    sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */
     question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     lunar: lunarPack(u),
   };
@@ -447,7 +457,7 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
-const Day = createDay({ db, seal, open: open_, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question });
+const Day = createDay({ db, seal, open: open_, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question, dailyWrites: DAILY_WRITES });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day });
 const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
@@ -700,6 +710,7 @@ const server = createServer(async (req, res) => {
          возвращает ту же карту — колода на сегодня уже открыта. */
       if (p === '/api/card' && req.method === 'POST') {
         let card = cardOfDay(u, d);
+        if (card) markOpened(u, d, 'card', 'card_open', (Morning.cardOfDay(u, d) || {}).slug || '');
         if (!card) {
           const a = drawDistinct([...C.ARCANA], 1)[0];
           db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
@@ -714,6 +725,7 @@ const server = createServer(async (req, res) => {
         const row = db.prepare("SELECT data FROM entries WHERE user_id=? AND day=? AND kind='dayrune' ORDER BY id DESC LIMIT 1").get(u.id, d);
         const slug = (parseData(row && row.data) || {}).rune;
         let rune = slug ? [...C.RUNES].find((r) => r.slug === slug) : null;
+        if (rune) markOpened(u, d, 'dayrune', 'dayrune_open', slug);
         if (!rune) {
           rune = drawDistinct([...C.RUNES], 1)[0];
           db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
@@ -802,6 +814,11 @@ const server = createServer(async (req, res) => {
           if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many' });
           const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
           const title = clean(b.title, 300);
+          /* ответ на вопрос дня — один на день: повторная отправка обновляет его, как и карточка дня в Дневнике */
+          if (kind === 'answer') {
+            const prev = db.prepare("SELECT id FROM journal WHERE user_id = ? AND day = ? AND kind = 'answer' ORDER BY id DESC LIMIT 1").get(u.id, d);
+            if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(title), prev.id, u.id); return json(res, 200, { ok: true, updated: true, item: { id: prev.id, day: d, text, kind, title } }); }
+          }
           const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
           track(u, kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add', '');
           return json(res, 200, { ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });

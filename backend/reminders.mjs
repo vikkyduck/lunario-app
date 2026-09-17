@@ -10,7 +10,6 @@
    уведомления телефона (NativeBridge.swift), сервер ничего не шлёт. */
 import { tzOffsetMinutes } from './cities.mjs';
 import { lunarDay } from './lunar.mjs';
-import { skyNow } from './sky.mjs';
 import { sendPush } from './push.mjs';
 import * as C from './content.mjs';
 import { preferences } from './experience.mjs';
@@ -160,7 +159,7 @@ function morningNotification(u, d, atMs, tz) {
   for (const k of pack.chosen || []) {
     if (k === 'card' && pack.card) lines.push(`Карта дня — ${pack.card.name}${pack.card.keys ? ': ' + firstSentence(pack.card.keys) : ''}`);
     if (k === 'dayrune' && pack.rune) lines.push(`Руна дня — ${pack.rune.name}${pack.rune.keyword ? ': ' + pack.rune.keyword : ''}`);
-    if (k === 'sky') { const now = skyNow(atMs, tz || MSK); if (now.today.length) lines.push(`На небе — ${now.today[0].title}`); }
+    if (k === 'sky' && pack.sky) lines.push(`Планеты — ${pack.sky.title}`);   /* то же событие, что задаёт тему и стоит на плитке */
     if (k === 'day' && pack.forecast) lines.push(`${pack.forecast.title} — ${firstSentence(pack.forecast.text)}`);
     if (k === 'lunar') { const ld = lunarDay(atMs, u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon); if (ld) { const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', '']; const topic = lunarTopicLine(u, ld.n); lines.push(`${ld.n}-й лунный день · ${name} — ${topic ? topic.text : firstSentence(advice)}`); } }
     if (k === 'tone' && pack.question) lines.push(`Вопрос дня: ${pack.question}`);

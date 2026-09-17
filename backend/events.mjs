@@ -19,6 +19,8 @@ export const EVENTS = [
   E('onboard_done', 'Заполнил анкету', 'server'),
   E('card_open', 'Открыл карту дня', 'server', { core: true, section: 'Сегодня', title: 'Карта дня' }),
   E('dayrune_open', 'Открыл руну дня', 'server', { core: true, section: 'Сегодня', title: 'Руна дня' }),
+  E('card_draw', 'Карта дня вытянута утром сама', 'server'),
+  E('dayrune_draw', 'Руна дня вытянута утром сама', 'server'),
   E('mood_set', 'Отметил настроение', 'server', { core: true, section: 'Сегодня', title: 'Настроение дня' }),
   E('forecast_view', 'Открыл прогноз дня', 'client', { core: true, section: 'Сегодня', title: 'Прогноз дня' }),
   E('answer_add', 'Ответил на вопрос дня', 'server', { core: true, section: 'Сегодня', title: 'Вопрос дня' }),

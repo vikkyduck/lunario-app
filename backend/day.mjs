@@ -6,7 +6,7 @@
    Пустая ячейка при сохранении = «не менять»: случайно стереть запись нельзя. Зависимости — явным объектом, как у createShelves. */
 import { transaction } from './sync.mjs';
 
-export function createDay({ db, seal, open, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf }) {
+export function createDay({ db, seal, open, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf, dailyWrites = 100 }) {
   const KINDS = { text: '', gratitude: 'gratitude', answer: 'answer' };
   const latest = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(uid, d, kind);
   const cell = (row) => row ? { id: row.id, text: open(row.text), title: open(row.title || '') } : null;
@@ -36,6 +36,7 @@ export function createDay({ db, seal, open, C, habitList, askesisList, track, to
         const row = latest(u.id, d, kind);
         const title = kind === 'answer' ? clean(b.question || questionOf(u, d), 300) : '';
         if (row) { if (open(row.text) !== text) db.prepare('UPDATE journal SET text = ? WHERE id = ? AND user_id = ?').run(seal(text), row.id, u.id); }
+        else if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= dailyWrites) continue;   /* тот же дневной лимит, что у «Записать мысль» */
         else { db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title)); emit(kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add'); }
         filled.push(field);
       }

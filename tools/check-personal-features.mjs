@@ -136,6 +136,11 @@ try {
     assert.equal((await fresh.raw('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card','nope']})).status,400);
     await fresh.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['dayrune','card']});
     const me1=await fresh.json('/me');assert.ok(me1.day.card&&me1.day.rune,'chosen card and rune are drawn by themselves');assert.deepEqual(me1.day.morning,['dayrune','card']);
+    /* утро вытянуло само: в «Мои вопросы и ответы» такого нет и событие — «вытянута», а не «открыл»; открыл — появилось, событие один раз */
+    const db0=new DatabaseSync(join(fixture,'data/app.db'));const freshId=(await fresh.json('/me')).user.id;const ev=(t)=>db0.prepare('SELECT COUNT(*) n FROM events WHERE user_id=? AND type=?').get(freshId,t).n;
+    assert.equal((await fresh.json('/entries?kind=card')).items.length,0,'auto-drawn card is not an asked entry');assert.equal(ev('card_draw'),1);assert.equal(ev('card_open'),0,'auto draw is not an open');
+    await fresh.json('/card','POST');await fresh.json('/card','POST');assert.equal((await fresh.json('/entries?kind=card')).items.length,1,'opened card is listed');assert.equal(ev('card_open'),1,'opened once a day');
+    assert.equal((await fresh.json('/entries?kind=questions')).items.filter(i=>i.kind==='dayrune').length,0,'auto-drawn rune stays out of the list until opened');db0.close();
     assert.equal((await fresh.json('/dayrune','POST')).rune.slug,me1.day.rune.slug,'the same rune all day');assert.equal(me1.day.set.text,me0.day.set.text,'today\'s настрой does not change after the choice');
     const other2=account();await other2.json('/me');await other2.json('/profile','POST',{name:'Утро-2',birth:'1991-02-02',city:'Москва',consent:true});
     await other2.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card']});const me2=await other2.json('/me');
@@ -154,6 +159,8 @@ try {
     const r2=await p.json('/day','POST',{text:'Первая запись дня, дописанная',gratitude:'',moods:['joy']});
     assert.equal(r2.text.text,'Первая запись дня, дописанная');assert.equal(r2.gratitude.text,'Себе','empty cell keeps the record');assert.deepEqual(r2.moods,['joy']);
     assert.equal((await p.json('/journal')).items.length,3,'no duplicates on a second save');
+    const a2=await p.json('/journal','POST',{text:'Ответ дня, дописанный из панели',kind:'answer',title:s0.question});assert.ok(a2.updated,'the question panel updates the answer written in the day card');
+    assert.equal((await p.json('/journal')).items.filter(i=>i.kind==='answer').length,1,'one answer per day');assert.equal((await p.json('/day')).answer.text,'Ответ дня, дописанный из панели');
     assert.equal((await p.json('/day','POST',{habits:[{id:h.id,done:false}]})).habits.find(x=>x.id===h.id).today,false);
     assert.equal((await other.raw('/day','POST',{habits:[{id:h.id,done:true}]})).status,200);assert.equal((await p.json('/day')).habits.find(x=>x.id===h.id).today,false,'another account cannot mark my habit');
     const tl=await p.json('/timeline?kind=askesis&day=&offset=0');assert.ok(tl.items.some(i=>i.kind==='askesis'&&i.data==='0'),'askesis day with kept=0 in the timeline'); }
@@ -161,11 +168,11 @@ try {
   assert.equal((await owner.raw('/wishes','POST',{text:'Неверное фото',photo:'not-an-image'})).status,400);
   assert.equal((await owner.json('/wishes')).items.length,wishesBefore,'No orphan wish when its photo is invalid');
   const timelineOwner=account();await timelineOwner.json('/me');
-  for(let i=0;i<65;i++)await timelineOwner.json('/journal','POST',{text:'Строка '+i,kind:i%2?'answer':'gratitude'});
+  for(let i=0;i<65;i++)await timelineOwner.json('/journal','POST',{text:'Строка '+i,kind:i%2?'':'gratitude'});   /* ответ на вопрос дня — один на день, поэтому здесь записи и благодарности */
   const first=(await timelineOwner.json('/timeline'));const second=(await timelineOwner.json('/timeline?offset='+first.next));
   assert.equal(first.items.length,60);assert.equal(second.items.length,5);assert.equal(second.next,null);
   assert.equal(new Set([...first.items,...second.items].map(i=>i.id)).size,65);
-  assert.ok((await timelineOwner.json('/timeline?kind=answer')).items.every(i=>i.kind==='answer'));
+  assert.ok((await timelineOwner.json('/timeline?kind=gratitude')).items.every(i=>i.kind==='gratitude'));
   assert.equal((await other.json('/timeline')).items.length,0);
   const ownTimeline=await owner.json('/timeline?day='+day);assert.ok(ownTimeline.items.some(i=>i.body==='Тест: запись в дневнике'));
   assert.ok(ownTimeline.items.some(i=>i.source==='askesis'));assert.ok(ownTimeline.items.some(i=>i.source==='habit'));
@@ -229,6 +236,12 @@ try {
   assert.ok(morning.body.includes('Карта дня — ')&&morning.body.includes('лунный день')&&morning.body.includes('Вопрос дня: '),morning.body);assert.equal(morning.url,'/app/?open=today');
   await owner.json('/reminders','POST',{feature:'morning',enabled:true,time:'08:30'});
   const plan=await owner.json('/reminders/native-plan?feature=morning');assert.equal(plan.items.length,14);assert.ok(plan.items.every(i=>i.title&&i.url==='/app/?open=today'));
+  /* план на будущие дни считает ту же карту, что утром вытянет /me, и настрой снимается под её тему — цепочка «карта → тема → настрой» не рвётся */
+  { const { hash32 }=await import(pathToFileURL(join(fixture,'backend/morning.mjs')).href);const C=await import(pathToFileURL(join(fixture,'backend/content.mjs')).href);
+    const ownerId=(await owner.json('/me')).user.id;const future=plan.items.find(i=>i.date>day);const arcana=[...C.ARCANA];const card=arcana[hash32(`${ownerId}:${future.date}:card`)%arcana.length];
+    assert.ok(future.body.includes('Карта дня — '+card.name),'future push names the card of that day: '+future.body);
+    assert.equal(qaDB.prepare('SELECT theme FROM daily_sets WHERE user_id=? AND day=?').get(ownerId,future.date).theme,C.themeOf('карта',card.slug),'future настрой is snapshotted under the card theme');
+    assert.ok(plan.items.every(i=>!i.body.includes('На небе')),'sky line is «Планеты — …»'); }
   assert.equal(Date.parse(plan.items[1].date)-Date.parse(plan.items[0].date),864e5);
   assert.equal((await other.json('/reminders/native-plan?feature=morning')).items.length,0,'no plan without an enabled reminder');
   /* влияние планет как источник темы: главное событие неба на день → строка «небо | …» из темы-источников.txt.

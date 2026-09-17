@@ -6,7 +6,9 @@ export function entryPage(db, userId, query, open) {
   const rows = db.prepare(`SELECT id, day, kind, question, title, body, data FROM entries
     WHERE user_id=? AND (?=0 OR id=?) AND (?=0 OR id<?)
       AND (?='' OR (?='card' AND kind='card') OR (?='questions' AND kind<>'card'))
-    ORDER BY id DESC LIMIT 101`).all(userId,id,id,before,before,kind,kind,kind);
+      AND (?<>0 OR json_extract(data, '$.auto') IS NOT 1)
+    ORDER BY id DESC LIMIT 101`).all(userId,id,id,before,before,kind,kind,kind,id);
+  /* auto — утро вытянуло само, человек не открывал: в списке «о чём спрашивали» такого нет, по прямой ссылке (id) — есть */
   const items = rows.slice(0,100).map(row => {
     let data = {}; try { data = JSON.parse(row.data || '{}'); } catch {}
     return {...row, question:open(row.question), data};
