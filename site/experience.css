@@ -357,3 +357,23 @@ body.inner input.compact{font-size:14px}
 .rhythm-row .grow{min-width:0}.rhythm-row b{display:block;font-size:17px;font-weight:600}.rhythm-row small{display:block;font-size:14px;line-height:1.4;color:var(--muted)}
 .rhythm-row input[type=time]{width:auto;flex:0 0 auto;padding:8px 10px;font-size:16px}
 .rhythm-card .btn{margin-top:18px;width:100%}
+
+/* ── Подсказки по приложению (tour.js): затемнение, кольцо вокруг элемента, карточка «N / 8» ── */
+.tour{position:fixed;inset:0;z-index:400}
+.tour[hidden]{display:none}
+.tour-scrim{position:fixed;inset:0;background:rgba(8,7,16,.6)}
+.tour-scrim[hidden]{display:none}
+.tour-ring{position:fixed;border:2px solid var(--gold-2);border-radius:20px;pointer-events:none;
+  box-shadow:0 0 0 200vmax rgba(8,7,16,.6),0 0 0 6px rgba(240,215,154,.16);transition:left var(--t-slow) var(--sp),top var(--t-slow) var(--sp),width var(--t-slow) var(--sp),height var(--t-slow) var(--sp)}
+.tour-ring[hidden]{display:none}
+.tour-card{position:fixed;box-sizing:border-box;padding:18px 20px 16px;border-radius:22px;background:var(--sheet);border:1px solid var(--line);
+  box-shadow:0 24px 60px rgba(0,0,0,.45);color:var(--text);transition:left var(--t-slow) var(--sp),top var(--t-slow) var(--sp)}
+.tour-step{display:block;font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:var(--gold-2)}
+.tour-text{margin:10px 0 0;font-size:17px;line-height:1.45;text-wrap:pretty}
+.tour-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}
+.tour-skip{background:none;border:0;padding:8px 0;color:var(--muted);font:inherit;font-size:15px;cursor:pointer}
+.tour-next{min-height:44px;padding:10px 24px;border:0;border-radius:999px;background:var(--gold-2);color:#1c1430;font:inherit;font-size:16px;font-weight:600;cursor:pointer}
+.tour-next:focus-visible,.tour-skip:focus-visible{outline:2px solid var(--gold-2);outline-offset:3px}
+html[data-theme=light] .tour-next{color:#fff}
+html[data-theme=light] .tour-card{box-shadow:0 24px 60px rgba(42,33,80,.25)}
+@media(prefers-reduced-motion:reduce){.tour-ring,.tour-card{transition:none}}

@@ -398,6 +398,8 @@ body.inner .picker-actions:empty{display:none}
 body.inner #morning-empty{margin:10px 0 0}
 /* вечером и по воскресеньям — тихие строки под сетками */
 body.inner .home-later{display:grid;gap:10px;margin-top:24px}
+body.inner .home-later[hidden]{display:none}
+body.inner .home-push{margin-top:14px}
 body.inner .later-row{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:14px;row-gap:2px;align-items:center;width:100%;text-align:left;padding:14px 24px;border-radius:var(--r-xl);background:var(--glass-bg);border:1px solid transparent;box-shadow:var(--glass-shadow);color:var(--text);font:inherit;cursor:pointer}
 body.inner .later-row .eyebrow{grid-column:1;margin:0;font-size:12px}
 body.inner .later-row b{grid-column:1;font-size:16px;font-weight:600;line-height:1.4}

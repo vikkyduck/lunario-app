@@ -611,7 +611,7 @@ try {
   }
   /* и в шаблонах JS, из которых собирается разметка: атрибут-обработчик, добавленный через innerHTML, CSP тоже блокирует */
   const fs = await import('node:fs');
-  for (const f of ['app.js', 'experience.js', 'cabinet.js', 'handlers.js', 'cabinet-handlers.js']) assert.ok(!/\son[a-z]+="/.test(fs.readFileSync(join(repo, 'site', f), 'utf8')), f + ' has no on*= attributes in templates');
+  for (const f of ['app.js', 'experience.js', 'tour.js', 'cabinet.js', 'handlers.js', 'cabinet-handlers.js']) assert.ok(!/\son[a-z]+="/.test(fs.readFileSync(join(repo, 'site', f), 'utf8')), f + ' has no on*= attributes in templates');
   assert.equal((await fetch(base + '/sw.js')).headers.get('x-content-type-options'), 'nosniff');
   /* офлайн-оболочка: каждый адрес из SHELL в sw.js должен отдаваться — иначе первое офлайн-открытие получит пустой экран */
   const sw = fs.readFileSync(join(repo, 'site', 'sw.js'), 'utf8');
@@ -620,7 +620,7 @@ try {
   /* Реестр обработчиков и разметка должны сходиться. Перенос из атрибутов делался скриптом, и у него два
      характерных промаха: тело, собранное конкатенацией ('+id+' в обычной строке), он принимал за литерал,
      а имя с зашитым аргументом рядом с параметрическим давало мёртвую запись и ломало поиск по data-a0. */
-  const sites = ['index.html', 'app.js', 'experience.js', 'handlers.js', 'cabinet.html', 'cabinet.js', 'cabinet-handlers.js'].map((f) => [f, fs.readFileSync(join(repo, 'site', f), 'utf8')]);
+  const sites = ['index.html', 'app.js', 'experience.js', 'tour.js', 'handlers.js', 'cabinet.html', 'cabinet.js', 'cabinet-handlers.js'].map((f) => [f, fs.readFileSync(join(repo, 'site', f), 'utf8')]);
   const src = Object.fromEntries(sites);
   for (const reg of ['handlers.js', 'cabinet-handlers.js']) {
     for (const [, name, body] of src[reg].matchAll(/^ {2}"([^"]+)": function \(event\) \{ (.*) \},$/gm)) {
@@ -632,7 +632,7 @@ try {
   /* Имена из разметки. Пропускаем те, что собираются в коде (`'[data-on="click:openWidget-'+key+'"]'` — это селектор,
      а не разметка): имя там подставляется на ходу, а сами кнопки объявлены в разметке и так попадут в список. */
   const used = (files) => { const out = new Set(); for (const f of files) for (const [, spec] of src[f].matchAll(/data-on="([^"]+)"/g)) { if (/'\+|\+'|\$\{/.test(spec)) continue; for (const pair of spec.split(' ')) out.add(pair.slice(pair.indexOf(':') + 1)); } return out; };
-  const appUsed = used(['index.html', 'app.js', 'experience.js']);
+  const appUsed = used(['index.html', 'app.js', 'experience.js', 'tour.js']);
   for (const m of src['experience.js'].matchAll(/setAttribute\('data-on'\s*,\s*'([^']+)'/g)) appUsed.add(m[1].slice(m[1].indexOf(':') + 1));   // одна кнопка получает data-on из кода
   for (const [reg, u] of [['handlers.js', appUsed], ['cabinet-handlers.js', used(['cabinet.html', 'cabinet.js'])]]) {
     for (const n of u) assert.ok(named(reg).has(n), `${reg}: разметка ссылается на «${n}», а обработчика нет`);

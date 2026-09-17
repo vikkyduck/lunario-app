@@ -94,6 +94,7 @@ function go(v){
   const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   window.refreshMoonLogos?.();window.LunarioSky?.refresh();
   if(v==='account')XP.scroll.account=0;   /* открывается по кружку с любой вкладки — начинаем с шапки, а не с прошлой прокрутки */
+  if(v==='home')window.tourMaybe?.();   /* подсказки по приложению — один раз, на «Сегодня» */
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();}
   if(v==='history') loadHistory();
@@ -316,20 +317,28 @@ function paintHomeLater(d){
     ? `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>День записан ✓</b><span class="later-go">Дополнить →</span></button>`
     : `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>Запомнить этот день</b><span class="later-go">В дневник →</span></button>`);
   if (dow === 0 || dow === 1) rows.push(`<button data-on="click:goWeek" class="later-row" type="button"><span class="eyebrow">${dow === 0 ? 'Воскресенье' : 'Понедельник'}</span><b>Неделя собралась</b><span class="later-go">Моя неделя →</span></button>`);
-  if (pushNudgeDue()) rows.unshift(`<button data-on="click:homePushConnect" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>На этом устройстве не подключены</b><span class="later-go">Включить →</span></button>`);
   box.hidden = !rows.length; box.innerHTML = rows.join('');
+  paintPushNudge();
+}
+/* Под настроем дня: расписание включено, а сюда уведомления не приходят — одна строка и одно нажатие */
+function paintPushNudge(){
+  const box = $('home-push'); if (!box) return;
+  const due = pushNudgeDue(); box.hidden = !due; if (!due) { box.innerHTML = ''; return; }
+  box.innerHTML = Notification.permission === 'denied'
+    ? `<button data-on="click:openWidget-remind" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>В этом браузере запрещены</b><span class="later-go">Как разрешить →</span></button>`
+    : `<button data-on="click:homePushConnect" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>На этом устройстве не подключены</b><span class="later-go">Включить →</span></button>`;
 }
 /* Расписание есть, а уведомления сюда не приходят: ячейка пропала после переустановки на экран «Домой» или это новый браузер.
    Показываем, когда настройки уже загружены и разрешение не запрещено; после подключения строка исчезает. */
 function pushNudgeDue(){
-  if (!S.rem || !PUSH_OK || Notification.permission === 'denied') return false;
+  if (!S.rem || !PUSH_OK) return false;
   return Object.values(S.rem).some((r) => r.enabled) && !remDeviceReady();
 }
 async function homePushConnect(){
   const btn = $('push-nudge'); if (!btn || btn.disabled) return; btn.disabled = true;
   try { if (await connectPushDevice()) { toast('Уведомления подключены'); track('push_on', 'home'); } }
   catch (e) { toast('Не удалось подключить уведомления. Попробуйте ещё раз'); }
-  finally { paintHomeLater(S.day); REM_ORDER.forEach(paintRem); }
+  finally { paintPushNudge(); REM_ORDER.forEach(paintRem); }
 }
 function goDayCard(){ go('history'); requestAnimationFrame(() => $('day-card')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }
 function goWeek(){ go('history'); openWidget('week'); }
@@ -351,7 +360,7 @@ function paintHome(){
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('h-wish').textContent = d.set?.text || '';
   paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d);
-  if (!S.rem) loadReminders().then(() => paintHomeLater(S.day)).catch(() => {});   /* строка «не подключены» — когда расписание известно */
+  if (!S.rem) loadReminders().then(paintPushNudge).catch(() => {});   /* строка «не подключены» — когда расписание известно */
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
   if ($('ac-cabs')) $('ac-cabs').hidden = !staff; document.body.classList.toggle('staff', staff);   /* вход в кабинеты — строкой в Аккаунте, шапка без второго кружка */
@@ -1471,10 +1480,13 @@ async function remToggle(f){
   const r = S.rem && S.rem[f]; if (!r || remBusy[f]) return; hap();
   remBusy[f]=true; paintRem(f);
   try {
-    // Request permission directly in this click, before any network wait.
-    if (!r.enabled && !(await connectPushDevice())) return;
+    /* Разрешение спрашивается прямо в этом нажатии. Но расписание — про аккаунт, а не про это устройство: оно сохраняется
+       в любом случае (раньше отказ браузера молча отменял включение — «уведомления не настраиваются»). */
+    let device = true;
+    if (!r.enabled) { try { device = await connectPushDevice(); } catch { device = false; } }
     if (await remSave(f,{enabled:!r.enabled})) {
-      toast(S.rem[f].enabled ? 'Напомним ' + remText(S.rem[f]) : 'Уведомления выключены');
+      if (!S.rem[f].enabled) toast('Уведомления выключены');
+      else if (device) toast('Напомним ' + remText(S.rem[f]));   /* иначе connectPushDevice уже объяснил, чего не хватает этому устройству */
     }
   } catch(e) { toast('Не удалось включить уведомления. Попробуйте ещё раз'); }
   finally { remBusy[f]=false; REM_ORDER.forEach(paintRem); }

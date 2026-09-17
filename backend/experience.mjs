@@ -17,6 +17,7 @@ export function validPreferences(value) {
   if (value && value.morning !== undefined && !(Array.isArray(value.morning) && value.morning.length <= 10 && value.morning.every(morningKey))) return false;
   if (value && value.topicsAll !== undefined && typeof value.topicsAll !== 'boolean') return false;
   if (value && value.tz !== undefined && !(typeof value.tz === 'string' && value.tz.length <= 64)) return false;   /* пояс устройства — из заголовка X-Tz, сохраняется здесь */
+  if (value && value.tour !== undefined && !(Number.isInteger(value.tour) && value.tour >= 0 && value.tour <= 99)) return false;   /* какую версию подсказок по приложению человек уже видел */
   return value && ['system','light','dark'].includes(value.theme) && Array.isArray(value.ritual)
     && value.ritual.length >= 2 && value.ritual.length <= 3
     && new Set(value.ritual).size === value.ritual.length && value.ritual.every(k=>practices.has(k));
