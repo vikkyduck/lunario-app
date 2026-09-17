@@ -81,20 +81,29 @@ function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidg
    остальные — маленькими квадратами ниже. Карта и руна, если выбраны, тянутся утром сами, и от них считается тема дня ── */
 const MORNING=[['card','Карта дня'],['dayrune','Руна дня'],['sky','Влияние планет'],['day','Прогноз дня'],['lunar','Луна'],['tone','Вопрос дня']];
 function morningChosen(){return Array.isArray(XP.prefs.morning)?XP.prefs.morning.filter(k=>MORNING.some(m=>m[0]===k)):['lunar','tone'];}
+/* Плитки переезжают между «Ваше утро» и «Всё про этот день» с места на место (FLIP): человек видит, куда ушла плитка, а не скачок */
 function paintMorning(){
   const chips=$('morning-chips'),feed=$('morning-feed'),more=$('morning-more');if(!chips||!feed||!more)return;
-  const chosen=morningChosen();
+  const chosen=morningChosen(),tiles=MORNING.map(([k])=>document.querySelector('#v-home [data-feature="'+k+'"]')).filter(Boolean);
+  const animate=$('v-home')?.classList.contains('on')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const before=animate?new Map(tiles.map(t=>[t,t.getBoundingClientRect()])):null;
   chips.innerHTML=MORNING.map(([k,label])=>`<button data-on="click:toggleMorning-a0" data-a0="${k}" type="button" class="chip${chosen.includes(k)?' on':''}" aria-pressed="${chosen.includes(k)}">${label}</button>`).join('');
-  for(const [k] of MORNING){const tile=document.querySelector('#v-home [data-feature="'+k+'"]');if(tile)(chosen.includes(k)?feed:more).appendChild(tile);}
+  for(const t of tiles)(chosen.includes(t.dataset.feature)?feed:more).appendChild(t);
   feed.closest('.feature-group').hidden=!chosen.length;more.closest('.feature-group').hidden=chosen.length===MORNING.length;
+  if(!before)return;
+  for(const t of tiles){const a=before.get(t),b=t.getBoundingClientRect();if(!a.width||!b.width)continue;const dx=a.left-b.left,dy=a.top-b.top,sx=a.width/b.width,sy=a.height/b.height;
+    if(Math.abs(dx)<1&&Math.abs(dy)<1&&Math.abs(sx-1)<.02&&Math.abs(sy-1)<.02)continue;
+    t.animate([{transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,transformOrigin:'top left'},{transform:'none',transformOrigin:'top left'}],{duration:320,easing:'cubic-bezier(.2,.7,.2,1)'});}
 }
+/* Переключение — сразу на экране, сохранение — следом; не сохранилось — плитка возвращается */
 async function toggleMorning(key){
   if(toggleMorning.busy)return;toggleMorning.busy=true;
-  const set=new Set(morningChosen());if(set.has(key))set.delete(key);else set.add(key);
+  const was=morningChosen(),set=new Set(was);if(set.has(key))set.delete(key);else set.add(key);
   const morning=MORNING.map(m=>m[0]).filter(k=>set.has(k));
-  try{await savePreferences({...XP.prefs,morning});paintMorning();track(set.has(key)?'morning_add':'morning_remove',key);
+  XP.prefs={...XP.prefs,morning};paintMorning();hap();
+  try{await savePreferences({...XP.prefs,morning});track(set.has(key)?'morning_add':'morning_remove',key);
     if(set.has(key)&&(key==='card'||key==='dayrune')){const r=await api('/me');S.day=r.day;paintToday();}   /* карта или руна тянутся сразу; тема дня — с завтрашнего утра */
-  }catch{toast('Не удалось сохранить. Попробуйте ещё раз');}
+  }catch{XP.prefs={...XP.prefs,morning:was};paintMorning();toast('Не удалось сохранить. Попробуйте ещё раз');}
   finally{toggleMorning.busy=false;}
 }
 

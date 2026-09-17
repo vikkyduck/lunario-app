@@ -293,7 +293,7 @@ function paintMorningPostcard(d){
   if (!d.set?.text) { box.innerHTML = ''; return; }
   const id = regRes({ type: 'morning', text: d.set.text, question: d.set.question || d.question || '', theme: d.theme?.title || '', day: d.date,
     moonPct: d.moonPct, waxing: (d.moonPhase || 0) < 0.5, card: d.card?.name || '', rune: d.rune?.name || '', lunar: d.lunar ? `${ordinal(d.lunar.n)} лунный день` : '' });
-  box.innerHTML = `<button data-on="click:savePostcard-a0" data-a0="${id}" class="text-action" type="button">✦ Сохранить себе на экран</button><button data-on="click:shareRes-a0" data-a0="${id}" class="text-action secondary" type="button"><i class="ico share"></i>Поделиться</button>`;
+  box.innerHTML = `<button data-on="click:savePostcard-a0" data-a0="${id}" class="text-action" type="button"><span>✦ Сохранить<span class="hero-long"> себе на экран</span></span></button><button data-on="click:shareRes-a0" data-a0="${id}" class="text-action secondary" type="button"><i class="ico share"></i>Поделиться</button>`;
   preparePending();
 }
 function paintHome(){
