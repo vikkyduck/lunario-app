@@ -139,7 +139,8 @@ try {
     assert.equal((await fresh.json('/dayrune','POST')).rune.slug,me1.day.rune.slug,'the same rune all day');assert.equal(me1.day.set.text,me0.day.set.text,'today\'s настрой does not change after the choice');
     const other2=account();await other2.json('/me');await other2.json('/profile','POST',{name:'Утро-2',birth:'1991-02-02',city:'Москва',consent:true});
     await other2.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['card']});const me2=await other2.json('/me');
-    assert.ok(me2.day.card,'card drawn from the first day pack');assert.ok(me2.day.theme?.key,'theme from the card'); }
+    assert.ok(me2.day.card,'card drawn from the first day pack');assert.ok(me2.day.theme?.key,'theme from the card');
+}
   /* Карточка дня: один запрос — разные типы; повтор не дублирует; пустая ячейка не стирает; чужие привычки и аскезы не трогаются */
   { const p=account();await p.json('/me');await p.json('/profile','POST',{name:'День',birth:'1993-03-03',city:'Москва',consent:true});
     const h=(await p.json('/habits','POST',{title:'Вода',rule:'каждый день'})).items.find(x=>x.title==='Вода');
@@ -230,6 +231,14 @@ try {
   const plan=await owner.json('/reminders/native-plan?feature=morning');assert.equal(plan.items.length,14);assert.ok(plan.items.every(i=>i.title&&i.url==='/app/?open=today'));
   assert.equal(Date.parse(plan.items[1].date)-Date.parse(plan.items[0].date),864e5);
   assert.equal((await other.json('/reminders/native-plan?feature=morning')).items.length,0,'no plan without an enabled reminder');
+  /* влияние планет как источник темы: главное событие неба на день → строка «небо | …» из темы-источников.txt.
+     Пара «настрой — вопрос» снимается при первом /me, поэтому после выбора источника снимок дня сбрасывается */
+  { const { skyKeyOf } = await import(pathToFileURL(join(fixture,'backend/morning.mjs')).href);const C=await import(pathToFileURL(join(fixture,'backend/content.mjs')).href);
+    const skyKey=skyKeyOf(day);assert.ok(skyKey===null||/^(фаза|затмение|ретро) /.test(skyKey),'sky key: '+skyKey);
+    const skyP=account();await skyP.json('/me');await skyP.json('/profile','POST',{name:'Небо',birth:'1990-05-05',city:'Москва',consent:true});
+    await skyP.json('/preferences','POST',{theme:'dark',ritual:['tone','journal'],morning:['sky']});
+    qaDB.prepare('DELETE FROM daily_sets WHERE user_id=(SELECT id FROM users WHERE name=?)').run('Небо');const me3=await skyP.json('/me');
+    if(skyKey&&C.themeOf('небо',skyKey))assert.equal(me3.day.theme.key,C.themeOf('небо',skyKey),'theme comes from the sky event');else assert.ok(me3.day.theme?.key,'quiet sky falls back to the tone of the day'); }
   /* вечер: пока день не записан — напоминаем; записали хоть что-то — молчим */
   const evPerson=account();await evPerson.json('/me');await evPerson.json('/profile','POST',{name:'Вечер',birth:'1994-04-04',city:'Москва',consent:true});
   const evRow=qaDB.prepare('SELECT * FROM users WHERE name=?').get('Вечер');

@@ -774,7 +774,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
     <div class="home-intro">
       <div class="home-moon" aria-hidden="true"><img src="/app/assets/moon-hero.png" width="1254" height="1254" alt="" decoding="async"></div>
-      <div class="daily-statement"><h2 id="h-wish"></h2></div>
+      <div class="daily-statement"><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
     </div>
     <!-- Утро: человек отвечает, на что хочет обращать внимание; выбранное — сверху, остальное — маленькими квадратами ниже -->
     <section class="card morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint">Выберите, что показывать первым. Можно всё</p><div class="chips flow" id="morning-chips"></div></section>
@@ -790,7 +790,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <button data-on="click:openWidget-week" class="week-top" id="week-top" type="button" hidden aria-label="Моя неделя: про что она"><span class="eyebrow">Неделя собралась</span><b>Моя неделя: про что она</b><span class="hint" id="week-top-sub"></span></button>
     <!-- Карточка сегодняшнего дня: ячейки-вопросы, каждая ложится в свой тип; ни одна не обязательна -->
     <section class="card day-card" id="day-card" aria-labelledby="dc-title"><span class="eyebrow" id="dc-date"></span><h2 id="dc-title">Запомнить этот день</h2>
-      <div class="field"><label for="dc-text">Что было важным сегодня? Что стоит запомнить?</label><textarea data-on="input:growTextarea-this" id="dc-text" maxlength="2000" rows="2"></textarea></div>
+      <div class="field"><label for="dc-text">Что было важным сегодня? Что стоит запомнить?</label><textarea data-on="input:growTextarea-this" id="dc-text" maxlength="2000" rows="2"></textarea>
+        <div class="dc-prompts"><div class="chips flow"><button data-on="click:dcPrompt-a0" data-a0="Что произошло?" class="chip" type="button">Что произошло?</button><button data-on="click:dcPrompt-a0" data-a0="Что я почувствовала?" class="chip" type="button">Что я почувствовала?</button><button data-on="click:dcPrompt-a0" data-a0="Что хочу помнить?" class="chip" type="button">Что хочу помнить?</button><button data-on="click:dcDictate" class="chip" id="dc-dictate" type="button" aria-pressed="false">Продиктовать</button></div><p id="dc-speech-note" class="hint" hidden></p></div></div>
       <div class="field"><label for="dc-grat">Кому и за что вы сегодня благодарны?</label><textarea data-on="input:growTextarea-this" id="dc-grat" maxlength="2000" rows="2"></textarea></div>
       <div class="field"><label for="dc-answer">Вопрос дня: <span id="dc-question"></span></label><textarea data-on="input:growTextarea-this" id="dc-answer" maxlength="2000" rows="2"></textarea></div>
       <div class="dc-block"><span class="dc-label">Настроение</span><div class="chips flow" id="dc-mood-chips"></div><div class="field dc-own"><input data-on="input:dcOwnInput" id="dc-own" maxlength="80" placeholder="своё слово — можно несколько через запятую" autocomplete="off"></div></div>

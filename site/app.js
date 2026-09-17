@@ -287,11 +287,21 @@ async function exportPersonalData(){
 
 /* ── главная ── */
 const ordinal = (n) => n + '-й';
+/* «Сохранить себе на экран»: настрой дня, тема и вопрос — открыткой на экран блокировки; собирается заранее, как остальные */
+function paintMorningPostcard(d){
+  const box = $('h-wish-actions'); if (!box) return;
+  if (!d.set?.text) { box.innerHTML = ''; return; }
+  const id = regRes({ type: 'morning', text: d.set.text, question: d.set.question || d.question || '', theme: d.theme?.title || '', day: d.date,
+    moonPct: d.moonPct, waxing: (d.moonPhase || 0) < 0.5, card: d.card?.name || '', rune: d.rune?.name || '', lunar: d.lunar ? `${ordinal(d.lunar.n)} лунный день` : '' });
+  box.innerHTML = `<button data-on="click:savePostcard-a0" data-a0="${id}" class="text-action" type="button">✦ Сохранить себе на экран</button><button data-on="click:shareRes-a0" data-a0="${id}" class="text-action secondary" type="button"><i class="ico share"></i>Поделиться</button>`;
+  preparePending();
+}
 function paintHome(){
   const u=S.user, d=S.day;
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('h-wish').textContent = d.set?.text || '';
+  paintMorningPostcard(d);
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
   $('h-cabs').hidden = !staff; $('h-cabs').closest('.row').classList.toggle('staff', staff); document.body.classList.toggle('staff', staff);
@@ -614,26 +624,30 @@ async function toggleWish(id){
   try { renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
   catch(e){ toast('Не удалось изменить отметку желания. Попробуйте ещё раз.'); }
 }
-function journalPrompt(text){
-  const el=$('j-text'); if(!el) return;
+/* Подсказки и диктовка — в «Записать мысль» (j) и в первой ячейке карточки дня (dc): одна механика, разные поля */
+const DICT_SCOPES={j:{text:'j-text',btn:'j-dictate',note:'j-speech-note'},dc:{text:'dc-text',btn:'dc-dictate',note:'dc-speech-note'}};
+function journalPrompt(text,scope='j'){
+  const el=$(DICT_SCOPES[scope].text); if(!el) return;
   if(!el.value.trim()) el.value=text+'\n';
-  el.focus(); el.setSelectionRange(el.value.length,el.value.length); hap();
+  el.focus(); el.setSelectionRange(el.value.length,el.value.length); growTextarea(el); hap();
 }
 let journalSpeech=null;
 function prepareDictation(){
   const supported=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
-  $('j-dictate').textContent=supported?'Продиктовать':'Диктовка с клавиатуры';
-  $('j-dictate').setAttribute('aria-pressed','false');
-  $('j-speech-note').textContent=supported?'Браузер может отправлять голос своему сервису распознавания. В Лунарио сохраняется текст.':'Нажмите микрофон на клавиатуре телефона или включите системную диктовку';
+  for(const c of Object.values(DICT_SCOPES)){const btn=$(c.btn),note=$(c.note);if(!btn)continue;
+    btn.textContent=supported?'Продиктовать':'Диктовка с клавиатуры';btn.setAttribute('aria-pressed','false');
+    if(note)note.textContent=supported?'Браузер может отправлять голос своему сервису распознавания. В Лунарио сохраняется текст.':'Нажмите микрофон на клавиатуре телефона или включите системную диктовку';}
 }
 function stopJournalDictation(){const rec=journalSpeech;journalSpeech=null;if(rec){rec.onresult=rec.onerror=rec.onend=null;try{rec.abort();}catch(e){}}prepareDictation();}
-function journalDictate(){
+function journalDictate(scope='j'){
+  const c=DICT_SCOPES[scope]; if(!$(c.btn)) return;
   if(journalSpeech){journalSpeech.stop();return;}
+  prepareDictation(); if($(c.note))$(c.note).hidden=false;
   const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!Recognition){$('j-text').focus();$('j-speech-note').hidden=false;return;}
+  if(!Recognition){$(c.text).focus();return;}
   const rec=new Recognition();journalSpeech=rec;rec.lang='ru-RU';rec.interimResults=false;
-  $('j-dictate').textContent='Остановить диктовку';$('j-dictate').setAttribute('aria-pressed','true');
-  rec.onresult=e=>{if(journalSpeech!==rec)return;const el=$('j-text');for(let i=e.resultIndex||0;i<e.results.length;i++)if(e.results[i].isFinal!==false)el.value+=(el.value.trim()?' ':'')+e.results[i][0].transcript;el.value=el.value.slice(0,2000);};
+  $(c.btn).textContent='Остановить диктовку';$(c.btn).setAttribute('aria-pressed','true');
+  rec.onresult=e=>{if(journalSpeech!==rec)return;const el=$(c.text);for(let i=e.resultIndex||0;i<e.results.length;i++)if(e.results[i].isFinal!==false)el.value+=(el.value.trim()?' ':'')+e.results[i][0].transcript;el.value=el.value.slice(0,2000);growTextarea(el);};
   rec.onerror=e=>{if(journalSpeech!==rec||e.error==='aborted')return;toast(e.error==='not-allowed'?'Разрешите микрофон в настройках браузера или используйте клавиатуру':'Не удалось распознать речь. Попробуйте ещё раз');};
   rec.onend=()=>{if(journalSpeech!==rec)return;journalSpeech=null;prepareDictation();};
   try{rec.start();}catch(e){stopJournalDictation();toast('Не удалось включить диктовку');}
@@ -740,6 +754,7 @@ function paintDayCard(){
   const s=DC.state;if(!s||!$('day-card'))return;
   $('dc-date').textContent=fmtDay(s.day);
   $('dc-question').textContent=s.question||'';
+  if(!journalSpeech)prepareDictation();
   const fill=(id,cell)=>{const el=$(id);if(document.activeElement!==el){el.value=cell?cell.text:'';growTextarea(el);}};
   fill('dc-text',s.text);fill('dc-grat',s.gratitude);fill('dc-answer',s.answer);
   DC.moods=new Set(s.moods.filter(m=>!m.startsWith('own:')));const own=s.moods.filter(m=>m.startsWith('own:')).map(m=>m.slice(4));
@@ -1687,6 +1702,7 @@ function paintSky(){
 function shareResText(p){
   const link = location.origin + '/app/';
   switch (p.type) {
+    case 'morning': return `${p.text}${p.question ? '\n' + p.question : ''}\nЛунарио · ${link}`;
     case 'card': return `${p.card.name} — карта дня в Лунарио.\n${keysLine(p.card.keys)}\n${link}`;
     case 'rune': return `Руна ${p.runes[0].name} — ${p.runes[0].answer || p.runes[0].motto || ''}\nЛунарио · ${link}`;
     case 'runes': return `Руны: ${p.runes.map(r => r.name).join(' · ')}\nЛунарио · ${link}`;
@@ -1722,6 +1738,15 @@ function pcMoonDisc(ctx, cx, cy, R, illum, waxing){
   ctx.restore();
 }
 async function drawPostcardExtra(ctx, p){
+  if (p.type === 'morning') {   /* утро: луна как сегодня, тема, настрой крупно, вопрос курсивом, внизу — что ещё выбрано на утро */
+    pcMoonDisc(ctx, 540, 400, 150, p.moonPct ?? 50, p.waxing);
+    let y = drawText(ctx, (p.theme || 'НАСТРОЙ ДНЯ').toUpperCase(), 540, 660, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
+    y = drawText(ctx, p.text, 540, y + 40, { size: p.text.length > 70 ? 44 : 56, weight: 600, color: '#f5f2ea', maxW: 900, lh: 1.25 });
+    if (p.question) { ctx.fillStyle = 'rgba(217,184,104,.6)'; ctx.fillRect(512, y + 30, 56, 2); y = drawText(ctx, p.question, 540, y + 84, { size: 34, italic: true, color: '#ded8ee', maxW: 860, lh: 1.4 }); }
+    const extras = [p.card ? `Карта дня — ${p.card}` : '', p.rune ? `Руна дня — ${p.rune}` : '', p.lunar].filter(Boolean);
+    if (extras.length) drawText(ctx, extras.join(' · '), 540, Math.max(y + 70, 1440), { size: 26, color: '#8f87ad', maxW: 900, lh: 1.35 });
+    return true;
+  }
   if (p.type === 'mood') {
     pcSmiley(ctx, p.mood, 540, 600, 520);
     let y = drawText(ctx, 'Сегодня — ' + p.label.toLowerCase(), 540, 1010, { size: 58, weight: 600, color: '#e9c77e', maxW: 900 });

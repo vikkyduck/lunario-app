@@ -396,6 +396,13 @@ body.inner .dc-ask .grow{flex:1 1 100%}
 body.inner .dc-ask input{font-size:15px}
 body.inner .day-card .answer-actions{margin-top:18px}
 body.inner #dc-state:empty{display:none}
+body.inner .dc-prompts{margin-top:8px}
+body.inner .dc-prompts .chip{font-size:13px;padding:6px 12px}
+body.inner .dc-prompts .hint{margin-top:6px;font-size:12px}
+/* под настроем на «Сегодня»: сохранить открыткой на экран, поделиться */
+body.inner .hero-actions{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:10px;padding-top:0;border:0;justify-content:flex-start}
+body.inner .hero-actions .text-action{font-size:14px}
+body.inner .hero-actions:empty{display:none}
 /* «Моя неделя: про что она» — по воскресеньям плитка сверху Дневника, внутри — пять частей карточками */
 body.inner .week-top{display:block;width:100%;text-align:left;margin-top:18px;padding:18px 20px;border-radius:var(--r-l);background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow);color:var(--text);font:inherit;cursor:pointer}
 body.inner .week-top b{display:block;font-size:19px;font-weight:600;margin:4px 0 2px}

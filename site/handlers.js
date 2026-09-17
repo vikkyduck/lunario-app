@@ -76,6 +76,8 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "journalPrompt-Что-я-почувствовала": function (event) { journalPrompt('Что я почувствовала?') },
   "journalPrompt-Что-хочу-помнить": function (event) { journalPrompt('Что хочу помнить?') },
   "journalDictate": function (event) { journalDictate() },
+  "dcPrompt-a0": function (event) { journalPrompt(this.dataset.a0, 'dc') },
+  "dcDictate": function (event) { journalDictate('dc') },
   "saveJournal": function (event) { saveJournal() },
   "chooseWishPhoto": function (event) { chooseWishPhoto() },
   "addWish": function (event) { addWish() },

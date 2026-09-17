@@ -52,7 +52,7 @@ export function skyEvents(fromMs, days = 60) {
       const node = skyAt(p.at).node.lon;
       const x = norm(p.sunLon - node), d = Math.min(x, 360 - x, Math.abs(x - 180));
       const kind = p.phase === 'new' ? (d < 15.4 ? 'solar' : null) : (d < 12 ? 'lunar' : null);
-      if (kind) { const [t, n] = T('eclipse', kind, ECLIPSE_TEXT[kind]); out.push({ at: new Date(p.at).toISOString(), type: 'eclipse', title: `${t} ${inSign(sign)}`, note: n }); }
+      if (kind) { const [t, n] = T('eclipse', kind, ECLIPSE_TEXT[kind]); out.push({ at: new Date(p.at).toISOString(), type: 'eclipse', kind, title: `${t} ${inSign(sign)}`, note: n }); }
     }
   }
   /* ретроградность и вход Солнца в знак — по дням, момент перемены уточняется делением отрезка */

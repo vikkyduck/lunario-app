@@ -1,11 +1,29 @@
 /* Утро: тема дня, настрой и вопрос к нему, карта и руна дня.
    Общий модуль для сервера (пакет дня на «Сегодня») и планировщика напоминаний (утренний пуш): оба должны считать
-   одно и то же. Тему задаёт первый выбранный источник — карта → руна → тон дня; выбранные карта и руна тянутся сами
-   при первом открытии дня. Настрой к теме — из настрой.txt без повторов в течение года (daily_sets), тема исчерпана —
+   одно и то же. Тему задаёт первый выбранный источник — карта → руна → влияние планет (главное событие неба) → тон дня;
+   выбранные карта и руна тянутся сами при первом открытии дня. Настрой к теме — из настрой.txt без повторов в течение года (daily_sets), тема исчерпана —
    по второму кругу. Выпавшая пара снимается на день и в течение дня не меняется. Зависимости — явным объектом. */
 import { randomInt } from 'node:crypto';
 import { dailySet } from './daily-sets.mjs';
 import { preferences, morningOf } from './experience.mjs';
+import { skyNow } from './sky.mjs';
+
+/* Главное событие неба на день — код строки «небо | …» из темы-источников.txt: фаза (new/q1/full/q3) → затмение → начало
+   ретроградности; в обычный день — первая уже ретроградная планета; тихое небо — null. Эфемериды считаются раз в день на процесс. */
+const skyKeys = new Map();
+export function skyKeyOf(day) {
+  if (skyKeys.has(day)) return skyKeys.get(day);
+  let key = null;
+  try {
+    const s = skyNow(Date.parse(day + 'T09:00:00Z'));
+    const ev = s.today.find((e) => ['new', 'q1', 'full', 'q3'].includes(e.type)) || s.today.find((e) => e.type === 'eclipse') || s.today.find((e) => e.type === 'retro');
+    if (ev) key = ev.type === 'eclipse' ? `затмение ${ev.kind}` : ev.type === 'retro' ? `ретро ${ev.planet}` : `фаза ${ev.type}`;
+    else if (s.retro.length) key = `ретро ${s.retro[0].key}`;
+  } catch { key = null; }
+  if (skyKeys.size > 64) skyKeys.clear();
+  skyKeys.set(day, key);
+  return key;
+}
 
 export function hash32(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 export const parseData = (t) => { try { return t ? JSON.parse(t) : null; } catch { return null; } };
@@ -38,12 +56,13 @@ export function createMorning({ db, C, track, nowISO, today }) {
       track(u, 'dayrune_open', r.slug);
     }
   }
-  /* Тема дня — по первому выбранному источнику: карта → руна → тон дня; без выбора — тон дня */
+  /* Тема дня — по первому выбранному источнику: карта → руна → влияние планет → тон дня; без выбора — тон дня */
   function themeOfDay(u, day) {
     const chosen = chosenOf(u);
     let key = null;
     if (chosen.includes('card')) { const c = cardOfDay(u, day); if (c) key = C.themeOf('карта', c.slug); }
     if (!key && chosen.includes('dayrune')) { const r = runeOfDay(u, day); if (r) key = C.themeOf('руна', r.slug); }
+    if (!key && chosen.includes('sky')) { const k = skyKeyOf(day); if (k) key = C.themeOf('небо', k); }
     if (!key) key = C.themeOf('тон', toneOfDay(u, day)[0]) || [...C.THEMES][0]?.key || null;
     return [...C.THEMES].find((t) => t.key === key) || null;
   }
