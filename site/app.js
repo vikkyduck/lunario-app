@@ -2291,6 +2291,8 @@ function startApp(){
   loadCatalog().then(() => { renderMoods(); applyTools(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); if (wgOpen === 'tools') paintTools(); }).catch(() => {});
   /* из уведомления приходят сразу в нужный раздел */
   try {
+    const view = new URLSearchParams(location.search).get('view') || '';   /* ?view=ask|history|about — открыть вкладку (проверки, скриншоты) */
+    if (['home', 'ask', 'history', 'about', 'account'].includes(view)) { go(view); history.replaceState(null, '', location.pathname); }
     const openKey = new URLSearchParams(location.search).get('open') || '', target = openTarget(openKey);
     if (target) {
       go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); track('push_open', openKey);

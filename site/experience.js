@@ -28,7 +28,7 @@ window.addEventListener('popstate',e=>{
   if(XP.page){const v=e.state?.lunView||XP.returnView;go(v);XP.returnFocus?.focus({preventScroll:true});}
 });
 
-function initExperience(prefs){XP.prefs=prefs||XP.prefs;applyTheme(XP.prefs.theme);applyTools();paintMorning();}
+function initExperience(prefs){XP.prefs=prefs||XP.prefs;const forced=/[?&]theme=(light|dark|system)/.exec(location.search);applyTheme(forced?forced[1]:XP.prefs.theme);applyTools();paintMorning();}   /* ?theme= — разовый показ темы для проверок и скриншотов */
 function applyTheme(mode){
   const theme=mode==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):mode;
   document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;
