@@ -1,0 +1,54 @@
+/* ═══════════ Рамка телефона на компьютере (решение владелицы 17.09: «как в Клабс») ═══════════
+   На широком экране приложение показывается в корпусе телефона 430px: тот же mobile-first макет, что на iPhone.
+   Как устроено: html — тёмная сцена; body — экран телефона (transform создаёт контейнер для position:fixed, поэтому
+   навигация, панели и тосты остаются внутри корпуса); прокручивается .wrap, а не окно (см. scroller() в experience.js).
+   Класс html.framed ставит boot.js при ширине ≥ 700px и снимает на телефоне и в оболочке iOS. */
+
+html.framed{height:100%;overflow:hidden;background:#0b0b10 radial-gradient(ellipse 70% 60% at 50% 40%,#17151f 0%,#0b0b10 70%)}
+html.framed body{position:relative;box-sizing:border-box;width:430px;height:min(932px,calc(100vh - 84px));margin:42px auto 0;overflow:hidden;
+  border-radius:54px;transform:translateZ(0);isolation:isolate;
+  box-shadow:0 0 0 11px #121216,0 0 0 12px #3a3a44,0 0 0 13px #0c0c10,0 50px 120px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.05)}
+html.framed body.inner .wrap{height:100%;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-padding-top:70px;
+  padding-top:74px;padding-inline:16px;padding-bottom:110px}
+html.framed .wrap::-webkit-scrollbar{display:none}
+/* экраны до входа (приветствие, анкета, три напоминания) — та же прокрутка внутри корпуса */
+html.framed body:not(.inner) .wrap{height:100%;overflow:auto;padding-top:74px;padding-bottom:60px;scrollbar-width:none}
+
+/* ── статус-бар: часы слева, островок по центру, сеть и батарея справа; всё декоративное ── */
+html.framed .frame-bar{position:fixed;top:0;left:0;right:0;height:58px;z-index:500;pointer-events:none;display:flex;align-items:center;justify-content:space-between;padding:0 34px}
+html.framed .frame-bar .frame-clock{font:600 16px/1 Onest,ui-sans-serif,system-ui,sans-serif;letter-spacing:-.01em;color:var(--text)}
+html.framed .frame-bar .frame-island{position:absolute;left:50%;top:11px;transform:translateX(-50%);width:124px;height:36px;border-radius:24px;background:#000}
+html.framed .frame-bar .frame-status{display:flex;align-items:center;gap:6px;color:var(--text)}
+html.framed .frame-bar .frame-status i{display:block;background:currentColor;border-radius:2px}
+html.framed .frame-bar .frame-status .sig{width:18px;height:11px;background:none;display:flex;align-items:flex-end;gap:2px}
+html.framed .frame-bar .frame-status .sig b{display:block;width:3px;background:currentColor;border-radius:1px}
+html.framed .frame-bar .frame-status .bat{width:26px;height:12px;border:1.5px solid currentColor;border-radius:4px;background:none;position:relative}
+html.framed .frame-bar .frame-status .bat::after{content:'';position:absolute;inset:2px;background:currentColor;border-radius:2px}
+html.framed .frame-bar .frame-status .bat::before{content:'';position:absolute;right:-5px;top:3px;width:2px;height:5px;background:currentColor;border-radius:1px}
+/* полоска «домой» внизу */
+html.framed body::after{content:'';position:fixed;left:50%;bottom:9px;transform:translateX(-50%);width:140px;height:5px;border-radius:3px;background:var(--text);opacity:.55;z-index:500;pointer-events:none}
+html:not(.framed) .frame-bar{display:none}
+
+/* ── навигация — у нижнего края корпуса, над полоской «домой» ── */
+html.framed body.inner .app-nav{left:0;right:0;bottom:0;width:100%;transform:none;border-radius:0 0 54px 54px;padding:8px 14px 24px;border-bottom:0}
+html.framed body.inner .app-nav button{border-radius:12px}
+
+/* ── панели-виджеты: лист на весь экран телефона, как на iPhone, а не окно посреди монитора ── */
+html.framed body.inner .wg-bg{border-radius:54px}
+html.framed body.inner .wg{inset:0;left:0;top:0;bottom:auto;transform:none;width:100%;height:100%;max-height:none;border-radius:54px;border:0;box-shadow:none;
+  padding:66px 16px 40px;overflow:auto;scrollbar-width:none}
+html.framed body.inner .wg::-webkit-scrollbar{display:none}
+html.framed body.inner .wg-head{top:-66px;padding-top:16px}
+html.framed .toast{top:66px;left:50%;width:max-content;max-width:calc(100% - 32px)}
+html.framed .pc-bg{border-radius:54px;padding:66px 20px 40px}
+html.framed .bg{border-radius:54px}
+/* десктопные правила сеток внутри корпуса не действуют — там телефон */
+html.framed body.inner .home-intro{grid-template-columns:minmax(0,1fr) 56px}
+html.framed body.inner :is(#morning-feed,#morning-more,.about-links,.method-grid,.practice-links,.wids){grid-template-columns:1fr}
+html.framed body.inner .mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+html.framed body.inner #v-account .account-layout{display:block}
+html.framed body.inner #v-account .account-col{display:contents}
+html.framed body.inner:has(#v-account.on) .wrap{padding-top:74px}
+html.framed body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:16px;top:74px}
+html.framed body.inner #v-home .hdr{margin-top:0}
+html.framed body.inner .later-row,html.framed body.inner .morning-summary{max-width:none}

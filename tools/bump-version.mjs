@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const site = join(dirname(fileURLToPath(import.meta.url)), '..', 'site');
 /* Только ресурсы оболочки; у картинок и иконок свои версии (?v=1, ?v=2) — они независимы */
-const FILES = { 'index.html': /\/app\/(?:theme\.css|experience\.css|moon-glass\.css|compact\.css|sky\.js|experience\.js|boot\.js|moon-logo\.js|app\.js|handlers\.js|on\.js)\?v=(\d+)/g,
+const FILES = { 'index.html': /\/app\/(?:theme\.css|experience\.css|moon-glass\.css|compact\.css|frame\.css|sky\.js|experience\.js|boot\.js|moon-logo\.js|app\.js|handlers\.js|on\.js)\?v=(\d+)/g,
   'cabinet.html': /\/app\/(?:cabinet\.js|cabinet-handlers\.js|on\.js)\?v=(\d+)/g,
   'sky.js': /\.\/(?:constellations|sky-model)\.js\?v=(\d+)/g, 'sw.js': /const V = '(\d+)'/g };
 export function shellVersions(dir = site) {

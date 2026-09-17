@@ -465,7 +465,10 @@ body.inner .dc-ask .grow{flex:1 1 100%}
 body.inner .dc-ask input{font-size:15px}
 body.inner .day-card .answer-actions{margin-top:18px}
 body.inner #dc-state:empty{display:none}
-body.inner .dc-prompts{margin-top:8px}
+body.inner .dc-prompts{margin-top:8px;min-width:0;max-width:100%}
+/* ячейка — грид: ряд подсказок с прокруткой не должен раздвигать колонку до своей полной ширины */
+body.inner .day-card .field{grid-template-columns:minmax(0,1fr)}
+body.inner .dc-prompts .chips{width:100%}
 body.inner .dc-prompts .chip{font-size:13px;padding:6px 12px}
 body.inner .dc-prompts .hint{margin-top:6px;font-size:12px}
 /* под настроем на «Сегодня»: сохранить открыткой на экран, поделиться */

@@ -3,8 +3,12 @@
 const XP={prefs:{theme:'dark',ritual:[],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
 /* Практики ритуала: подпись кнопки «следующий шаг»; название и раздел — из реестра FEATURES */
 function activeView(){return document.querySelector('.view.on')?.id.slice(2)||'home';}
-function rememberScroll(){XP.scroll[XP.page?'practice:'+XP.page:activeView()]=window.scrollY;}
-function restoreScroll(key){requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,XP.scroll[key]||0)));}
+/* что прокручивается: в корпусе телефона на компьютере (html.framed) — .wrap, на самом телефоне — окно */
+function scroller(){return document.documentElement.classList.contains('framed')?document.querySelector('.wrap'):null;}
+function scrollTopNow(){const s=scroller();return s?s.scrollTop:window.scrollY;}
+function scrollToTop(y,behavior='auto'){const s=scroller();if(s)s.scrollTo({top:y,behavior});else window.scrollTo({top:y,behavior});}
+function rememberScroll(){XP.scroll[XP.page?'practice:'+XP.page:activeView()]=scrollTopNow();}
+function restoreScroll(key){requestAnimationFrame(()=>requestAnimationFrame(()=>scrollToTop(XP.scroll[key]||0)));}
 function leavePractice(){
   if(!XP.page)return;
   rememberScroll();if(XP.page==='journal'&&journalSpeech)stopJournalDictation();

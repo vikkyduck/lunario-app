@@ -759,7 +759,7 @@ async function obSendCode(email){
   try { await requestCode(email); }
   catch (e) { toast(authErrorText(e, 'send')); finishOnboarding(); return; }
   $('o-form').style.display='none'; $('o-back').style.display='none'; $('o-codebox').style.display='';
-  $('v-onb').classList.add('verifying-email'); window.scrollTo(0,0);
+  $('v-onb').classList.add('verifying-email'); scrollToTop(0);
   authMount('o-codebox', { step: 'code', email, onDone: (r) => {
     if (r.merged) { location.reload(); return; }        // почта уже была — открываем тот аккаунт
     S.user = r.user; finishOnboarding();
@@ -2282,6 +2282,9 @@ async function paintNews(){
 function offlineSnapshot(){
   try { const s = JSON.parse(localStorage.getItem('lun_me') || 'null'); return s && s.r?.user?.onboarded && Date.now() - s.at < 26 * 3600e3 ? s : null; } catch(e) { return null; }
 }
+/* часы в статус-баре корпуса телефона (только на компьютере, декоративные) */
+function frameClock(){const el=$('frame-clock');if(!el)return;const tick=()=>{el.textContent=new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});};tick();setInterval(tick,15000);}
+frameClock();
 /* ── старт ── */
 function startApp(){
   const initialPractice=new URLSearchParams(location.search).get('practice');
@@ -2298,7 +2301,7 @@ function startApp(){
       go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); track('push_open', openKey);
       if (openKey === 'today' || openKey === 'morning') setTimeout(() => {   /* из утреннего уведомления — к своему утру, первая плитка подсвечена (после восстановления прокрутки в go) */
         const feed = $('home-sky'); if (!feed || feed.hidden) return;
-        window.scrollTo({ top: feed.getBoundingClientRect().top + scrollY - 16, behavior: 'auto' });   /* сразу, без плавности: страница могла ещё не стать видимой */
+        scrollToTop(feed.getBoundingClientRect().top + scrollTopNow() - 16);   /* сразу, без плавности: страница могла ещё не стать видимой */
         const t = feed.querySelector('[data-feature]'); if (t) { t.classList.add('from-push'); setTimeout(() => t.classList.remove('from-push'), 1800); }
       }, 250);
     }
