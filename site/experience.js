@@ -58,7 +58,7 @@ function applyTools(){
   const vis=toolsVisible(),keys=new Set(toolCatalog().map(t=>t.key));
   document.querySelectorAll('#v-history [data-feature]').forEach(el=>{const k=el.dataset.feature;if(keys.has(k))el.hidden=!vis.has(k);});
   /* группа без единой видимой плитки прячется вместе с заголовком */
-  document.querySelectorAll('#v-history .feature-group,#v-history .diary-library').forEach(g=>{const tiles=[...g.querySelectorAll('[data-feature]')];if(tiles.some(el=>keys.has(el.dataset.feature)))g.hidden=tiles.every(el=>el.hidden);});   /* «Итоги недели» и другие постоянные плитки держат группу открытой */
+  document.querySelectorAll('#v-history .feature-group').forEach(g=>{const tiles=[...g.querySelectorAll('[data-feature]')];if(tiles.some(el=>keys.has(el.dataset.feature)))g.hidden=tiles.every(el=>el.hidden);});   /* «Итоги недели» и другие постоянные плитки держат группу открытой */
 }
 function paintTools(){
   const box=$('tools-box');if(!box)return;
@@ -180,7 +180,7 @@ function enhanceInterface(root){
   if(root.nodeType!==1)return;
   const fields=root.matches('.field')?[root]:[...root.querySelectorAll('.field')];
   for(const field of fields){const label=field.querySelector('label:not([for])'),input=field.querySelector('input[id],textarea[id],select[id]');if(label&&input)label.htmlFor=input.id;}
-  const cards=root.matches('.wid')?[root]:[...root.querySelectorAll('.wid')];
+  const cards=(root.matches('.wid')?[root]:[...root.querySelectorAll('.wid')]).filter(c=>c.closest('.list-rows,#v-account .compact-links'));   /* «›» — только у строк-переходов */
   for(const card of cards)if(!card.querySelector('.destination-arrow')){const arrow=document.createElement('span');arrow.className='destination-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='›';card.appendChild(arrow);}
 }
 document.addEventListener('input',e=>growTextarea(e.target));

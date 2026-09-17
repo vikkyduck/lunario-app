@@ -329,7 +329,7 @@ function paintHome(){
   paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d);
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
-  $('h-cabs').hidden = !staff; $('h-cabs').closest('.row').classList.toggle('staff', staff); document.body.classList.toggle('staff', staff);
+  if ($('ac-cabs')) $('ac-cabs').hidden = !staff; document.body.classList.toggle('staff', staff);   /* вход в кабинеты — строкой в Аккаунте, шапка без второго кружка */
   $('h-moon').innerHTML = esc(d.moon) + (d.lunar ? ' · <span class="nowrap">' + esc(ordinal(d.lunar.n)) + ' лунный день</span>' : '');   /* «6-й» не рвётся по дефису */
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
   moonSetPhase(d.moonPhase);

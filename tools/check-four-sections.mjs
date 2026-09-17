@@ -52,11 +52,11 @@ export async function checkFourSections({browser,base,owner}){
     assert.equal(await page.locator('#v-history [data-feature=hentries]').count(),0);assert.ok(await page.locator('#v-ask [data-feature=hentries]').count()===1,'question history lives in «Свериться с собой»');
     await page.evaluate(()=>go('history'));
     const start=(await page.evaluate(()=>[...document.querySelectorAll('#v-history [data-feature]')].filter(e=>!e.hidden).map(e=>e.dataset.feature)));
-    assert.ok(start.includes('gratitude')&&start.includes('journal')&&start.includes('mood')&&start.includes('week'),'start set: '+start.join(','));
+    assert.ok(start.includes('journal')&&start.includes('week')&&start.includes('hmood')&&start.includes('tools'),'start set: '+start.join(','));   /* записи, настроение и благодарность — ячейки карточки дня; отдельные плитки им не нужны */
     assert.ok(!start.includes('askesis')&&!start.includes('habits')&&!start.includes('wishes'),'optional tools are hidden until chosen');
     assert.ok(await page.locator('#v-history .feature-group').filter({hasText:'Практики'}).isHidden(),'empty group is hidden with its heading');
     const habit=await owner.json('/habits','POST',{title:'Тест: до конструктора',rule:'каждый день'});
-    await page.locator('#v-history .tools-link button').click();await page.locator('#wg-body #w-tools .tool-card').first().waitFor();
+    await page.locator('#diary-tools [data-feature=tools]').click();await page.locator('#wg-body #w-tools .tool-card').first().waitFor();
     assert.equal(await page.locator('#wg-eb').innerText(),'Мои инструменты');
     const toolCard=(t)=>page.locator('#w-tools .tool-card').filter({has:page.locator('b',{hasText:new RegExp('^'+t+'$')})});
     await toolCard('Дневник привычек').getByRole('button',{name:'Добавить',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#v-history [data-feature=habits]').hidden);

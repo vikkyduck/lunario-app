@@ -68,7 +68,7 @@
 
 /* Светлая тема: ночные поверхности становятся текстом и акцентами */
 :root[data-theme=light]{
-  --bg:#f0edf8;
+  --bg:#eeeaf6;
   --text:#1d1738;
   --text-2:#2a2150;
   --muted:#5d5574;
@@ -80,29 +80,30 @@
   --violet-2:#aa97cc;
   --ok:#45424e;
   --warn:#65517e;
-  --surface:#f5f2ea;
-  --sheet:#f5f2ea;
+  --surface:#ffffff;
+  --sheet:#ffffff;
   --field:#faf8ff;
-  --selected:rgba(42,33,80,.10);
+  --selected:rgba(42,33,80,.08);
   --hover:#eae4f6;
   --accent-soft:#e9e3f4;
-  --card:#f5f2ea;
+  --card:#ffffff;
   --card-2:#e8e1f4;
-  --line:rgba(42,33,80,.18);
-  --control-border:rgba(42,33,80,.40);
+  --line:rgba(42,33,80,.12);
+  --control-border:rgba(42,33,80,.28);
   --focus:#2a2150;
-  --glass-base:#f5f2ea;
-  --glass-bg:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.04) 45%,rgba(255,255,255,.07)),linear-gradient(rgba(245,242,234,.96),rgba(245,242,234,.96));
-  --glass-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(42,33,80,.11),0 14px 32px -18px rgba(42,33,80,.32);
-  --moon-ground:radial-gradient(ellipse at 100% 0%,#e4ddf4 0%,transparent 58%),radial-gradient(ellipse at 0% 72%,#f5f2ea 0%,transparent 65%),#f0edf8;
+  /* День: белая карточка на лаванде, 1px линия и одна мягкая тень — без скоса, блика и кремовой «наклейки» */
+  --glass-base:#ffffff;
+  --glass-bg:linear-gradient(#fff,#fff);
+  --glass-shadow:0 1px 2px rgba(42,33,80,.04),0 10px 28px -18px rgba(42,33,80,.16);
+  --moon-ground:radial-gradient(ellipse at 100% 0%,#e4ddf4 0%,transparent 58%),#eeeaf6;
   --moon-panel:var(--glass-bg);
-  --moon-edge:linear-gradient(135deg,#ffffffee,#ffffff38 40%,#2a215033 70%,#ffffffcc);
-  --moon-shine:rgba(255,255,255,.80);
-  --moon-shadow:inset 0 1px 0 #fff,0 12px 26px -20px #2a215045;
+  --moon-edge:linear-gradient(var(--line),var(--line));
+  --moon-shine:transparent;
+  --moon-shadow:var(--glass-shadow);
   --moon-control:linear-gradient(135deg,#494067,#2a2150 65%,#1d1738);
-  --moon-glass:rgba(245,242,234,.28);
-  --moon-reader:#f5f2ea;
-  --moon-fade:#f0edf8;
+  --moon-glass:rgba(255,255,255,.94);
+  --moon-reader:#ffffff;
+  --moon-fade:#eeeaf6;
   --moon-empty:#e8e1f4;
   --emotion-anger:#8272b4;
   --emotion-anticipation:#b3a0d5;
