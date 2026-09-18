@@ -144,8 +144,8 @@ export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK)
   const d = userDayOf(u, atMs), url = FEATURES[feature].url;
   if (feature === 'morning') return morningNotification(u, d, atMs, tz);
   if (feature === 'evening') {
-    if (dayRemembered(u.id, d)) return null;   /* день уже записан — не напоминаем */
-    return { ...tpl('evening'), url };
+    if (dayWritten(u.id, d)) return null;   /* день уже записан словами или настроением — не напоминаем; отметка привычки днем вопрос не глушит */
+    return { ...tpl(eveningKey(d)), url };
   }
   if (feature === 'week') {
     const n = weekMoments(u.id, d);
@@ -173,6 +173,18 @@ function morningNotification(u, d, atMs, tz) {
   return { title: title.slice(0, 120), body: (lines.join('\n') || (pack.theme ? pack.theme.title : '')).slice(0, 480), url };
 }
 /* День записан — если сегодня есть хоть что-то: запись, настроение, отметка привычки или аскезы */
+/* Вечерний пуш — приглашение, а не вопрос (вопросы — на экране). Формулировки чередуются по дням, чтобы не приедаться:
+   evening, evening-2, evening-3… из напоминания.txt; есть только evening — он и идет каждый день */
+export function eveningKey(d) {
+  const keys = ['evening', ...[2, 3, 4, 5, 6].map((n) => 'evening-' + n)].filter((k) => C.REMINDER_TEXTS[k]);
+  const n = Math.floor(Date.parse(d + 'T12:00:00Z') / 864e5);
+  return keys[n % keys.length] || 'evening';
+}
+/* День записан словами или настроением — то, о чем спрашивает вечер; привычки и аскезы сюда не входят */
+export function dayWritten(userId, d) {
+  return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' LIMIT 1").get(userId, d)
+    || db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d));
+}
 export function dayRemembered(userId, d) {
   return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' LIMIT 1").get(userId, d)
     || db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d)

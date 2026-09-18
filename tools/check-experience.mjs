@@ -26,23 +26,18 @@ export async function checkExperience({browser,base,owner}){
     await page.setViewportSize({width:390,height:420});await page.waitForFunction(()=>Math.abs(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--visible-height'))-420)<2);
     const save=await page.locator('#tone-save').boundingBox();await shot('question-keyboard');assert.ok(save.y>=0&&save.y+save.height<=420,JSON.stringify(save));
     await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
-    await page.setViewportSize({width:390,height:844});await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history [data-feature=journal]').click();
-    assert.ok(await page.locator('#v-practice.on #w-journal').count());assert.equal(await page.locator('#wg.on').count(),0);
-    await page.locator('#j-text').fill('Сегодня я нашла время для себя');await page.getByRole('button',{name:'Сохранить запись',exact:true}).click();await page.locator('#journal-saved').waitFor();await close();
+    /* Дневник по шагам: первый вопрос — тот же, что зовет вечерний пуш; записанный день читается текстом; прошлые дни — строками */
+    await page.setViewportSize({width:390,height:844});await page.locator('.app-nav [data-nav=history]').click();await page.locator('#day-card #dc-text').waitFor();
+    assert.equal(await page.locator('#day-card .dc-q').innerText(),'Что хочется оставить от этого дня?');
+    await page.locator('#dc-text').fill('Сегодня я нашла время для себя');await page.locator('#dc-next').click();await page.locator('#dc-mood-chips').waitFor();
+    while(await page.locator('#dc-next').innerText()!=='Запомнить этот день')await page.locator('#dc-next').click();
+    await page.locator('#dc-next').click();await page.locator('#day-card .dc-read').first().waitFor({timeout:8000});
+    assert.ok((await page.locator('#day-card').innerText()).includes('Сегодня я нашла время для себя'));assert.ok((await page.locator('#day-card').innerText()).includes('Длинный ответ'),'the answer of the day is part of the recorded day');
     await page.locator('.app-nav [data-nav=home]').click();await shot('home-tools-light');await page.reload();await page.waitForSelector('#v-home.on');
-    await page.locator('.app-nav [data-nav=history]').click();await page.locator('.timeline-entry').first().waitFor();
-    assert.ok((await page.locator('#timeline-list').innerText()).includes('Сегодня я нашла время для себя'));
-    await page.locator('#timeline-filters').getByRole('button',{name:'Вопрос дня',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-kind').length===1);
-    assert.ok((await page.locator('#timeline-list').innerText()).includes('Длинный ответ'));assert.ok(!(await page.locator('#timeline-list').innerText()).includes('Сегодня я нашла'));
-    await page.locator('#timeline-filters').getByRole('button',{name:'Все',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-entry').length>=2);await shot('diary-light');
-    /* фильтр по функции снимает режим «один день»: иначе все фильтры показывают пустоту (так и было у владелицы) */
-    await page.evaluate(()=>diaryDay(S.day.date));await page.locator('#timeline-date').waitFor();await page.locator('#timeline-filters').getByRole('button',{name:'Записи',exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('#timeline-date').hidden&&document.querySelectorAll('.timeline-entry').length>=1);
-    assert.deepEqual(await page.locator('#timeline-filters .chip').allTextContents(),['Все','Записи','Благодарности','Вопрос дня','Настроения','Желания'],'no «Карты и ответы» and «Практики» chips in the diary');
-    await page.locator('#timeline-filters').getByRole('button',{name:'Все',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-entry').length>=2);
-    await page.locator('#v-history [data-feature=journal]').scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);await page.locator('#v-history [data-feature=journal]').click();await page.locator('#j-text').fill('Несохранённая мысль');await close();
-    await page.waitForFunction(y=>Math.abs(scrollY-y)<5,before);await page.locator('#v-history [data-feature=journal]').click();assert.equal(await page.locator('#j-text').inputValue(),'Несохранённая мысль');await close();
-    await owner.json('/mood','POST',{mood:'joy'});await page.locator('[data-feature=hmood]').click();await page.locator('.mr-day').last().click();await page.locator('#timeline-date').waitFor();assert.ok((await page.locator('#timeline-date').innerText()).includes(day.split('-').reverse().join('.')));await page.getByRole('button',{name:'Все даты ×',exact:true}).click();
+    await page.locator('.app-nav [data-nav=history]').click();await page.locator('#day-card .dc-read').first().waitFor();await shot('diary-light');
+    assert.equal(await page.locator('#timeline-filters').count(),0,'no feed filters on the diary tab');assert.equal(await page.locator('.day-row').count(),6,'six past days as rows');await shot('diary-light');
+    /* из отчета настроений день открывается страницей чтения (прежняя лента с фильтрами заменена строками «Прошлые дни») */
+    await owner.json('/mood','POST',{mood:'joy'});await page.locator('[data-feature=hmood]').click();await page.locator('.mr-day').last().click();await page.locator('#wg.on #dayview-box').waitFor();await close();
     await page.locator('[data-feature=wishes]').click();await page.locator('#w-text').fill('Поездка к морю');
     const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a9fUAAAAASUVORK5CYII=';
     const chooser=page.waitForEvent('filechooser');await page.locator('#wish-photo-pick').click();await(await chooser).setFiles({name:'sea.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});

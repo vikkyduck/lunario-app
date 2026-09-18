@@ -263,7 +263,14 @@ try {
   const evPerson=account();await evPerson.json('/me');await evPerson.json('/profile','POST',{name:'Вечер',birth:'1994-04-04',city:'Москва',consent:true});
   const evRow=qaDB.prepare('SELECT * FROM users WHERE name=?').get('Вечер');
   assert.equal(reminders.notificationFor('week',evRow),null,'no moments this week — no weekly push');
-  assert.equal(reminders.notificationFor('evening',evRow).title,'Запомнить этот день');
+  /* вечерний пуш — приглашение, одна из формулировок evening / evening-N по дню; молчит, когда день записан словами или настроением,
+     а отметка привычки его не глушит */
+  const evC=await import(pathToFileURL(join(fixture,'backend/content.mjs')).href);
+  const evKeys=['evening','evening-2','evening-3','evening-4','evening-5','evening-6'].map((k)=>evC.REMINDER_TEXTS[k]).filter(Boolean).map((t)=>t[0]);
+  assert.ok(evKeys.includes(reminders.notificationFor('evening',evRow).title),'evening push is one of the invitation variants');
+  assert.equal(reminders.notificationFor('evening',evRow).body.search(/напишите|ответьте/i),-1,'the evening push invites, it does not ask to write');
+  const evHabit=(await evPerson.json('/habits','POST',{title:'Вода',rule:'каждый день'})).items.find((x)=>x.title==='Вода');await evPerson.json('/day','POST',{habits:[{id:evHabit.id,done:true}]});
+  assert.ok(reminders.notificationFor('evening',evRow),'a habit mark alone does not silence the evening push');
   await evPerson.json('/day','POST',{moods:['joy']});assert.equal(reminders.notificationFor('evening',evRow),null,'a remembered day needs no evening push');
   /* неделя: без записей — пуша нет; мало — «сохранили N момент(а)»; три и больше — «неделя готова» */
   assert.match(reminders.notificationFor('week',evRow).body,/сохранили 1 момент$/);

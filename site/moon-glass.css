@@ -574,7 +574,7 @@ html[data-theme] body.inner .text-action.secondary{color:var(--muted)}
 
 /* ── Секции и типографика на телефоне: семь ступеней кегля, стык блоков 28px ── */
 body.inner :is(.feature-group,.account-group){margin-top:28px}
-body.inner :is(.feature-group,.account-group)>h2{font-size:17px;line-height:1.35;letter-spacing:-.01em}
+body.inner :is(.feature-group>h2,.account-group>h2,.past-days .sec-head>h2){font-size:17px;line-height:1.35;letter-spacing:-.01em;margin:0}
 body.inner :is(.feature-group,.account-group)>.wids{margin-top:12px}
 body.inner .diary-more{margin:10px 0 0}
 body.inner .diary-more .text-action{min-height:36px}

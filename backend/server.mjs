@@ -499,7 +499,9 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
-const Day = createDay({ db, seal, open: open_, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question, dailyWrites: DAILY_WRITES });
+const Day = createDay({ db, seal, open: open_, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question,
+  morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
+  themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '', dailyWrites: DAILY_WRITES });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day });
 const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
@@ -1037,7 +1039,7 @@ const server = createServer(async (req, res) => {
 
       /* ── практики дня: что сделано сегодня, привычки, аскеза — backend/http/practice-routes.mjs ── */
       if (await practiceRoutes({ p, req, res, url, u, d })) return;
-      if (await dayRoutes({ p, req, res, u, d })) return;
+      if (await dayRoutes({ p, req, res, url, u, d })) return;
       if (await weekRoutes({ p, req, res, url, u, d })) return;
 
       /* ── на небе: сейчас и ближайшие недели ── */

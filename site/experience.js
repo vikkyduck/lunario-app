@@ -1,6 +1,6 @@
 /* Reading, persistent preferences and full practice pages share the existing data and widgets. */
 /* Настройки приходят из /api/me (умолчания — в backend/experience.mjs); до этого форма пустая */
-const XP={prefs:{theme:'dark',ritual:[],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,wishPhoto:'',timeline:{kind:'',day:'',items:[],next:null,request:0}};
+const XP={prefs:{theme:'dark',ritual:[],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,wishPhoto:'',timeline:{dirty:false}};   /* timeline.dirty — записи менялись, «Прошлые дни» перечитать */
 /* Практики ритуала: подпись кнопки «следующий шаг»; название и раздел — из реестра FEATURES */
 function activeView(){return document.querySelector('.view.on')?.id.slice(2)||'home';}
 /* что прокручивается: в корпусе телефона на компьютере (html.framed) — .wrap, на самом телефоне — окно */
@@ -134,48 +134,8 @@ async function toggleMorning(key){
   }
 }
 
-/* Фильтры ленты — по функции. «Карты и ответы» из дневника убраны (история «Свериться с собой» живет там), «Практики» — тоже:
-   отметки привычек и аскез вернутся в дневник своими фильтрами вместе с вечерней карточкой дня. Подписи записей — для всех видов. */
-const TIMELINE_TYPES=[['','Все'],['journal','Записи'],['gratitude','Благодарности'],['answer','Вопрос дня'],['mood','Настроения'],['habits','Привычки'],['askesis','Аскезы'],['wishes','Желания']];
-const TIMELINE_LABELS={journal:'Запись',gratitude:'Благодарность',answer:'Вопрос дня',mood:'Настроение',readings:'Карты и ответы',habits:'Привычка',askesis:'Аскеза',wishes:'Желание',weekly:'Итог недели'};
-function timelineText(text){return text.length>400?`<details class="timeline-long"><summary><span class="entry-text">${esc(text.slice(0,230))}…</span><span class="text-action">Читать полностью</span></summary><p class="entry-text">${esc(text)}</p></details>`:`<p class="entry-text">${esc(text)}</p>`;}
-function paintTimelineFilters(){
-  $('timeline-filters').innerHTML=TIMELINE_TYPES.map(([key,label])=>`<button data-on="click:filterTimeline-a0" data-a0="${key}" class="chip" type="button" aria-pressed="${XP.timeline.kind===key}">${label}</button>`).join('');
-  $('timeline-date').hidden=!XP.timeline.day;$('timeline-date').innerHTML=XP.timeline.day?`${fmtDay(XP.timeline.day)} <button data-on="click:showAllDiary" type="button" class="text-action">Все даты ×</button>`:'';
-}
-function filterTimeline(kind){XP.timeline.kind=kind;XP.timeline.day='';loadTimeline();}
-function showAllDiary(){XP.timeline.day='';loadTimeline();}
-function diaryDay(day){closeWidget();XP.timeline.day=day;XP.timeline.kind='';XP.timeline.dirty=true;XP.scroll.history=0;go('history');}
-async function loadTimeline(more=false){
-  const t=XP.timeline,request=++t.request;paintTimelineFilters();
-  if(!more){t.dirty=false;if(!t.items.length)$('timeline-list').innerHTML='<p class="hint" role="status">Загружаем записи…</p>';}
-  $('timeline-more').hidden=true;
-  try{const q=new URLSearchParams({kind:t.kind,day:t.day,offset:String(more?t.next||0:0)});const r=await api('/timeline?'+q);if(request!==t.request)return;t.items=more?[...t.items,...r.items]:r.items;t.next=r.next;paintTimeline();}
-  catch{if(request!==t.request)return;$('timeline-list').insertAdjacentHTML('beforeend','<p class="msg err">Записи не загрузились. <button data-on="click:loadTimeline" class="text-action">Повторить</button></p>');}
-}
-function paintTimeline(){
-  const t=XP.timeline;const days=[];   /* день — одна карточка: заголовок с датой, внутри записи через тонкие линии */
-  t.items.forEach((r,index)=>{
-    if(r.kind==='readings')return;   /* карты и ответы — в «Свериться с собой», не в дневнике */
-    const label=TIMELINE_LABELS[r.kind]||'';
-    let content=r.source==='mood'?`<p class="entry-text">${esc(moodInfo(r.title)?.label||MOOD_LABEL[r.title]||r.title.replace(/^own:/,''))}</p>`:
-      r.source==='entry'?`<button data-on="click:openTimelineEntry-a0" data-a0="${index}" type="button" class="timeline-link">${esc(r.body||r.title)} <span aria-hidden="true">→</span></button>`:
-      `${r.title?`<p class="timeline-title">${esc(r.title)}</p>`:''}${r.body?timelineText(r.body):''}${r.source==='habit'?'<p class="hint">Выполнено</p>':''}${r.source==='askesis'?`<p class="hint">${r.data==='0'?'Сорвалась':'Держусь'}</p>`:''}${r.source==='wish'?`<button data-on="click:openWidget-wishes" class="text-action">${r.data==='1'?'Сбылось':'Открыть желание'} →</button>`:''}`;
-    const last=days[days.length-1];
-    if(r.source==='mood'&&last&&last.day===r.day&&last.moodEntry){last.moodEntry.push(content);return;}   /* несколько настроений за день — одной строкой */
-    const html=`<article class="timeline-entry"><span class="timeline-kind">${esc(label)}</span>${content}</article>`;
-    if(last&&last.day===r.day){last.parts.push(html);if(r.source==='mood')last.moodEntry=[content];}
-    else days.push({day:r.day,parts:[html],moodEntry:r.source==='mood'?[content]:null});
-  });
-  const dayHtml=(d)=>{if(d.moodEntry&&d.moodEntry.length>1){const merged=`<article class="timeline-entry"><span class="timeline-kind">Настроение</span><p class="entry-text">${d.moodEntry.map(c=>c.replace(/<[^>]+>/g,'')).join(' · ')}</p></article>`;const i=d.parts.findIndex(p=>p.includes('>Настроение<'));if(i>=0)d.parts[i]=merged;}return d.parts.join('');};
-  $('timeline-list').innerHTML=days.map(d=>`<section class="day-entry"><h2 class="timeline-day">${fmtDay(d.day)}</h2>${dayHtml(d)}</section>`).join('')||`<p class="hint timeline-empty">${t.day?'В этот день записей этого типа нет':t.kind?'Записей этого типа пока нет':'Здесь появятся ваши записи, настроение и история практик'}</p>`;
-  $('timeline-more').hidden=t.next===null;
-}
-async function openTimelineEntry(index){
-  const row=XP.timeline.items[index];if(!row)return;openWidget('timelineEntry');const box=$('timeline-entry-box');box.textContent='Загружаем…';
-  try{const r=await api('/entries?id='+row.id);await loadCatalog();box.innerHTML=r.items[0]?entryHtml(r.items[0]):'<p>Запись не найдена</p>';preparePending();}
-  catch{box.textContent='Не получилось загрузить запись. Попробуйте открыть ее еще раз';}
-}
+/* День из отчета настроений или недели — открытым днем (openDay в app.js); прежняя лента с фильтрами заменена строками «Прошлые дни» */
+function diaryDay(day){openDay(day);}
 
 async function chooseWishPhoto(){const photo=await pickImage(1200,.82);if(!photo)return;XP.wishPhoto=photo;paintWishDraft();}
 function paintWishDraft(){const box=$('wish-preview');box.innerHTML=XP.wishPhoto?`<img src="${XP.wishPhoto}" alt="Фото нового желания"><button data-on="click:XP-wishPhoto-paintWishDraft" type="button" class="text-action">Убрать фото</button>`:'';$('wish-photo-pick').textContent=XP.wishPhoto?'Заменить фото':'Добавить фото';}
