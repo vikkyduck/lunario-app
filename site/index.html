@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=76"></script>
+<script src="/app/boot.js?v=77"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -139,6 +139,12 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .ring{display:flex;flex-direction:column;align-items:center;gap:5px}
 /* позвать партнера после расчета совместимости — отделено линией от результата */
 .compat-invite{border-top:1px solid var(--line);padding-top:var(--s4)}
+/* карточка уведомления на «Сегодня»: заголовок пуша и его текст построчно, как в самом уведомлении */
+.push-note{margin-top:var(--s3);border-color:rgba(217,184,104,.35)}
+.push-note .eyebrow{margin-bottom:6px}
+.push-note b{display:block;font-size:17px;font-weight:600;line-height:1.4}
+.push-note p{margin:8px 0 0;white-space:pre-line;color:var(--text-2);font-size:15px;line-height:1.55}
+.push-note .text-action{margin-top:4px;padding-left:0}
 .invite-actions .btn{width:100%}   /* «Поделиться» и «Скопировать» — во всю ширину, одна под другой (.btn.sm сужает) */
 .ring svg{transform:rotate(-90deg)}
 .ring .val{font-size:12px;color:var(--violet-2)}.ring .lbl{font-size:11px;color:var(--muted)}
@@ -658,11 +664,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=76">
-<link rel="stylesheet" href="/app/experience.css?v=76">
-<link rel="stylesheet" href="/app/moon-glass.css?v=76">
-<link rel="stylesheet" href="/app/compact.css?v=76">
-<link rel="stylesheet" href="/app/frame.css?v=76">
+<link rel="stylesheet" href="/app/theme.css?v=77">
+<link rel="stylesheet" href="/app/experience.css?v=77">
+<link rel="stylesheet" href="/app/moon-glass.css?v=77">
+<link rel="stylesheet" href="/app/compact.css?v=77">
+<link rel="stylesheet" href="/app/frame.css?v=77">
 </head>
 <body>
 <!-- статус-бар корпуса телефона на компьютере (frame.css); часы ставит app.js -->
@@ -793,6 +799,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     </div>
     <!-- Утро: человек отвечает, на что хочет обращать внимание; выбранное — сверху, остальное — маленькими квадратами ниже -->
     <p class="hint offline-note" id="offline-note" hidden role="status"></p>
+    <!-- текст последнего уведомления целиком: на телефоне оно обрезается, а здесь его можно дочитать -->
+    <section class="card push-note" id="push-note" hidden aria-label="Уведомление"></section>
     <div class="home-later home-push" id="home-push" hidden></div>
     <div class="home-later home-push" id="home-tour" hidden></div>
     <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Выбранное — сверху и в утреннем уведомлении. Можно все</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придет только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="text-action" id="morning-done" type="button" hidden>Готово</button></div></section>
@@ -976,14 +984,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=76"></script>
+<script src="/app/moon-logo.js?v=77"></script>
 
-<script type="module" src="/app/sky.js?v=76"></script>
+<script type="module" src="/app/sky.js?v=77"></script>
 
-<script src="/app/experience.js?v=76"></script>
-<script src="/app/app.js?v=76"></script>
-<script src="/app/tour.js?v=76"></script>
-<script src="/app/handlers.js?v=76"></script>
-<script src="/app/on.js?v=76"></script>
+<script src="/app/experience.js?v=77"></script>
+<script src="/app/app.js?v=77"></script>
+<script src="/app/tour.js?v=77"></script>
+<script src="/app/handlers.js?v=77"></script>
+<script src="/app/on.js?v=77"></script>
 </body>
 </html>

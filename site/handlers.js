@@ -113,6 +113,7 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "authCheck": function (event) { authCheck() },
   "auth-step-email-paintAuth": function (event) { auth.step='email';paintAuth() },
   "openCabinet": function (event) { openCabinet() },
+  "hidePushNote": function (event) { hidePushNote() },
   "copyInvite-a0": function (event) { copyInvite(this.dataset.a0) },
   "shareInvite-a0": function (event) { shareInvite(this.dataset.a0) },
   "toggleMore-a0": function (event) { toggleMore(this.dataset.a0) },

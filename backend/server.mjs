@@ -1021,6 +1021,13 @@ const server = createServer(async (req, res) => {
         return json(res, r.ok ? 200 : 400, r);
       }
       /* сигнал пришел — service worker забирает тексты, которые еще не показывал на этом устройстве */
+      /* Последнее уведомление за сутки — текстом: на телефоне уведомление обрезается, а в приложении человек ищет «тот текст».
+         «Сегодня» показывает его карточкой, пока не скроют */
+      if (p === '/api/push/last' && req.method === 'GET') {
+        const since = new Date(Date.now() - 20 * 3600e3).toISOString();
+        const item = db.prepare('SELECT id, ts, feature, title, body, url FROM push_queue WHERE user_id = ? AND ts >= ? ORDER BY id DESC LIMIT 1').get(u.id, since) || null;
+        return json(res, 200, { item });
+      }
       if (p === '/api/push/next' && req.method === 'POST') {
         const b = await readBody(req);
         const endpoint = clean(b.endpoint, 500);

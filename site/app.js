@@ -96,7 +96,7 @@ function go(v){
   if(v==='account')XP.scroll.account=0;   /* открывается по кружку с любой вкладки — начинаем с шапки, а не с прошлой прокрутки */
   if(v==='home')window.tourMaybe?.();   /* подсказки по приложению — один раз, на «Сегодня» */
   restoreScroll(v);
-  if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();}
+  if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();loadPushNote();}
   if(v==='history') loadHistory();
   if(v==='about')loadAbout();
   if(v==='account')loadAccount();
@@ -320,6 +320,21 @@ function paintHomeLater(d){
   box.hidden = !rows.length; box.innerHTML = rows.join('');
   paintPushNudge();
 }
+/* ══════════ Текст последнего уведомления — карточкой на «Сегодня» ══════════
+   На телефоне уведомление обрезается, а нажатие ведет на экран, где тот же смысл разложен по плиткам — человек ищет «тот текст»
+   и не находит. Карточка показывает заголовок и текст целиком, пока ее не скроют; из уведомления (?open=) к ней прокручиваем. */
+const PUSH_KIND = { morning: 'Утреннее уведомление', evening: 'Вечернее уведомление', week: 'Уведомление недели' };
+const pushHidden = () => { try { return localStorage.getItem('lun_push_hidden') || ''; } catch(e) { return ''; } };
+async function loadPushNote(force=false){
+  const box = $('push-note'); if (!box || !S.user?.onboarded || IOS_SHELL) return null;
+  if (force || S.pushLast === undefined) { try { S.pushLast = (await api('/push/last')).item || false; } catch(e) { S.pushLast = S.pushLast ?? false; } }   /* один запрос на сессию; из уведомления — заново */
+  const it = S.pushLast;
+  if (!it || String(it.id) === pushHidden()) { box.hidden = true; box.replaceChildren(); return null; }
+  const when = new Date(it.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  box.innerHTML = `<span class="eyebrow">${PUSH_KIND[it.feature] || 'Уведомление'} · ${when}</span><b>${esc(it.title)}</b>${it.body ? `<p>${esc(it.body)}</p>` : ''}<button data-on="click:hidePushNote" class="text-action secondary" type="button">Скрыть</button>`;
+  box.hidden = false; return box;
+}
+function hidePushNote(){ if (S.pushLast) { try { localStorage.setItem('lun_push_hidden', String(S.pushLast.id)); } catch(e) {} } const box = $('push-note'); if (box) { box.hidden = true; box.replaceChildren(); } hap(); }
 /* Под настроем дня: расписание включено, а сюда уведомления не приходят — одна строка и одно нажатие */
 function paintPushNudge(){
   const box = $('home-push'); if (!box) return;
@@ -2400,11 +2415,11 @@ function openFromUrl(href){
     const openKey = qs.get('open') || '', target = openTarget(openKey);
     if (target) {
       go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); track('push_open', openKey);
-      if (openKey === 'today' || openKey === 'morning') setTimeout(() => {   /* из утреннего уведомления — к своему утру, первая плитка подсвечена (после восстановления прокрутки в go) */
-        const feed = $('home-sky'); if (!feed || feed.hidden) return;
-        scrollToTop(feed.getBoundingClientRect().top + scrollTopNow() - 16);   /* сразу, без плавности: страница могла еще не стать видимой */
-        const t = feed.querySelector('[data-feature]'); if (t) { t.classList.add('from-push'); setTimeout(() => t.classList.remove('from-push'), 1800); }
-      }, 250);
+      if (openKey === 'today' || openKey === 'morning') loadPushNote(true).then((note) => setTimeout(() => {   /* из утреннего уведомления — к его тексту; нет текста — к своему утру */
+        const target = note || $('home-sky'); if (!target || target.hidden) return;
+        scrollToTop(target.getBoundingClientRect().top + scrollTopNow() - 16);   /* сразу, без плавности: страница могла еще не стать видимой */
+        const t = note || target.querySelector('[data-feature]'); if (t) { t.classList.add('from-push'); setTimeout(() => t.classList.remove('from-push'), 1800); }
+      }, 250));
     }
   } catch (e) {}
 }
