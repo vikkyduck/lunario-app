@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PdfDocument, wrap } from './pdf.mjs';
+import { LINK_RE, linkTarget, trimLink } from './util.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 let fontsCache = null;
@@ -49,6 +50,11 @@ export class Flow {
   }
   ensure(h) { if (!this.page || this.y - h < this.bottom) this.newPage(); }
   gap(h) { this.y -= h; }
+  /* строка текста, где адреса и почта становятся ссылками (аннотации поверх слов); baseline — как у page.text */
+  line(font, size, x, baseline, str, color, opts) {
+    this.page.text(font, size, x, baseline, str, color, opts);
+    for (const m of str.matchAll(LINK_RE)) { const t = trimLink(m[0]); if (t) this.page.link(x + font.width(str.slice(0, m.index), size), baseline - size * 0.28, font.width(t, size), size * 1.25, linkTarget(t)); }
+  }
   /* золотая подпись капителью + заголовок раздела */
   section(eyebrow, title, count) {
     this.ensure(120); this.gap(this.y === this.top ? 0 : 18);
@@ -60,7 +66,7 @@ export class Flow {
   }
   para(text, { size = 10.5, color = C.text, font = this.f.regular, lh = 1.5, after = 6, x = this.mx, width = this.cw } = {}) {
     const lines = wrap(font, size, text, width); const step = size * lh;
-    for (const line of lines) { this.ensure(step); this.page.text(font, size, x, this.y - size, line, color); this.y -= step; }
+    for (const line of lines) { this.ensure(step); this.line(font, size, x, this.y - size, line, color); this.y -= step; }
     this.y -= after;
   }
   /* строка «подпись — значение» */
@@ -92,7 +98,7 @@ export class Flow {
       if (j === i) { j = i + 1; h = rows[i].h; }
       this.page.panel(this.mx, this.y - h - pad * 2, this.cw, h + pad * 2, { radius: 10, fill: C.panel, fillAlpha: 0.055, stroke: C.line, strokeAlpha: 0.12 });
       let ty = this.y - pad;
-      for (let k = i; k < j; k++) { const r = rows[k]; this.page.text(r.font, r.size, this.mx + pad, ty - r.size + (r.h - r.size) / 2 - 1, r.t, r.color, { spacing: r.spacing || 0 }); ty -= r.h; }
+      for (let k = i; k < j; k++) { const r = rows[k]; this.line(r.font, r.size, this.mx + pad, ty - r.size + (r.h - r.size) / 2 - 1, r.t, r.color, { spacing: r.spacing || 0 }); ty -= r.h; }
       this.y -= h + pad * 2 + 8; i = j;
       if (i < rows.length) this.newPage();
     }
@@ -103,7 +109,7 @@ export class Flow {
       const lines = wrap(this.f.regular, size, it, this.cw - 14), step = size * 1.45;
       this.ensure(step * lines.length);
       this.page.circle(this.mx + 3, this.y - size * 0.62, 1.6, C.gold, 0.9);
-      lines.forEach((l, i) => this.page.text(this.f.regular, size, this.mx + 14, this.y - size - i * step, l, C.text));
+      lines.forEach((l, i) => this.line(this.f.regular, size, this.mx + 14, this.y - size - i * step, l, C.text));
       this.y -= step * lines.length + 3;
     }
     this.y -= 4;
@@ -118,8 +124,8 @@ export class Flow {
       this.page.circle(this.mx + r, top - r - 2, r, C.gold, 0.18);
       this.page.panel(this.mx, top - 2 * r - 2, 2 * r, 2 * r, { radius: r, stroke: C.gold, strokeAlpha: 0.55, lineWidth: 0.7 });
       this.page.text(this.f.semibold, 10, this.mx + r - this.f.semibold.width(n, 10) / 2, top - r - 5.5, n, C.gold2);
-      head.forEach((l, k) => this.page.text(this.f.semibold, 11.5, this.mx + ind, top - 12 - k * 16, l, C.text));
-      body.forEach((l, k) => this.page.text(this.f.regular, 10, this.mx + ind, top - head.length * 16 - 10.5 - k * 14, l, C.muted));
+      head.forEach((l, k) => this.line(this.f.semibold, 11.5, this.mx + ind, top - 12 - k * 16, l, C.text));
+      body.forEach((l, k) => this.line(this.f.regular, 10, this.mx + ind, top - head.length * 16 - 10.5 - k * 14, l, C.muted));
       this.y = top - head.length * 16 - body.length * 14 - 8;
     });
     this.y -= 4;

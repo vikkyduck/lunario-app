@@ -8,3 +8,7 @@ export const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const dayIn = (tz = MSK, ms = Date.now()) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: tz });
 export const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 export const plural = (n, one, few, many) => { const m = n % 100; if (m >= 11 && m <= 14) return many; const l = n % 10; return l === 1 ? one : l >= 2 && l <= 4 ? few : many; };
+/* Адреса и почта в тексте, которые стоит сделать ссылками (страница и PDF инструкции, выгрузка): знак препинания после адреса — не его часть */
+export const LINK_RE = /https?:\/\/[^\s«»"()]+|[\w.+-]+@lunario\.online|lunario\.online(?:\/[\w./-]*)?/g;
+export const trimLink = (m) => m.replace(/[.,;:!?]+$/, '');
+export const linkTarget = (t) => t.includes('@') ? 'mailto:' + t : t.startsWith('http') ? t : 'https://' + t;

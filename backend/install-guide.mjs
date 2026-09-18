@@ -3,6 +3,8 @@
    Текст живет здесь (GUIDE), страницу собирает installPage(), PDF — install-pdf.mjs. Ссылка на страницу — из
    Аккаунта («Установить на телефон») и с подсказки про уведомления на iPhone. Без буквы «ё», как во всем приложении. */
 
+import { LINK_RE, linkTarget, trimLink } from './util.mjs';
+
 export const APP_URL = 'lunario.online/app';
 
 export const GUIDE = {
@@ -44,6 +46,8 @@ export const GUIDE = {
 };
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+/* Адреса и почта в тексте — ссылки (на странице и в PDF): набирать адрес с экрана неудобно */
+const rich = (s) => esc(s).replace(LINK_RE, (m) => { const t = trimLink(m); return `<a href="${linkTarget(t)}">${t}</a>${m.slice(t.length)}`; });
 
 /* Страница ночная всегда, как экраны до входа: ее открывают из браузера, где темы приложения еще нет.
    Скрипт только внешний (install.js) — CSP страниц без 'unsafe-inline'; без него видны обе платформы подряд. */
@@ -62,7 +66,7 @@ body{font-family:Onest,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-ser
 .orb-1{width:56vw;height:56vw;max-width:760px;max-height:760px;top:-22vw;left:50%;transform:translateX(-50%);background:radial-gradient(circle,#6d5bd0 0%,transparent 65%)}
 .orb-2{width:34vw;height:34vw;max-width:460px;max-height:460px;bottom:-12vw;right:-8vw;background:radial-gradient(circle,rgba(217,184,104,.5) 0%,transparent 65%)}
 .wrap{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 20px calc(48px + env(safe-area-inset-bottom))}
-a{color:var(--gold-2);text-underline-offset:3px}
+a{color:var(--gold-2);text-underline-offset:3px;text-decoration-thickness:1px;overflow-wrap:anywhere}
 .top{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px}
 .top a{text-decoration:none;font-size:15px;color:var(--gold-2)}
 .hero{margin-top:8px}
@@ -112,8 +116,8 @@ const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 const platformHtml = (p) => `
   <section class="card" data-os="${p.key}" aria-labelledby="h-${p.key}">
     <span class="eyebrow">${esc(p.browser)}</span><h2 id="h-${p.key}">${esc(p.name)}</h2>
-    <ol class="steps">${p.steps.map((s, i) => `<li><i>${i + 1}</i><div><b>${esc(s.title)}</b><p>${esc(s.text)}</p></div></li>`).join('')}</ol>
-    ${p.note ? `<p class="note">${esc(p.note)}</p>` : ''}
+    <ol class="steps">${p.steps.map((s, i) => `<li><i>${i + 1}</i><div><b>${rich(s.title)}</b><p>${rich(s.text)}</p></div></li>`).join('')}</ol>
+    ${p.note ? `<p class="note">${rich(p.note)}</p>` : ''}
   </section>`;
 
 /* Готовый HTML страницы; собирается один раз при первом запросе (см. server.mjs) */
@@ -148,7 +152,7 @@ export function installPage() {
     <img src="/app/assets/mail/header.png" width="880" height="420" alt="Лунарио">
     <span class="eyebrow">${esc(g.eyebrow)}</span>
     <h1>${esc(g.title)}</h1>
-    <p class="lead">${esc(g.lead)}</p>
+    <p class="lead">${rich(g.lead)}</p>
   </header>
   <div class="actions">
     <button class="btn" id="native-install" type="button">Установить на этот телефон</button>
@@ -160,14 +164,14 @@ export function installPage() {
   <section class="card" aria-labelledby="h-after">
     <h2 id="h-after">${esc(g.after.title)}</h2>
     <div class="icon-row"><img src="/app/assets/apple-touch-icon.png" width="180" height="180" alt="Иконка Лунарио"><span>Так выглядит иконка Лунарио на экране телефона</span></div>
-    <ul class="list">${g.after.items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+    <ul class="list">${g.after.items.map((t) => `<li>${rich(t)}</li>`).join('')}</ul>
   </section>
   <section class="card faq" aria-labelledby="h-faq">
     <h2 id="h-faq">${esc(g.faq.title)}</h2>
-    <dl>${g.faq.items.map((f) => `<dt>${esc(f.q)}</dt><dd>${esc(f.a)}</dd>`).join('')}</dl>
+    <dl>${g.faq.items.map((f) => `<dt>${rich(f.q)}</dt><dd>${rich(f.a)}</dd>`).join('')}</dl>
   </section>
-  <p class="support">${esc(g.support)}</p>
-  <footer>Лунарио · <a href="https://${APP_URL}/">${APP_URL}</a><br>Эта страница: lunario.online/app/install · <a href="/app/install.pdf" download="lunario-ustanovka.pdf">PDF</a></footer>
+  <p class="support">${rich(g.support)}</p>
+  <footer>Лунарио · <a href="https://${APP_URL}/">${APP_URL}</a><br>Эта страница: <a href="/app/install">lunario.online/app/install</a> · <a href="/app/install.pdf" download="lunario-ustanovka.pdf">PDF</a></footer>
 </main>
 <script src="/app/install.js"></script>
 </body>

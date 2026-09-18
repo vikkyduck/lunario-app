@@ -30,6 +30,7 @@ export function installPdf({ headerPng = null, iconPng = null } = {}) {
   flow.page.panel(flow.mx, flow.y - 46, flow.cw, 46, { radius: 10, fill: C.gold, fillAlpha: 0.08, stroke: C.gold, strokeAlpha: 0.35 });
   flow.page.text(F.regular, 8.5, flow.mx + 14, flow.y - 16, 'АДРЕС ПРИЛОЖЕНИЯ', C.gold, { spacing: 1.3 });
   flow.page.text(F.semibold, 15, flow.mx + 14, flow.y - 36, APP_URL, C.text);
+  flow.page.link(flow.mx, flow.y - 46, flow.cw, 46, `https://${APP_URL}/`);   /* вся панель — ссылка: с экрана открывается касанием */
   if (iconPng) {
     try { const img = doc.addImage(iconPng); const s = 30; flow.page.image(img, flow.mx + flow.cw - s - 8, flow.y - 38, s, s); } catch { /* без иконки страница не хуже */ }
   }

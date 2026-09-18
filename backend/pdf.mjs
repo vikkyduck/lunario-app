@@ -155,7 +155,7 @@ export class PdfDocument {
   }
 
   addPage() {
-    const page = { ops: [], doc: this };
+    const page = { ops: [], links: [], doc: this };
     this.pages.push(page);
     return (page.writer = new PageWriter(page, this));
   }
@@ -178,9 +178,12 @@ export class PdfDocument {
     }
     const resources = `/Font << ${Object.entries(fontRefs).map(([r, id]) => `/${r} ${id} 0 R`).join(' ')} >> /XObject << ${this.images.map((i) => `/${i.res} ${i.obj} 0 R`).join(' ')} >> /ExtGState << ${[...this.states.values()].map((g) => `/${g.res} ${g.obj} 0 R`).join(' ')} >> /Shading << ${this.shadings.map((s) => `/${s.res} ${s.obj} 0 R`).join(' ')} >> /ProcSet [/PDF /Text /ImageB /ImageC]`;
     const pagesId = this._reserve();
+    /* ссылки — аннотации страницы: прямоугольник без рамки и адрес (URI в скобках PDF — с экранированием скобок и косой) */
+    const uri = (u) => u.replace(/[\\()]/g, (c) => '\\' + c);
     const pageIds = this.pages.map((p) => {
       const content = this._add({ dict: '/Filter /FlateDecode', stream: deflateSync(enc(p.ops.join('\n'))) });
-      return this._add({ dict: `/Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${num(this.w)} ${num(this.h)}] /Resources << ${resources} >> /Contents ${content} 0 R` });
+      const annots = p.links.map((l) => this._add({ dict: `/Type /Annot /Subtype /Link /Rect [${num(l.x)} ${num(l.y)} ${num(l.x + l.w)} ${num(l.y + l.h)}] /Border [0 0 0] /A << /S /URI /URI (${uri(l.uri)}) >>` }));
+      return this._add({ dict: `/Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${num(this.w)} ${num(this.h)}] /Resources << ${resources} >> /Contents ${content} 0 R${annots.length ? ` /Annots [${annots.map((i) => i + ' 0 R').join(' ')}]` : ''}` });
     });
     this._set(pagesId, { dict: `/Type /Pages /Kids [${pageIds.map((i) => i + ' 0 R').join(' ')}] /Count ${pageIds.length}` });
     const catalog = this._add({ dict: `/Type /Catalog /Pages ${pagesId} 0 R` });
@@ -231,6 +234,8 @@ class PageWriter {
     const clip = clipCircle ? (() => { const r = Math.min(w, h) / 2, cx = x + w / 2, cy = y + h / 2, k = K * r; return `${num(cx + r)} ${num(cy)} m ${num(cx + r)} ${num(cy + k)} ${num(cx + k)} ${num(cy + r)} ${num(cx)} ${num(cy + r)} c ${num(cx - k)} ${num(cy + r)} ${num(cx - r)} ${num(cy + k)} ${num(cx - r)} ${num(cy)} c ${num(cx - r)} ${num(cy - k)} ${num(cx - k)} ${num(cy - r)} ${num(cx)} ${num(cy - r)} c ${num(cx + k)} ${num(cy - r)} ${num(cx + r)} ${num(cy - k)} ${num(cx + r)} ${num(cy)} c h W n `; })() : '';
     this._op(`q ${clip}${num(w)} 0 0 ${num(h)} ${num(x)} ${num(y)} cm /${img.res} Do Q`);
   }
+  /* Ссылка: область (x, y — левый нижний угол) ведет по адресу; на бумаге не видна */
+  link(x, y, w, h, uri) { this.page.links.push({ x, y, w, h, uri }); }
   /* Текст одной строкой; spacing — трекинг в пунктах (для капительных подписей) */
   text(font, size, x, y, str, color, { spacing = 0, alpha = 1 } = {}) {
     const f = font.ttf; let hex = '';
