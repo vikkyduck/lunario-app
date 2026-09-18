@@ -4,7 +4,7 @@
    при пропавшей связи). Прежняя версия отдавала ее из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const V = '75';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
+const V = '76';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
 const CACHE = 'lunario-app-v' + V;
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/theme.css?v=' + V, '/app/experience.css?v=' + V, '/app/moon-glass.css?v=' + V, '/app/compact.css?v=' + V, '/app/frame.css?v=' + V,
@@ -94,17 +94,23 @@ self.addEventListener('push', (e) => {
   })());
 });
 
+/* Нажатие на уведомление. Приложение уже открыто — переводим фокус и передаем адрес сообщением: страница сама откроет нужный
+   раздел без перезагрузки (openFromUrl в app.js). Раньше здесь был client.navigate(): на iPhone с экрана «Домой» он не переходил,
+   и человек оставался на том экране, где был (в Аккаунте, откуда слал пробное). Если страница не ответила за секунду
+   (старая версия, экран до входа) — пробуем navigate, как прежде. Окна нет — открываем новое по адресу. */
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || '/app/';
   e.waitUntil((async () => {
     const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const open = all.find((c) => c.url.includes('/app'));
-    if (open) {
-      await open.focus();
-      if ('navigate' in open) { try { await open.navigate(url); } catch (err) { /* окно не дает перейти — оно уже открыто */ } }
-      return;
-    }
-    return clients.openWindow(url);
+    const open = all.find((c) => new URL(c.url).pathname === '/app/' || new URL(c.url).pathname === '/app/index.html');
+    if (!open) return clients.openWindow(url);
+    try { await open.focus(); } catch (err) { /* фокус не обязателен */ }
+    const acked = await new Promise((resolve) => {
+      const ch = new MessageChannel(); const t = setTimeout(() => resolve(false), 1000);
+      ch.port1.onmessage = () => { clearTimeout(t); resolve(true); };
+      try { open.postMessage({ type: 'open', url }, [ch.port2]); } catch (err) { clearTimeout(t); resolve(false); }
+    });
+    if (!acked && 'navigate' in open) { try { await open.navigate(url); } catch (err) { /* окно не дает перейти — оно уже открыто */ } }
   })());
 });

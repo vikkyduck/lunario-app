@@ -2387,11 +2387,17 @@ function startApp(){
   if(FEATURES[initialPractice]?.page)openPractice(initialPractice); refreshNativeAskesis();
   if (S.day.card && S.day.cardOpened) { showFlipped(); $('t-after').style.display = 'block'; }   /* карту уже открывали — она в истории; вытянутую утром еще предстоит перевернуть */
   loadCatalog().then(() => { renderMoods(); applyTools(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); if (wgOpen === 'tools') paintTools(); }).catch(() => {});
-  /* из уведомления приходят сразу в нужный раздел */
+  openFromUrl(location.href);   /* из уведомления приходят сразу в нужный раздел */
+}
+/* Куда вести по адресу из уведомления или проверки: ?open=today|diary|week (и ключи виджетов), ?view=ask|history|about|account.
+   Вызывается при старте (адрес страницы) и когда service worker присылает адрес уже открытому приложению (нажали на уведомление,
+   а приложение было открыто — sw.js, notificationclick): переходим без перезагрузки */
+function openFromUrl(href){
   try {
-    const view = new URLSearchParams(location.search).get('view') || '';   /* ?view=ask|history|about — открыть вкладку (проверки, скриншоты) */
+    const qs = new URL(href, location.origin).searchParams;
+    const view = qs.get('view') || '';   /* ?view=ask|history|about — открыть вкладку (проверки, скриншоты) */
     if (['home', 'ask', 'history', 'about', 'account'].includes(view)) { go(view); history.replaceState(null, '', location.pathname); }
-    const openKey = new URLSearchParams(location.search).get('open') || '', target = openTarget(openKey);
+    const openKey = qs.get('open') || '', target = openTarget(openKey);
     if (target) {
       go(target[0]); if (target[1]) openWidget(target[1]); history.replaceState(null, '', location.pathname); track('push_open', openKey);
       if (openKey === 'today' || openKey === 'morning') setTimeout(() => {   /* из утреннего уведомления — к своему утру, первая плитка подсвечена (после восстановления прокрутки в go) */
@@ -2402,6 +2408,11 @@ function startApp(){
     }
   } catch (e) {}
 }
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => {
+  if (!e.data || e.data.type !== 'open') return;
+  try { e.ports[0]?.postMessage('ok'); } catch (err) {}   /* ответ воркеру: адрес принят, перезагружать не нужно */
+  if (onboarded()) openFromUrl(e.data.url);
+});
 (async function(){
   if('serviceWorker' in navigator) ensurePushWorker().catch(()=>{});
   let r;
