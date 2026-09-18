@@ -105,6 +105,9 @@ html[data-os=ios] [data-os=android],html[data-os=android] [data-os=ios]{display:
 .support{color:var(--muted);font-size:15px;text-align:center;margin:26px 0 0}
 footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:13px;text-align:center;line-height:1.7}
 footer a{color:var(--faint)}
+/* пришли по ссылке подруги: кто зовет и что за подарок */
+.invited{margin:0 0 16px;padding:12px 16px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.45);color:var(--text);font-size:15px;line-height:1.5}
+.invited b{color:var(--gold-2)}
 #native-install{display:none}
 html[data-can-install] #native-install{display:flex}
 @media(min-width:700px){.wrap{padding-top:40px}.actions{grid-template-columns:1fr 1fr}h1{font-size:36px}}
@@ -147,9 +150,10 @@ export function installPage() {
 <body>
 <div class="bg" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 <main class="wrap">
-  <nav class="top" aria-label="Навигация"><a href="/app/">← В приложение</a><a href="/app/install.pdf" download="lunario-ustanovka.pdf">Скачать PDF</a></nav>
+  <nav class="top" aria-label="Навигация"><a href="/app/" data-app>← В приложение</a><a href="/app/install.pdf" download="lunario-ustanovka.pdf">Скачать PDF</a></nav>
   <header class="hero">
     <img src="/app/assets/mail/header.png" width="880" height="420" alt="Лунарио">
+    <p class="invited" id="invited" hidden></p>
     <span class="eyebrow">${esc(g.eyebrow)}</span>
     <h1>${esc(g.title)}</h1>
     <p class="lead">${rich(g.lead)}</p>
@@ -157,7 +161,7 @@ export function installPage() {
   <div class="actions">
     <button class="btn" id="native-install" type="button">Установить на этот телефон</button>
     <a class="btn ghost" href="/app/install.pdf" download="lunario-ustanovka.pdf">${ICON_DOWNLOAD}Скачать в PDF</a>
-    <a class="btn ghost" href="/app/">Открыть Лунарио</a>
+    <a class="btn ghost" href="/app/" data-app>Открыть Лунарио</a>
   </div>
   <div class="chips" role="group" aria-label="Телефон">${g.platforms.map((p) => `<button class="chip" type="button" data-pick="${p.key}" aria-pressed="false">${esc(p.name)}</button>`).join('')}</div>
   ${g.platforms.map(platformHtml).join('')}
@@ -171,7 +175,7 @@ export function installPage() {
     <dl>${g.faq.items.map((f) => `<dt>${rich(f.q)}</dt><dd>${rich(f.a)}</dd>`).join('')}</dl>
   </section>
   <p class="support">${rich(g.support)}</p>
-  <footer>Лунарио · <a href="https://${APP_URL}/">${APP_URL}</a><br>Эта страница: <a href="/app/install">lunario.online/app/install</a> · <a href="/app/install.pdf" download="lunario-ustanovka.pdf">PDF</a></footer>
+  <footer>Лунарио · <a href="https://${APP_URL}/" data-app>${APP_URL}</a><br>Эта страница: <a href="/app/install">lunario.online/app/install</a> · <a href="/app/install.pdf" download="lunario-ustanovka.pdf">PDF</a></footer>
 </main>
 <script src="/app/install.js"></script>
 </body>

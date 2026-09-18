@@ -15,6 +15,16 @@
   if (ios || android) pick(android ? 'android' : 'ios');   /* Android первым: эмуляция и планшеты иногда выглядят как iPad */
   chips.forEach((c) => c.addEventListener('click', () => pick(c.dataset.pick)));
 
+  /* Пришли по реферальной ссылке (?ref=код): ссылки в приложение несут код дальше, а сверху — кто зовет.
+     Манифест с кодом уже в разметке (сервер), так что и установленное отсюда приложение откроется с приглашением */
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref && /^[a-z0-9]{6,12}$/i.test(ref)) {
+    document.querySelectorAll('a[data-app]').forEach((a) => { a.href = '/app/?ref=' + encodeURIComponent(ref); });
+    const box = document.getElementById('invited');
+    const show = (name) => { box.textContent = ''; const b = document.createElement('b'); b.textContent = name ? `${name} зовет вас в Лунарио` : 'Вас зовут в Лунарио'; box.append(b, ' — откройте приложение по этой ссылке: неделю у вас обоих будет вдвое больше подробных разборов.'); box.hidden = false; };
+    fetch('/app/api/invite/host?code=' + encodeURIComponent(ref)).then((r) => (r.ok ? r.json() : null)).then((h) => { if (h && h.ok) show(h.name); }).catch(() => {});
+  }
+
   /* Chrome на Android: браузер сам умеет ставить приложение — тогда первая кнопка делает это в одно касание */
   let deferred = null;
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; root.dataset.canInstall = '1'; });

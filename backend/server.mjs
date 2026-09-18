@@ -389,8 +389,16 @@ function touchStreak(u) {                       // серию продолжае
   u.streak = next; u.streak_date = d;
   return next;
 }
+/* Код приглашения у каждого свой; заводится при первом обращении. По коду строятся реферальные ссылки:
+   /app/?ref=код открывает приложение, /app/install?ref=код — инструкцию по установке; кто пришел — в users.invited_by */
+function refCodeOf(u) {
+  if (!u.ref_code) { u.ref_code = randomBytes(4).toString('hex'); db.prepare('UPDATE users SET ref_code=? WHERE id=?').run(u.ref_code, u.id); }
+  return u.ref_code;
+}
+const firstName = (name) => clean(name, 40).split(/\s+/)[0] || '';
+const inviteHost = (code) => (code && /^[a-z0-9]{6,12}$/i.test(code)) ? db.prepare("SELECT * FROM users WHERE ref_code=? AND ref_code<>''").get(code) : null;
 const publicUser = (u) => ({
-  id: u.id,
+  id: u.id, refCode: u.onboarded ? refCodeOf(u) : '',
   name: u.name, birth: u.birth, birthTime: u.birth_time, city: u.city,
   region: u.city_region || '', lat: u.lat ?? null, lon: u.lon ?? null, tz: u.tz || '',
   tzOffset: u.tz && u.birth ? tzOffsetMinutes(u.tz, `${u.birth}T${u.birth_time || '12:00'}:00`) : null,
@@ -422,6 +430,14 @@ function serveStatic(res, rel, cacheSec = 3600, headOnly = false, extra = {}) {
   res.writeHead(200, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache', ...(type.startsWith('text/html') ? HTML_HEADERS : {}), ...extra });
   res.end(headOnly ? undefined : readFileSync(file));
 }
+function sendHtml(res, html, headOnly = false, extra = {}) {
+  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(html), 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache', ...HTML_HEADERS, ...extra });
+  res.end(headOnly ? undefined : html);
+}
+/* Страница открыта по реферальной ссылке (?ref=код): манифест в разметке получает тот же код, и у приложения, поставленного с этой
+   страницы, start_url несет его — иначе приглашение терялось бы при установке (браузер запрашивает манифест при загрузке страницы,
+   раньше, чем аккаунт узнает о приглашении; на iPhone у приложения с экрана «Домой» к тому же свое хранилище) */
+const withRef = (html, code) => html.replace('href="/app/manifest.webmanifest"', `href="/app/manifest.webmanifest?ref=${code}"`);
 /* Видимость для ИИ-агентов: заголовок Link со ссылками на карту сайта, политику, каталог API и описание (RFC 8288);
    запрос с Accept: text/markdown получает описание приложения в markdown вместо HTML (llms.txt). */
 const AGENT_LINKS = ['</sitemap.xml>; rel="sitemap"', '</politika>; rel="privacy-policy"', '</soglasie>; rel="terms-of-service"',
@@ -502,6 +518,13 @@ const server = createServer(async (req, res) => {
     if (p === '' ) p = '/';
 
     if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app', schema: SCHEMA_VERSION });
+    /* Кто зовет: по коду из реферальной ссылки — только имя, без аккаунта; страница установки показывает «Ирина зовет вас в Лунарио» */
+    if (p === '/api/invite/host' && req.method === 'GET') {
+      const host = inviteHost(url.searchParams.get('code') || '');
+      if (!host) return json(res, 404, { ok: false });
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      return json(res, 200, { ok: true, name: firstName(host.name) });
+    }
 
     /* Каталог карт и рун: тексты, картинки, расклады. Личного здесь нет, поэтому кэшируется на 10 минут —
        правки в content/ доедут до людей не позже. */
@@ -943,15 +966,12 @@ const server = createServer(async (req, res) => {
       /* Приглашение подруги: у каждого свой код. Пришла по ссылке — обеим
          на неделю открывается вдвое больше подробных разборов. */
       if (p === '/api/invite' && req.method === 'GET') {
-        let code = u.ref_code;
-        if (!code) {
-          code = randomBytes(4).toString('hex');
-          db.prepare('UPDATE users SET ref_code=? WHERE id=?').run(code, u.id);
-        }
-        const brought = db.prepare('SELECT COUNT(*) c FROM users WHERE invited_by=?').get(u.id).c;
+        const code = refCodeOf(u);
+        /* кто пришел по ссылке: имена тех, кто заполнил анкету, остальные — счетом; почты и записей здесь нет */
+        const came = db.prepare('SELECT name FROM users WHERE invited_by=? ORDER BY created_at').all(u.id);
         return json(res, 200, {
-          link: `${PUBLIC_BASE}/app/?ref=${code}`,
-          brought,
+          link: `${PUBLIC_BASE}/app/?ref=${code}`, installLink: `${PUBLIC_BASE}/app/install?ref=${code}`,
+          brought: came.length, broughtNames: came.map((r) => firstName(r.name)).filter(Boolean).slice(0, 20),
           bonusUntil: u.bonus_until || '',
           bonusActive: hasBonus(u),
         });
@@ -960,12 +980,13 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const code = clean(b.code, 16);
         if (!code || u.invited_by || u.ref_code === code) return json(res, 200, { ok: false });
-        const host = db.prepare("SELECT * FROM users WHERE ref_code=? AND ref_code<>''").get(code);
+        const host = inviteHost(code);
         if (!host || host.id === u.id) return json(res, 200, { ok: false });
         const until = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
         db.prepare('UPDATE users SET invited_by=?, bonus_until=? WHERE id=?').run(host.id, until, u.id);
         db.prepare('UPDATE users SET bonus_until=? WHERE id=?').run(until, host.id);
-        return json(res, 200, { ok: true, until });
+        track(u, 'invite_used', String(host.id));   /* кто от кого пришел — в событиях и в users.invited_by; раньше событие с клиента отбрасывалось */
+        return json(res, 200, { ok: true, until, from: firstName(host.name) });
       }
 
       /* Отчет по настроениям: неделя по дням, месяц по долям, итог словами */
@@ -1106,22 +1127,35 @@ const server = createServer(async (req, res) => {
     }
     if (p === '/' || p === '/index.html') {
       if (wantsMarkdown(req)) return serveStatic(res, 'llms.txt', 3600, req.method === 'HEAD', { 'Content-Type': 'text/markdown; charset=utf-8', 'Vary': 'Accept', 'Link': AGENT_LINKS });
+      const ref = inviteHost(url.searchParams.get('ref') || '');
+      if (ref) return sendHtml(res, withRef(readFileSync(join(SITE_DIR, 'index.html'), 'utf8'), ref.ref_code), req.method === 'HEAD', { 'Vary': 'Accept', 'Link': AGENT_LINKS });
       return serveStatic(res, 'index.html', 0, req.method === 'HEAD', { 'Vary': 'Accept', 'Link': AGENT_LINKS });
     }
     if (p === '/llms.txt') return serveStatic(res, 'llms.txt', 3600, req.method === 'HEAD', { 'Content-Type': 'text/markdown; charset=utf-8' });
     if (p === '/cabinet' || p === '/cabinet/') return serveStatic(res, 'cabinet.html', 0);
     /* инструкция по установке на телефон: страница в оформлении приложения и та же памятка в PDF — без аккаунта, ее присылают и до входа */
     if ((p === '/install' || p === '/install/') && (req.method === 'GET' || req.method === 'HEAD')) {
-      const html = installGuide();
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(html), 'Cache-Control': 'public, max-age=600', ...HTML_HEADERS });
-      return res.end(req.method === 'HEAD' ? undefined : html);
+      const ref = inviteHost(url.searchParams.get('ref') || '');
+      if (ref) return sendHtml(res, withRef(installGuide(), ref.ref_code), req.method === 'HEAD');
+      return sendHtml(res, installGuide(), req.method === 'HEAD', { 'Cache-Control': 'public, max-age=600' });
     }
     if (p === '/install.pdf' && (req.method === 'GET' || req.method === 'HEAD')) {
       const pdf = installGuidePdf();
       res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Content-Disposition': 'attachment; filename="lunario-ustanovka.pdf"', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=3600' });
       return res.end(req.method === 'HEAD' ? undefined : pdf);
     }
-    if (p === '/manifest.webmanifest') return serveStatic(res, 'manifest.webmanifest', 0);
+    if (p === '/manifest.webmanifest') {
+      /* У приглашенного start_url несет код пригласившей: на iPhone у приложения с экрана «Домой» свое хранилище (новый гость),
+         и без этого связь «кто от кого пришел» и подарок терялись бы при установке. Остальным — манифест как есть */
+      const fromUrl = inviteHost(url.searchParams.get('ref') || '');   /* страница открыта по реферальной ссылке — код уже в адресе манифеста (withRef) */
+      const u = fromUrl ? null : getUser(req, res, false);
+      const host = fromUrl || (u && u.invited_by ? db.prepare('SELECT ref_code FROM users WHERE id=?').get(u.invited_by) : null);
+      if (!host || !host.ref_code) return serveStatic(res, 'manifest.webmanifest', 0);
+      const m = JSON.parse(readFileSync(join(SITE_DIR, 'manifest.webmanifest'), 'utf8'));
+      m.start_url = `/app/?ref=${host.ref_code}`;
+      res.writeHead(200, { 'Content-Type': MIME['.webmanifest'], 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' });
+      return res.end(JSON.stringify(m));
+    }
     if (p === '/sw.js') return serveStatic(res, 'sw.js', 0);
     if ((req.method === 'GET' || req.method === 'HEAD') && !p.includes('..')) return serveStatic(res, p, url.search.includes('v=') ? 31536000 : 86400, req.method === 'HEAD');
     res.writeHead(404); res.end();

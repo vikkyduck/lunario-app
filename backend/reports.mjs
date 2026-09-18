@@ -697,7 +697,7 @@ const builders = {
       const st = gone >= 61 ? 'К удалению' : gone >= 31 ? 'Предупрежденные' : gone >= 15 ? 'Спящие' : 'Активные';
       const days = one(`SELECT COUNT(DISTINCT day) c FROM events WHERE user_id = ? AND type IN (${inList(FUNC)})`, u.id).c;
       const feats = all(`SELECT DISTINCT type FROM events WHERE user_id = ? AND type IN (${inList(FUNC)})`, u.id).map((r) => FNAME[r.type] || r.type);
-      return { id: u.id, email: mask(u.email), name: u.name, reg: (u.email_at || u.created_at).slice(0, 10), last: u.last_seen.slice(0, 10), source: u.invited_by ? 'Приглашение' : 'Прямой', platform: plat[u.id] || '—', days, streak: u.streak_date >= addDays(today, -1) ? u.streak : 0, stage: st, feats, push: !!one('SELECT 1 FROM push_subs WHERE user_id = ? LIMIT 1', u.id), role: staff.has(u.email) ? 'сотрудник' : '', test: staff.has(u.email) };
+      return { id: u.id, email: mask(u.email), name: u.name, reg: (u.email_at || u.created_at).slice(0, 10), last: u.last_seen.slice(0, 10), source: u.invited_by ? 'Приглашение' : 'Прямой', from: inviterOf(u.invited_by), brought: broughtBy(u.id), platform: plat[u.id] || '—', days, streak: u.streak_date >= addDays(today, -1) ? u.streak : 0, stage: st, feats, push: !!one('SELECT 1 FROM push_subs WHERE user_id = ? LIMIT 1', u.id), role: staff.has(u.email) ? 'сотрудник' : '', test: staff.has(u.email) };
     }).filter((u) => (!s || u.email.toLowerCase().includes(s) || (u.name || '').toLowerCase().includes(s) || String(u.id) === s) && (!stage || u.stage === stage));
     R.filters = [{ key: 'stage', label: 'Стадия', options: [['Активные', 'Активные'], ['Спящие', 'Спящие'], ['Предупрежденные', 'Предупрежденные'], ['К удалению', 'К удалению']], value: stage }];
     R.kpis = [kpi('Найдено', list.length, { unit: 'чел.' }), kpi('Сотрудников в списке', list.filter((u) => u.test).length, { unit: '', sub: 'исключаются из нормативов' })];
@@ -781,6 +781,12 @@ const builders = {
   access(R) { R.how = 'Два администратора равноправны и защищены: их нельзя удалить или понизить. Остальным сотрудникам можно назначить несколько ролей.'; },
 };
 
+/* Кто от кого пришел: пригласившая — по users.invited_by (имя и id, почта скрыта), приглашенные — все, кто пришел по ссылке,
+   включая гостей без почты (у них имени может не быть) */
+const inviterOf = (id) => { if (!id) return null; const h = one('SELECT id, name, email FROM users WHERE id = ?', id); return h ? { id: h.id, name: h.name || '', email: h.email ? mask(h.email) : 'без почты' } : { id, name: '', email: 'аккаунт удален' }; };
+const broughtBy = (id) => one('SELECT COUNT(*) c FROM users WHERE invited_by = ?', id).c;
+const broughtList = (id) => all('SELECT id, name, email, created_at, onboarded FROM users WHERE invited_by = ? ORDER BY created_at DESC', id).map((r) => ({ id: r.id, name: r.name || '', email: r.email ? mask(r.email) : 'без почты', reg: r.created_at.slice(0, 10), onboarded: !!r.onboarded }));
+
 /* карточка пользователя — без личных текстов */
 export function userCard(id) {
   const u = one('SELECT id, email, name, created_at, last_seen, email_at, invited_by, onboarded, streak, streak_date, city, tz FROM users WHERE id = ?', Number(id));
@@ -792,7 +798,7 @@ export function userCard(id) {
   const first = firstFunc(u.id);
   const plat = platformOf((one('SELECT ua FROM sessions WHERE user_id = ? ORDER BY last_seen DESC LIMIT 1', u.id) || {}).ua);
   return { id: u.id, email: mask(u.email), name: u.name, reg: (u.email_at || u.created_at).slice(0, 10), lastAuth: lastAuth ? lastAuth.slice(0, 16).replace('T', ' ') : '—', lastSeen: u.last_seen.slice(0, 16).replace('T', ' '), lastAct: lastAct ? lastAct.slice(0, 16).replace('T', ' ') : '—',
-    days, streak: u.streak, first: first ? `${FNAME[first.type] || first.type} · ${first.ts.slice(0, 10)}` : '—', source: u.invited_by ? 'Приглашение' : 'Прямой', platform: plat, push: !!one('SELECT 1 FROM push_subs WHERE user_id = ? LIMIT 1', u.id), city: u.city, tz: u.tz,
+    days, streak: u.streak, first: first ? `${FNAME[first.type] || first.type} · ${first.ts.slice(0, 10)}` : '—', source: u.invited_by ? 'Приглашение' : 'Прямой', from: inviterOf(u.invited_by), brought: broughtList(u.id), platform: plat, push: !!one('SELECT 1 FROM push_subs WHERE user_id = ? LIMIT 1', u.id), city: u.city, tz: u.tz,
     counts: { entries: one('SELECT COUNT(*) c FROM entries WHERE user_id = ?', u.id).c, journal: one('SELECT COUNT(*) c FROM journal WHERE user_id = ?', u.id).c, wishes: one('SELECT COUNT(*) c FROM wishes WHERE user_id = ?', u.id).c, moods: one('SELECT COUNT(*) c FROM moods WHERE user_id = ?', u.id).c },
     byType, tickets: (() => { const t = one("SELECT COUNT(*) c, SUM(status <> 'resolved') o FROM tickets WHERE user_id = ?", u.id); return t.c ? `${t.c} · открытых ${t.o || 0}` : 'обращений не было'; })(), ai: 'ИИ не подключен' };
 }

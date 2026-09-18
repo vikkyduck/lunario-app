@@ -63,7 +63,8 @@ export const EVENTS = [
   E('share_card', 'Поделился результатом', 'client', { section: 'Социальное', title: 'Поделиться' }),
   E('card_download', 'Скачал открытку', 'client', { section: 'Социальное', title: 'Открытка на телефон' }),
   E('invite_copy', 'Скопировал приглашение', 'client', { section: 'Социальное', title: 'Позвать подругу' }),
-  E('invite_used', 'Пришел по приглашению', 'server'),
+  E('invite_share', 'Поделился приглашением', 'client'),   /* деталь — откуда: invite, compat, install */
+  E('invite_used', 'Пришел по приглашению', 'server'),   /* деталь — id пригласившей; пишет POST /api/invite */
   E('reminder_on', 'Включил напоминание', 'server', { section: 'Аккаунт', title: 'Уведомления' }),
   E('reminder_off', 'Выключил напоминание', 'server'),
   E('reminder_test', 'Прислал пробное напоминание', 'server'),

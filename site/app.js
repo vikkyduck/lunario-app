@@ -651,24 +651,40 @@ function paintWeekTop(){
   const el=$('week-top');if(!el||!S.day?.date)return;const dow=new Date(S.day.date+'T12:00:00Z').getUTCDay();const show=dow===0||dow===1;el.hidden=!show;
   if(show)$('week-top-sub').textContent=dow===0?'Воскресенье — можно посмотреть на неделю целиком':'Прошедшая неделя — целиком, на одном экране';
 }
+/* ══════════ Реферальная ссылка: одна на все места — «Позвать подругу», совместимость, открытки ══════════
+   Код приходит в /api/me (user.refCode); ссылка открывает приложение, внутри — инструкция по установке. Кто пришел по ссылке —
+   users.invited_by, видно в кабинете и здесь именами. Подарок обеим: неделю вдвое больше подробных разборов. */
+const refLink = () => S.user?.refCode ? `${location.origin}/app/?ref=${S.user.refCode}` : `${location.origin}/app/`;
+const inviteText = (who) => who === 'compat'
+  ? `Посчитала нашу совместимость в Лунарио — посмотри, что там у тебя. По моей ссылке неделю вдвое больше разборов, а в приложении есть, как поставить его на телефон:\n${refLink()}`
+  : `Это Лунарио — пространство, где можно услышать себя: карта дня, дневник, настроение. Заходи по моей ссылке — обеим неделю вдвое больше разборов. Внутри — как поставить на телефон:\n${refLink()}`;
+/* Кнопки «Поделиться» и «Скопировать» — одинаковые в каждом месте; where — откуда нажали (аналитика) */
+const inviteButtonsHtml = (where, { shareLabel = 'Поделиться ссылкой' } = {}) => `<div class="invite-actions mt-3">
+    <button data-on="click:shareInvite-a0" data-a0="${where}" class="btn sm full" type="button">${shareLabel}</button>
+    <button data-on="click:copyInvite-a0" data-a0="${where}" class="btn ghost sm full mt-2" type="button">Скопировать ссылку</button></div>`;
+async function shareInvite(where){
+  const text = inviteText(where); track('invite_share', where);
+  if (IOS_SHELL && nativePost({ type: 'share', text })) return;
+  if (navigator.share) { try { await navigator.share({ title: 'Лунарио', text }); return; } catch(e) { if (e.name === 'AbortError') return; } }
+  await copyInvite(where, text);   /* без меню «Поделиться» (компьютер) — текст с ссылкой в буфер */
+}
+async function copyInvite(where, text){
+  const value = text || refLink();
+  try{ await navigator.clipboard.writeText(value); toast(text ? 'Приглашение скопировано — вставьте в сообщение' : 'Ссылка скопирована'); }
+  catch(e){ const el = $('inv-link'); if (el) { el.select(); toast('Скопируйте ссылку вручную'); } else toast('Не удалось скопировать: ' + value); }
+  track('invite_copy', where || '');
+}
 async function loadInvite(){
   try{
     const i = await api('/invite');
-    const bonus = i.bonusActive ? `<p class="hint t-gold mt-2">Подарок действует до ${fmtDay(i.bonusUntil)} — четыре подробных разбора в день.</p>` : '';
-    const brought = i.brought ? `<p class="hint mt-2">По вашей ссылке пришли: ${i.brought}</p>` : '';
+    const bonus = i.bonusActive ? `<p class="hint t-gold mt-3">Подарок действует до ${fmtDay(i.bonusUntil)} — четыре подробных разбора в день.</p>` : '';
+    const names = (i.broughtNames || []).join(', '), rest = i.brought - (i.broughtNames || []).length;
+    const brought = i.brought ? `<p class="hint mt-3">По вашей ссылке пришли: ${i.brought}${names ? ` — ${esc(names)}${rest > 0 ? ` и еще ${rest} без имени` : ''}` : ''}</p>` : '<p class="hint mt-3">По вашей ссылке пока никто не приходил — здесь появятся имена.</p>';
     $('inv-box').innerHTML = `
-      <div class="field mb-0"><input id="inv-link" class="compact" readonly value="${esc(i.link)}"></div>
-      <button data-on="click:copyInvite" class="btn ghost sm full mt-2">Скопировать ссылку</button>
+      <div class="field mb-0"><input id="inv-link" class="compact" readonly value="${esc(i.link)}" aria-label="Моя ссылка"></div>
+      ${inviteButtonsHtml('invite')}
       ${bonus}${brought}`;
   }catch(e){ $('inv-box').innerHTML = '<p class="hint">Ссылка появится чуть позже.</p>'; }
-}
-async function copyInvite(){
-  const el = $('inv-link');
-  try{
-    await navigator.clipboard.writeText(el.value);
-    toast('Ссылка скопирована');
-  }catch(e){ el.select(); toast('Скопируйте ссылку вручную'); }
-  track('invite_copy');
 }
 async function addWish(){
   const t=$('w-text').value.trim(); if(t.length<3){ toast('Сформулируйте чуть подробнее'); return; }
@@ -725,7 +741,8 @@ async function compat(){
       <p class="serif center strong">${r.you} и ${r.other}</p>
       <div class="split">
       ${r.rings.map(([n,v])=>`<div class="ring"><svg width="54" height="54" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle class="v" cx="28" cy="28" r="24" fill="none" stroke="#d9b868" stroke-width="4" stroke-linecap="round" data-p="${v}"/></svg><span class="val">${v}%</span><span class="lbl">${n}</span></div>`).join('')}
-      </div><p class="mt-3">${r.text}</p>`;
+      </div><p class="mt-3">${r.text}</p>
+      <div class="compat-invite mt-4"><span class="eyebrow">Позвать в Лунарио</span><p class="hint mt-2">Отправьте партнеру или подруге ссылку: по ней открывается приложение, внутри — как поставить его на телефон. Обоим на неделю — вдвое больше подробных разборов.</p>${inviteButtonsHtml('compat', { shareLabel: 'Отправить ссылку' })}</div>`;
     setTimeout(()=>document.querySelectorAll('#m-cres circle.v').forEach((c,i)=>{ c.style.transitionDelay=i*90+'ms'; c.style.strokeDashoffset=151-151*(+c.dataset.p)/100; }),60);
     hap('done');
   }catch(e){ toast('Не получилось рассчитать'); }
@@ -1404,7 +1421,7 @@ function rhythmStep(n){
   const v=$('v-rhythm'); if(!v)return; v.dataset.step=String(n);
   $('rh-step-1').hidden=n!==1; $('rh-step-2').hidden=n!==2;
   if(n===1){ const chosen=new Set(Array.isArray(XP.prefs?.morning)?morningChosen():['card','lunar','tone']); v.querySelectorAll('[data-morning]').forEach(i=>{ i.checked=chosen.has(i.dataset.morning); }); }   /* еще не выбирали — карта, Луна и вопрос дня */
-  if(n===2){ const note=$('rh-device-note'); if(note) note.textContent=rhythmDeviceNote(); }
+  if(n===2){ const note=$('rh-device-note'); if(note){ note.textContent=rhythmDeviceNote(); if(IS_IOS&&!PUSH_OK&&!IOS_SHELL) note.append(' ', Object.assign(document.createElement('a'), { href: '/app/install', className: 't-gold', textContent: 'Как добавить →' })); } }
   scrollToTop(0);
 }
 /* На iPhone в Safari пуши не приходят — только с экрана «Домой»; человеку лучше узнать это здесь, а не через три дня тишины */
@@ -1810,7 +1827,7 @@ function paintSky(){
 
 /* ══════════ Поделиться текстом: любой результат ══════════ */
 function shareResText(p){
-  const link = location.origin + '/app/';
+  const link = refLink();   /* реферальная: кто придет с открытки — тоже «от кого» */
   switch (p.type) {
     case 'morning': return `${p.text}${p.question ? '\n' + p.question : ''}\nЛунарио · ${link}`;
     case 'card': return `${p.card.name} — карта дня в Лунарио.\n${keysLine(p.card.keys)}\n${link}`;
@@ -2416,7 +2433,7 @@ function startApp(){
     try{
       if (ref && /^[a-z0-9]{6,12}$/i.test(ref)) {
         const inv = await api('/invite',{method:'POST',body:JSON.stringify({code:ref})});
-        if (inv.ok) { track('invite_used'); setTimeout(()=>toast('Подарок от подруги: четыре разбора в день на неделю'), 1200); }
+        if (inv.ok) setTimeout(()=>toast(`Подарок от ${inv.from || 'подруги'}: четыре разбора в день на неделю`), 1200);   /* событие invite_used пишет сервер */
         history.replaceState(null,'',location.pathname);
       }
     }catch(e){ /* ссылка старая — просто открываем приложение */ }
