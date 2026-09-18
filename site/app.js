@@ -2433,7 +2433,7 @@ function startApp(){
     try{
       if (ref && /^[a-z0-9]{6,12}$/i.test(ref)) {
         const inv = await api('/invite',{method:'POST',body:JSON.stringify({code:ref})});
-        if (inv.ok) setTimeout(()=>toast(`Подарок от ${inv.from || 'подруги'}: четыре разбора в день на неделю`), 1200);   /* событие invite_used пишет сервер */
+        if (inv.ok) setTimeout(()=>toast(`${inv.from ? inv.from + ' зовет вас в Лунарио — подарок' : 'Подарок от подруги'}: четыре разбора в день на неделю`), 1200);   /* событие invite_used пишет сервер */
         history.replaceState(null,'',location.pathname);
       }
     }catch(e){ /* ссылка старая — просто открываем приложение */ }
