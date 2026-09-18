@@ -266,7 +266,7 @@ try {
   /* вечерний пуш — приглашение, одна из формулировок evening / evening-N по дню; молчит, когда день записан словами или настроением,
      а отметка привычки его не глушит */
   const evC=await import(pathToFileURL(join(fixture,'backend/content.mjs')).href);
-  const evKeys=['evening','evening-2','evening-3','evening-4','evening-5','evening-6'].map((k)=>evC.REMINDER_TEXTS[k]).filter(Boolean).map((t)=>t[0]);
+  const evKeys=['evening',...Array.from({length:199},(_,i)=>'evening-'+(i+2))].map((k)=>evC.REMINDER_TEXTS[k]).filter(Boolean).map((t)=>t[0]);
   assert.ok(evKeys.includes(reminders.notificationFor('evening',evRow).title),'evening push is one of the invitation variants');
   assert.equal(reminders.notificationFor('evening',evRow).body.search(/напишите|ответьте/i),-1,'the evening push invites, it does not ask to write');
   const evHabit=(await evPerson.json('/habits','POST',{title:'Вода',rule:'каждый день'})).items.find((x)=>x.title==='Вода');await evPerson.json('/day','POST',{habits:[{id:evHabit.id,done:true}]});

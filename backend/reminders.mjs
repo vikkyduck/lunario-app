@@ -174,9 +174,9 @@ function morningNotification(u, d, atMs, tz) {
 }
 /* День записан — если сегодня есть хоть что-то: запись, настроение, отметка привычки или аскезы */
 /* Вечерний пуш — приглашение, а не вопрос (вопросы — на экране). Формулировки чередуются по дням, чтобы не приедаться:
-   evening, evening-2, evening-3… из напоминания.txt; есть только evening — он и идет каждый день */
+   evening, evening-2, evening-3… из напоминания.txt (номера подряд); есть только evening — он и идет каждый день */
 export function eveningKey(d) {
-  const keys = ['evening', ...[2, 3, 4, 5, 6].map((n) => 'evening-' + n)].filter((k) => C.REMINDER_TEXTS[k]);
+  const keys = ['evening']; for (let n = 2; n <= 200; n++) { if (!C.REMINDER_TEXTS['evening-' + n]) break; keys.push('evening-' + n); }   /* подряд, без пропусков в номерах */
   const n = Math.floor(Date.parse(d + 'T12:00:00Z') / 864e5);
   return keys[n % keys.length] || 'evening';
 }
