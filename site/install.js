@@ -21,7 +21,7 @@
   if (ref && /^[a-z0-9]{6,12}$/i.test(ref)) {
     document.querySelectorAll('a[data-app]').forEach((a) => { a.href = '/app/?ref=' + encodeURIComponent(ref); });
     const box = document.getElementById('invited');
-    const show = (name) => { box.textContent = ''; const b = document.createElement('b'); b.textContent = name ? `${name} зовет вас в Лунарио` : 'Вас зовут в Лунарио'; box.append(b, ' — откройте приложение по этой ссылке: неделю у вас обоих будет вдвое больше подробных разборов.'); box.hidden = false; };
+    const show = (name) => { box.textContent = ''; const b = document.createElement('b'); b.textContent = name ? `${name} зовет вас в Лунарио` : 'Вас зовут в Лунарио'; box.append(b, ' — откройте приложение по этой ссылке. Это бесплатно.'); box.hidden = false; };
     fetch('/app/api/invite/host?code=' + encodeURIComponent(ref)).then((r) => (r.ok ? r.json() : null)).then((h) => { if (h && h.ok) show(h.name); }).catch(() => {});
   }
 

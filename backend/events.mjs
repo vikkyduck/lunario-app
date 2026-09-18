@@ -48,7 +48,6 @@ export const EVENTS = [
   E('ask_yesno', 'Спросил «Да / Нет»', 'server', { core: true, section: 'Свериться с собой', title: 'Да / Нет' }),
   E('ask_rune', 'Вытянул руну', 'server', { core: true, section: 'Свериться с собой', title: 'Руны' }),
   E('ask_spread', 'Сделал расклад', 'server', { core: true, section: 'Свериться с собой', title: 'Таро' }),
-  E('spread_limit', 'Уперся в лимит раскладов', 'client'),
   E('journal_add', 'Сделал запись', 'server', { core: true, section: 'Дневник', title: 'Дневник' }),
   E('gratitude_add', 'Записал благодарность', 'server', { core: true, section: 'Дневник', title: 'Дневник благодарности' }),
   E('wish_add', 'Добавил желание', 'server', { core: true, section: 'Дневник', title: 'Мои желания' }),

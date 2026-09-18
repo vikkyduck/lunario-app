@@ -105,7 +105,7 @@ html[data-os=ios] [data-os=android],html[data-os=android] [data-os=ios]{display:
 .support{color:var(--muted);font-size:15px;text-align:center;margin:26px 0 0}
 footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:13px;text-align:center;line-height:1.7}
 footer a{color:var(--faint)}
-/* пришли по ссылке подруги: кто зовет и что за подарок */
+/* пришли по ссылке подруги: кто зовет */
 .invited{margin:0 0 16px;padding:12px 16px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.45);color:var(--text);font-size:15px;line-height:1.5}
 .invited b{color:var(--gold-2)}
 #native-install{display:none}

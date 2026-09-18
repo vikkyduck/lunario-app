@@ -489,14 +489,13 @@ try {
   assert.ok(!/undefined|NaN/.test(dossierText), 'No undefined in dossier text');
   console.log('PASS: dossier and context text use the same askesis contract as the practices model.');
 
-  // ── Лимит раскладов: одна политика для /api/me и /api/spread ──
-  const limits = (await askOwner.json('/me')).limits; assert.equal(limits.spreadsLeft, limits.spreadsTotal);
-  for (let i = 0; i < limits.spreadsTotal; i++) {
+  // ── Раскладов в день — без лимита (решение владелицы 18.09); /api/me не сообщает о квоте, ошибки limit не бывает ──
+  assert.ok(!('limits' in (await askOwner.json('/me'))), 'No spread quota is reported');
+  for (let i = 0; i < 5; i++) {
     const r = await askOwner.json('/spread', 'POST', { question: 'Что мне важно понять про эту неделю?', layout: 'three' });
-    assert.equal(r.left, limits.spreadsTotal - i - 1); assert.equal((await askOwner.json('/me')).limits.spreadsLeft, r.left, 'Reported quota matches the check');
+    assert.ok(r.ok && r.cards.length === 3 && !('left' in r), `Spread ${i + 1} succeeds without a quota`);
   }
-  assert.equal((await askOwner.raw('/spread', 'POST', { question: 'Что мне важно понять про эту неделю?', layout: 'three' })).status, 429, 'Quota check uses the same limit the API reports');
-  console.log('PASS: spread quota is enforced by the same rule the API reports.');
+  console.log('PASS: tarot spreads are unlimited; the API reports no quota.');
 
   // ── Досье пересобирается частями: отметка настроения не трогает «Обо мне» с натальной картой ──
   const shelfRows = (uid) => Object.fromEntries(qaDB.prepare('SELECT shelf, json, updated_at FROM shelves WHERE user_id=?').all(uid).map((r) => [r.shelf, r]));

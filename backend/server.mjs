@@ -148,8 +148,6 @@ async function notifyStaffAccess(email, roleKeys) {
    поэтому он попадает в резервную копию вместе с базой. */
 console.log('Личные записи шифруются перед записью в базу');
 
-/* Подарок за приглашение действует неделю и удваивает число подробных разборов. */
-const hasBonus = (u) => !!u.bonus_until && u.bonus_until >= today();
 /* «Сегодня» человека — по поясу его устройства (заголовок X-Tz, запоминается в preferences.tz), иначе по поясу города из анкеты,
    иначе по Москве. Все личное — настрой, карта, записи, неделя — считается этим днем; аналитика и кабинет остаются по Москве. */
 const tzOk = new Map();
@@ -166,7 +164,6 @@ function rememberTz(u, req) {
   const p = preferences(u.preferences); if (p.tz === tz) return;
   db.prepare('UPDATE users SET preferences = ? WHERE id = ?').run(JSON.stringify({ ...p, tz }), u.id); u.preferences = JSON.stringify({ ...p, tz });
 }
-const spreadLimit = (u) => (hasBonus(u) ? 4 : 2);
 
 /* Событие продукта: только тип, короткая деталь и возрастная когорта — без личных текстов */
 const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), today(), u.id, type, String(detail || '').slice(0, 60), ageBand(u.birth));
@@ -704,12 +701,10 @@ const server = createServer(async (req, res) => {
 
 
       if (p === '/api/me' && req.method === 'GET') {
-        const used = db.prepare('SELECT spreads FROM usage WHERE user_id = ? AND day = ?').get(u.id, d);
         return json(res, 200, {
           user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(), preferences: preferences(u.preferences),
           mood: (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d) || {}).mood || null,
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
-          limits: { spreadsLeft: Math.max(0, spreadLimit(u) - (used ? used.spreads : 0)), spreadsTotal: spreadLimit(u) },
           mailReady: mailLive(),
           supportUnread: W.userUnread(u.id),
         });
@@ -824,10 +819,8 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const q = clean(b.question, 300);
         if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
-        const row = db.prepare('SELECT spreads FROM usage WHERE user_id=? AND day=?').get(u.id, d);
-        const used = row ? row.spreads : 0;
-        if (used >= spreadLimit(u)) return json(res, 429, { ok: false, error: 'limit' });
-        /* карты выпадают случайно и не повторяются внутри расклада; любой расклад — один разбор из дневного лимита */
+        /* Дневного лимита раскладов нет (решение владелицы 18.09: лимит был на случай платных ИИ-разборов, а тексты — свои).
+           Счетчик usage.spreads остается для статистики. Карты выпадают случайно и не повторяются внутри расклада */
         const L = C.LAYOUTS.tarot[b.layout] ? b.layout : 'three';
         const pos = C.LAYOUTS.tarot[L].pos;
         const cards = drawDistinct([...C.ARCANA], pos.length).map((a, i) => ({ pos: pos[i].name, ...cardPublic(a) }));
@@ -836,7 +829,7 @@ const server = createServer(async (req, res) => {
           .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.name} — ${c.keys}`).join(' '),
                JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) }));
         track(u, 'ask_spread', L);
-        return json(res, 200, { ok: true, layout: L, cards, left: Math.max(0, spreadLimit(u) - used - 1), streak: touchStreak(u) });
+        return json(res, 200, { ok: true, layout: L, cards, streak: touchStreak(u) });
       }
 
       if (p === '/api/mood' && req.method === 'POST') {
@@ -963,8 +956,8 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true });
       }
 
-      /* Приглашение подруги: у каждого свой код. Пришла по ссылке — обеим
-         на неделю открывается вдвое больше подробных разборов. */
+      /* Приглашение подруги: у каждого свой код; пришла по ссылке — записываем, от кого (users.invited_by). Подарка за
+         приглашение больше нет (лимит раскладов снят), поле bonus_until остается в базе для совместимости и не пишется */
       if (p === '/api/invite' && req.method === 'GET') {
         const code = refCodeOf(u);
         /* кто пришел по ссылке: имена тех, кто заполнил анкету, остальные — счетом; почты и записей здесь нет */
@@ -972,8 +965,6 @@ const server = createServer(async (req, res) => {
         return json(res, 200, {
           link: `${PUBLIC_BASE}/app/?ref=${code}`, installLink: `${PUBLIC_BASE}/app/install?ref=${code}`,
           brought: came.length, broughtNames: came.map((r) => firstName(r.name)).filter(Boolean).slice(0, 20),
-          bonusUntil: u.bonus_until || '',
-          bonusActive: hasBonus(u),
         });
       }
       if (p === '/api/invite' && req.method === 'POST') {
@@ -982,11 +973,9 @@ const server = createServer(async (req, res) => {
         if (!code || u.invited_by || u.ref_code === code) return json(res, 200, { ok: false });
         const host = inviteHost(code);
         if (!host || host.id === u.id) return json(res, 200, { ok: false });
-        const until = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
-        db.prepare('UPDATE users SET invited_by=?, bonus_until=? WHERE id=?').run(host.id, until, u.id);
-        db.prepare('UPDATE users SET bonus_until=? WHERE id=?').run(until, host.id);
+        db.prepare('UPDATE users SET invited_by=? WHERE id=?').run(host.id, u.id);
         track(u, 'invite_used', String(host.id));   /* кто от кого пришел — в событиях и в users.invited_by; раньше событие с клиента отбрасывалось */
-        return json(res, 200, { ok: true, until, from: firstName(host.name) });
+        return json(res, 200, { ok: true, from: firstName(host.name) });
       }
 
       /* Отчет по настроениям: неделя по дням, месяц по долям, итог словами */
