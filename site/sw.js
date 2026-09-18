@@ -4,7 +4,7 @@
    при пропавшей связи). Прежняя версия отдавала ее из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const V = '71';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
+const V = '72';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
 const CACHE = 'lunario-app-v' + V;
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/theme.css?v=' + V, '/app/experience.css?v=' + V, '/app/moon-glass.css?v=' + V, '/app/compact.css?v=' + V, '/app/frame.css?v=' + V,
@@ -31,12 +31,13 @@ self.addEventListener('fetch', (e) => {
   // манифест и сам воркер — мимо кэша: иначе Chrome не видит новые иконки и имя приложения
   if (e.request.destination === 'manifest' || u.pathname === '/app/manifest.webmanifest' || u.pathname === '/app/sw.js') return;
 
-  // страница приложения: сначала сеть, чтобы правки появлялись сразу
+  // страница приложения: сначала сеть, чтобы правки появлялись сразу. Запасной копией под ключом '/app/' становится
+  // только сама страница приложения: переход на /app/install или /app/cabinet не должен подменять офлайн-оболочку
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
     e.respondWith(
       fetch(e.request)
         .then((r) => {
-          if (r.ok && u.origin === location.origin) {
+          if (r.ok && u.origin === location.origin && (u.pathname === '/app/' || u.pathname === '/app/index.html')) {
             const cp = r.clone();
             caches.open(CACHE).then((c) => c.put('/app/', cp)).catch(() => {});
           }

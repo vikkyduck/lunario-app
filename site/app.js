@@ -325,7 +325,7 @@ function paintPushNudge(){
   const box = $('home-push'); if (!box) return;
   const due = pushNudgeDue(); box.hidden = !due; if (!due) { box.innerHTML = ''; return; }
   box.innerHTML = !PUSH_OK
-    ? `<button data-on="click:openWidget-remind" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>Придут с экрана «Домой»</b><span class="later-go">Как добавить →</span></button>`
+    ? `<a class="later-row" id="push-nudge" href="/app/install"><span class="eyebrow">Напоминания</span><b>Придут с экрана «Домой»</b><span class="later-go">Как добавить →</span></a>`
     : Notification.permission === 'denied'
     ? `<button data-on="click:openWidget-remind" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>В этом браузере запрещены</b><span class="later-go">Как разрешить →</span></button>`
     : `<button data-on="click:homePushConnect" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>На этом устройстве не подключены</b><span class="later-go">Включить →</span></button>`;
@@ -925,9 +925,17 @@ async function wipe(what){
 }
 
 /* ── установка на телефон ── */
+/* Строка «Установить на телефон» в Аккаунте — ссылка на инструкцию /app/install (страница и PDF, backend/install-guide.mjs).
+   Если Chrome на телефоне сам умеет ставить приложение (beforeinstallprompt), нажатие открывает его диалог; отказался — следующее
+   нажатие ведет на инструкцию. На компьютере (корпус телефона) диалог не показываем: ставить на компьютер незачем, а инструкцию читают */
 let deferred=null;
-window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); $('t-install').hidden=false; });   /* строка, как остальные: раскладку задает CSS, не inline display */
-async function installApp(){ if(!deferred) return; track('installed'); deferred.prompt(); await deferred.userChoice; deferred=null; $('t-install').hidden=true; }
+window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferred=e; track('install_prompt'); });
+window.addEventListener('appinstalled',()=>{ deferred=null; });
+function installApp(event){
+  if(!deferred || document.documentElement.classList.contains('framed')) return;   /* нет системного диалога — ссылка ведет на инструкцию */
+  event.preventDefault(); track('installed');
+  const p=deferred; deferred=null; p.prompt(); p.userChoice.catch(()=>{});
+}
 
 /* ══════════ Карты Таро и руны: каталог, результаты, история, открытки ══════════ */
 /* Каталог: тексты и картинки карт и рун приходят одним запросом и дальше живут в памяти.
@@ -1450,9 +1458,10 @@ function remStatus(f, r){
 function paintDeviceStatus(){
   const box=$('rem-device-status');if(!box)return;
   box.textContent=IOS_SHELL?(IOS_BRIDGE<4?'Обновите приложение, чтобы проверить разрешение на уведомления':S.nativePermission==='granted'?'Уведомления разрешены на этом iPhone':S.nativePermission==='denied'?'Уведомления выключены в настройках iPhone → Лунарио → Уведомления':'При первом включении iPhone спросит разрешение')
-    :!PUSH_OK?(IS_IOS?'На iPhone добавьте Лунарио на экран «Домой», откройте оттуда и включите уведомления':'Этот браузер не поддерживает пуш-уведомления')
+    :!PUSH_OK?(IS_IOS?'На iPhone добавьте Лунарио на экран «Домой», откройте оттуда и включите уведомления.':'Этот браузер не поддерживает пуш-уведомления')
     :Notification.permission==='denied'?'Уведомления заблокированы. Разрешите их в настройках сайта в браузере'
     :S.pushOn?'Это устройство подключено'+deviceTrace():'При первом включении браузер спросит разрешение. Если расписание уже включено, подключите это устройство';
+  if(!IOS_SHELL&&!PUSH_OK&&IS_IOS) box.append(' ', Object.assign(document.createElement('a'), { href: '/app/install', className: 't-gold', textContent: 'Как добавить →' }));   /* инструкция по шагам — на своей странице */
 }
 /* Что сервер знает про эту ячейку: когда последний раз отправлял сигнал и когда устройство за текстами приходило.
    Если сигнал был, а отклика нет — уведомления глушит само устройство (режим «Не беспокоить», запрет для сайта). */

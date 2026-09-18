@@ -9,11 +9,11 @@ import { PdfDocument, wrap } from './pdf.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 let fontsCache = null;
-const fonts = () => fontsCache || (fontsCache = { regular: readFileSync(join(here, 'fonts/onest-400.ttf')), semibold: readFileSync(join(here, 'fonts/onest-600.ttf')) });
+export const fonts = () => fontsCache || (fontsCache = { regular: readFileSync(join(here, 'fonts/onest-400.ttf')), semibold: readFileSync(join(here, 'fonts/onest-600.ttf')) });
 
 /* палитра ночи из theme.css, в долях 0–1 */
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
-const C = { bg: hex('#0f0d1c'), glow: hex('#d9b868'), text: hex('#f5f2ea'), muted: hex('#cdc6e2'), faint: hex('#8f87ad'), gold: hex('#d9b868'), gold2: hex('#f0d79a'), panel: hex('#f5f2ea'), line: hex('#f5f2ea'), warn: hex('#ffb3b3') };
+export const C = { bg: hex('#0f0d1c'), glow: hex('#d9b868'), text: hex('#f5f2ea'), muted: hex('#cdc6e2'), faint: hex('#8f87ad'), gold: hex('#d9b868'), gold2: hex('#f0d79a'), panel: hex('#f5f2ea'), line: hex('#f5f2ea'), warn: hex('#ffb3b3') };
 
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const fmtDay = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : String(d || ''); };
@@ -27,10 +27,11 @@ const FREQ = { daily: 'каждый день', weekly: 'раз в неделю',
 const WEEKDAYS = ['', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
 const ASK_STATUS = { active: 'идет', done: 'выполнена', failed: 'прервана', stopped: 'остановлена' };
 
-/* Поток верстки: страницы A4, поля, перенос блоков на новую страницу, колонтитулы */
-class Flow {
-  constructor(doc, fonts, headerImage) {
-    this.doc = doc; this.f = fonts; this.header = headerImage;
+/* Поток верстки: страницы A4, поля, перенос блоков на новую страницу, колонтитулы.
+   Общий для выгрузки и памятки по установке (install-pdf.mjs): running — подпись в колонтитуле со второй страницы */
+export class Flow {
+  constructor(doc, fonts, { running = 'Лунарио · Мои данные' } = {}) {
+    this.doc = doc; this.f = fonts; this.running = running;
     this.W = doc.w; this.H = doc.h; this.mx = 48; this.top = this.H - 56; this.bottom = 56; this.cw = this.W - this.mx * 2;
     this.n = 0; this.page = null; this.y = 0;
   }
@@ -39,7 +40,7 @@ class Flow {
     p.fillPage(C.bg);
     p.glow(this.W * 0.92, this.H * 0.78, 260, C.glow, C.bg, 0.16);
     p.glow(this.W * 0.06, this.H * 0.2, 200, hex('#f0d79a'), C.bg, 0.08);
-    if (this.n > 1) p.text(this.f.regular, 8.5, this.mx, this.H - 34, 'Лунарио · Мои данные', C.faint, { spacing: 0.3 });
+    if (this.n > 1) p.text(this.f.regular, 8.5, this.mx, this.H - 34, this.running, C.faint, { spacing: 0.3 });
     this.y = this.n > 1 ? this.top - 8 : this.top;
     return p;
   }
@@ -105,6 +106,22 @@ class Flow {
       lines.forEach((l, i) => this.page.text(this.f.regular, size, this.mx + 14, this.y - size - i * step, l, C.text));
       this.y -= step * lines.length + 3;
     }
+    this.y -= 4;
+  }
+  /* нумерованные шаги: золотой номер в кружке, заголовок шага и пояснение; шаг целиком на одной странице */
+  steps(items) {
+    const r = 9, ind = 30, w = this.cw - ind;
+    items.forEach((it, i) => {
+      const head = wrap(this.f.semibold, 11.5, it.title, w), body = it.text ? wrap(this.f.regular, 10, it.text, w) : [];
+      this.ensure(head.length * 16 + body.length * 14 + 8);
+      const top = this.y, n = String(i + 1);
+      this.page.circle(this.mx + r, top - r - 2, r, C.gold, 0.18);
+      this.page.panel(this.mx, top - 2 * r - 2, 2 * r, 2 * r, { radius: r, stroke: C.gold, strokeAlpha: 0.55, lineWidth: 0.7 });
+      this.page.text(this.f.semibold, 10, this.mx + r - this.f.semibold.width(n, 10) / 2, top - r - 5.5, n, C.gold2);
+      head.forEach((l, k) => this.page.text(this.f.semibold, 11.5, this.mx + ind, top - 12 - k * 16, l, C.text));
+      body.forEach((l, k) => this.page.text(this.f.regular, 10, this.mx + ind, top - head.length * 16 - 10.5 - k * 14, l, C.muted));
+      this.y = top - head.length * 16 - body.length * 14 - 8;
+    });
     this.y -= 4;
   }
   empty(text) { this.para(text, { color: C.faint, size: 10, after: 8 }); }

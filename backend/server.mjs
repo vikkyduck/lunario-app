@@ -11,6 +11,8 @@ import { vapidKeys, pushEndpointOk } from './push.mjs';
 import * as C from './content.mjs';
 import { personalExport } from './personal-export.mjs';
 import { personalExportPdf } from './personal-export-pdf.mjs';
+import { installPage } from './install-guide.mjs';
+import { installPdf } from './install-pdf.mjs';
 import { preferences, validPreferences, timeline, morningOf } from './experience.mjs';
 import { entryPage } from './entries.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
@@ -91,6 +93,15 @@ function dataUrlOk(v, max) {
 }
 let exportHeaderPng = null;   /* логотип с Луной для обложки PDF — та же картинка, что в письмах */
 const exportHeader = () => { if (exportHeaderPng === null) { try { exportHeaderPng = readFileSync(join(SITE_DIR, 'assets/mail/header.png')); } catch { exportHeaderPng = false; } } return exportHeaderPng || null; };
+/* «Как установить на телефон»: страница и PDF собираются из одного текста (install-guide.mjs) при первом запросе и живут в памяти —
+   личного в них нет, а текст меняется только с выпуском */
+let installHtml = null, installPdfBuf = null;
+const installGuide = () => installHtml || (installHtml = installPage());
+const installGuidePdf = () => {
+  if (installPdfBuf) return installPdfBuf;
+  let iconPng = null; try { iconPng = readFileSync(join(SITE_DIR, 'assets/apple-touch-icon.png')); } catch { /* без иконки памятка не хуже */ }
+  return (installPdfBuf = installPdf({ headerPng: exportHeader(), iconPng }));
+};
 function sendDataUrl(res, dataUrl) {
   const m = /^data:(image\/[a-z]+);base64,(.+)$/.exec(dataUrl);
   const buf = Buffer.from(m[2], 'base64');
@@ -1099,6 +1110,17 @@ const server = createServer(async (req, res) => {
     }
     if (p === '/llms.txt') return serveStatic(res, 'llms.txt', 3600, req.method === 'HEAD', { 'Content-Type': 'text/markdown; charset=utf-8' });
     if (p === '/cabinet' || p === '/cabinet/') return serveStatic(res, 'cabinet.html', 0);
+    /* инструкция по установке на телефон: страница в оформлении приложения и та же памятка в PDF — без аккаунта, ее присылают и до входа */
+    if ((p === '/install' || p === '/install/') && (req.method === 'GET' || req.method === 'HEAD')) {
+      const html = installGuide();
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': Buffer.byteLength(html), 'Cache-Control': 'public, max-age=600', ...HTML_HEADERS });
+      return res.end(req.method === 'HEAD' ? undefined : html);
+    }
+    if (p === '/install.pdf' && (req.method === 'GET' || req.method === 'HEAD')) {
+      const pdf = installGuidePdf();
+      res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Content-Disposition': 'attachment; filename="lunario-ustanovka.pdf"', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'public, max-age=3600' });
+      return res.end(req.method === 'HEAD' ? undefined : pdf);
+    }
     if (p === '/manifest.webmanifest') return serveStatic(res, 'manifest.webmanifest', 0);
     if (p === '/sw.js') return serveStatic(res, 'sw.js', 0);
     if ((req.method === 'GET' || req.method === 'HEAD') && !p.includes('..')) return serveStatic(res, p, url.search.includes('v=') ? 31536000 : 86400, req.method === 'HEAD');
