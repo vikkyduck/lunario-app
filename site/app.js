@@ -190,7 +190,7 @@ async function loadDayRune(){
     const [r]=await Promise.all([api('/dayrune',{method:'POST'}),loadCatalog()]);
     box.innerHTML=runesHtml({layout:'one',runes:[r.rune.slug],live:[r.rune],q:'',day:r.day});preparePending();paintThoughts();
     if(S.day){ S.day.rune=r.rune; S.day.runeOpened=true; } paintRuneTile();
-  }catch(e){box.innerHTML='<p class="msg err">Не получилось вытянуть руну. Попробуйте еще раз.</p>';}
+  }catch(e){box.innerHTML='<p class="msg err">Не получилось вытянуть руну</p>';}
 }
 /* строка «Руна дня» на «Сегодня»: до выбора — иконка и общая подпись, после — камень и имя руны (как у карты дня) */
 function paintRuneTile(){
@@ -270,7 +270,7 @@ async function supThread(id){
     const th = $('sup-thread'); th.scrollTop = th.scrollHeight;
     $('h-supdot').hidden = true;
     supTimer = setTimeout(()=>{ if(supTicket===id && wgOpen==='support') supThread(id); }, 15000);   /* пока чат открыт — обновляем раз в 15 секунд */
-  }catch(e){ if(supTicket!==id||wgOpen!=='support')return;const msg=$('sup-msg2');if(msg)msg.textContent='Не удалось обновить сообщения. Ваш текст сохранен в поле';else box.innerHTML='<p class="msg err">Не получилось открыть обращение. <button data-on="click:supThread-a0" data-a0="'+id+'" class="text-action">Повторить</button></p>'; }
+  }catch(e){ if(supTicket!==id||wgOpen!=='support')return;const msg=$('sup-msg2');if(msg)msg.textContent='Не получилось обновить — текст остался в поле';else box.innerHTML='<p class="msg err">Не получилось открыть обращение. <button data-on="click:supThread-a0" data-a0="'+id+'" class="text-action">Повторить</button></p>'; }
 }
 async function supSend(id){
   const text = $('sup-reply').value.trim(), msg = $('sup-msg2'); showMsg(msg); if(!text) return;
@@ -291,7 +291,7 @@ async function exportPersonalData(){
   try{const r=await fetch(API+'/data/export.pdf');if(r.status===401){location.reload();return;}if(!r.ok)throw new Error('export');
     const blob=await r.blob(),url=URL.createObjectURL(blob);   /* читаемый PDF в стиле Лунарио; JSON для переноса — GET /api/data/export */
     const link=document.createElement('a');link.href=url;link.download='lunario-'+S.day.date+'.pdf';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Файл с вашими данными подготовлен');
-  }catch(e){toast('Не удалось скачать данные. Попробуйте еще раз');}finally{exportPersonalData.busy=false;}
+  }catch(e){toast('Не получилось скачать');}finally{exportPersonalData.busy=false;}
 }
 
 /* ── главная ── */
@@ -399,7 +399,7 @@ function pushNudgeDue(){
 async function homePushConnect(){
   const btn = $('push-nudge'); if (!btn || btn.disabled) return; btn.disabled = true;
   try { if (await connectPushDevice()) { toast('Уведомления подключены'); track('push_on', 'home'); } }
-  catch (e) { toast('Не удалось подключить уведомления. Попробуйте еще раз'); }
+  catch (e) { toast('Не получилось включить уведомления'); }
   finally { paintPushNudge(); REM_ORDER.forEach(paintRem); }
 }
 function goDayCard(){ if(DC.forDay){DC.forDay=null;DC.state=null;} go('history'); requestAnimationFrame(() => $('day-card')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }
@@ -512,7 +512,7 @@ async function pickMood(id){
     const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id})});
     S.mood=r.mood; moodUI.own=ownMood(r.mood); renderMoods();
     paintMoodStat(r.stats); paintMoodExtra(); 
-  }catch(e){ toast('Не удалось сохранить'); }
+  }catch(e){ toast(ERR_SAVE); }
 }
 function paintMoodStat(stats){
   const parts=(stats||[]).filter(s=>s.c>0).map(s=>MOOD_LABEL[s.mood]+' — '+s.c);
@@ -582,7 +582,7 @@ function paintNum(n){
 /* ── «Что вас сегодня беспокоит?»: вопрос раскрывается в три способа получить ответ ── */
 function askErrorText(e){
   return e.code==='short_question' ? 'Напишите вопрос целиком, так вы потом вспомните, что вас волновало.'
-    : 'Не получилось. Попробуйте еще раз.';
+    : 'Не получилось';
 }
 $('a-go').onclick=async()=>{
   const q=$('a-q').value.trim(), msg=$('a-msg'); showMsg(msg);
@@ -716,13 +716,13 @@ async function weekEcho(day,verdict){
   const cur=WK.data?.echoes.find(e=>e.day===day);const next=cur&&cur.verdict===verdict?'':verdict;
   try{const r=await api('/week/echo',{method:'POST',body:JSON.stringify({day,verdict:next})});if(cur)cur.verdict=r.verdict;
     document.querySelectorAll(`.week-echo[data-day="${day}"] .chip`).forEach(b=>{const on=b.dataset.a1===r.verdict;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});hap('ok');}
-  catch(e){toast('Не удалось сохранить отметку');}
+  catch(e){toast('Не получилось отметить');}
 }
 async function saveWeekReflection(){
   if(saveWeekReflection.busy||!WK.data)return;saveWeekReflection.busy=true;const btn=$('wk-reflect-save');btn.disabled=true;
   try{const r=await api('/week/reflect',{method:'POST',body:JSON.stringify({week:WK.data.week.start,text:$('wk-reflect').value})});WK.data.reflection=r;
     $('wk-reflect-state').textContent=r.text?'Сохранено ✦ Строка в дневнике под датой воскресенья':'Строка снята';hap('ok');XP.timeline.dirty=true;}
-  catch(e){$('wk-reflect-state').textContent='Не удалось сохранить. Текст остался в поле — попробуйте еще раз';}
+  catch(e){$('wk-reflect-state').textContent=ERR_SAVE_KEPT;}
   finally{saveWeekReflection.busy=false;btn.disabled=false;}
 }
 /* по воскресеньям и понедельникам «Моя неделя» — первой плиткой Дневника */
@@ -750,7 +750,7 @@ async function shareInvite(where){
 async function copyInvite(where, text){
   const value = text || refLink();
   try{ await navigator.clipboard.writeText(value); toast(text ? 'Приглашение скопировано — вставьте в сообщение' : 'Ссылка скопирована'); }
-  catch(e){ const el = $('inv-link'); if (el) { el.select(); toast('Скопируйте ссылку вручную'); } else toast('Не удалось скопировать: ' + value); }
+  catch(e){ const el = $('inv-link'); if (el) { el.select(); toast('Скопируйте ссылку вручную'); } else toast('Не получилось скопировать: ' + value); }
   track('invite_copy', where || '');
 }
 async function loadInvite(){
@@ -773,13 +773,13 @@ async function addWish(){
     if(XP.wishPhoto===photo){XP.wishPhoto='';paintWishDraft();}
     if($('w-text').value.trim()===t) $('w-text').value='';
     renderWishes(r); hap('done'); toast('Желание сохранено');
-  } catch(e){ toast('Не удалось сохранить желание. Текст остался в поле.'); }
+  } catch(e){ toast(ERR_SAVE_KEPT); }
   finally { addWish.saving=false;$('wish-save').disabled=false; }
 }
 async function toggleWish(id){
   hap();
   try { renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
-  catch(e){ toast('Не удалось изменить отметку желания. Попробуйте еще раз.'); }
+  catch(e){ toast('Не получилось отметить'); }
 }
 /* Подсказки и диктовка — в «Записать мысль» (j) и в первой ячейке карточки дня (dc): одна механика, разные поля */
 const DICT_SCOPES={dc:{text:'dc-text',btn:'dc-mic',note:'dc-speech-note'}};   /* dc.text подставляет шаг карточки дня (dcDictate) */
@@ -807,9 +807,9 @@ function journalDictate(scope='dc'){
   const rec=new Recognition();journalSpeech=rec;rec.lang='ru-RU';rec.interimResults=false;
   dictLabel($(c.btn),'Остановить диктовку',true);
   rec.onresult=e=>{if(journalSpeech!==rec)return;const el=$(c.text);for(let i=e.resultIndex||0;i<e.results.length;i++)if(e.results[i].isFinal!==false)el.value+=(el.value.trim()?' ':'')+e.results[i][0].transcript;el.value=el.value.slice(0,2000);growTextarea(el);};
-  rec.onerror=e=>{if(journalSpeech!==rec||e.error==='aborted')return;toast(e.error==='not-allowed'?'Разрешите микрофон в настройках браузера или используйте клавиатуру':'Не удалось распознать речь. Попробуйте еще раз');};
+  rec.onerror=e=>{if(journalSpeech!==rec||e.error==='aborted')return;toast(e.error==='not-allowed'?'Разрешите микрофон в настройках браузера или используйте клавиатуру':'Не получилось распознать речь');};
   rec.onend=()=>{if(journalSpeech!==rec)return;journalSpeech=null;prepareDictation();};
-  try{rec.start();}catch(e){stopJournalDictation();toast('Не удалось включить диктовку');}
+  try{rec.start();}catch(e){stopJournalDictation();toast('Не получилось включить диктовку');}
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&journalSpeech)stopJournalDictation();});
 async function compat(){
@@ -906,7 +906,7 @@ $('o-go').onclick=async()=>{
   showMsg(msg, last && last.code==='no_consent' ? 'Подтвердите согласие на обработку данных.'
     : last && last.code==='bad_birth' ? 'Проверьте дату рождения.'
     : last && last.status ? 'Сервер не принял анкету. Напишите нам, если повторится.'
-    : 'Не удалось связаться с сервером — похоже, пропала сеть. Данные не потеряны: нажмите еще раз.', true);
+    : 'Нет связи — анкета осталась на месте, нажмите еще раз', true);
 };
 /* В анкете указана почта: код — на том же экране; не ушел — не держим человека на пороге, почту можно привязать в «Аккаунте» */
 async function obSendCode(email){
@@ -960,7 +960,7 @@ async function loadDayCard(keepStep=false){
   const box=$('day-card'); if(!box)return;
   if(!DC.state)box.innerHTML='<p class="hint">Загружаем сегодняшний день…</p>';
   try{ const wasStep=DC.step, wasMode=DC.mode; DC.state=await api(DC.forDay?'/day?day='+DC.forDay:'/day'); dcFromState(); if(keepStep){DC.step=wasStep;DC.mode=wasMode;} if(DC.forDay&&!keepStep){DC.mode='steps';DC.step=0;} paintDayCard(); paintEveningSet(); }
-  catch(e){ box.innerHTML='<p class="hint">Не удалось загрузить сегодняшний день.</p><button data-on="click:loadDayCard" class="btn ghost sm mt-3" type="button">Повторить</button>'; }
+  catch(e){ box.innerHTML='<p class="hint">Не получилось загрузить день</p><button data-on="click:loadDayCard" class="btn ghost sm mt-3" type="button">Повторить</button>'; }
 }
 /* Значения с сервера + черновик; записанный день без черновика открывается для чтения */
 function dcFromState(){
@@ -1053,12 +1053,12 @@ function dcEdit(){ DC.mode='steps'; DC.step=0; DC.bridge=undefined; paintDayCard
 async function dcAddHabit(){
   const title=($('dc-new-habit')?.value||'').trim(), msg=$('dc-create-msg'); if(title.length<2){ if(msg)msg.textContent='Назовите привычку — хотя бы два знака'; return; }
   try{ await api('/habits',{method:'POST',body:JSON.stringify({title,rule:'каждый день'})}); hap('done'); toast('Привычка добавлена'); XP.timeline.dirty=true; await loadDayCard(true); }
-  catch(e){ if(msg)msg.textContent=e.code==='too_many'?'Привычек уже двадцать — уберите лишние в «Дневнике привычек»':'Не получилось добавить. Попробуйте еще раз'; }
+  catch(e){ if(msg)msg.textContent=e.code==='too_many'?'Привычек уже двадцать — уберите лишние в «Дневнике привычек»':'Не получилось добавить'; }
 }
 async function dcAddAskesis(){
   const title=($('dc-new-askesis')?.value||'').trim(), until=$('dc-new-until')?.value||'', msg=$('dc-create-msg'); if(title.length<2){ if(msg)msg.textContent='Назовите аскезу — хотя бы два знака'; return; }
   try{ await api('/askesis',{method:'POST',body:JSON.stringify({title,until})}); hap('done'); toast('Аскеза взята — мы рядом ✦'); XP.timeline.dirty=true; refreshNativeAskesis(); await loadDayCard(true); }
-  catch(e){ if(msg)msg.textContent=e.code==='bad_until'?'Выберите дату не раньше сегодняшней':e.code==='too_many'?'Аскез уже пять — завершите одну в «Аскезах»':'Не получилось. Попробуйте еще раз'; }
+  catch(e){ if(msg)msg.textContent=e.code==='bad_until'?'Выберите дату не раньше сегодняшней':e.code==='too_many'?'Аскез уже пять — завершите одну в «Аскезах»':'Не получилось'; }
 }
 async function saveDayCard(){
   if(saveDayCard.busy||!DC.state)return;
@@ -1083,7 +1083,7 @@ async function saveDayCard(){
     DC.firstSave=!DC.forDay&&!(S.daysTotal>0); loadDays();
     DC.mode=matchMedia('(prefers-reduced-motion: reduce)').matches?'done':'celebrate'; paintDayCard();
   }
-  catch(e){ const st=$('dc-state'); if(st)st.textContent='Не удалось сохранить. Все написанное осталось на месте — попробуйте еще раз'; }
+  catch(e){ const st=$('dc-state'); if(st)st.textContent=ERR_SAVE_KEPT; }
   finally{ saveDayCard.busy=false; const b=$('dc-next'); if(b){b.disabled=false;b.textContent=DC.forDay?'Сохранить':'Запомнить этот день';} }
 }
 /* Дописать или поправить прошлый день — той же карточкой по шагам: «Вчера не записали» утром на «Сегодня», «Изменить» в открытом дне */
@@ -1116,7 +1116,7 @@ function pickDayPhoto(){
       try{ if(window.createImageBitmap){ const bm=await createImageBitmap(f); const out=await build(bm.width,bm.height,bm); bm.close&&bm.close(); return done(out); } }catch(e){ /* формат не читается — через Image */ }
       const im=new Image(); const url=URL.createObjectURL(f);
       im.onload=async()=>{ const out=await build(im.width,im.height,im); URL.revokeObjectURL(url); done(out); };
-      im.onerror=()=>{ URL.revokeObjectURL(url); toast('Не удалось прочитать файл — выберите JPG, PNG или скриншот'); done(null); };
+      im.onerror=()=>{ URL.revokeObjectURL(url); toast('Не получилось прочитать файл — нужен JPG, PNG или скриншот'); done(null); };
       im.src=url;
     };
     inp.click();
@@ -1212,7 +1212,7 @@ async function toggleEveningStep(key,forceOn){
   if(key==='mood')return;
   const isOn=stepOn(key); if(forceOn&&isOn)return;
   { const tk=TOOL_OF[key]||key, tools=toolsVisible(); if(isOn)tools.delete(tk);else tools.add(tk); const list=toolCatalog().map(t=>t.key).filter(k=>tools.has(k));
-    try{ await savePreferences({...XP.prefs,tools:list}); applyTools(); track(isOn?'tools_remove':'tools_add',key+':evening'); }catch(e){ toast('Не удалось сохранить выбор. Попробуйте еще раз'); return; } }
+    try{ await savePreferences({...XP.prefs,tools:list}); applyTools(); track(isOn?'tools_remove':'tools_add',key+':evening'); }catch(e){ toast(ERR_SAVE); return; } }
   const nowOn=stepOn(key); toast(nowOn?`${STEP_NAME[key]} — в вашем вечере`:'Убрано из вечера');
   paintEveningSet(); if(DC.mode==='steps'){ const cur=(dcSteps()[DC.step]||{}).key; paintDayCard(); if(cur){const i=dcSteps().findIndex(st=>st.key===cur); if(i>=0){DC.step=i;paintDayCard();}} }
 }
@@ -1347,7 +1347,7 @@ async function saveProfile(){
     toast('Данные обновлены'); closeWidget();
     paintHome(); paintToday(); loadAccount();
   }catch(e){
-    showMsg(msg, e.code==='bad_birth' ? 'Проверьте дату рождения.' : 'Не получилось сохранить. Попробуйте еще раз.', true);
+    showMsg(msg, e.code==='bad_birth' ? 'Проверьте дату рождения.' : ERR_SAVE, true);
   }
 }
 /* Удаление необратимо, поэтому у аккаунта с почтой оно подтверждается кодом из письма — как и вход.
@@ -1366,7 +1366,7 @@ async function wipe(what){
     }
   }
   try{ await api('/'+(isAcc?'account':'data'),{method:'DELETE',...(code?{body:JSON.stringify({code})}:{})}); }
-  catch(e){ toast(isAcc?authErrorText(e,'del'):'Не получилось очистить историю.'); return; }
+  catch(e){ toast(isAcc?authErrorText(e,'del'):'Не получилось очистить историю'); return; }
   if(isAcc){ location.reload(); return; }
   toast('История очищена'); loadHistory();
 }
@@ -1478,7 +1478,7 @@ async function thoughtSave(source,slug,name,question){
     const r=await api('/thought',{method:'POST',body:JSON.stringify({source,slug,name,question,text})});
     await ensureThoughts(); const items=S.thoughts.items.filter(t=>!(t.source===source&&t.slug===slug)); items.push(r.item); S.thoughts.items=items;
     delete TH.draft[key]; TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
-  }catch(e){ toast('Не получилось сохранить. Текст остался в поле'); TH.draft[key]=text; }
+  }catch(e){ toast(ERR_SAVE_KEPT); TH.draft[key]=text; }
   finally{ TH.saving[key]=false; const el2=$('th-'+key); if(el2)el2.outerHTML=thoughtHtml(source,slug,name,question); }
 }
 function cardDayHtml(c, day, compact){
@@ -1567,7 +1567,7 @@ async function openCard(){
     paintCard(); hap('ok');
     showFlipped(); paintThoughts();
     setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
-  }catch(e){ toast('Не получилось открыть карту — попробуйте еще раз'); }
+  }catch(e){ toast('Не получилось открыть карту'); }
   S.opening = false;
 }
 
@@ -1967,7 +1967,7 @@ async function rhythmEnable(){
     for(const f of chosen)await remSave(f,{enabled:true,time:$('rh-time-'+f).value||S.rem[f].time,...(f==='week'?{freq:'weekly',weekday:7}:{})});
     track('rhythm_enable',chosen.join('|'));
     if(chosen.length&&device)toast('Напоминания включены');
-  }catch(e){toast('Не удалось сохранить напоминания — их можно включить в Аккаунте');}
+  }catch(e){toast('Напоминания не сохранились — их можно включить в Аккаунте');}
   finally{rhythmEnable.busy=false;btn.disabled=false;btn.textContent='Включить напоминания';rhythmLater();go(rhythmBack);}
 }
 function rhythmSkip(){track('rhythm_enable','none');rhythmLater();go(rhythmBack);}
@@ -2047,7 +2047,7 @@ async function remConnect(f){
   if (remBusy[f]) return;
   remBusy[f]=true; paintRem(f);
   try { if (await connectPushDevice()) { if(IOS_SHELL) await nativeSchedule(f); toast('Это устройство подключено'); } }
-  catch(e) { toast('Не удалось подключить уведомления. Попробуйте еще раз'); }
+  catch(e) { toast('Не получилось включить уведомления'); }
   finally { remBusy[f]=false; REM_ORDER.forEach(paintRem); }
 }
 async function remToggle(f){
@@ -2062,7 +2062,7 @@ async function remToggle(f){
       if (!S.rem[f].enabled) toast('Уведомления выключены');
       else if (device) toast('Напомним ' + remText(S.rem[f]));   /* иначе connectPushDevice уже объяснил, чего не хватает этому устройству */
     }
-  } catch(e) { toast('Не удалось включить уведомления. Попробуйте еще раз'); }
+  } catch(e) { toast('Не получилось включить уведомления'); }
   finally { remBusy[f]=false; REM_ORDER.forEach(paintRem); }
 }
 async function remSave(f, patch){
@@ -2071,7 +2071,7 @@ async function remSave(f, patch){
     S.rem[f] = r.item;
     if (IOS_SHELL && (!r.item.enabled || S.nativePermission==='granted')) await nativeSchedule(f);
     paintRem(f); return true;
-  } catch(e) { paintRem(f); toast('Не удалось сохранить настройки уведомлений'); return false; }
+  } catch(e) { paintRem(f); toast(ERR_SAVE); return false; }
 }
 async function remTest(f){
   if (remBusy[f]) return;
@@ -2233,12 +2233,12 @@ async function toggleTopic(key){
   const cur=new Set(topicsChosen());if(cur.has(key))cur.delete(key);else cur.add(key);
   const topics=topicList().map(t=>t.key).filter(k=>cur.has(k));
   try{await savePreferences({...XP.prefs,topics});track('topics_set',topics.join(','));hap();}
-  catch{toast('Не удалось сохранить выбор. Попробуйте еще раз');return;}
+  catch{toast(ERR_SAVE);return;}
   paintLunarArticle();if($('topics-box'))paintTopics();
 }
 async function setTopicsAll(on){
   try{await savePreferences({...XP.prefs,topicsAll:!!on});track('topics_all',on?'on':'off');}
-  catch{toast('Не удалось сохранить. Попробуйте еще раз');return;}
+  catch{toast(ERR_SAVE);return;}
   XP.topicsShown=true;paintLunarArticle();if($('topics-box'))paintTopics();
 }
 function paintLunarArticle(){
@@ -2285,7 +2285,7 @@ function paintSkyPlace(){
 /* Виджет «Настройка контента» (темы чтения) в «Аккаунте» */
 function paintTopics(){
   const box=$('topics-box');if(!box)return;
-  if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не удалось загрузить темы. Откройте еще раз</p>';});return;}
+  if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не получилось загрузить темы</p>';});return;}
   box.innerHTML=`${topicsRowHtml()}`;
 }
 /* Глава дня: иллюстрация, номер и тема, вступление сразу, разделы с подзаголовками — под «Читать полностью». */
@@ -2371,8 +2371,8 @@ async function shareRes(id){
   const p = RES[id]; if (!p) return;
   const t = shareResText(p); track('share_card', p.type);
   if (IOS_SHELL && nativePost({ type: 'share', text: t })) return;
-  if (navigator.share) { try { await navigator.share({title:'Лунарио',text:t}); } catch(e) { if(e.name!=='AbortError')toast('Не удалось открыть меню «Поделиться»'); } }
-  else { try { await navigator.clipboard.writeText(t); toast('Скопировано — можно поделиться'); } catch(e) { toast('Не удалось скопировать. Разрешите доступ к буферу обмена'); } }
+  if (navigator.share) { try { await navigator.share({title:'Лунарио',text:t}); } catch(e) { if(e.name!=='AbortError')toast('Не получилось открыть «Поделиться»'); } }
+  else { try { await navigator.clipboard.writeText(t); toast('Скопировано — можно поделиться'); } catch(e) { toast('Не получилось скопировать — разрешите доступ к буферу обмена'); } }
 }
 
 /* диск Луны с настоящей освещенностью */
@@ -2592,7 +2592,7 @@ async function saveAnswerText(t){
   if(ANS.saving)return false; ANS.saving=true; paintAnswerEverywhere();
   try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); ANS.draft=''; ANS.open=false; ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
     toast(r.updated?'Ответ обновлен в дневнике':'Записано в дневник'); hap('ok'); if(DC.state&&DC.state.day===r.item.day){DC.state.answer={id:r.item.id,text:r.item.text}; if(DC.mode!=='steps')DC.answer=r.item.text;} XP.timeline.dirty=true; return true; }
-  catch(e){ toast('Не получилось сохранить. Текст остался в поле'); ANS.draft=t; ANS.open=true; return false; }
+  catch(e){ toast(ERR_SAVE_KEPT); ANS.draft=t; ANS.open=true; return false; }
   finally{ ANS.saving=false; paintAnswerEverywhere(); }
 }
 function paintAnswerEverywhere(){ if(wgOpen==='tone')paintTone(); paintHomeAction(); }
@@ -2648,7 +2648,7 @@ async function saveGratitude(){
     const item={...(S.grat.items.find(i=>i.id===edit)||{}),...r.item,kind:'gratitude',title:gratQ()};
     S.grat.items=[item,...S.grat.items.filter(i=>i.id!==item.id)];
     gratitudeEdit=null;gratitudeDraft='';toast('Запись сохранена');hap('ok');paintGratitude();
-  } catch(e){toast('Не удалось сохранить. Текст остался в поле');button.disabled=false;button.textContent='Сохранить';}
+  } catch(e){toast(ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
   finally{gratitudeSaving=false;}
 }
 
@@ -2713,7 +2713,7 @@ async function habitAdd(){
 async function habitSave(id){
   const title = ($('hb-t-' + id).value || '').trim(), rule = ($('hb-r-' + id).value || '').trim();
   try { const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, title, rule }) }); HB = r.items; delete habitEditDrafts[id]; hbEditing = null; hap(); paintHabits(); toast('Привычка сохранена'); }
-  catch (e) { toast('Не получилось сохранить'); }
+  catch (e) { toast(ERR_SAVE); }
 }
 async function habitMark(id, day){
   if(habitBusy.has(id))return;habitBusy.add(id);
@@ -2795,7 +2795,7 @@ async function askStart(){
 async function askNote(id){
   const note = (($('as-note-' + id) || {}).value || '').trim(); if (!note) { toast('Заметка пустая'); return; }
   try { AS = await api('/askesis', { method: 'PATCH', body: JSON.stringify({ id, note }) }); delete askNoteDrafts[id];askNoteOpen[id]=false; hap('ok'); toast('Заметка сохранена'); paintAskesis(); }
-  catch (e) { toast('Не получилось сохранить'); }
+  catch (e) { toast(ERR_SAVE); }
 }
 let askDateId=null;
 function askMove(id,cur){
@@ -2806,7 +2806,7 @@ async function saveAskDate(){
   if(!until||until<S.day.date){msg.textContent='Выберите дату не раньше сегодня';input.setAttribute('aria-invalid','true');input.focus();return;}
   if(button.disabled)return;button.disabled=true;button.textContent='Сохраняем…';input.removeAttribute('aria-invalid');
   try{AS=await api('/askesis',{method:'PATCH',body:JSON.stringify({id,until})});paintAskesis();refreshNativeAskesis();if(wgOpen==='askDate'&&askDateId===id)closeWidget();toast('Дата сохранена');}
-  catch(e){msg.textContent=e.code==='bad_until'?'Дата должна быть не раньше сегодня':'Не удалось сохранить. Выбранная дата осталась в поле';}
+  catch(e){msg.textContent=e.code==='bad_until'?'Дата должна быть не раньше сегодня':'Не сохранилось — дата осталась в поле';}
   finally{button.disabled=false;button.textContent='Сохранить дату';}
 }
 async function askStop(id){
@@ -2835,7 +2835,7 @@ function pickImage(maxSide, quality){
       try { if (window.createImageBitmap) { const bm = await createImageBitmap(f); const out = draw(bm.width, bm.height, bm); bm.close && bm.close(); return done(out); } } catch (e) { /* формат не читается — пробуем через Image */ }
       const im = new Image(); const url = URL.createObjectURL(f);
       im.onload = () => { const out = draw(im.width, im.height, im); URL.revokeObjectURL(url); done(out); };
-      im.onerror = () => { URL.revokeObjectURL(url); toast('Не удалось прочитать файл — выберите JPG, PNG или скриншот'); done(null); };
+      im.onerror = () => { URL.revokeObjectURL(url); toast('Не получилось прочитать файл — нужен JPG, PNG или скриншот'); done(null); };
       im.src = url;
     };
     inp.click();

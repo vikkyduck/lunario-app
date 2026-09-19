@@ -23,6 +23,8 @@ const api = async (path, opts) => {
   return j;
 };
 const esc = (s) => String(s ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
+/* Одни слова на все неудачи: не сохранилось — коротко, без «попробуйте еще раз» (текст в поле остается, человек видит сам) */
+const ERR_SAVE = 'Не сохранилось', ERR_SAVE_KEPT = 'Не сохранилось — текст остался в поле';
 function toast(t) { const el = $('toast'); if (!el) return; el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2600); }
 const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 const fmtDay = (d) => String(d || '').split('-').reverse().join('.');   /* 19.09.2026 */

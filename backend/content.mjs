@@ -44,7 +44,7 @@ const img = (kind, file) => {
    правка на сервере) — при чтении переписывается без нее, и у людей тексты всегда через «е». Кабинет делает то же с материалами. */
 export const noYo = (s) => String(s).replace(/\u0451/g, '\u0435').replace(/\u0401/g, '\u0415');   /* сама буква в коде не пишется — проверка check-yo */
 const hasYo = (s) => /[\u0451\u0401]/.test(s);
-function readText(path) {
+function readWithoutYo(path) {   /* читает файл и заодно приводит его к правилу — имя говорит, что функция пишет на диск */
   const raw = readFileSync(path, 'utf8');
   if (!hasYo(raw)) return raw;
   const fixed = noYo(raw);
@@ -59,7 +59,7 @@ function rows(file, minCols) {
   if (!existsSync(path)) return null;
   const out = [];
   let skipped = 0;
-  for (const raw of readText(path).split('\n')) {
+  for (const raw of readWithoutYo(path).split('\n')) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
     const cols = line.split('|').map((s) => s.trim());
@@ -73,7 +73,7 @@ function rows(file, minCols) {
 function lines(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
-  const out = readText(path).split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('#'));
+  const out = readWithoutYo(path).split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('#'));
   return out.length ? out : null;
 }
 const num = (v, d) => { const n = Number(String(v).trim()); return Number.isFinite(n) ? n : d; };
@@ -84,7 +84,7 @@ const num = (v, d) => { const n = Number(String(v).trim()); return Number.isFini
 function book(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
-  const text = readText(path);
+  const text = readWithoutYo(path);
   if (!/^=== /m.test(text)) return null;                 // старый строчный формат — не наш
   const out = [];
   let cur = null, sec = null, para = [];
@@ -113,7 +113,7 @@ function article(file) {
   if (!existsSync(path)) return null;
   const out = [];
   let cur = null, sec = null;
-  for (const raw of readText(path).split('\n')) {
+  for (const raw of readWithoutYo(path).split('\n')) {
     const line = raw.replace(/\s+$/, ''), t = line.trim();
     if (!t) continue;
     if (t.startsWith('=== ')) { cur = { name: t.slice(4).trim(), fields: {}, sections: {} }; out.push(cur); sec = null; continue; }

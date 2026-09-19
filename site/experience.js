@@ -50,7 +50,7 @@ async function savePreferences(value){const r=await api('/preferences',{method:'
 async function saveTheme(theme){
   if(saveTheme.busy)return;saveTheme.busy=true;
   try{await savePreferences({...XP.prefs,theme});applyTheme(theme);paintAppearance();$('theme-state').textContent='Тема сохранена';}
-  catch{toast('Не удалось сохранить тему. Попробуйте еще раз');}finally{saveTheme.busy=false;}
+  catch{toast(ERR_SAVE);}finally{saveTheme.busy=false;}
 }
 /* ── Инструменты: что человек оставил в «Дневнике». Список — prefs.tools; нет списка — стартовый набор из каталога (сейчас пустой:
    вечер начинается с записи и настроения, остальное предлагается по одному). Прежний «ритуал» сюда больше не подмешивается —
@@ -112,7 +112,7 @@ async function toggleMorning(key){
   XP.prefs={...XP.prefs,morning};paintMorning();hap();
   const seq=toggleMorning.seq=(toggleMorning.seq||0)+1;
   try{const r=await api('/preferences',{method:'POST',body:JSON.stringify(XP.prefs)});if(seq!==toggleMorning.seq)return;XP.prefs=r.preferences;track(set.has(key)?'morning_add':'morning_remove',key);}
-  catch{if(seq!==toggleMorning.seq)return;XP.prefs={...XP.prefs,morning:was};paintMorning();toast('Не удалось сохранить выбор. Попробуйте еще раз');return;}
+  catch{if(seq!==toggleMorning.seq)return;XP.prefs={...XP.prefs,morning:was};paintMorning();toast(ERR_SAVE);return;}
   if(set.has(key)&&THEME_SOURCE[key]){
     const src=MORNING.map(m=>m[0]).find(k=>THEME_SOURCE[k]&&set.has(k));   /* первый выбранный источник по порядку карта → руна → планеты */
     if(src===key)toast(`Настрой ${THEME_SOURCE[key]} — с завтрашнего утра`);
