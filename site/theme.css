@@ -32,12 +32,12 @@
   --glass-base:#141126;
   --glass-bg:var(--night-glass-bg);
   --glass-shadow:var(--night-glass-shadow);
-  --night-glass-bg:linear-gradient(135deg,rgba(245,242,234,.10),rgba(245,242,234,.04) 45%,rgba(245,242,234,.07)),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
+  --night-glass-bg:linear-gradient(135deg,rgba(245,242,234,.16),rgba(245,242,234,.06) 45%,rgba(245,242,234,.10)),linear-gradient(rgba(20,17,38,.78),rgba(20,17,38,.78));
   --night-glass-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.18),0 12px 34px -14px rgba(0,0,0,.55);
   --moon-ground:linear-gradient(180deg,#141126 0%,#0b0a14 70%);
   --moon-panel:var(--glass-bg);
   --moon-edge:linear-gradient(135deg,#f0d79a99 0%,#d9b86847 35%,#b98f3e38 65%,#f0d79a66 100%);
-  --moon-shine:rgba(240,215,154,.12);
+  --moon-shine:rgba(240,215,154,.22);
   --moon-shadow:inset 0 1px 0 #fff6dd24,0 12px 26px -18px #000b;
   --moon-control:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);
   --moon-glass:rgba(20,17,38,.80);
@@ -60,6 +60,7 @@
   --radius-control:var(--r-m);
   --radius-panel:var(--r-xl);
   --read-size:18px;
+  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;   /* антиква ритуала: настрой дня, заголовки разделов, имена карт, рун и лунных дней */
   --sp:cubic-bezier(.2,.85,.3,1);
   --t-fast:120ms;
   --t:180ms;

@@ -27,10 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=83"></script>
+<script src="/app/boot.js?v=84"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Cormorant Garamond';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/cormorant-300-700-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Cormorant Garamond';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/cormorant-300-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -312,6 +314,25 @@ body.hello .wrap{max-width:1180px;min-height:100dvh;padding:calc(24px + env(safe
 #v-hello .gift b{display:block;font-size:17px;font-weight:500;line-height:1.4;color:var(--text)}
 #v-hello .gift small{display:block;font-size:15px;line-height:1.5;color:var(--muted);margin-top:3px}
 #v-hello .cta{margin-top:34px}
+/* «Обо мне»: карточка человека над списком разборов */
+.me-card{display:grid;gap:4px;width:100%;margin:14px 0 0;padding:18px 18px 16px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--ck-radius,20px);color:var(--text);cursor:pointer;font:inherit;-webkit-appearance:none;appearance:none}
+.me-card[hidden]{display:none}
+.me-card .me-name{font-family:var(--serif);font-size:30px;line-height:1.1;font-weight:600;letter-spacing:0}
+.me-card .me-line{font-size:15px;line-height:1.45;color:var(--text-2);font-weight:500}
+.me-card .me-sub{font-size:13px;line-height:1.4;color:var(--muted)}
+.me-card:active{background:var(--selected)}
+/* анкета по шагам: вопрос, поле, «Дальше»; вспомогательные действия — тонкой строкой под кнопкой */
+.ob-card .ob-step[hidden]{display:none}
+.ob-card .ob-step .field{margin:0 0 14px}
+.ob-card .ob-step .field input:not([type=checkbox]){font-size:17px;min-height:48px}
+.ob-card .ob-step .btn{width:100%}
+.ob-card .dc-skip{min-height:36px;margin-top:6px}
+.ob-card .consent{margin:4px 0 14px}
+.ob-card #o-mailfield{margin-bottom:14px}
+#v-hello .hello-live{margin:10px 0 0;font-size:13px;line-height:1.4;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-2);font-weight:600}
+#v-hello .hello-live[hidden]{display:none}
+#v-hello .hello-ritual{margin:22px 0 -14px;font-size:11px;line-height:1.3;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+#v-hello .hello-free{margin:12px 0 0;text-align:center;font-size:13px;line-height:1.4;color:var(--muted)}
 #v-hello .cta .btn{min-height:58px;padding:15px 20px;background:linear-gradient(115deg,#eddaa7,#d9bd7c);box-shadow:0 6px 24px rgba(217,184,104,.12);font-weight:600}
 #v-hello .trust{max-width:440px;font-size:13px;line-height:1.6;color:var(--muted);text-wrap:balance}
 /* Светлая сторона Луны остается справа, вне основной текстовой колонки. */
@@ -352,6 +373,7 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .moonline{display:flex;align-items:center;gap:12px;margin-top:14px;background:none;border:0;padding:0;color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
 .moonline p{font-size:16px;color:var(--text)}
 .moonline small{display:block;color:var(--faint);font-size:13px;margin-top:3px}
+.zsym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.18em;fill:none;stroke:var(--gold-2);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(240,215,154,.35))}
 .ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.spark{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
 .ico.star{--m:url(/app/assets/brand/icons/spark.svg)}
@@ -529,7 +551,7 @@ body.inner .app-nav{display:grid}
 .mt-0{margin-top:0!important}.mt-1{margin-top:var(--s1)!important}.mt-2{margin-top:var(--s2)!important}.mt-3{margin-top:var(--s3)!important}.mt-4{margin-top:var(--s4)!important}.mt-5{margin-top:var(--s5)!important}
 .mb-0{margin-bottom:0!important}.mb-2{margin-bottom:var(--s2)!important}.mb-3{margin-bottom:var(--s3)!important}.mb-4{margin-bottom:var(--s4)!important}
 .center{text-align:center}.left{text-align:left}.full{width:100%}.italic{font-style:italic}
-.title-gold{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:22px;line-height:1.25;color:var(--gold)}
+.title-gold{font-family:var(--serif);font-weight:600;font-size:26px;line-height:1.2;color:var(--gold)}
 .num-mark{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:36px;line-height:1.1;color:var(--gold);width:44px;flex:0 0 44px;text-align:center}
 .row.top{align-items:flex-start;gap:var(--s4)}
 .sub{color:var(--muted);font-weight:400;font-size:13px}
@@ -643,6 +665,24 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 .utility-actions{display:flex;gap:6px 20px;flex-wrap:wrap;align-items:center;margin-top:16px;padding-top:8px;border-top:1px solid var(--line)}
 .utility-actions .ico{width:17px;height:17px}
 #v-home #h-date{color:var(--muted)}
+/* ── Герой «Сегодня»: Луна с настоящей фазой (moon-logo.js), под ней фаза и лунный день антиквой, имя и транзитная Луна,
+   ближайшие фазы; полоска недели — семь маленьких лун. Всё — одна кнопка, ведет в лунный день ── */
+.home-hero{position:relative;display:grid;justify-items:center;width:100%;margin:0;padding:6px 0 2px;background:none;border:0;color:var(--text);text-align:center;cursor:pointer;font:inherit;-webkit-appearance:none;appearance:none}
+.home-hero .hero-glow{position:absolute;left:50%;top:150px;width:min(460px,120vw);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(240,215,154,.20),rgba(240,215,154,.07) 40%,transparent 68%);pointer-events:none;z-index:0}
+.moon-hero-cv{position:relative;z-index:1;display:block;width:min(320px,86vw);height:auto;aspect-ratio:1;margin:-10px 0 -18px}   /* диск ≈ 68 % стороны холста — 218 px; остальное — нимб */
+.hero-phase{position:relative;z-index:1;display:block;font-family:var(--serif);font-size:28px;line-height:1.15;font-weight:600;letter-spacing:0;color:var(--text);text-wrap:balance}
+.hero-me{position:relative;z-index:1;display:block;margin-top:6px;font-size:14px;line-height:1.4;font-weight:500;color:var(--text-2)}
+.hero-next{position:relative;z-index:1;display:block;margin-top:6px;font-size:11px;line-height:1.4;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.hero-me[hidden],.hero-next[hidden]{display:none}
+.home-hero:active .moon-hero-cv{transform:scale(.985)}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:10px 0 0;padding:0 2px}
+.ws-day{display:grid;justify-items:center;gap:1px;padding:5px 0 4px;border-radius:12px}
+.ws-day.on{background:var(--selected)}
+.ws-day canvas{width:26px;height:26px;display:block}
+.ws-day i{font-style:normal;font-size:10px;line-height:1.3;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.ws-day small{font-size:11px;line-height:1.3;color:var(--muted)}
+.ws-day.on i,.ws-day.on small{color:var(--gold-2);font-weight:600}
+html[data-theme=light] .home-hero .hero-glow{background:radial-gradient(circle,rgba(42,33,80,.08),transparent 62%)}
 .daily-statement{margin:26px 0 8px;max-width:820px}
 .daily-statement #h-wish{font-size:clamp(21px,3vw,28px);line-height:1.45;letter-spacing:-.015em;color:var(--text);margin-top:10px;text-wrap:pretty}
 .daily-statement .text-action{margin-top:4px}
@@ -745,13 +785,28 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=83">
-<link rel="stylesheet" href="/app/experience.css?v=83">
-<link rel="stylesheet" href="/app/moon-glass.css?v=83">
-<link rel="stylesheet" href="/app/compact.css?v=83">
-<link rel="stylesheet" href="/app/frame.css?v=83">
+<link rel="stylesheet" href="/app/theme.css?v=84">
+<link rel="stylesheet" href="/app/experience.css?v=84">
+<link rel="stylesheet" href="/app/moon-glass.css?v=84">
+<link rel="stylesheet" href="/app/compact.css?v=84">
+<link rel="stylesheet" href="/app/frame.css?v=84">
 </head>
 <body>
+<!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="z0" viewBox="0 0 24 24"><path d="M12 21V9c0-4-3-6-6-4S4 11 7 12M12 9c0-4 3-6 6-4s2 6-1 7"/></symbol>
+  <symbol id="z1" viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="5"/><path d="M5 4c1 4 4 6 7 6s6-2 7-6"/></symbol>
+  <symbol id="z2" viewBox="0 0 24 24"><path d="M8 6v12M16 6v12M4 5c3 1 5 1.5 8 1.5S17 6 20 5M4 19c3-1 5-1.5 8-1.5s5 .5 8 1.5"/></symbol>
+  <symbol id="z3" viewBox="0 0 24 24"><circle cx="8" cy="10" r="2.5"/><circle cx="16" cy="14" r="2.5"/><path d="M5.5 10C6 6 10 4 14.5 5.5M18.5 14c-.5 4-4.5 6-9 4.5"/></symbol>
+  <symbol id="z4" viewBox="0 0 24 24"><circle cx="7" cy="15" r="3"/><path d="M10 15c0-6 2-10 5-10s4 3 4 6-2 5-2 7 1 2 2 2"/></symbol>
+  <symbol id="z5" viewBox="0 0 24 24"><path d="M4 6v10M4 8c0-2 1-3 2.5-3S9 7 9 9v7M9 8c0-2 1-3 2.5-3S14 7 14 9v6c0 3-2 5-5 6M14 12c2 0 4 1 4 3s-2 3-4 3"/></symbol>
+  <symbol id="z6" viewBox="0 0 24 24"><path d="M4 19h16M4 14h4a4 4 0 1 1 8 0h4"/></symbol>
+  <symbol id="z7" viewBox="0 0 24 24"><path d="M4 6v10M4 8c0-2 1-3 2.5-3S9 7 9 9v7M9 8c0-2 1-3 2.5-3S14 7 14 9v7c0 2 1 3 3 3h3M18 16l2 3-2 3"/></symbol>
+  <symbol id="z8" viewBox="0 0 24 24"><path d="M5 19L19 5M13 5h6v6M8 12l4 4"/></symbol>
+  <symbol id="z9" viewBox="0 0 24 24"><path d="M4 6l3 8M7 14V8c0-2 1-3 2.5-3S12 7 12 9v7c0 2 1 3 3 3s3-1 3-3-1-3-3-3-3 1-3 3"/></symbol>
+  <symbol id="z10" viewBox="0 0 24 24"><path d="M3 10l3-3 3 3 3-3 3 3 3-3 3 3M3 16l3-3 3 3 3-3 3 3 3-3 3 3"/></symbol>
+  <symbol id="z11" viewBox="0 0 24 24"><path d="M7 4c3 3 3 13 0 16M17 4c-3 3-3 13 0 16M4 12h16"/></symbol>
+</svg>
 <!-- статус-бар корпуса телефона на компьютере (frame.css); часы ставит app.js -->
 <div class="frame-bar" aria-hidden="true"><span class="frame-clock" id="frame-clock"></span><span class="frame-island"></span><span class="frame-status"><span class="sig"><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></span><i class="bat"></i></span></div>
 <div class="bg" aria-hidden="true">
@@ -771,14 +826,18 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     </header>
     <div class="hello-stage">
     <div class="hello-content">
-      <h2 class="hello-claim">Три минуты в день — и вы не теряете себя из виду</h2>
+      <h2 class="hello-claim">Пространство, где можно услышать себя</h2>
+      <!-- живая строка сегодняшнего дня — до анкеты, по /api/hello: приложение показывает себя, а не обещает -->
+      <p class="hello-live" id="hello-live" hidden></p>
+      <p class="hello-ritual">Три минуты в день</p>
       <ul class="gifts">
         <li class="gift"><i class="ico star" aria-hidden="true"></i><span><b>Утром</b><small>настрой дня, пока варится кофе</small></span></li>
         <li class="gift"><i class="ico pen" aria-hidden="true"></i><span><b>Вечером</b><small>пара фраз о том, что запомнилось</small></span></li>
         <li class="gift"><i class="ico calendar" aria-hidden="true"></i><span><b>К воскресенью</b><small>Лунарио само соберет историю вашей недели</small></span></li>
       </ul>
       <div class="cta">
-        <button data-on="click:openForm" class="btn welcome-primary"><span>Создать профиль</span><span aria-hidden="true">→</span></button>
+        <button data-on="click:openForm" class="btn welcome-primary"><span>Открыть мой день</span><span aria-hidden="true">→</span></button>
+        <p class="hello-free">Карта дня, лунный день и дневник — бесплатно</p>
       </div>
     </div>
     <div class="heromoon" aria-hidden="true"><img src="/app/assets/moon-hero-1120.webp" srcset="/app/assets/moon-hero-560.webp 560w, /app/assets/moon-hero-1120.webp 1120w" sizes="760px" width="1120" height="1120" alt="" fetchpriority="high" decoding="async"></div>
@@ -799,41 +858,24 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     </div>
   </section>
 
-  <!-- АНКЕТА: почта — последний пункт, после кода открывается главная -->
-  <!-- ТРИ НАПОМИНАНИЯ: первое, что человек настраивает после анкеты; то же — в Аккаунт → Уведомления -->
-  <section class="view" id="v-rhythm" data-step="1">
+  <!-- АНКЕТА: почта — последний пункт, после кода открывается «Сегодня» -->
+  <!-- НАПОМИНАНИЯ: не сразу после анкеты, а после первого записанного дня (решение 19.09 — обязательства после ценности);
+       «Включить» — то самое нажатие, на которое телефон спрашивает разрешение. То же — в Аккаунт → Уведомления -->
+  <section class="view" id="v-rhythm" data-step="2">
     <div class="onb-head">
       <h1 class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></h1>
-      <p id="rh-lead">Два вопроса — и «Сегодня» собрано под вас</p>
+      <p id="rh-lead">Лунарио позовет, когда пора</p>
     </div>
-    <!-- шаг 1: что показывать каждое утро (та же настройка, что и чипы на «Сегодня») -->
-    <div class="card sec rhythm-card" id="rh-step-1">
-      <span class="eyebrow">1 / 2</span>
-      <h2 class="rh-title">Что показывать каждое утро?</h2>
-      <p class="hint">Отмеченное будет на «Сегодня» и в утреннем уведомлении. Можно все</p>
-      <div class="rh-list" id="rh-morning-list">
-        <label class="rhythm-row"><input type="checkbox" data-morning="card" checked><span class="grow"><b>Карта дня</b><small>одна карта: смысл и что сделать сегодня</small></span></label>
-        <label class="rhythm-row"><input type="checkbox" data-morning="dayrune"><span class="grow"><b>Руна дня</b><small>один символ: образ и совет</small></span></label>
-        <label class="rhythm-row"><input type="checkbox" data-morning="sky"><span class="grow"><b>Планеты</b><small>фазы Луны, затмения, ретроградные планеты — про что могут быть ситуации</small></span></label>
-        <label class="rhythm-row"><input type="checkbox" data-morning="day"><span class="grow"><b>Прогноз дня</b><small>ваш прогноз на сегодня</small></span></label>
-        <label class="rhythm-row"><input type="checkbox" data-morning="lunar" checked><span class="grow"><b>Луна</b><small>лунный день и на что обратить внимание</small></span></label>
-        <label class="rhythm-row"><input type="checkbox" data-morning="tone" checked><span class="grow"><b>Вопрос дня</b><small>для честного ответа себе — вечером в дневнике</small></span></label>
-      </div>
-      <button data-on="click:rhythmNext" class="btn" id="rh-next" type="button">Дальше</button>
-    </div>
-    <!-- шаг 2: когда напоминать; кнопка «Включить» — то самое нажатие, на которое телефон спрашивает разрешение -->
-    <div class="card sec rhythm-card" id="rh-step-2" hidden>
-      <span class="eyebrow">2 / 2</span>
+    <div class="card sec rhythm-card" id="rh-step-2">
       <h2 class="rh-title">Когда напоминать?</h2>
       <p class="hint" id="rh-device-note">Уведомления придут на это устройство. Время можно поменять потом в Аккаунте</p>
       <div class="rh-list">
         <label class="rhythm-row"><input type="checkbox" id="rh-morning" checked><span class="grow"><b>Утро</b><small>настрой дня и то, что вы выбрали</small></span><input type="time" id="rh-time-morning" value="08:30" aria-label="Время утреннего напоминания"></label>
-        <label class="rhythm-row"><input type="checkbox" id="rh-evening" checked><span class="grow"><b>Вечер</b><small>запомнить этот день: что было, что почувствовали, кого поблагодарить</small></span><input type="time" id="rh-time-evening" value="22:00" aria-label="Время вечернего напоминания"></label>
+        <label class="rhythm-row"><input type="checkbox" id="rh-evening" checked><span class="grow"><b>Вечер</b><small>приглашение записать день</small></span><input type="time" id="rh-time-evening" value="22:00" aria-label="Время вечернего напоминания"></label>
         <label class="rhythm-row"><input type="checkbox" id="rh-week" checked><span class="grow"><b>Воскресенье</b><small>история вашей недели</small></span><input type="time" id="rh-time-week" value="13:00" aria-label="Время воскресного напоминания"></label>
       </div>
       <button data-on="click:rhythmEnable" class="btn" id="rh-go" type="button">Включить напоминания</button>
       <div class="utility-actions"><button data-on="click:rhythmSkip" class="text-action secondary" type="button">Позже</button></div>
-      <p class="hint rh-foot">А когда захочется свериться с собой или узнать о себе больше — вкладки «Свериться с собой» и «Обо мне»</p>
     </div>
   </section>
   <section class="view" id="v-onb">
@@ -842,25 +884,53 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <h1 class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></h1>
       <p>Чтобы подсказки были про вас, расскажите немного о себе.</p>
     </div>
-    <div class="card sec" id="o-form">
-      <div class="field"><label>Как вас зовут</label><input id="o-name" placeholder="Имя" autocomplete="given-name" maxlength="60"></div>
-      <div class="field"><label>Дата рождения</label><input id="o-birth" type="date" required></div>
-      <div class="field"><label>Время рождения · необязательно</label><input id="o-time" type="time" placeholder="Не знаю — это не страшно"></div>
-      <div class="field">
-        <label>Город рождения</label>
-        <div class="sug">
-          <input id="o-city" placeholder="Начните вводить: Мос…" maxlength="60" autocomplete="off">
-          <div class="sug-list" id="o-city-list"></div>
-        </div>
-        <p class="geo" id="o-geo">Координаты и часовой пояс подставим сами — они понадобятся для натальной карты.</p>
+    <!-- Анкета по шагам (решение владелицы 19.09): один вопрос на экран, «Дальше», как в дневнике. Поля и их id те же,
+         что и раньше — отправка (o-go в app.js) не изменилась; показывается только текущий шаг (obStep) -->
+    <div class="card sec ob-card" id="o-form">
+      <div class="dc-dots" id="ob-dots" aria-hidden="true"></div>
+      <div class="dc-names" id="ob-names" aria-hidden="true"></div>
+      <div class="ob-step" data-step="name">
+        <p class="dc-q">Как вас зовут?</p>
+        <div class="field"><input id="o-name" placeholder="Имя" autocomplete="given-name" maxlength="60" aria-label="Имя" enterkeyhint="next"></div>
+        <button data-on="click:obNext" class="btn" type="button">Дальше</button>
       </div>
-      <div class="field" id="o-mailfield"><label>Почта</label><input id="o-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru"></div>
-      <label class="consent">
-        <input type="checkbox" id="o-consent">
-        <span>Я даю согласие на <a href="/soglasie" target="_blank" rel="noopener">обработку персональных данных</a> и принимаю <a href="/politika" target="_blank" rel="noopener">Политику конфиденциальности</a>.</span>
-      </label>
-      <button class="btn" id="o-go">Открыть мой день</button>
-      <p class="msg" id="o-msg"></p>
+      <div class="ob-step" data-step="birth" hidden>
+        <p class="dc-q">Когда вы родились?</p>
+        <div class="field"><input id="o-birth" type="date" required aria-label="Дата рождения"></div>
+        <button data-on="click:obNext" class="btn" type="button">Дальше</button>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+      </div>
+      <div class="ob-step" data-step="time" hidden>
+        <p class="dc-q">Во сколько?</p>
+        <p class="dc-sub">Время рождения нужно для домов натальной карты</p>
+        <div class="field"><input id="o-time" type="time" aria-label="Время рождения"></div>
+        <button data-on="click:obNext" class="btn" type="button">Дальше</button>
+        <button data-on="click:obSkipTime" class="text-action secondary dc-skip" type="button">Не знаю</button>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+      </div>
+      <div class="ob-step" data-step="city" hidden>
+        <p class="dc-q">Где вы родились?</p>
+        <div class="field">
+          <div class="sug">
+            <input id="o-city" placeholder="Начните вводить: Мос…" maxlength="60" autocomplete="off" aria-label="Город рождения" enterkeyhint="next">
+            <div class="sug-list" id="o-city-list"></div>
+          </div>
+          <p class="geo" id="o-geo">Координаты и часовой пояс подставим сами</p>
+        </div>
+        <button data-on="click:obNext" class="btn" type="button">Дальше</button>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+      </div>
+      <div class="ob-step" data-step="done" hidden>
+        <p class="dc-q" id="ob-done-q">Почти готово</p>
+        <div class="field" id="o-mailfield"><label>Почта</label><input id="o-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru"></div>
+        <label class="consent">
+          <input type="checkbox" id="o-consent">
+          <span>Я даю согласие на <a href="/soglasie" target="_blank" rel="noopener">обработку персональных данных</a> и принимаю <a href="/politika" target="_blank" rel="noopener">Политику конфиденциальности</a>.</span>
+        </label>
+        <button class="btn" id="o-go">Открыть мой день</button>
+        <p class="msg" id="o-msg"></p>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+      </div>
     </div>
     <div class="card sec" id="o-codebox" style="display:none"></div>
     <div class="card sec" id="o-back" style="display:none">
@@ -874,8 +944,17 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <section class="view" id="v-home">
     <div class="row hdr"><div class="grow"><div class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div><span class="eyebrow" id="h-date"></span><h1 class="sr-only">Сегодня</h1></div>
       <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
+    <!-- Герой дня (по разбору референсов 19.09): большая Луна с настоящей фазой, под ней фаза и лунный день, имя и транзитная Луна,
+         ближайшие новолуние и полнолуние, полоска недели. Тап — лунный день. Настрой дня — карточкой ниже, строки — потом -->
+    <button data-on="click:openWidget-lunar" class="home-hero" id="home-hero" type="button" aria-label="Луна сегодня: открыть лунный день">
+      <span class="hero-glow" aria-hidden="true"></span>
+      <canvas class="moon-hero-cv" id="moonHero" width="300" height="300" aria-hidden="true"></canvas>
+      <b class="hero-phase" id="hero-phase"></b>
+      <span class="hero-me" id="hero-me"></span>
+      <span class="hero-next" id="hero-next"></span>
+    </button>
+    <div class="week-strip" id="week-strip" aria-hidden="true"></div>
     <div class="home-intro">
-      <div class="home-moon" aria-hidden="true"><img src="/app/assets/moon-hero-560.webp" srcset="/app/assets/moon-hero-560.webp 560w, /app/assets/moon-hero-1120.webp 1120w" sizes="(max-width:370px) 82px, (max-width:599px) 100px, 260px" width="560" height="560" alt="" decoding="async"></div>
       <div class="daily-statement"><span class="eyebrow" id="h-theme" hidden></span><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
     </div>
     <!-- Утро: человек отвечает, на что хочет обращать внимание; выбранное — сверху, остальное — маленькими квадратами ниже -->
@@ -884,6 +963,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <section class="card push-note" id="push-note" hidden aria-label="Уведомление"></section>
     <div class="home-later home-push" id="home-push" hidden></div>
     <div class="home-later home-push" id="home-yesterday" hidden></div>
+    <div class="home-later home-push" id="home-natal" hidden></div>
     <div class="home-later home-push" id="home-tour" hidden></div>
     <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Выбранное — сверху и в утреннем уведомлении. Можно все</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придет только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="text-action" id="morning-done" type="button" hidden>Готово</button></div></section>
     <!-- после выбора вопрос сворачивается в строку: экран — для чтения, не для настроек -->
@@ -894,7 +974,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <div class="home-later" id="home-later" hidden></div>
   </section>
   <section class="view" id="v-ask"><h1>Свериться с собой</h1><p class="section-caption">Карты, руны, вопросы</p>
-    <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button"><i class="ico question"></i><b>Разобрать вопрос</b><span>Отношения, работа, решения, отношение к себе</span></button></div>
+    <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button"><i class="ico question"></i><b>Ответить себе на вопрос</b><span>Отношения, работа, решения, отношение к себе</span></button></div>
     <div class="wids list-rows method-grid" aria-label="Выбрать способ">
 <button data-on="click:openAsk-yesno" class="wid" type="button"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ с пояснением</span></button><button data-on="click:openAsk-rune" class="wid" type="button"><i class="ico rune"></i><b>Руны</b><span>Одна, три, крест, четыре стихии</span></button><button data-on="click:openAsk-spread" class="wid" type="button"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест</span></button></div>
     <div class="wids list-rows history-rows"><button data-on="click:openWidget-hentries" class="wid" data-feature="hentries" type="button"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b><span>Все, о чем спрашивали</span></button></div></section>
@@ -919,6 +999,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   </section>
   <!-- ОБО МНЕ: вкладка внизу — разборы по дате рождения; анкета и настройки живут в аккаунте (кружок с фото на главной) -->
   <section class="view" id="v-about"><h1>Обо мне</h1><p class="section-caption" id="ab-sub">Мой профиль</p>
+    <!-- экран начинается с человека, а не с меню (по разбору референсов 19.09): имя, натальная Луна, лунный день рождения; тап — в натальную карту -->
+    <button data-on="click:openWidget-natal" class="me-card" id="me-card" type="button" hidden></button>
     <div class="wids about-links list-rows"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты, дома, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнера</span></button><button data-on="click:openWidget-tests" class="wid" data-feature="tests" type="button" aria-label="Тесты"><i class="ico list"></i><b>Тесты</b><span id="tests-sub">Узнать себя через вопросы</span></button></div>
   </section>
   <!-- АККАУНТ: открывается по кружку с фото в правом верхнем углу главной — фото, анкета, приложение, приватность, помощь, выход -->
@@ -941,7 +1023,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <button data-on="click:openWidget-skyplace" class="wid sky-location-control" type="button"><i class="ico orbit"></i><b>Геолокация</b><span data-sky-place>Москва · место не определено</span></button>
       <button data-on="click:openWidget-appearance" class="wid" type="button"><i class="ico moon"></i><b>Оформление</b><span>Светлая и темная темы</span></button>
       <button data-on="click:openWidget-topics" class="wid" data-feature="topics" type="button"><i class="ico list"></i><b>Настройка контента</b><span>Какие сферы жизни подсвечивать в сообщениях</span></button>
-      <button data-on="click:tourRestart" class="wid" type="button"><i class="ico question"></i><b>Подсказки по приложению</b><span>Где что находится — за полминуты</span></button>
+      <button data-on="click:tourRestart" class="wid" type="button"><i class="ico question"></i><b>Подсказки по приложению</b><span>Как устроено приложение — за полминуты</span></button>
       <button data-on="click:openWidget-appinfo" class="wid" type="button"><i class="ico moon"></i><b>О приложении</b></button>
       <a data-on="click:installApp" class="wid" id="t-install" href="/app/install"><i class="ico star"></i><b>Установить на телефон</b><span>Иконка на экране «Домой», уведомления, полный экран</span></a></div></section>
     <section class="account-group" id="ag-help"><h2>Помощь</h2><div class="wids compact-links"><button data-on="click:openWidget-support" class="wid" data-feature="support" type="button" aria-label="Чат поддержки"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button data-on="click:openWidget-invite" class="wid" type="button" aria-label="Позвать подругу" data-feature="invite"><i class="ico person"></i><b>Позвать подругу</b></button></div></section>
@@ -1062,14 +1144,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=83"></script>
+<script src="/app/moon-logo.js?v=84"></script>
 
-<script type="module" src="/app/sky.js?v=83"></script>
+<script type="module" src="/app/sky.js?v=84"></script>
 
-<script src="/app/experience.js?v=83"></script>
-<script src="/app/app.js?v=83"></script>
-<script src="/app/tour.js?v=83"></script>
-<script src="/app/handlers.js?v=83"></script>
-<script src="/app/on.js?v=83"></script>
+<script src="/app/experience.js?v=84"></script>
+<script src="/app/app.js?v=84"></script>
+<script src="/app/tour.js?v=84"></script>
+<script src="/app/handlers.js?v=84"></script>
+<script src="/app/on.js?v=84"></script>
 </body>
 </html>

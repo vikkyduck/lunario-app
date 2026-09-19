@@ -8,7 +8,7 @@ body.inner .bg .orb{opacity:.24}body.inner .bg .cloud{opacity:.14}
 body.inner .sky.on{display:block;opacity:.48}body.hello .sky.on{opacity:.72}
 html[data-theme=light] body.inner .sky.on{opacity:.22}
 body.inner .wrap{max-width:1240px}
-body.inner .view>h1,body.inner .practice-header h1{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
+body.inner .view>h1,body.inner .practice-header h1{font-family:var(--serif);font-weight:600;letter-spacing:0}
 body.inner :is(.feature-group,.account-group)>h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
 /* Материал плиток (.wid) задаёт блок «стекла» ниже (:is(...) с #v-hello — специфичность с ID); здесь — только то, что не плитка */
 body.inner :is(.profile-summary,.wish-card){
@@ -49,11 +49,11 @@ body.inner :is(#v-home .hdr .sr-only,#v-account>h1.sr-only){position:absolute;wi
 body.inner #h-date{font-size:13px;font-weight:400;letter-spacing:.03em;text-transform:none;color:var(--muted)}
 body.inner #h-acct{width:44px;height:44px;font-weight:600}
 body.inner .acct,body.inner .avatar{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);color:var(--gold-2)}
-.home-intro{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) clamp(160px,22vw,260px);align-items:center;gap:32px;overflow:visible;margin:0;padding:28px 0 36px;min-height:0}
+.home-intro{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:32px;overflow:visible;margin:0;padding:28px 0 36px;min-height:0}
 .home-moon{position:relative;order:2;width:100%;aspect-ratio:1;pointer-events:none;opacity:.94}
 .home-moon img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 24px #d9b86825)}
 body.inner .home-intro .daily-statement{order:1;margin:0;max-width:none;position:relative}
-body.inner .home-intro #h-wish{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:clamp(26px,3vw,36px);font-weight:600;line-height:1.5;letter-spacing:-.01em;margin:0;text-wrap:pretty;overflow-wrap:anywhere;color:var(--text)}
+body.inner .home-intro #h-wish{font-family:var(--serif);font-size:clamp(28px,3vw,38px);font-weight:500;line-height:1.35;letter-spacing:0;margin:0;text-wrap:pretty;overflow-wrap:anywhere;color:var(--text)}
 body.inner #home-sky .moonline{border-radius:var(--r-xl)}   /* поля, отступы и материал — в блоке «Сегодня» ниже */
 body.inner #home-sky .moon-sm{width:50px;height:50px;flex-basis:50px}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:16px;line-height:1.6}
@@ -93,12 +93,12 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   .home-intro{padding-top:28px;padding-bottom:40px}
 }
 @media(max-width:899px){
-  .home-intro{margin:0;padding:26px 0 30px;grid-template-columns:minmax(0,1fr) 160px;gap:24px}
+  .home-intro{margin:0;padding:26px 0 30px;grid-template-columns:minmax(0,1fr);gap:24px}
   body.inner .home-intro #h-wish{font-size:29px;line-height:1.5}
 }
 @media(max-width:599px){
   body.inner .wrap{padding-inline:22px;padding-top:calc(30px + env(safe-area-inset-top))}
-  .home-intro{margin:0;padding-inline:0;grid-template-columns:minmax(0,1fr) 100px;gap:14px}
+  .home-intro{margin:0;padding-inline:0;grid-template-columns:minmax(0,1fr);gap:14px}
   body.inner .home-intro #h-wish{font-size:27px}
   body.inner .wid{padding:22px}
   body.inner .compact-links .wid{padding:22px}
@@ -106,7 +106,7 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
 }
 @media(max-width:370px){
   body.inner .wrap{padding-inline:16px}
-  .home-intro{grid-template-columns:minmax(0,1fr) 82px;gap:12px}
+  .home-intro{grid-template-columns:minmax(0,1fr);gap:12px}
   body.inner .home-intro #h-wish{font-size:24px}
   body.inner .wid{min-height:135px}
   body.inner .compact-links .wid{min-height:80px}
@@ -126,8 +126,10 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
 #v-hello .hello-content{width:100%;max-width:none;margin:0;padding:0;min-width:0}
 #v-hello .heromoon{display:block;position:relative;order:-1;inset:auto;transform:none;width:clamp(120px,36vw,168px);height:auto;aspect-ratio:1;align-self:flex-end;margin-right:4px;opacity:.94}
 #v-hello .heromoon img{filter:drop-shadow(0 0 32px #f2d18d24)}
-#v-hello .hello-claim{margin:0 0 18px;font-size:24px;line-height:1.25;font-weight:600;color:#f5f2ea;text-wrap:balance}
+#v-hello .hello-claim{margin:0 0 18px;font-family:var(--serif);font-size:34px;line-height:1.1;font-weight:500;color:#f5f2ea;text-wrap:balance}
 #v-hello .gifts{margin:0;gap:14px}
+#v-hello .hello-ritual{margin:22px 0 -6px}
+#v-hello .hello-live{margin:-6px 0 0}
 #v-hello .gift{gap:14px;align-items:flex-start}
 #v-hello .gift b{font-size:17px;font-weight:600;color:#f5f2ea;line-height:1.35}
 #v-hello .gift small{font-size:15px;line-height:1.4;color:var(--muted);margin-top:1px}

@@ -32,11 +32,11 @@ const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.t
 });
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
 import { sendMail, mailReady, loginMail, staffMail, deleteMail, verifySmtp } from './mailer.mjs';
-import { lunarDay, lunarPeriodText, moonState } from './lunar.mjs';
+import { lunarDay, lunarPeriodText, moonState, moonPhasesBetween } from './lunar.mjs';
 import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
 import * as W from './workspace.mjs';
-import { natalChart } from './astro.mjs';
+import { natalChart, skyAt, inSign } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
@@ -288,6 +288,27 @@ function markOpened(u, day, kind, event, detail) {
   if (!db.prepare('SELECT 1 FROM events WHERE user_id = ? AND day = ? AND type = ? LIMIT 1').get(u.id, day, event)) track(u, event, detail);
 }
 
+/* Транзитная Луна сейчас («в Рыбах») и ближайшие новолуние и полнолуние — для героя на «Сегодня».
+   Считается по всем телам, поэтому ответ держим десять минут; даты фаз — на сутки, в поясе человека. */
+const moonNowCache = { at: 0, signIn: '' };
+function moonSignNow() {
+  const t = Date.now();
+  if (t - moonNowCache.at > 6e5) { try { moonNowCache.signIn = skyAt(t).moon.signIn; } catch { moonNowCache.signIn = ''; } moonNowCache.at = t; }
+  return moonNowCache.signIn;
+}
+const moonNextCache = new Map();
+function moonNext(tz) {
+  const key = `${dayIn(tz)}|${tz}`;
+  if (moonNextCache.has(key)) return moonNextCache.get(key);
+  const out = { new: '', full: '' };
+  try {
+    const now = Date.now();
+    for (const p of moonPhasesBetween(now, now + 31 * 864e5)) { if ((p.phase === 'new' || p.phase === 'full') && !out[p.phase]) out[p.phase] = dayIn(tz, p.at); }
+  } catch { /* без дат герой не хуже */ }
+  if (moonNextCache.size > 50) moonNextCache.clear();
+  moonNextCache.set(key, out); return out;
+}
+
 /* ── персональный день ── */
 function dayPack(u, day) {
   const seed = `${u.id}:${day}`;
@@ -302,6 +323,8 @@ function dayPack(u, day) {
     moonPhase: +moon.cycle.toFixed(3),          // доля цикла 0..1 — по ней рисуется луна
     // освещенность диска, а не доля цикла: при фазе 0.65 диск освещен на 79 %, не на 65
     moonPct: moon.illumination,
+    moonSign: moonSignNow(),                    // транзитная Луна сейчас: «в Рыбах»
+    moonNext: moonNext(u.tz || MSK),            // ближайшие новолуние и полнолуние — даты в поясе человека
     card: cardOfDay(u, day),
     sign: sign ? sign.name : '',
     forecast: sign
@@ -456,6 +479,12 @@ function natalFor(u) {
   const chart = natalChart({ birth: u.birth, time, tzOffsetMin: tzOff, lat: u.lat ?? null, lon: u.lon ?? null });
   chart.tz = u.tz || ''; chart.city = u.city || ''; chart.cityFound = u.lat != null;
   chart.tzNote = u.tz ? `${u.tz}, UTC${tzOff >= 0 ? '+' : '−'}${Math.abs(tzOff) / 60}` + (time ? '' : ' (полдень)') : 'пояс не определен — время взято как UTC';
+  /* лунный день рождения — по месту и моменту рождения; без времени берется полдень, и у границы дня номер может отличаться на один */
+  try {
+    const born = Date.parse(`${u.birth}T${time || '12:00'}:00Z`) - tzOff * 6e4;
+    const ld = lunarDay(born, u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon);
+    chart.lunarBirth = ld ? { n: ld.n, uncertain: !time } : null;
+  } catch { chart.lunarBirth = null; }
   return chart;
 }
 const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalFor, MOOD_RU, nowISO });
@@ -528,6 +557,15 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, name: firstName(host.name) });
     }
 
+    /* Строка сегодняшнего дня на приветствии — до анкеты, по Москве: фаза, лунный день и его тема. Личного нет, кэш десять минут */
+    if (p === '/api/hello' && req.method === 'GET') {
+      let lunar = null;
+      try { const ld = lunarDay(Date.now(), MOSCOW.lat, MOSCOW.lon); if (ld) lunar = { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] }; } catch { /* без лунного дня строка короче */ }
+      const m = moonState(Date.now());
+      res.setHeader('Cache-Control', 'public, max-age=600');
+      return json(res, 200, { ok: true, moon: m.name, moonPhase: +m.cycle.toFixed(3), lunar });
+    }
+
     /* Каталог карт и рун: тексты, картинки, расклады. Личного здесь нет, поэтому кэшируется на 10 минут —
        правки в content/ доедут до людей не позже. */
     if (p === '/api/catalog' && req.method === 'GET') {
@@ -572,7 +610,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/natal' && req.method === 'GET') {
         if (!ISO_DAY.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
         const chart = natalFor(u);
-        track(u, 'natal_view', chart.timeKnown ? 'with_time' : 'no_time');
+        if (!url.searchParams.has('quiet')) track(u, 'natal_view', chart.timeKnown ? 'with_time' : 'no_time');   /* quiet — карточка на «Обо мне», а не открытие карты */
         return json(res, 200, chart);
       }
 

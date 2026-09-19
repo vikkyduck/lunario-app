@@ -97,18 +97,25 @@ function go(v){
   if(v==='home')window.tourMaybe?.();   /* подсказки по приложению — один раз, на «Сегодня» */
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();loadPushNote();paintYesterday();}
+  if(v==='hello') paintHelloLive();
   if(v==='history') loadHistory();
   if(v==='about')loadAbout();
   if(v==='account')loadAccount();
   if(v==='news') paintNews();
 }
 function onboarded(){ return !!(S.user && S.user.onboarded); }
+/* Строка сегодняшнего дня на приветствии: «Сегодня 8-й лунный день · Растущая Луна» — по Москве, без входа */
+async function paintHelloLive(){
+  const el=$('hello-live'); if(!el||el.textContent)return;
+  try{ const r=await api('/hello'); const parts=[r.lunar?`${ordinal(r.lunar.n)} лунный день`:'',r.moon||''].filter(Boolean); if(parts.length){ el.textContent='Сегодня · '+parts.join(' · '); el.hidden=false; } }catch(e){ /* без строки приветствие не хуже */ }
+}
 function openForm(){
   $('v-onb').classList.remove('verifying-email');
   $('o-form').style.display=''; $('o-codebox').style.display='none';
   const askMail = S.mailReady && !S.user?.email;   /* почта уже привязана через «Уже пользовались?» — второй раз не спрашиваем */
   $('o-mailfield').style.display = askMail ? '' : 'none'; $('o-back').style.display = askMail ? '' : 'none';
   if (askMail) authMount('o-auth', { idle: obAuthIdle, onDone: obDone });
+  obStep(0);
   go('onb'); track('onboard_start');
 }
 function openLogin(){
@@ -124,7 +131,7 @@ const FEATURES = {
   day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, dayrune:{sec:'Сегодня',title:'Руна дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'history'},
   habits:{sec:'Дневник',title:'Дневник привычек',view:'history',page:true}, askesis:{sec:'Дневник',title:'Взять аскезу',view:'history',page:true},
   lunar:{sec:'Сегодня',title:'Влияние Луны на сегодня',view:'home'}, sky:{sec:'Сегодня',title:'Влияние планет на сегодня',view:'home'},
-  worry:{sec:'Свериться с собой',title:'Разобрать вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
+  worry:{sec:'Свериться с собой',title:'Ответить себе на вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
   journal:{sec:'Дневник',title:'Дневник',view:'history',page:true}, gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history'},
   wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history'},
   hentries:{sec:'Свериться с собой',title:'Мои вопросы и ответы',view:'ask'}, week:{sec:'Дневник',title:'Моя неделя',view:'history'}, dayview:{sec:'Дневник',title:'День',view:'history'}, days:{sec:'Дневник',title:'Все дни',view:'history'},
@@ -206,11 +213,13 @@ async function loadDayRune(){
     const sub=$('t-runesub');if(sub)sub.textContent=`${r.rune.name}${r.rune.keyword?' · '+r.rune.keyword:''}`;
   }catch(e){box.innerHTML='<p class="msg err">Не получилось вытянуть руну. Попробуйте еще раз.</p>';}
 }
+/* знак зодиака тонкой линией из спрайта в index.html — эмодзи ♈…♓ на телефонах цветные и не из палитры */
+const zodiacGlyph = (i) => Number.isInteger(i) ? `<svg class="zsym" aria-hidden="true"><use href="#z${i}"/></svg>` : '';
 async function loadNatal(){
   const box = $('natal-box');
   try{
     const c = natalCache || (natalCache = await api('/natal'));
-    const dms = (p) => `${p.symbol} ${p.deg}°${String(p.min).padStart(2,'0')}′`;
+    const dms = (p) => `${zodiacGlyph(p.signIndex)} ${p.deg}°${String(p.min).padStart(2,'0')}′`;
     const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
     const points = c.points && c.points.length ? `<h3 class="mt-4">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
     const houses = c.houses ? `<h3 class="mt-4">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.signOf)}</small></td></tr>`).join('')}</tbody></table>`
@@ -345,6 +354,16 @@ async function paintYesterday(){
   const line=y.text?`«${esc(y.text.length>80?y.text.slice(0,80).replace(/\s+\S*$/,'')+'…':y.text)}»`:moods.length?esc(moods.join(', ')):'фото дня';
   box.innerHTML=`<button data-on="click:openDay-a0" data-a0="${y.day}" class="later-row" type="button"><span class="eyebrow">Вчера</span><b>${line}</b><span class="later-go">Открыть →</span></button>`; box.hidden=false;
 }
+/* Первые дни после анкеты: «Натальная карта готова» — мы спросили дату, время и город, и вот зачем; тап ведет прямо в карту,
+   а не на вкладку. После открытия строка не возвращается */
+const natalRowKey=()=>'lun_natal_row_'+(S.user?.id||0);
+function paintNatalRow(){
+  const box=$('home-natal'); if(!box)return;
+  let seen=false; try{ seen=localStorage.getItem(natalRowKey())==='1'; }catch(e){}
+  const due=!!S.user?.birth&&!seen&&(S.freshOnboard||(S.daysTotal||0)<3);
+  box.hidden=!due; box.innerHTML=due?`<button data-on="click:openNatalFromHome" class="later-row" type="button"><span class="eyebrow">Обо мне</span><b>Натальная карта готова</b><span class="later-go">Открыть →</span></button>`:'';
+}
+function openNatalFromHome(){ try{ localStorage.setItem(natalRowKey(),'1'); }catch(e){} go('about'); openWidget('natal'); }
 /* Под настроем дня: расписание включено, а сюда уведомления не приходят — одна строка и одно нажатие */
 function paintPushNudge(){
   const box = $('home-push'); if (!box) return;
@@ -381,12 +400,32 @@ function paintMorningPostcard(d){
   /* открытка собирается, когда экран уже нарисован и главный поток свободен */
   (window.requestIdleCallback || ((f) => setTimeout(f, 400)))(preparePending, { timeout: 3000 });
 }
+/* ══════════ Герой «Сегодня» (по разбору референсов 19.09): большая Луна с настоящей фазой, под ней «Растущая Луна · 8-й лунный день»
+   антиквой, «Вика · Луна в Рыбах» (транзитная — где Луна сейчас; натальная живет в «Обо мне»), ближайшие полнолуние и новолуние,
+   полоска недели с маленькими лунами. Фазы на дни недели — от сегодняшней доли цикла по синодическому месяцу: для значков хватает. ══════════ */
+const SYNODIC=29.530588;
+const fmtDayMonth=(iso)=>new Date(iso+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+function paintHero(d){
+  const ph=$('hero-phase'); if(!ph||!d)return;
+  ph.textContent=[d.moon,d.lunar?`${ordinal(d.lunar.n)} лунный день`:''].filter(Boolean).join(' · ');
+  if(typeof d.moonPhase==='number') window.moonPaint?.($('moonHero'),d.moonPhase);   /* своя фаза у холста — герой не зависит от общего рисования */
+  const name=String(S.user?.name||'').trim().split(/\s+/)[0];
+  const me=[name,d.moonSign?`Луна ${d.moonSign}`:''].filter(Boolean).join(' · ');
+  const meEl=$('hero-me'); meEl.textContent=me; meEl.hidden=!me;
+  const nx=d.moonNext||{}, parts=[['full',nx.full],['new',nx.new]].filter(x=>x[1]).sort((a,b)=>a[1].localeCompare(b[1]));
+  const nxEl=$('hero-next'); nxEl.textContent=parts.map(([k,day])=>`${k==='full'?'Полнолуние':'Новолуние'} ${fmtDayMonth(day)}`).join(' · '); nxEl.hidden=!parts.length;
+  const strip=$('week-strip'); if(!strip)return;
+  const today=new Date(d.date+'T12:00:00Z'), dow=(today.getUTCDay()+6)%7;
+  strip.innerHTML=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((n,i)=>{ const off=i-dow, dt=new Date(today.getTime()+off*864e5), phase=((((d.moonPhase||0)+off/SYNODIC)%1)+1)%1;
+    return `<span class="ws-day${off===0?' on':''}"><canvas width="26" height="26" data-phase="${phase.toFixed(3)}"></canvas><i>${n}</i><small>${dt.getUTCDate()}</small></span>`; }).join('');
+  strip.querySelectorAll('canvas').forEach(cv=>window.moonPaint?.(cv,+cv.dataset.phase));
+}
 function paintHome(){
   const u=S.user, d=S.day;
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('h-wish').textContent = d.set?.text || '';
-  paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d);
+  paintHero(d); paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d); paintNatalRow();
   if (!S.rem) loadReminders().then(paintPushNudge).catch(() => {});   /* строка «не подключены» — когда расписание известно */
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
@@ -783,7 +822,7 @@ function attachCity(inputId, listId, geoId){
   const choose=(c)=>{ picked=c; inp.value=c.name; items=[]; hl=-1; paint();
     geo.innerHTML=`✦ <b>${c.name}</b> — ${[c.region,c.country].filter(Boolean).join(', ')}<br>${c.lat.toFixed(4)}, ${c.lon.toFixed(4)} · ${c.tz}`; hap(); };
   inp.addEventListener('input',()=>{
-    picked=null; geo.textContent='Координаты и часовой пояс подставим сами — они понадобятся для натальной карты.';
+    picked=null; geo.textContent='Координаты и часовой пояс подставим сами';
     clearTimeout(t);
     const q=inp.value.trim();
     if(q.length<2){ items=[]; paint(); return; }
@@ -802,7 +841,28 @@ function attachCity(inputId, listId, geoId){
   return { get picked(){ return picked; } };
 }
 
-/* ── анкета: профиль → код на почту → главная ── */
+/* ── анкета по шагам: один вопрос на экран (решение владелицы 19.09), как в дневнике; отправка — прежняя, по o-go ── */
+const OB_STEPS=[['name','Имя'],['birth','Дата'],['time','Время'],['city','Город'],['done','Готово']];
+let obIdx=0;
+function obStep(n){
+  obIdx=Math.max(0,Math.min(OB_STEPS.length-1,n));
+  document.querySelectorAll('#o-form .ob-step').forEach((el,i)=>{ el.hidden=i!==obIdx; });
+  $('ob-dots').innerHTML=OB_STEPS.map((_,i)=>`<i class="${i<obIdx?'done':i===obIdx?'on':''}"></i>`).join('');
+  $('ob-names').innerHTML=OB_STEPS.map(([,t],i)=>`<span class="${i<obIdx?'done':i===obIdx?'on':''}">${t}</span>`).join('<i>·</i>');
+  if(obIdx===OB_STEPS.length-1){ const askMail=S.mailReady&&!S.user?.email; $('ob-done-q').textContent=askMail?'Куда прислать код?':'Почти готово'; }
+  const inp=document.querySelector('#o-form .ob-step:not([hidden]) input:not([type=checkbox])');
+  if(inp&&obIdx>0&&inp.type!=='date'&&inp.type!=='time') setTimeout(()=>inp.focus({preventScroll:true}),60);
+  scrollToTop(0);
+}
+function obNext(){
+  const key=OB_STEPS[obIdx][0], msg=$('o-msg');
+  if(key==='birth'&&!$('o-birth').value){ toast('Укажите дату рождения — без нее подсказки будут общими'); $('o-birth').focus(); return; }
+  if(key==='birth'){ const d=$('o-birth').value; if(d<'1900-01-01'||d>new Date().toISOString().slice(0,10)){ toast('Проверьте дату рождения'); return; } }
+  showMsg(msg); hap(); obStep(obIdx+1);
+}
+function obBack(){ hap(); obStep(obIdx-1); }
+function obSkipTime(){ $('o-time').value=''; hap(); obStep(obIdx+1); }
+document.querySelectorAll('#o-form .ob-step input:not([type=checkbox])').forEach(inp=>inp.addEventListener('keydown',(e)=>{ if(e.key==='Enter'&&obIdx<OB_STEPS.length-1&&!$('o-city-list').classList.contains('on')){ e.preventDefault(); obNext(); } }));
 attachCity('o-city','o-city-list','o-geo');
 $('o-go').onclick=async()=>{
   const msg=$('o-msg'); showMsg(msg);
@@ -1079,9 +1139,18 @@ function paintDayDone(){
     ${dayQuietHtml({habits:s.habits.filter(h=>h.today).map(h=>h.title),askesis:s.askesis.filter(a=>a.kept!==null).map(a=>({title:a.title,kept:a.kept})),echo:s.echo})}
     ${warm?`<p class="dc-warm">${warm}</p>`:''}
     <div class="dc-bridge" id="dc-bridge" hidden></div>
+    ${DC.forDay?'':nextStepHtml()}
     ${DC.forDay?'':toolOfferHtml()}
     <div class="dc-done-actions"><button data-on="click:dcEdit" class="text-action" type="button">Дополнить →</button>${DC.forDay?'<button data-on="click:dcToday" class="text-action secondary" type="button">К сегодняшнему дню →</button>':''}</div><p class="hint" id="dc-state" role="status"></p>`;
   loadBridge();
+}
+/* После первого записанного дня — один следующий шаг (обязательства после ценности, решение 19.09): включить напоминания —
+   мастер и запрос разрешения на пуш; на iPhone в Safari сначала — добавить на экран «Домой», иначе напоминаний не будет */
+function nextStepHtml(){
+  if(rhythmSeen()||(S.daysTotal||0)>3) return '';
+  if(S.rem&&Object.values(S.rem).some(r=>r.enabled)) return '';
+  if(IS_IOS&&!PUSH_OK&&!IOS_SHELL) return `<a class="later-row dc-next" href="/app/install"><span class="eyebrow">Завтра</span><b>Чтобы напомнить вечером — добавьте Лунарио на экран «Домой»</b><span class="later-go">Как →</span></a>`;
+  return `<button data-on="click:openRhythm-history" class="later-row dc-next" type="button"><span class="eyebrow">Завтра</span><b>Напомнить вечером?</b><span class="later-go">Включить →</span></button>`;
 }
 /* ══════════ Как человек узнает про инструменты: не из каталога, а по одному, в нужный момент ══════════
    После первого записанного дня — «Чем дополнить вечера?» со всеми чипами сразу. Дальше — одно предложение в вечер, по порогам
@@ -1215,6 +1284,21 @@ const loadWishes=()=>api('/wishes').then(renderWishes).catch(()=>{});
 function loadAbout(){
   const u=S.user; loadNumerology();
   $('ab-sub').textContent=[u.name,u.sign].filter(Boolean).join(' · ')||'Мой профиль';
+  paintMeCard();
+}
+/* карточка человека над списком: имя, натальная Луна и лунный день рождения — из той же натальной карты, что и панель */
+async function paintMeCard(){
+  const box=$('me-card'); if(!box)return;
+  const u=S.user; if(!u?.birth){ box.hidden=true; return; }
+  const name=String(u.name||'').trim();
+  const paint=(c)=>{
+    const moon=c?.planets?.find(p=>p.key==='moon'), lb=c?.lunarBirth;
+    const line=[moon?`Натальная Луна ${moon.signIn}`:'', lb?`родились в ${ordinal(lb.n)} лунный день`:''].filter(Boolean).join(' · ');
+    box.innerHTML=`<b class="me-name">${esc(name||'Обо мне')}</b>${line?`<span class="me-line">${line}</span>`:''}<span class="me-sub">${[fmtDay(u.birth),u.city].filter(Boolean).map(esc).join(' · ')}</span>`;
+    box.hidden=false; const sub=$('ab-sub'); if(sub) sub.hidden=true;   /* имя и знак под заголовком — теперь в карточке */
+  };
+  paint(natalCache);
+  if(!natalCache){ try{ natalCache=await api('/natal?quiet=1'); paint(natalCache); }catch(e){ /* карточка остается с датой и городом */ } }
 }
 function loadAccount(){
   const u=S.user; paintAvatar();
@@ -1755,30 +1839,22 @@ async function syncPushDevice(){
   } catch(e) { /* the explicit enable button lets the user reconnect */ }
 }
 const invitationKey = () => 'lun_push_invite_' + S.user.id;
-/* ── Три напоминания после анкеты: первое, что человек настраивает; то же — в Аккаунт → Уведомления ── */
-/* Мастер после анкеты (решение владелицы 18.09): шаг 1 — что показывать каждое утро (та же настройка, что чипы на «Сегодня»),
-   шаг 2 — когда напоминать и «Включить напоминания» — нажатие, на которое телефон спрашивает разрешение. */
-function finishOnboarding(){ startApp(); rhythmStep(1); go('rhythm'); track('rhythm_view'); }
+/* ── Напоминания: не сразу после анкеты, а после первого записанного дня (решение 19.09): анкета → «Сегодня» с личным результатом,
+   мастер — строкой в записанном дне и в Аккаунт → Уведомления. «Включить» — нажатие, на которое телефон спрашивает разрешение ── */
+function finishOnboarding(){ startApp(); S.freshOnboard=true; go('home'); }   /* onboard_done пишет сервер в POST /api/profile */
+let rhythmBack='home';
+function openRhythm(from){ rhythmBack=from||'home'; rhythmStep(2); go('rhythm'); track('rhythm_view',from||''); }
 function rhythmStep(n){
   const v=$('v-rhythm'); if(!v)return; v.dataset.step=String(n);
-  $('rh-step-1').hidden=n!==1; $('rh-step-2').hidden=n!==2;
-  if(n===1){ const chosen=new Set(Array.isArray(XP.prefs?.morning)?morningChosen():['card','lunar','tone']); v.querySelectorAll('[data-morning]').forEach(i=>{ i.checked=chosen.has(i.dataset.morning); }); }   /* еще не выбирали — карта, Луна и вопрос дня */
-  if(n===2){ const note=$('rh-device-note'); if(note){ note.textContent=rhythmDeviceNote(); if(IS_IOS&&!PUSH_OK&&!IOS_SHELL) note.append(' ', Object.assign(document.createElement('a'), { href: '/app/install', className: 't-gold', textContent: 'Как добавить →' })); } }
+  const note=$('rh-device-note'); if(note){ note.textContent=rhythmDeviceNote(); if(IS_IOS&&!PUSH_OK&&!IOS_SHELL) note.append(' ', Object.assign(document.createElement('a'), { href: '/app/install', className: 't-gold', textContent: 'Как добавить →' })); }
   scrollToTop(0);
 }
 /* На iPhone в Safari пуши не приходят — только с экрана «Домой»; человеку лучше узнать это здесь, а не через три дня тишины */
 function rhythmDeviceNote(){
   if(IOS_SHELL) return 'Уведомления придут на этот iPhone. Время можно поменять потом в Аккаунте';
-  if(IS_IOS && !PUSH_OK) return 'На iPhone уведомления приходят только с экрана «Домой»: Поделиться → «На экран Домой». Расписание сохраним сейчас, подключить устройство можно оттуда';
+  if(IS_IOS && !PUSH_OK) return 'На iPhone уведомления приходят только с экрана «Домой»: Поделиться → «На экран Домой». Расписание сохраним сейчас, подключить можно оттуда.';
   if(!PUSH_OK) return 'Этот браузер не показывает уведомления — расписание сохраним, а подключить можно с телефона';
   return 'Уведомления придут на это устройство. Время можно поменять потом в Аккаунте';
-}
-async function rhythmNext(){
-  const btn=$('rh-next'); if(btn.disabled)return; btn.disabled=true;
-  const morning=[...document.querySelectorAll('#rh-morning-list [data-morning]')].filter(i=>i.checked).map(i=>i.dataset.morning);
-  try{ await savePreferences({...XP.prefs, morning}); paintMorning(); track('rhythm_morning', morning.join('|')||'none'); }
-  catch(e){ toast('Не удалось сохранить выбор — его можно поменять на «Сегодня»'); }
-  finally{ btn.disabled=false; rhythmStep(2); }
 }
 async function rhythmEnable(){
   if(rhythmEnable.busy)return;rhythmEnable.busy=true;const btn=$('rh-go');btn.disabled=true;btn.textContent='Включаем…';
@@ -1791,9 +1867,13 @@ async function rhythmEnable(){
     track('rhythm_enable',chosen.join('|'));
     if(chosen.length&&device)toast('Напоминания включены');
   }catch(e){toast('Не удалось сохранить напоминания — их можно включить в Аккаунте');}
-  finally{rhythmEnable.busy=false;btn.disabled=false;btn.textContent='Включить напоминания';go('home');}
+  finally{rhythmEnable.busy=false;btn.disabled=false;btn.textContent='Включить напоминания';rhythmLater();go(rhythmBack);}
 }
-function rhythmSkip(){track('rhythm_enable','none');go('home');}
+function rhythmSkip(){track('rhythm_enable','none');rhythmLater();go(rhythmBack);}
+/* строка «Напомнить вечером?» в записанном дне показывается, пока мастер не открывали; после — только Аккаунт → Уведомления */
+const rhythmLaterKey=()=>'lun_rhythm_seen_'+(S.user?.id||0);
+function rhythmLater(){ try{ localStorage.setItem(rhythmLaterKey(),'1'); }catch(e){} }
+function rhythmSeen(){ try{ return localStorage.getItem(rhythmLaterKey())==='1'; }catch(e){ return false; } }
 
 function loadReminders(force){
   if (S.rem && !force) return Promise.resolve(S.rem);
@@ -2366,7 +2446,7 @@ function pcSmiley(ctx, mood, cx, cy, size){
   ctx.stroke(new Path2D(MOUTH[moodFace(mood)])); ctx.restore();
 }
 
-/* ══════════ «Разобрать вопрос»: тема или свой вопрос своими словами, инструмент ответа выбирается тут же ══════════ */
+/* ══════════ «Ответить себе на вопрос»: тема или свой вопрос своими словами, инструмент ответа выбирается тут же ══════════ */
 const HUB_TOPICS=[['Отношения','Что мне сейчас важно в отношениях?'],['Работа и деньги','Что мне важно понять о работе или деньгах?'],['Решение','Какое решение мне сейчас подходит?'],['Тревога','Что стоит за моей тревогой сейчас?'],['Отношение к себе','Что мне сейчас важно услышать о себе?'],['Другое','Что мне важно понять сейчас?']];
 const HUB_OPTS=[['rune','rune','Руна','one'],['runes3','rune','Три руны','three'],['spread','tarot','Три карты','three'],['fork','tarot','Выбор','fork']];
 const hubDraft={text:'',topic:null,kind:'rune'};

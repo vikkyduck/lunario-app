@@ -59,11 +59,10 @@ html[data-skin=compact] body.inner #morning-feed>:last-child:nth-child(odd){grid
 html[data-skin=compact] body.inner #v-home .compact-brand{font-size:26px;line-height:1.2}
 html[data-skin=compact] body.inner #v-home .hdr{margin-bottom:4px}
 html[data-skin=compact] body.inner #h-date{font-size:12px}
-html[data-skin=compact] body.inner .home-intro{display:grid;grid-template-columns:minmax(0,1fr) 56px;grid-template-areas:"theme moon" "wish moon" "actions actions";gap:4px 14px;align-items:center;margin:12px 0 0;padding:16px 18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--ck-radius)}
+html[data-skin=compact] body.inner .home-intro{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"theme" "wish" "actions";gap:4px 14px;align-items:center;margin:14px 0 0;padding:16px 18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--ck-radius)}
 html[data-skin=compact] body.inner .home-intro .daily-statement{display:contents}
 html[data-skin=compact] body.inner #h-theme{grid-area:theme;margin:0;font-size:11px;letter-spacing:.12em;color:var(--gold)}
 html[data-skin=compact] body.inner .home-intro #h-wish{grid-area:wish;font-size:21px;line-height:1.35;font-weight:600;margin:0}
-html[data-skin=compact] .home-moon{grid-area:moon;width:56px;height:56px;opacity:1;align-self:start}
 html[data-skin=compact] body.inner .hero-actions{grid-area:actions;margin:6px 0 0;gap:2px 16px;justify-content:flex-start}
 html[data-skin=compact] body.inner .hero-actions .text-action{min-height:32px;padding:4px 0;font-size:13px}
 html[data-skin=compact] body.inner .hero-actions .ico{display:none}
@@ -187,3 +186,13 @@ html[data-skin=compact] body.inner .mini-grid .wid>span:not(.dot){text-align:lef
 html[data-skin=compact] body.inner .home-push{margin-top:12px}
 html[data-skin=compact] body.inner .home-push[hidden]{display:none}
 html[data-skin=compact] body.inner .home-push .later-row{border-color:rgba(240,215,154,.35)}
+
+/* ── Антиква ритуала (по разбору референсов 19.09): только там, где приложение «говорит» — настрой дня, заголовки разделов,
+   заголовки панелей, имена карт, рун и лунных дней, приветствие. Кнопки, строки и подписи остаются в Onest. ── */
+html[data-skin=compact] body.inner :is(#v-ask,#v-history,#v-about)>h1{font-family:var(--serif);font-size:32px;line-height:1.1;font-weight:600;letter-spacing:0}
+html[data-skin=compact] body.inner .home-intro #h-wish{font-family:var(--serif);font-size:25px;line-height:1.3;font-weight:500;letter-spacing:0}
+html[data-skin=compact] body.inner .wg-head h2{font-family:var(--serif);font-size:28px;line-height:1.15;font-weight:600;letter-spacing:0}
+html[data-skin=compact] body.inner :is(.title-gold,.ln-title){font-family:var(--serif);font-size:26px;line-height:1.2;font-weight:600;letter-spacing:0}
+html[data-skin=compact] body.inner .practice-header h1{font-family:var(--serif);font-size:28px;font-weight:600;letter-spacing:0}
+html[data-skin=compact] #v-hello .hello-claim{font-family:var(--serif);font-size:34px;line-height:1.1;font-weight:500;letter-spacing:0}
+html[data-skin=compact] :is(#v-onb,#v-login,#v-rhythm) h1:not(.wordmark){font-family:var(--serif);font-size:32px;line-height:1.1;font-weight:600;letter-spacing:0}

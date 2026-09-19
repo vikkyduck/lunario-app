@@ -1,6 +1,6 @@
 /* ── Луна с обложки: рисуется один раз с настоящей фазой на сегодня; дыхание и искры — в CSS ── */
 (function () {
-  const canvases = [...document.querySelectorAll('canvas[data-brand-moon], #moonToday')];
+  const canvases = [...document.querySelectorAll('canvas[data-brand-moon], #moonToday, #moonHero')];   /* #moonHero — герой на «Сегодня», та же луна крупно */
   if (!canvases.length) return;
   let phase = 0.42;                        /* пока данных нет — молодая растущая луна */
 
@@ -78,7 +78,8 @@
     const ctx = cv.getContext('2d');
     if (!ctx || (ctx.isContextLost && ctx.isContextLost())) return;   /* контекст потерян — дорисуем по contextrestored */
     const R = S * 0.34, Rp = R * dpr;
-    const p = phase * Math.PI * 2, c = Math.cos(p), waxing = phase < 0.5, sign = waxing ? 1 : -1;
+    const ph = cv.dataset.phase !== undefined ? +cv.dataset.phase : phase;   /* полоска недели: у каждого холста своя фаза в data-phase */
+    const p = ph * Math.PI * 2, c = Math.cos(p), waxing = ph < 0.5, sign = waxing ? 1 : -1;
     /* всё рисуем в устройственных пикселях; при убывающей луне зеркалим по x — свет на текстуре всегда справа */
     const litPath = (g) => { g.beginPath(); g.arc(0, 0, Rp, -Math.PI / 2, Math.PI / 2, false); g.ellipse(0, 0, Math.max(0.001, Rp * Math.abs(c)), Rp, 0, Math.PI / 2, -Math.PI / 2, c > 0); g.closePath(); };
 
@@ -169,6 +170,8 @@
   document.addEventListener('visibilitychange', refreshLogos);
   refreshLogos();
   window.moonSetPhase = function (p) { if (typeof p === 'number' && p >= 0 && p <= 1) phase = p; drawAll(); };
+  /* нарисовать луну с заданной фазой в любой холст (полоска недели на «Сегодня»); холст должен иметь атрибут width */
+  window.moonPaint = function (cv, p) { if (!cv) return; cv.dataset.phase = String(Math.min(1, Math.max(0, +p || 0))); draw(cv); };
   /* Chrome в фоне «усыпляет» холсты и может потерять их 2D-контекст; без обработчика на месте луны
      остаётся серый квадрат с «сломанной картинкой». Просим контекст обратно и рисуем заново. */
   canvases.forEach((cv) => {

@@ -814,7 +814,7 @@ try {
       await page.locator('#t-moods .mchip').filter({hasText:/^восхищение$/}).click();
       await page.waitForFunction(()=>document.querySelector('#t-moods .mpick').textContent.includes('восхищение'));
       await close();
-      await page.locator('.app-nav [data-nav=ask]').click();await page.locator('#v-ask').getByRole('button',{name:'Разобрать вопрос',exact:true}).click();
+      await page.locator('.app-nav [data-nav=ask]').click();await page.locator('#v-ask').getByRole('button',{name:'Ответить себе на вопрос',exact:true}).click();
       const question=await page.locator('#hub-chips .chip').first().innerText();
       await page.locator('#hub-chips .chip').first().click();
       assert.equal(await page.locator('#hub-q').inputValue(),'Что мне сейчас важно в отношениях?');
@@ -860,7 +860,7 @@ try {
       await page.evaluate(()=>go('news'));await page.locator('#news-box .wid').first().waitFor();   /* paintNews асинхронный: ждём плитки */
       assert.equal(await page.locator('#news-soon').isHidden(), !(await page.evaluate(()=>(CAT?.news||[]).some(n=>n.soon))));
       await page.evaluate(()=>go('ask'));
-      assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Разобрать вопрос','Да / Нет','Руны','Таро']);
+      assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Ответить себе на вопрос','Да / Нет','Руны','Таро']);
       console.log('PASS: all four main sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');
       assert.deepEqual(errors, []);
       console.log('PASS: existing profile/wish photo uploads and reloads, habit/askesis navigation, saved notes, failed-request draft protection and visible feedback in the mobile UI.');

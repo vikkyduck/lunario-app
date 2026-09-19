@@ -14,14 +14,20 @@ export async function checkNotificationUI({browser,base,owner,other}) {
     assert.equal(await page.evaluate(()=>Notification.permission),'default');
   } finally {await fresh.close();}
 
-  /* После анкеты — экран трёх напоминаний: первое, что человек настраивает; выбор уходит в Аккаунт → Уведомления */
+  /* Анкета по шагам → сразу «Сегодня» (без мастера, решение 19.09); мастер напоминаний открывается позже — здесь вызываем его
+     напрямую, как строка «Напомнить вечером?» в записанном дне; выбор уходит в Аккаунт → Уведомления */
   const onb=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
   try {
     const page=await onb.newPage();await page.goto(base+'/');await page.waitForSelector('#v-hello.on');
-    await page.getByRole('button',{name:/Создать профиль/}).click();await page.waitForSelector('#v-onb.on');
-    await page.locator('#o-name').fill('Ритм');await page.locator('#o-birth').fill('1992-02-02');await page.locator('#o-city').fill('Москва');await page.locator('#o-consent').check();
-    await page.locator('#o-go').click();await page.waitForSelector('#v-rhythm.on');
-    assert.deepEqual(await page.locator('#v-rhythm .rhythm-row b').allTextContents(),['Утро','Вечер','Неделя']);
+    await page.getByRole('button',{name:/Открыть мой день/}).click();await page.waitForSelector('#v-onb.on');
+    await page.locator('#o-name').fill('Ритм');await page.locator('#o-form .ob-step:not([hidden]) .btn').click();
+    await page.locator('#o-birth').fill('1992-02-02');await page.locator('#o-form .ob-step:not([hidden]) .btn').click();
+    await page.locator('[data-on="click:obSkipTime"]').click();
+    await page.locator('#o-city').fill('Москва');await page.locator('#o-form .ob-step:not([hidden]) .btn').click();
+    await page.locator('#o-consent').check();
+    await page.locator('#o-go').click();await page.waitForSelector('#v-home.on');
+    await page.evaluate(()=>openRhythm('home'));await page.waitForSelector('#v-rhythm.on');
+    assert.deepEqual(await page.locator('#v-rhythm .rhythm-row b').allTextContents(),['Утро','Вечер','Воскресенье']);
     assert.equal(await page.locator('.app-nav').evaluate(e=>getComputedStyle(e).display),'none','no bottom tabs on the onboarding step');
     await page.locator('#rh-time-evening').fill('20:30');await page.locator('#rh-week').uncheck();
     await page.locator('#rh-go').click();await page.waitForSelector('#v-home.on');

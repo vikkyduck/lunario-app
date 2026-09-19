@@ -240,7 +240,7 @@ export function natalChart({ birth, time, tzOffsetMin = 0, lat = null, lon = nul
   const planets = BODIES.filter(([k]) => bodies[k]).map(([k, name, sym]) => {
     const b = bodies[k], p = place(b.lon);
     const retro = ['sun', 'moon'].includes(k) ? false : norm(later[k].lon - b.lon + 180) - 180 < 0;
-    return { key: k, name, symbol: sym, ...p, lat: Math.round((b.lat || 0) * 100) / 100, retro, house: cuspLons ? houseOf(b.lon, cuspLons) : null, source: src[k] };
+    return { key: k, name, ...p, signSymbol: p.symbol, symbol: sym, lat: Math.round((b.lat || 0) * 100) / 100, retro, house: cuspLons ? houseOf(b.lon, cuspLons) : null, source: src[k] };
   });
   /* точки: Парс Фортуны (день: Asc + Луна − Солнце; ночь: Asc + Солнце − Луна) и Вертекс — только при известных домах */
   if (houses) {
@@ -252,7 +252,7 @@ export function natalChart({ birth, time, tzOffsetMin = 0, lat = null, lon = nul
   const points = POINTS.filter(([k]) => bodies[k]).map(([k, name, sym]) => {
     const b = bodies[k], p = place(b.lon);
     const retro = k === 'node' || k === 'snode' ? norm(later.node.lon - bodies.node.lon + 180) - 180 < 0 : false;
-    return { key: k, name, symbol: sym, ...p, retro, note: b.note || '', house: cuspLons ? houseOf(b.lon, cuspLons) : null };
+    return { key: k, name, ...p, signSymbol: p.symbol, symbol: sym, retro, note: b.note || '', house: cuspLons ? houseOf(b.lon, cuspLons) : null };
   });
   const aspects = [];
   const main = planets.filter((p) => p.key !== 'chiron');

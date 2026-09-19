@@ -1,6 +1,6 @@
 /* Подсказки по приложению — экскурсия по живому экрану (решение владелицы 18.09: «как в Клабс», но по нажатию, не сама).
    Каждый шаг подсвечивает элемент кольцом и ставит рядом карточку «N / 8 · текст · Пропустить · Далее».
-   Короткий тур (три вкладки) — со строки «Где что» на «Сегодня», полный — из Аккаунта. Что уже видели — preferences.tour и localStorage. */
+   Короткий тур (три вкладки) — со строки «Подсказки» на «Сегодня», полный — из Аккаунта. Что уже видели — preferences.tour и localStorage. */
 const TOUR_V = 2;
 /* Полный тур — Аккаунт → «Подсказки по приложению». Короткий («где что», три вкладки) — строка на «Сегодня». */
 const TOUR_STEPS = [
@@ -17,11 +17,11 @@ const Tour = { i: -1, root: null, timer: 0, steps: TOUR_STEPS };
 
 const tourKey = () => 'lun_tour_' + (S.user?.id || '');
 function tourSeen(){ try { return Number(localStorage.getItem(tourKey())) >= TOUR_V || Number(XP.prefs?.tour) >= TOUR_V; } catch { return Number(XP.prefs?.tour) >= TOUR_V; } }
-/* Строка «Где что» на «Сегодня» — пока короткий тур не смотрели; сам по себе тур не запускается */
+/* Строка «Подсказки» на «Сегодня» — пока короткий тур не смотрели; сам по себе тур не запускается */
 function paintTourRow(){
   const box = $('home-tour'); if (!box) return;
   const due = !!S.user && !tourSeen() && !(S.daysTotal >= 3); box.hidden = !due;   /* три записанных дня — человек и так знает, где что */
-  box.innerHTML = due ? `<button data-on="click:tourShort" class="later-row" id="tour-row" type="button"><span class="eyebrow">Где что</span><b>Дневник · Свериться с собой · Обо мне</b><span class="later-go">Показать за 20 секунд →</span></button>` : '';
+  box.innerHTML = due ? `<button data-on="click:tourShort" class="later-row" id="tour-row" type="button"><span class="eyebrow">Подсказки</span><b>Как устроено приложение</b><span class="later-go">За 20 секунд →</span></button>` : '';
 }
 function tourMaybe(){ clearTimeout(Tour.timer); Tour.timer = setTimeout(paintTourRow, 300); }
 function tourStart(manual, mode){
