@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=78"></script>
+<script src="/app/boot.js?v=79"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -143,7 +143,14 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .day-card .dc-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .day-card .dc-head .text-action{min-height:32px;padding:0;font-size:13px}
 .dc-dots{display:flex;gap:6px;margin:10px 0 14px}.dc-dots i{flex:0 0 22px;height:4px;border-radius:2px;background:var(--line)}.dc-dots i.done{background:rgba(217,184,104,.45)}.dc-dots i.on{background:var(--gold)}
+.dc-names{display:flex;flex-wrap:wrap;gap:0 6px;margin:-8px 0 14px;font-size:12px;color:var(--faint);line-height:1.5}.dc-names span.on{color:var(--gold-2);font-weight:600}.dc-names span.done{color:var(--muted)}.dc-names i{font-style:normal;color:var(--line)}
 .dc-echo{margin:0 0 8px;font-size:13px;color:var(--muted);line-height:1.45}.dc-echo b{color:var(--text-2);font-weight:500}
+/* строка «Вечером записываю: …» под карточкой и предложение шага после сохранения */
+.evening-set{margin:10px 2px 0;font-size:13px;color:var(--muted);line-height:1.6}.evening-set b{font-weight:500;color:var(--text-2)}.evening-set .es-label{color:var(--faint)}
+.evening-set .text-action{min-height:28px;padding:0 0 0 6px;font-size:13px}.evening-set .chip.fixed{opacity:.75}
+.dc-offer{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.35);font-size:14px;line-height:1.5;color:var(--text-2)}.dc-offer p{margin:0}.dc-offer .eyebrow{margin-bottom:4px}
+body.inner .dc-offer .hint{margin:0;font-size:13px;line-height:1.45;color:var(--muted);font-weight:400}
+.dc-offer-actions{display:flex;align-items:center;gap:14px;margin-top:10px}.dc-offer-actions .btn.sm{min-height:40px}
 .dc-q{margin:0 0 12px;font-size:21px;font-weight:600;line-height:1.3;letter-spacing:-.01em;color:var(--text)}
 .dc-sub{margin:-6px 0 12px;font-size:13px;color:var(--faint)}
 .dc-wrap{position:relative}.dc-wrap textarea{width:100%;padding-right:48px}
@@ -724,11 +731,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=78">
-<link rel="stylesheet" href="/app/experience.css?v=78">
-<link rel="stylesheet" href="/app/moon-glass.css?v=78">
-<link rel="stylesheet" href="/app/compact.css?v=78">
-<link rel="stylesheet" href="/app/frame.css?v=78">
+<link rel="stylesheet" href="/app/theme.css?v=79">
+<link rel="stylesheet" href="/app/experience.css?v=79">
+<link rel="stylesheet" href="/app/moon-glass.css?v=79">
+<link rel="stylesheet" href="/app/compact.css?v=79">
+<link rel="stylesheet" href="/app/frame.css?v=79">
 </head>
 <body>
 <!-- статус-бар корпуса телефона на компьютере (frame.css); часы ставит app.js -->
@@ -882,12 +889,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <!-- Карточка сегодняшнего дня — по шагам: один вопрос на экран, «Дальше», в конце — праздник и день в режиме чтения.
          Все рисует paintDayCard(); ни один шаг не обязателен, пустое не сохраняется -->
     <section class="card day-card" id="day-card" aria-live="polite"></section>
+    <!-- из чего собран вечер: база + выбранные инструменты; «Изменить» разворачивает чипы на месте (paintEveningSet) -->
+    <div class="evening-set" id="evening-set"></div>
     <!-- Прошлые дни — по строке на день: число, первая фраза, настроение, что еще записано. Тап — день целиком -->
     <section class="feature-group past-days" id="past-days"><div class="sec-head"><h2>Прошлые дни</h2><button data-on="click:openWidget-days" class="text-action" id="days-all" type="button">Все дни →</button></div>
       <div class="days-strip" id="days-strip" aria-label="Настроение за две недели"></div>
       <div class="days-list" id="days-list"></div></section>
-    <section class="feature-group" id="diary-tools"><h2>Инструменты</h2><div class="wids list-rows">
-<button data-on="click:openWidget-habits" class="wid" data-feature="habits" type="button"><i class="ico check"></i><b>Дневник привычек</b><span data-status="habits">Свой ритм и ежедневные отметки</span></button><button data-on="click:openWidget-askesis" class="wid" data-feature="askesis" type="button"><i class="ico flag"></i><b>Взять аскезу</b><span data-status="askesis">Отказ до своей даты, заметки по желанию</span></button><button data-on="click:openWidget-wishes" class="wid" data-feature="wishes" type="button"><i class="ico heart"></i><b>Мои желания</b><span data-status="wishes">Фото и планы</span></button><button data-on="click:openWidget-hmood" class="wid" data-feature="hmood" type="button"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button><button data-on="click:openWidget-week" class="wid" data-feature="week" type="button"><i class="ico calendar"></i><b>Моя неделя</b><span>Про что она была</span></button><button data-on="click:openWidget-tools" class="wid" data-feature="tools" type="button"><i class="ico list"></i><b>Выбрать инструменты</b><span>Добавить или убрать</span></button></div></section>
+    <section class="feature-group" id="diary-tools"><h2>Еще в дневнике</h2><div class="wids list-rows">
+<button data-on="click:openWidget-week" class="wid" type="button"><i class="ico calendar"></i><b>Моя неделя</b><span>Про что она была</span></button><button data-on="click:openWidget-habits" class="wid" data-feature="habits" type="button"><i class="ico check"></i><b>Дневник привычек</b><span data-status="habits">Свой ритм и ежедневные отметки</span></button><button data-on="click:openWidget-askesis" class="wid" data-feature="askesis" type="button"><i class="ico flag"></i><b>Аскезы</b><span data-status="askesis">Отказ до своей даты, заметки по желанию</span></button><button data-on="click:openWidget-wishes" class="wid" type="button"><i class="ico heart"></i><b>Мои желания</b><span data-status="wishes">Фото и планы</span></button><button data-on="click:openWidget-hmood" class="wid" type="button"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button></div></section>
   </section>
   <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div></section>
   <section class="view" id="v-news"><button data-on="click:go-account" class="back" type="button">← Аккаунт</button>
@@ -1039,14 +1048,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=78"></script>
+<script src="/app/moon-logo.js?v=79"></script>
 
-<script type="module" src="/app/sky.js?v=78"></script>
+<script type="module" src="/app/sky.js?v=79"></script>
 
-<script src="/app/experience.js?v=78"></script>
-<script src="/app/app.js?v=78"></script>
-<script src="/app/tour.js?v=78"></script>
-<script src="/app/handlers.js?v=78"></script>
-<script src="/app/on.js?v=78"></script>
+<script src="/app/experience.js?v=79"></script>
+<script src="/app/app.js?v=79"></script>
+<script src="/app/tour.js?v=79"></script>
+<script src="/app/handlers.js?v=79"></script>
+<script src="/app/on.js?v=79"></script>
 </body>
 </html>

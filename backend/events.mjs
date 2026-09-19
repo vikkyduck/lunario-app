@@ -68,6 +68,11 @@ export const EVENTS = [
   E('reminder_off', 'Выключил напоминание', 'server'),
   E('reminder_test', 'Прислал пробное напоминание', 'server'),
   E('push_on', 'Подключил устройство к уведомлениям', 'server'),
+  E('day_open', 'Открыл прошлый день', 'client', { section: 'Дневник', title: 'Прошлые дни' }),
+  E('bridge_view', 'Увидел «мост» из прошлого', 'client'),
+  E('tool_offer_show', 'Увидел предложение шага вечера', 'client'),   /* деталь — ключ шага; предложения — после сохранения дня */
+  E('tool_offer_accept', 'Добавил шаг вечера из предложения', 'client', { section: 'Дневник', title: 'Шаги вечера' }),
+  E('tool_offer_dismiss', 'Отложил предложение шага', 'client'),
   E('install_prompt', 'Увидел «Установить»', 'client'),
   E('installed', 'Установил на телефон', 'client', { section: 'Аккаунт', title: 'Установка на телефон' }),
   E('support_new', 'Написал в поддержку', 'server', { section: 'Аккаунт', title: 'Чат поддержки' }),

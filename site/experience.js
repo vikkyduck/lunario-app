@@ -53,13 +53,16 @@ async function saveTheme(theme){
   try{await savePreferences({...XP.prefs,theme});applyTheme(theme);paintAppearance();$('theme-state').textContent='Тема сохранена';}
   catch{toast('Не удалось сохранить тему. Попробуйте еще раз');}finally{saveTheme.busy=false;}
 }
-/* ── Инструменты: что человек оставил на «Сегодня» и в «Дневнике». Список — prefs.tools; нет списка — стартовый набор из
-   каталога плюс прежний «ритуал» (чтобы у тех, кто уже пользуется, ничего не пропало). Только видимость: записи и напоминания не трогаются ── */
+/* ── Инструменты: что человек оставил в «Дневнике». Список — prefs.tools; нет списка — стартовый набор из каталога (сейчас пустой:
+   вечер начинается с записи и настроения, остальное предлагается по одному). Прежний «ритуал» сюда больше не подмешивается —
+   у кого была благодарность по ритуалу, получит ее предложением после ближайшей записи. Только видимость: записи не трогаются ── */
 const toolCatalog=()=>(CAT&&CAT.tools)||[];
 function toolsVisible(){
   if(Array.isArray(XP.prefs.tools))return new Set(XP.prefs.tools);
-  return new Set([...toolCatalog().filter(t=>t.start).map(t=>t.key),...(XP.prefs.ritual||[])]);
+  return new Set(toolCatalog().filter(t=>t.start).map(t=>t.key));
 }
+/* Прячутся только страницы шагов-инструментов (привычки, аскеза — data-feature в разметке); полки — неделя, желания, история настроений —
+   видны всегда: прятать чтение и породило «узнаю, только если прокручу вниз и раскрою список» */
 function applyTools(){
   const vis=toolsVisible(),keys=new Set(toolCatalog().map(t=>t.key));
   document.querySelectorAll('#v-history [data-feature]').forEach(el=>{const k=el.dataset.feature;if(keys.has(k))el.hidden=!vis.has(k);});

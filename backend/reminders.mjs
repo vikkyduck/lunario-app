@@ -180,9 +180,10 @@ export function eveningKey(d) {
   const n = Math.floor(Date.parse(d + 'T12:00:00Z') / 864e5);
   return keys[n % keys.length] || 'evening';
 }
-/* День записан словами или настроением — то, о чем спрашивает вечер; привычки и аскезы сюда не входят */
+/* День записан вечером — пара строк или настроение, то, о чем спрашивает вечер; утренний ответ на вопрос дня с «Сегодня»,
+   благодарность, привычки и аскезы вечерний пуш не глушат */
 export function dayWritten(userId, d) {
-  return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' LIMIT 1").get(userId, d)
+  return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = '' LIMIT 1").get(userId, d)
     || db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d));
 }
 export function dayRemembered(userId, d) {

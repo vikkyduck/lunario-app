@@ -61,14 +61,15 @@ export function createDay({ db, seal, open, C, habitList, askesisList, track, to
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
   function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {
-    if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u.id, addDays(d, -i))); return { items: out, next: null }; }
+    const total = db.prepare(`SELECT COUNT(*) c FROM (SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' AND day < ? UNION SELECT day FROM moods WHERE user_id = ? AND day < ?)`).get(u.id, d, u.id, d).c;   /* записанных дней до сегодня — по нему предлагаются шаги вечера */
+    if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u.id, addDays(d, -i))); return { items: out, next: null, total }; }
     const cut = before && /^\d{4}-\d{2}-\d{2}$/.test(before) ? before : d;
     const found = db.prepare(`SELECT day FROM (
       SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' UNION SELECT day FROM moods WHERE user_id = ? UNION SELECT day FROM mood_marks WHERE user_id = ?
       UNION SELECT m.day FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? UNION SELECT n.day FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ?)
       WHERE day < ? ORDER BY day DESC LIMIT ?`).all(u.id, u.id, u.id, u.id, u.id, cut, limit + 1).map((r) => r.day);
     const page = found.slice(0, limit);
-    return { items: page.map((x) => summary(u.id, x)), next: found.length > limit ? page[page.length - 1] : null, total: db.prepare("SELECT COUNT(DISTINCT day) c FROM journal WHERE user_id = ? AND kind <> 'weekly'").get(u.id).c };
+    return { items: page.map((x) => summary(u.id, x)), next: found.length > limit ? page[page.length - 1] : null, total };
   }
 
   /* «Мост» — одна строка из прошлого, дословно, без ИИ: ответ на тот же вопрос дня, запись неделю назад или вчерашнее настроение */

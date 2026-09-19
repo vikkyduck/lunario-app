@@ -611,6 +611,7 @@ const obAuthIdle = () => `<button data-on="click:auth-step-email-paintAuth" clas
 /* all — отозвать сессии на всех устройствах: если телефон потерян или код входа попал не в те руки */
 async function logout(all){
   if(!confirm(all?'Выйти на всех устройствах? Везде понадобится заново войти по коду; записи останутся в аккаунте.':'Выйти на этом устройстве? Записи останутся в аккаунте и вернутся при следующем входе.')) return;
+  try{ localStorage.removeItem(dcDraftKey()); localStorage.removeItem(offerKey()); }catch(e){}   /* черновик дня и память предложений — этого аккаунта */
   await api(all?'/auth/logout-all':'/auth/logout',{method:'POST'});
   location.reload();
 }
@@ -835,27 +836,37 @@ async function obSendCode(email){
 
 /* ── разделы: данные подгружаются при входе ── */
 /* На экране «Дневник» видны лента и счетчик желаний; итоги, вопросы и записи виджеты грузят сами при открытии */
-function loadHistory(){ loadWishes(); loadDayCard(); loadDays(); paintWeekTop(); }
+function loadHistory(){ loadWishes(); loadDayCard(); loadDays(); paintWeekTop(); paintEveningSet(); }
 
 /* ══════════ Карточка дня «Запомнить этот день» — по шагам (решение владелицы 18.09): один вопрос на экран, «Дальше», в конце
    праздник и день в режиме чтения. Данные — те же типы и тот же один запрос POST /api/day, что и раньше; ни один шаг не обязателен,
    пустое не сохраняется. Черновик живет в localStorage до сохранения: звонок в 21:03 не стирает написанное. ══════════ */
-const DC={state:null,mode:'steps',step:0,text:'',gratitude:'',answer:'',moods:new Set(),own:'',ownOpen:false,habits:new Map(),askesis:new Map(),echo:'',bridge:undefined,dirty:false};
+const DC={state:null,mode:'steps',step:0,text:'',gratitude:'',answer:'',moods:new Set(),own:'',ownOpen:false,habits:new Map(),askesis:new Map(),touched:{habits:new Set(),askesis:new Set()},echo:'',bridge:undefined,dirty:false};
+/* Шаги вечера. База — «пара строк» и настроение, у всех и всегда. Остальное — инструменты: благодарность, привычки, аскеза
+   включаются в строке «Вечером записываю» (preferences.tools), вопрос дня следует за утренней плиткой «Вопрос дня» (один выбор —
+   два места). Порядок фиксированный, от легкого к трудному; человек выбирает состав, не очередность. */
+const STEP_ORDER=['text','mood','gratitude','answer','habits','askesis'];
+const STEP_NAME={text:'Запись',mood:'Настроение',gratitude:'Благодарность',answer:'Вопрос дня',habits:'Привычки',askesis:'Аскеза'};
+const STEP_TOOLS=['gratitude','habits','askesis'];   /* шаги, которые живут в каталоге инструментов; answer — за утренней плиткой tone */
 const DC_Q={text:'Что хочется оставить от этого дня?',mood:'Как вы сегодня?',gratitude:'Кому и за что вы сегодня благодарны?',answer:'Вопрос дня',habits:'Привычки сегодня',askesis:'Аскеза'};
 const DC_PLACEHOLDER={text:'Пара строк — хватит. Что произошло, что почувствовали, что хочется помнить…',gratitude:'Человеку, случаю или себе — одной фразы достаточно',answer:'Как есть, своими словами'};
 const ECHO_LABEL={yes:'Отозвалось',no:'Не связано',unsure:'Не уверена'};
 const MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 /* «пятница, 18 сентября» — как на «Сегодня»; cap — с заглавной для заголовков */
 const fmtDayWords=(d,cap=false)=>{const s=new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});return cap?s[0].toUpperCase()+s.slice(1):s;};
-const dcDraftKey=()=>'lun_dc_draft';
-function dcSaveDraft(){ if(!DC.state)return; try{ localStorage.setItem(dcDraftKey(),JSON.stringify({day:DC.state.day,step:DC.step,text:DC.text,gratitude:DC.gratitude,answer:DC.answer,moods:[...DC.moods],own:DC.own,echo:DC.echo,mode:DC.mode})); }catch(e){} }
+const stepOn=(key)=>key==='text'||key==='mood'?true:key==='answer'?morningChosen().includes('tone'):toolsVisible().has(key);
+const eveningStepsOn=()=>STEP_ORDER.filter(stepOn);
+/* черновик — свой у каждого аккаунта на устройстве, шаг по имени (состав шагов может меняться) */
+const dcDraftKey=()=>'lun_dc_draft_'+(S.user?.id||0);
+function dcSaveDraft(){ if(!DC.state)return; try{ localStorage.setItem(dcDraftKey(),JSON.stringify({day:DC.state.day,stepKey:(dcSteps()[DC.step]||{}).key||'text',text:DC.text,gratitude:DC.gratitude,answer:DC.answer,moods:[...DC.moods],own:DC.own,echo:DC.echo,
+  habits:[...DC.touched.habits].map(id=>[id,!!DC.habits.get(id)]),askesis:[...DC.touched.askesis].map(id=>[id,DC.askesis.get(id)])})); }catch(e){} }
 function dcLoadDraft(day){ try{ const d=JSON.parse(localStorage.getItem(dcDraftKey())||'null'); return d&&d.day===day?d:null; }catch(e){ return null; } }
 function dcClearDraft(){ try{ localStorage.removeItem(dcDraftKey()); }catch(e){} }
 const dcWritten=(s)=>!!(s&&(s.text||s.gratitude||s.answer||s.moods.length));
-async function loadDayCard(){
+async function loadDayCard(keepStep=false){
   const box=$('day-card'); if(!box)return;
   if(!DC.state)box.innerHTML='<p class="hint">Загружаем сегодняшний день…</p>';
-  try{ DC.state=await api('/day'); dcFromState(); paintDayCard(); }
+  try{ const wasStep=DC.step, wasMode=DC.mode; DC.state=await api('/day'); dcFromState(); if(keepStep){DC.step=wasStep;DC.mode=wasMode;} paintDayCard(); paintEveningSet(); }
   catch(e){ box.innerHTML='<p class="hint">Не удалось загрузить сегодняшний день.</p><button data-on="click:loadDayCard" class="btn ghost sm mt-3" type="button">Повторить</button>'; }
 }
 /* Значения с сервера + черновик; записанный день без черновика открывается для чтения */
@@ -863,19 +874,28 @@ function dcFromState(){
   const s=DC.state, draft=dcLoadDraft(s.day);
   DC.text=s.text?s.text.text:''; DC.gratitude=s.gratitude?s.gratitude.text:''; DC.answer=s.answer?s.answer.text:'';
   DC.moods=new Set(s.moods.filter(m=>!m.startsWith('own:'))); DC.own=s.moods.filter(m=>m.startsWith('own:')).map(m=>m.slice(4)).join(', '); DC.ownOpen=!!DC.own;
-  DC.habits=new Map(s.habits.map(h=>[h.id,h.today])); DC.askesis=new Map(s.askesis.map(a=>[a.id,{kept:a.kept,note:a.note}])); DC.echo=s.echo||'';
-  if(draft){ for(const k of ['text','gratitude','answer','own'])if(draft[k])DC[k]=draft[k]; if(draft.moods?.length)DC.moods=new Set([...DC.moods,...draft.moods]); if(draft.echo)DC.echo=draft.echo; DC.ownOpen=!!DC.own; DC.step=Math.max(0,draft.step|0); DC.mode='steps'; DC.dirty=true; }
-  else { DC.step=0; DC.dirty=false; DC.mode=dcWritten(s)?'done':'steps'; }
+  DC.habits=new Map(s.habits.map(h=>[h.id,h.today])); DC.askesis=new Map(s.askesis.map(a=>[a.id,{kept:a.kept,note:a.note}])); DC.touched={habits:new Set(),askesis:new Set()}; DC.echo=s.echo||'';
+  if(draft){
+    for(const k of ['text','gratitude','answer','own'])if(draft[k])DC[k]=draft[k]; if(draft.moods?.length)DC.moods=new Set([...DC.moods,...draft.moods]); if(draft.echo)DC.echo=draft.echo; DC.ownOpen=!!DC.own;
+    for(const [id,done] of draft.habits||[]){ if(DC.habits.has(id)){DC.habits.set(id,done);DC.touched.habits.add(id);} }
+    for(const [id,v] of draft.askesis||[]){ if(DC.askesis.has(id)&&v){DC.askesis.set(id,v);DC.touched.askesis.add(id);} }
+    const i=dcSteps().findIndex(st=>st.key===draft.stepKey); DC.step=Math.max(0,i); DC.mode='steps'; DC.dirty=true;
+  } else { DC.step=0; DC.dirty=false; DC.mode=dcWritten(s)?'done':'steps'; }
 }
+/* Шаги сегодняшнего вечера: база + включенные инструменты. Привычки: включены, а привычек нет — шаг предлагает завести первую;
+   есть, но сегодня ничего не по расписанию — шага нет. Аскеза — так же. */
 function dcSteps(){
-  const s=DC.state, steps=[{key:'text'},{key:'mood'},{key:'gratitude'},{key:'answer'}];
-  if(s.habits.some(h=>h.due||h.rule==='free'||h.today))steps.push({key:'habits'});
-  if(s.askesis.length)steps.push({key:'askesis'});
-  return steps;
+  const s=DC.state, out=[];
+  for(const key of eveningStepsOn()){
+    if(key==='habits'){ if(!s.habits.length)out.push({key,create:true}); else if(s.habits.some(h=>h.due||h.rule==='free'||h.today))out.push({key}); continue; }
+    if(key==='askesis'){ out.push(s.askesis.length?{key}:{key,create:true}); continue; }
+    out.push({key});
+  }
+  return out;
 }
 function dcFilled(key){
   if(key==='text')return !!DC.text.trim(); if(key==='gratitude')return !!DC.gratitude.trim(); if(key==='answer')return !!DC.answer.trim();
-  if(key==='mood')return DC.moods.size>0||!!DC.own.trim(); if(key==='habits')return [...DC.habits.values()].some(Boolean); if(key==='askesis')return [...DC.askesis.values()].some(v=>v.kept!==null);
+  if(key==='mood')return DC.moods.size>0||!!DC.own.trim()||!!DC.echo; if(key==='habits')return [...DC.habits.values()].some(Boolean); if(key==='askesis')return [...DC.askesis.values()].some(v=>v.kept!==null);
   return false;
 }
 function paintDayCard(){
@@ -883,23 +903,28 @@ function paintDayCard(){
   if(DC.mode==='done'){ paintDayDone(); return; }
   if(DC.mode==='celebrate'){ paintDayParty(); return; }
   const steps=dcSteps(); DC.step=Math.min(DC.step,steps.length-1); const i=DC.step, step=steps[i], last=i===steps.length-1;
-  const dots=`<div class="dc-dots" aria-hidden="true">${steps.map((_,k)=>`<i class="${k<i?'done':k===i?'on':''}"></i>`).join('')}</div>`;
-  const head=`<div class="dc-head"><span class="eyebrow">${fmtDayWords(s.day)} · ${i+1} из ${steps.length}</span>${i?'<button data-on="click:dcBack" class="text-action secondary" type="button">← Назад</button>':''}</div>${dots}`;
+  const dots=`<div class="dc-dots" aria-hidden="true">${steps.map((_,k)=>`<i class="${k<i?'done':k===i?'on':''}"></i>`).join('')}</div>
+    <p class="dc-names" aria-label="Шаги вечера">${steps.map((st,k)=>`<span class="${k===i?'on':k<i?'done':''}">${STEP_NAME[st.key]}</span>`).join('<i>·</i>')}</p>`;
+  const head=`<div class="dc-head"><span class="eyebrow">${fmtDayWords(s.day)}</span>${i?'<button data-on="click:dcBack" class="text-action secondary" type="button">← Назад</button>':''}</div>${dots}`;
   const echo=s.set?`<p class="dc-echo">Утром: <b>«${esc(s.set)}»</b></p>`:'';
   const area=(id,val,ph)=>`<div class="dc-wrap"><textarea data-on="input:dcInput-a0" data-a0="${id}" id="dc-${id}" maxlength="2000" rows="3" placeholder="${esc(ph)}" aria-label="${esc(DC_Q[id])}">${esc(val)}</textarea><button data-on="click:dcDictate-a0" data-a0="dc-${id}" class="dc-mic" id="dc-mic" type="button" aria-label="Продиктовать" aria-pressed="false">${MIC_SVG}</button></div><p id="dc-speech-note" class="dc-hint" hidden></p>`;
   let body='';
   if(step.key==='text') body=`${echo}<p class="dc-q">${DC_Q.text}</p>${area('text',DC.text,DC_PLACEHOLDER.text)}`;
   else if(step.key==='gratitude') body=`<p class="dc-q">${DC_Q.gratitude}</p>${area('gratitude',DC.gratitude,DC_PLACEHOLDER.gratitude)}`;
-  else if(step.key==='answer') body=`${echo}<span class="eyebrow mb-2">Вопрос дня</span><p class="dc-q">${esc(s.question||'О чем был этот день?')}</p>${s.set?`<div class="dc-echo-q"><span>Утренний настрой отозвался сегодня?</span>${Object.entries(ECHO_LABEL).map(([k,l])=>`<button data-on="click:dcEcho-a0" data-a0="${k}" type="button" class="chip${DC.echo===k?' on':''}" aria-pressed="${DC.echo===k}">${l}</button>`).join('')}</div>`:''}${area('answer',DC.answer,DC_PLACEHOLDER.answer)}`;
+  else if(step.key==='answer') body=`<span class="eyebrow mb-2">Вопрос дня</span><p class="dc-q">${esc(s.question||'О чем был этот день?')}</p>${area('answer',DC.answer,DC_PLACEHOLDER.answer)}`;
   else if(step.key==='mood'){
     const shades=[...DC.moods].filter(m=>!quickMoods().some(q=>q.key===m));
     body=`<p class="dc-q">${DC_Q.mood}</p><p class="dc-sub">Можно несколько — как есть</p><div class="chips flow" id="dc-mood-chips">${[...quickMoods().map(q=>[q.key,q.label]),...shades.map(k=>[k,MOOD_LABEL[k]])].map(([k,label])=>`<button data-on="click:dcMood-a0" data-a0="${k}" type="button" class="chip${DC.moods.has(k)?' on':''}" aria-pressed="${DC.moods.has(k)}">${esc(label)}</button>`).join('')}<button data-on="click:openWidget-mood" type="button" class="chip">все оттенки…</button><button data-on="click:dcOwnToggle" type="button" class="chip${DC.ownOpen?' on':''}" aria-pressed="${DC.ownOpen}">+ свое слово</button></div>
-      <div class="field dc-own mt-3"${DC.ownOpen?'':' hidden'}><input data-on="input:dcOwnInput" id="dc-own" maxlength="80" placeholder="свое слово — можно несколько через запятую" autocomplete="off" value="${esc(DC.own)}"></div>`;
+      <div class="field dc-own mt-3"${DC.ownOpen?'':' hidden'}><input data-on="input:dcOwnInput" id="dc-own" maxlength="80" placeholder="свое слово — можно несколько через запятую" autocomplete="off" value="${esc(DC.own)}"></div>
+      ${s.set?`<div class="dc-echo-q mt-3"><span>Утром: «${esc(s.set)}» — отозвалось сегодня?</span>${Object.entries(ECHO_LABEL).map(([k,l])=>`<button data-on="click:dcEcho-a0" data-a0="${k}" type="button" class="chip${DC.echo===k?' on':''}" aria-pressed="${DC.echo===k}">${l}</button>`).join('')}</div>`:''}`;
   } else if(step.key==='habits'){
-    const habits=s.habits.filter(h=>h.due||h.rule==='free'||h.today);
-    body=`<p class="dc-q">${DC_Q.habits}</p><p class="dc-sub">Отметьте, что получилось</p><div id="dc-habit-list">${habits.map(h=>`<div class="dc-row"><button data-on="click:dcHabit-a0" data-a0="${h.id}" type="button" class="dc-check" aria-pressed="${!!DC.habits.get(h.id)}" aria-label="${esc(h.title)}">${DC.habits.get(h.id)?'✓':''}</button><div class="grow">${esc(h.title)}</div></div>`).join('')}</div>`;
+    if(step.create) body=`<p class="dc-q">Какую привычку вести?</p><p class="dc-sub">Одну для начала — вечером будет галочка. Ритм и другие привычки — в «Дневнике привычек»</p><div class="field"><input id="dc-new-habit" maxlength="80" placeholder="например, стакан воды утром" autocomplete="off"></div><button data-on="click:dcAddHabit" class="btn ghost sm mt-2" type="button">Добавить привычку</button><p class="hint" id="dc-create-msg" role="status"></p>`;
+    else { const habits=s.habits.filter(h=>h.due||h.rule==='free'||h.today);
+      body=`<p class="dc-q">${DC_Q.habits}</p><p class="dc-sub">Отметьте, что получилось</p><div id="dc-habit-list">${habits.map(h=>`<div class="dc-row"><button data-on="click:dcHabit-a0" data-a0="${h.id}" type="button" class="dc-check" aria-pressed="${!!DC.habits.get(h.id)}" aria-label="${esc(h.title)}">${DC.habits.get(h.id)?'✓':''}</button><div class="grow">${esc(h.title)}</div></div>`).join('')}</div>`; }
   } else if(step.key==='askesis'){
-    body=`<p class="dc-q">${DC_Q.askesis}</p><div id="dc-askesis-list">${s.askesis.map(a=>{const v=DC.askesis.get(a.id)||{kept:null,note:''};return `<div class="dc-ask"><div class="grow"><b>${esc(a.title)}</b><small>день ${a.done} из ${a.total}${a.left?` · осталось ${a.left} ${plural(a.left,'день','дня','дней')}`:' · последний день'}</small></div>
+    if(step.create){ const until=new Date(Date.parse(s.day+'T12:00:00Z')+7*864e5).toISOString().slice(0,10);
+      body=`<p class="dc-q">Какую аскезу взять?</p><p class="dc-sub">Отказ или ограничение до своей даты — вечером отметка «держусь»</p><div class="field"><input id="dc-new-askesis" maxlength="80" placeholder="например, без сладкого" autocomplete="off"></div><div class="field mt-2"><label for="dc-new-until">До какого дня</label><input id="dc-new-until" type="date" value="${until}" min="${s.day}"></div><button data-on="click:dcAddAskesis" class="btn ghost sm mt-2" type="button">Взять аскезу</button><p class="hint" id="dc-create-msg" role="status"></p>`; }
+    else body=`<p class="dc-q">${DC_Q.askesis}</p><div id="dc-askesis-list">${s.askesis.map(a=>{const v=DC.askesis.get(a.id)||{kept:null,note:''};return `<div class="dc-ask"><div class="grow"><b>${esc(a.title)}</b><small>день ${a.done} из ${a.total}${a.left?` · осталось ${a.left} ${plural(a.left,'день','дня','дней')}`:' · последний день'}</small></div>
       <button data-on="click:dcAsk-a0-a1" data-a0="${a.id}" data-a1="1" type="button" class="chip${v.kept===true?' on':''}" aria-pressed="${v.kept===true}">держусь</button><button data-on="click:dcAsk-a0-a1" data-a0="${a.id}" data-a1="0" type="button" class="chip${v.kept===false?' on':''}" aria-pressed="${v.kept===false}">сорвалась</button>
       <div class="field grow"><input data-on="input:dcNote-a0-value" data-a0="${a.id}" maxlength="500" placeholder="заметка, если хочется" value="${esc(v.note||'')}"></div></div>`;}).join('')}</div>`;
   }
@@ -917,28 +942,43 @@ function dcBack(){ hap(); if(journalSpeech)stopJournalDictation(); DC.step=Math.
 function dcMood(key){if(DC.moods.has(key))DC.moods.delete(key);else DC.moods.add(key);DC.dirty=true;dcSaveDraft();const b=document.querySelector(`#dc-mood-chips [data-a0="${key}"]`);if(b){b.classList.toggle('on',DC.moods.has(key));b.setAttribute('aria-pressed',DC.moods.has(key));}hap();document.querySelector('.dc-skip')?.remove();}
 function dcOwnToggle(){ DC.ownOpen=!DC.ownOpen; paintDayCard(); }
 function dcOwnInput(){DC.own=$('dc-own').value;DC.dirty=true;dcSaveDraft();if(DC.own.trim())document.querySelector('.dc-skip')?.remove();}
-function dcHabit(id){id=Number(id);DC.habits.set(id,!DC.habits.get(id));const b=document.querySelector(`#dc-habit-list [data-a0="${id}"]`);if(b){b.setAttribute('aria-pressed',DC.habits.get(id));b.textContent=DC.habits.get(id)?'✓':'';}hap();document.querySelector('.dc-skip')?.remove();}
-function dcAsk(id,kept){id=Number(id);const cur=DC.askesis.get(id)||{kept:null,note:''};cur.kept=kept==='1';DC.askesis.set(id,cur);document.querySelectorAll(`#dc-askesis-list [data-a0="${id}"].chip`).forEach(b=>{const on=(b.dataset.a1==='1')===cur.kept;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});hap();document.querySelector('.dc-skip')?.remove();}
-function dcNote(id,value){id=Number(id);const cur=DC.askesis.get(id)||{kept:null,note:''};cur.note=value;DC.askesis.set(id,cur);}
-function dcEcho(v){ DC.echo=DC.echo===v?'':v; dcSaveDraft(); document.querySelectorAll('.dc-echo-q .chip').forEach(b=>{const on=b.dataset.a0===DC.echo;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);}); hap(); }
+function dcHabit(id){id=Number(id);DC.habits.set(id,!DC.habits.get(id));DC.touched.habits.add(id);dcSaveDraft();const b=document.querySelector(`#dc-habit-list [data-a0="${id}"]`);if(b){b.setAttribute('aria-pressed',DC.habits.get(id));b.textContent=DC.habits.get(id)?'✓':'';}hap();document.querySelector('.dc-skip')?.remove();}
+function dcAsk(id,kept){id=Number(id);const cur=DC.askesis.get(id)||{kept:null,note:''};cur.kept=kept==='1';DC.askesis.set(id,cur);DC.touched.askesis.add(id);dcSaveDraft();document.querySelectorAll(`#dc-askesis-list [data-a0="${id}"].chip`).forEach(b=>{const on=(b.dataset.a1==='1')===cur.kept;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});hap();document.querySelector('.dc-skip')?.remove();}
+function dcNote(id,value){id=Number(id);const cur=DC.askesis.get(id)||{kept:null,note:''};cur.note=value;DC.askesis.set(id,cur);DC.touched.askesis.add(id);dcSaveDraft();}
+function dcEcho(v){ DC.echo=DC.echo===v?'':v; dcSaveDraft(); document.querySelectorAll('.dc-echo-q .chip').forEach(b=>{const on=b.dataset.a0===DC.echo;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);}); hap(); document.querySelector('.dc-skip')?.remove(); }
 /* микрофон внутри поля: диктовка идет в поле текущего шага */
 function dcDictate(fieldId){ DICT_SCOPES.dc={text:fieldId,btn:'dc-mic',note:'dc-speech-note'}; journalDictate('dc'); }
 function dcEdit(){ DC.mode='steps'; DC.step=0; DC.bridge=undefined; paintDayCard(); hap(); scrollToTop(Math.max(0,$('day-card').getBoundingClientRect().top+scrollTopNow()-16)); }
+/* первая привычка и первая аскеза — прямо из шага, без похода на страницу инструмента */
+async function dcAddHabit(){
+  const title=($('dc-new-habit')?.value||'').trim(), msg=$('dc-create-msg'); if(title.length<2){ if(msg)msg.textContent='Назовите привычку — хотя бы два знака'; return; }
+  try{ await api('/habits',{method:'POST',body:JSON.stringify({title,rule:'каждый день'})}); hap('done'); toast('Привычка добавлена'); XP.timeline.dirty=true; await loadDayCard(true); }
+  catch(e){ if(msg)msg.textContent=e.code==='too_many'?'Привычек уже двадцать — уберите лишние в «Дневнике привычек»':'Не получилось добавить. Попробуйте еще раз'; }
+}
+async function dcAddAskesis(){
+  const title=($('dc-new-askesis')?.value||'').trim(), until=$('dc-new-until')?.value||'', msg=$('dc-create-msg'); if(title.length<2){ if(msg)msg.textContent='Назовите аскезу — хотя бы два знака'; return; }
+  try{ await api('/askesis',{method:'POST',body:JSON.stringify({title,until})}); hap('done'); toast('Аскеза взята — мы рядом ✦'); XP.timeline.dirty=true; refreshNativeAskesis(); await loadDayCard(true); }
+  catch(e){ if(msg)msg.textContent=e.code==='bad_until'?'Выберите дату не раньше сегодняшней':e.code==='too_many'?'Аскез уже пять — завершите одну в «Аскезах»':'Не получилось. Попробуйте еще раз'; }
+}
 async function saveDayCard(){
   if(saveDayCard.busy||!DC.state)return;
   if(journalSpeech)stopJournalDictation();
-  const nothing=!DC.text.trim()&&!DC.gratitude.trim()&&!DC.answer.trim()&&!DC.moods.size&&!DC.own.trim()&&![...DC.habits.values()].some(Boolean)&&![...DC.askesis.values()].some(v=>v.kept!==null);
+  const on=new Set(dcSteps().map(st=>st.key));
+  const nothing=!DC.text.trim()&&!DC.gratitude.trim()&&!DC.answer.trim()&&!DC.moods.size&&!DC.own.trim()&&!DC.touched.habits.size&&!DC.touched.askesis.size;
   if(nothing&&!dcWritten(DC.state)){ const st=$('dc-state'); if(st)st.textContent='Пока нечего запомнить — отметьте настроение или напишите пару слов'; hap(); return; }
   saveDayCard.busy=true;const btn=$('dc-next');if(btn){btn.disabled=true;btn.textContent='Запоминаем…';}
   const own=DC.own.split(',').map(x=>x.trim().replace(/\s+/g,'-').slice(0,24)).filter(Boolean).map(x=>'own:'+x);
-  const body={text:DC.text,gratitude:DC.gratitude,answer:DC.answer,question:DC.state.question,moods:[...DC.moods,...own],
-    habits:[...DC.habits].map(([id,done])=>({id,done})),askesis:[...DC.askesis].map(([id,v])=>({id,...(v.kept===null?{}:{kept:v.kept}),note:v.note||''}))};
+  /* уходит только то, что было на экране и что трогали: скрытый шаг — ключа нет, сервер «не трогает»; привычки — только отмеченные в этой сессии,
+     чтобы не стереть галочку, поставленную позже в самом инструменте */
+  const body={text:DC.text,moods:[...DC.moods,...own],
+    ...(on.has('gratitude')?{gratitude:DC.gratitude}:{}),...(on.has('answer')?{answer:DC.answer,question:DC.state.question}:{}),
+    habits:[...DC.touched.habits].map(id=>({id,done:!!DC.habits.get(id)})),askesis:[...DC.touched.askesis].map(id=>{const v=DC.askesis.get(id)||{kept:null,note:''};return {id,...(v.kept===null?{}:{kept:v.kept}),note:v.note||''};})};
   try{
     const r=await api('/day',{method:'POST',body:JSON.stringify(body)});
     if(DC.state.set&&DC.echo)api('/week/echo',{method:'POST',body:JSON.stringify({day:DC.state.day,verdict:DC.echo})}).catch(()=>{});   /* «отозвалось» — сразу вечером, не в воскресенье */
-    DC.state={...r,echo:DC.echo||r.echo||''}; dcClearDraft(); DC.dirty=false; DC.bridge=undefined; hap('done');
+    DC.state={...r,echo:DC.echo||r.echo||''}; dcClearDraft(); DC.dirty=false; DC.bridge=undefined; DC.touched={habits:new Set(),askesis:new Set()}; hap('done');
     S.mood=DC.state.moods[0]||null; if(S.day&&r.saved.length){S.day.remembered=true;paintHomeLater(S.day);}
-    loadDays();
+    DC.firstSave=!(S.daysTotal>0); loadDays();
     DC.mode=matchMedia('(prefers-reduced-motion: reduce)').matches?'done':'celebrate'; paintDayCard();
   }
   catch(e){ const st=$('dc-state'); if(st)st.textContent='Не удалось сохранить. Все написанное осталось на месте — попробуйте еще раз'; }
@@ -964,9 +1004,56 @@ function paintDayDone(){
     ${dayQuietHtml({habits:s.habits.filter(h=>h.today).map(h=>h.title),askesis:s.askesis.filter(a=>a.kept!==null).map(a=>({title:a.title,kept:a.kept})),echo:s.echo})}
     <p class="dc-warm">${warm}</p>
     <div class="dc-bridge" id="dc-bridge" hidden></div>
+    ${toolOfferHtml()}
     <div class="dc-done-actions"><button data-on="click:dcEdit" class="text-action" type="button">Дополнить →</button></div><p class="hint" id="dc-state" role="status"></p>`;
   loadBridge();
 }
+/* ══════════ Как человек узнает про инструменты: не из каталога, а по одному, в нужный момент ══════════
+   После первого записанного дня — «Чем дополнить вечера?» со всеми чипами сразу. Дальше — одно предложение в вечер, по порогам
+   (благодарность со второго дня, привычки с пятого, аскеза со второй недели), «Не сейчас» дважды — больше не предлагаем.
+   Память предложений — на устройстве, по аккаунту. */
+const OFFER_TEXT={gratitude:'Добавить в вечер благодарность? Один вопрос: кому и за что спасибо сегодня',answer:'Спрашивать вечером про вопрос дня? Утром он появится на «Сегодня», вечером — ответ',habits:'Вести привычки? Вечером — галочки по тому, что получилось',askesis:'Взять аскезу? Отказ до своей даты, вечером — держусь или нет'};
+const OFFER_AFTER={gratitude:1,answer:2,habits:4,askesis:10};   /* сколько записанных дней должно быть, чтобы предложить */
+const offerKey=()=>'lun_tool_offer_'+(S.user?.id||0);
+const offerMem=()=>{ try{ return JSON.parse(localStorage.getItem(offerKey())||'{}')||{}; }catch(e){ return {}; } };
+const offerSave=(m)=>{ try{ localStorage.setItem(offerKey(),JSON.stringify(m)); }catch(e){} };
+function toolOfferHtml(){
+  const off=['gratitude','answer','habits','askesis'].filter(k=>!stepOn(k)); if(!off.length)return '';
+  if(DC.firstSave) return `<div class="dc-offer" id="dc-offer"><span class="eyebrow">Чем дополнить вечера?</span><p class="hint">Шаги можно включать и выключать в любой момент — в строке под карточкой</p><div class="chips flow mt-2">${off.map(k=>`<button data-on="click:offerAccept-a0" data-a0="${k}" type="button" class="chip">+ ${STEP_NAME[k].toLowerCase()}</button>`).join('')}</div></div>`;
+  const m=offerMem(), today=DC.state.day, total=S.daysTotal||0; if(m.day===today&&m.shown)return '';   /* одно предложение в вечер */
+  const key=off.find(k=>total>=OFFER_AFTER[k]&&(m.no?.[k]||0)<2&&!(m.last?.[k]&&Math.round((Date.parse(today+'T12:00:00Z')-Date.parse(m.last[k]+'T12:00:00Z'))/864e5)<7));
+  if(!key)return '';
+  offerSave({...m,day:today,shown:key,last:{...(m.last||{}),[key]:today}}); track('tool_offer_show',key);
+  return `<div class="dc-offer" id="dc-offer"><p>${OFFER_TEXT[key]}</p><div class="dc-offer-actions"><button data-on="click:offerAccept-a0" data-a0="${key}" class="btn sm" type="button">Добавить</button><button data-on="click:offerLater-a0" data-a0="${key}" class="text-action secondary" type="button">Не сейчас</button></div></div>`;
+}
+async function offerAccept(key){ track('tool_offer_accept',key); await toggleEveningStep(key,true); const box=$('dc-offer'); if(box){ if(DC.firstSave){ const b=box.querySelector(`[data-a0="${key}"]`); if(b){b.classList.add('on');b.disabled=true;} } else box.remove(); } }
+function offerLater(key){ const m=offerMem(); offerSave({...m,no:{...(m.no||{}),[key]:(m.no?.[key]||0)+1}}); track('tool_offer_dismiss',key); $('dc-offer')?.remove(); hap(); }
+
+/* ══════════ Строка «Вечером записываю: …» под карточкой — зеркало утреннего выбора на «Сегодня» ══════════
+   Тап «Изменить» разворачивает чипы на месте: база не снимается, инструменты включаются и выключаются (preferences.tools),
+   вопрос дня следует за утренней плиткой. Без прокрутки и без каталога — человек видит, из чего собран его вечер, при каждом открытии. */
+let eveningSetOpen=false;
+function paintEveningSet(){
+  const box=$('evening-set'); if(!box||!S.user?.onboarded)return;
+  const on=eveningStepsOn();
+  if(!eveningSetOpen){ box.innerHTML=`<span class="es-label">Вечером записываю:</span> <b>${on.map(k=>STEP_NAME[k].toLowerCase()).join(' · ')}</b> <button data-on="click:eveningSetToggle" class="text-action" type="button">Изменить</button>`; return; }
+  box.innerHTML=`<span class="es-label">Из чего собран мой вечер</span><div class="chips flow mt-2">${STEP_ORDER.map(k=>{const base=k==='text'||k==='mood', isOn=stepOn(k);return `<button data-on="click:eveningStepToggle-a0" data-a0="${k}" type="button" class="chip${isOn?' on':''}${base?' fixed':''}" aria-pressed="${isOn}"${base?' disabled':''}>${STEP_NAME[k].toLowerCase()}${base?' ✓':''}</button>`;}).join('')}</div>
+    <p class="hint mt-2">Запись и настроение — всегда; остальное — по вашему выбору. Порядок шагов — от легкого к трудному. Убрать — не значит потерять: записи остаются.</p>
+    <button data-on="click:eveningSetToggle" class="text-action secondary mt-1" type="button">Готово</button>`;
+}
+function eveningSetToggle(){ eveningSetOpen=!eveningSetOpen; paintEveningSet(); hap(); }
+/* Включить или выключить шаг вечера. answer — утренняя плитка «Вопрос дня» (один выбор — два места); остальное — инструмент из каталога */
+async function toggleEveningStep(key,forceOn){
+  if(key==='text'||key==='mood')return;
+  const isOn=stepOn(key); if(forceOn&&isOn)return;
+  if(key==='answer'){ await toggleMorning('tone'); }
+  else { const tools=toolsVisible(); if(isOn)tools.delete(key);else tools.add(key); const list=toolCatalog().map(t=>t.key).filter(k=>tools.has(k));
+    try{ await savePreferences({...XP.prefs,tools:list}); applyTools(); track(isOn?'tools_remove':'tools_add',key+':evening'); }catch(e){ toast('Не удалось сохранить выбор. Попробуйте еще раз'); return; } }
+  const nowOn=stepOn(key); toast(nowOn?`${STEP_NAME[key]} — в вашем вечере${DC.mode==='done'?', с завтрашнего дня или по «Дополнить»':''}`:'Убрано из вечера. Записи остаются');
+  paintEveningSet(); if(DC.mode==='steps'){ const cur=(dcSteps()[DC.step]||{}).key; paintDayCard(); if(cur){const i=dcSteps().findIndex(st=>st.key===cur); if(i>=0){DC.step=i;paintDayCard();}} }
+}
+function eveningStepToggle(key){ toggleEveningStep(key); }
+
 /* утро дня одной врезкой; вопрос — только если на него нет ответа (ответ показывает его сам) */
 const morningHtml=(s)=>s.set?`<div class="dc-morning">Утром${s.theme?` · ${esc(s.theme)}`:''}<b>«${esc(s.set)}»</b>${s.question&&!s.answer?esc(s.question):''}</div>`:'';
 const dayProseHtml=(s)=>[s.text?['Вечером',s.text.text,'']:null,s.gratitude?['Благодарность',s.gratitude.text,'']:null,s.answer?['Ответ на вопрос дня',s.answer.text,s.answer.title||s.question||'']:null]
@@ -977,10 +1064,11 @@ const daysAgo=(d)=>{const n=Math.round((Date.parse(S.day.date+'T12:00:00Z')-Date
 async function loadBridge(){
   const box=$('dc-bridge'); if(!box)return;
   if(DC.bridge===undefined){ try{ DC.bridge=(await api('/day/bridge')).item||null; }catch(e){ DC.bridge=null; } }
-  const b=DC.bridge; if(!b||!$('dc-bridge'))return;
+  const b=DC.bridge; if(!$('dc-bridge'))return;
+  if(!b){ if(!(S.daysTotal>0)){ $('dc-bridge').textContent='Завтра вечером этот день будет рядом с новым — так дневник начнет возвращать вам ваши же слова'; $('dc-bridge').hidden=false; } return; }   /* первый вечер: обещание вместо «моста» */
   const when=daysAgo(b.day);
   $('dc-bridge').innerHTML=b.kind==='answer'?`${when} на этот же вопрос вы ответили: <b>«${esc(b.text)}»</b>`:b.kind==='yesterday'?`${when} — <b>${b.moods.map(m=>esc((MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase())).join(', ')}</b>. Сегодня иначе?`:`${when} вы писали: <b>«${esc(b.text)}»</b>`;
-  $('dc-bridge').hidden=false;
+  $('dc-bridge').hidden=false; track('bridge_view',b.kind);
 }
 
 /* ══════════ Прошлые дни: полоска настроения за две недели и строки по дням; «Все дни» — постранично ══════════ */
@@ -995,7 +1083,7 @@ const dayRowHtml=(x)=>{
 async function loadDays(){
   const list=$('days-list'), strip=$('days-strip'); if(!list)return;
   try{
-    const r=await api('/days?calendar=14'); const items=r.items;
+    const r=await api('/days?calendar=14'); const items=r.items; S.daysTotal=r.total||0;
     const today=DC.state?{day:DC.state.day,moods:DC.state.moods}:{day:S.day.date,moods:S.mood?[S.mood]:[]};
     strip.innerHTML=[...items].reverse().concat([today]).map((x,k,arr)=>`<i class="t-${moodTone(x.moods[0])}${k===arr.length-1?' today':''}" title="${fmtDayWords(x.day,true)}"></i>`).join('');
     const rows=items.slice(0,6); const any=items.some(x=>!x.empty);
@@ -1020,7 +1108,7 @@ async function loadAllDays(more=false){
 /* Открытый день — читается как текст: утро, записи, настроение, практики */
 async function openDay(day){
   if(S.day&&day===S.day.date){ go('history'); requestAnimationFrame(()=>$('day-card')?.scrollIntoView({block:'start',behavior:'smooth'})); return; }
-  openWidget('dayview',fmtDayWords(day,true)); const box=$('dayview-box'); box.innerHTML='<p class="hint">Загружаем…</p>';
+  openWidget('dayview',fmtDayWords(day,true)); const box=$('dayview-box'); box.innerHTML='<p class="hint">Загружаем…</p>'; track('day_open');
   try{
     const v=await api('/day/view?day='+day); const moods=v.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
     const empty=!v.text&&!v.gratitude&&!v.answer&&!moods.length&&!v.habits.length&&!v.askesis.length;
