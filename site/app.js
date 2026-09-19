@@ -1280,6 +1280,7 @@ async function loadAllDays(more=false){
   const box=$('days-box'); if(!box)return;
   if(!more){ box.innerHTML='<p class="hint">Загружаем…</p>'; loadAllDays.next=''; }
   try{
+    if(!CAT) await loadCatalog();   /* названия настроений — из каталога; без него в списке мелькали бы ключи вроде quick:anxious */
     const q=new URLSearchParams({limit:'30'}); if(more&&loadAllDays.next)q.set('before',loadAllDays.next);
     const r=await api('/days?'+q); loadAllDays.next=r.next||'';
     const monthOf=(d)=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}).replace(' г.','');

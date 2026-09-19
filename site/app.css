@@ -5,42 +5,39 @@
 @font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg)}
-body{
-  font-family:Onest,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);
-  background:linear-gradient(180deg,#141126 0%,#0b0a14 70%);
-  background-attachment:fixed;min-height:100dvh;overscroll-behavior-y:none;
-}
+body{font-family:Onest,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);background:linear-gradient(180deg,#141126 0%,#0b0a14 70%);background-attachment:fixed;min-height:100dvh;overscroll-behavior-y:none}
 /* ── фон обложки: орбы, ночные облака и живое небо с настоящими созвездиями ── */
 .bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55}
-.orb-1{width:56vw;height:56vw;max-width:760px;max-height:760px;top:-22vw;left:50%;transform:translateX(-50%);
-  background:radial-gradient(circle,#6d5bd0 0%,transparent 65%);animation:drift 22s ease-in-out infinite}
-.orb-2{width:34vw;height:34vw;max-width:460px;max-height:460px;bottom:-12vw;right:-8vw;
-  background:radial-gradient(circle,rgba(217,184,104,.5) 0%,transparent 65%);animation:drift2 26s ease-in-out infinite}
+.orb-1{width:56vw;height:56vw;max-width:760px;max-height:760px;top:-22vw;left:50%;transform:translateX(-50%);background:radial-gradient(circle,#6d5bd0 0%,transparent 65%);animation:drift 22s ease-in-out infinite}
+.orb-2{width:34vw;height:34vw;max-width:460px;max-height:460px;bottom:-12vw;right:-8vw;background:radial-gradient(circle,rgba(217,184,104,.5) 0%,transparent 65%);animation:drift2 26s ease-in-out infinite}
 .cloud{position:absolute;border-radius:50%;filter:blur(110px);opacity:.22;animation:cloudtone 64s ease-in-out infinite;will-change:opacity,transform}
 .cloud-1{width:70vw;height:26vw;top:6%;left:-18vw;background:radial-gradient(ellipse,rgba(141,130,190,.5) 0%,transparent 68%)}
 .cloud-2{width:60vw;height:22vw;bottom:2%;right:-20vw;animation-delay:-31s;background:radial-gradient(ellipse,rgba(120,132,190,.42) 0%,transparent 68%)}
 .sky{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity 2.4s ease}
 .sky.on{opacity:1}
-body.inner .sky.on{opacity:.45}    /* реальные созвездия тише за рабочим содержимым */
+body.inner .sky.on{opacity:.45}
+/* реальные созвездия тише за рабочим содержимым */
 @keyframes drift{0%,100%{transform:translate(-50%,0) scale(1)}50%{transform:translate(-46%,4%) scale(1.06)}}
 @keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-4%,-5%) scale(1.08)}}
 @keyframes cloudtone{0%,100%{opacity:.18;transform:translateX(0) scale(1)}50%{opacity:.34;transform:translateX(3%) scale(1.07)}}
 /* ── луна с обложки: настоящая фаза на сегодня, дыхание и искры ── */
-.mark{position:relative;display:inline-block;line-height:0;margin:6px 0 4px;animation:float 8s ease-in-out infinite;
-  filter:drop-shadow(0 8px 40px rgba(217,184,104,.28));will-change:transform}
+.mark{position:relative;display:inline-block;line-height:0;margin:6px 0 4px;animation:float 8s ease-in-out infinite;filter:drop-shadow(0 8px 40px rgba(217,184,104,.28));will-change:transform}
 .moon-img{width:104px;height:104px;display:block;animation:moonbreathe 7s ease-in-out infinite}
 .moon-sm{width:46px;height:46px;flex:0 0 46px;display:block;filter:drop-shadow(0 4px 18px rgba(217,184,104,.28))}
 @keyframes moonbreathe{0%,100%{filter:brightness(1) saturate(1);opacity:.92}50%{filter:brightness(1.18) saturate(1.12);opacity:1}}
 @keyframes float{0%,100%{transform:translateY(-6px)}50%{transform:translateY(8px)}}
-.spark{position:absolute;width:5px;height:5px;border-radius:50%;opacity:0;pointer-events:none;
-  background:radial-gradient(circle,#fff8e6 0%,rgba(244,223,168,.7) 45%,transparent 70%)}
+.spark{position:absolute;width:5px;height:5px;border-radius:50%;opacity:0;pointer-events:none;background:radial-gradient(circle,#fff8e6 0%,rgba(244,223,168,.7) 45%,transparent 70%)}
 .spark.s1{top:6%;right:10%;animation:sparkle 4.6s ease-in-out infinite}
 .spark.s2{bottom:14%;left:4%;animation:sparkle 5.8s ease-in-out 1.9s infinite}
 .spark.s3{top:38%;right:-4%;animation:sparkle 6.7s ease-in-out 3.4s infinite}
 @keyframes sparkle{0%,100%{opacity:0;transform:scale(.4)}8%{opacity:1;transform:scale(1.25)}22%{opacity:0;transform:scale(.5)}}
-@media(max-width:620px){.moon-img{width:82px;height:82px}}
-@media(prefers-reduced-motion:reduce){.mark,.moon-img,.spark,.orb,.cloud{animation:none!important}}
+@media(max-width:620px){
+  .moon-img{width:82px;height:82px}
+}
+@media(prefers-reduced-motion:reduce){
+  .mark,.moon-img,.spark,.orb,.cloud{animation:none!important}
+}
 .wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom))}
 h1,h2,.serif{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0}
 h1{font-size:28px;line-height:1.12}
@@ -53,17 +50,14 @@ p{margin:0;color:var(--muted);line-height:1.62;font-size:16px}
 .sec{margin-top:var(--s5)}
 .row{display:flex;align-items:center;gap:12px}
 .grow{flex:1;min-width:0}
-.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:62px;padding:0 20px;border:0;border-radius:var(--r-pill);
-  background:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);color:#1c1430;font:inherit;font-size:16px;font-weight:700;cursor:pointer;
-  box-shadow:0 12px 34px rgba(217,184,104,.3);transition:transform var(--t-fast) var(--sp),opacity var(--t)}
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:62px;padding:0 20px;border:0;border-radius:var(--r-pill);background:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);color:#1c1430;font:inherit;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 12px 34px rgba(217,184,104,.3);transition:transform var(--t-fast) var(--sp),opacity var(--t)}
 .btn:active{transform:scale(.98)}
 .btn[disabled]{opacity:.45;box-shadow:none}
 .btn.ghost{background:rgba(255,255,255,.06);box-shadow:none;border:1px solid var(--line);color:var(--text)}
 .btn.sm{min-height:44px;font-size:15px;width:auto;padding:0 18px}
 .field{display:grid;gap:7px;margin-bottom:14px}
 .field label{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
-input,textarea{width:100%;min-height:54px;border-radius:var(--r-m);border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);
-  padding:14px 16px;color:var(--strong);font:inherit;font-size:16px;outline:none}
+input,textarea{width:100%;min-height:54px;border-radius:var(--r-m);border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);padding:14px 16px;color:var(--strong);font:inherit;font-size:16px;outline:none}
 textarea{min-height:104px;resize:none;line-height:1.55}
 input:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(217,184,104,.15)}
 input::placeholder,textarea::placeholder{color:var(--faint)}
@@ -71,8 +65,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .chips::-webkit-scrollbar{display:none}
 .chips.flow{flex-wrap:wrap;overflow:visible}
 .chips.flow .chip{font-size:14px;padding:10px 13px}
-.chip{flex:0 0 auto;padding:11px 15px;border-radius:var(--r-pill);border:1px solid var(--line);background:rgba(255,255,255,.05);
-  color:var(--text);font:inherit;font-size:14px;cursor:pointer}
+.chip{flex:0 0 auto;padding:11px 15px;border-radius:var(--r-pill);border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--text);font:inherit;font-size:14px;cursor:pointer}
 .chip.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55)}
 .view{display:none;animation:in var(--t) var(--sp)}
 .view.on{display:block}
@@ -82,7 +75,8 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .daycard{width:180px;height:286px;margin:14px auto 0;perspective:1000px;cursor:pointer}
 .dc-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s var(--sp)}
 /* карта — предмет: до открытия лежит чуть наклонно и дышит светом, открывается — выравнивается */
-.daycard{transition:transform .6s var(--sp)}.daycard:not(.flip){transform:rotate(-3deg)}
+.daycard{transition:transform .6s var(--sp)}
+.daycard:not(.flip){transform:rotate(-3deg)}
 .dc-back-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;filter:none}
 .daycard.flip .dc-in{transform:rotateY(180deg)}
 .dc-f{position:absolute;inset:0;backface-visibility:hidden;border-radius:var(--r-xl);display:grid;place-items:center;padding:18px;text-align:center}
@@ -104,9 +98,7 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .item{padding:14px 16px;border-radius:var(--r-m);background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid var(--line);box-shadow:inset 0 1px rgba(255,255,255,.09),inset 0 -1px rgba(3,2,10,.2);backdrop-filter:none;-webkit-backdrop-filter:none}
 .item b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
 .item small{color:var(--faint);font-size:13px}
-.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:300;
-  background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
-  padding:11px 18px;border-radius:var(--r-pill);font-size:14px;opacity:0;transition:var(--t) var(--sp);pointer-events:none;max-width:90vw}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:300;background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:11px 18px;border-radius:var(--r-pill);font-size:14px;opacity:0;transition:var(--t) var(--sp);pointer-events:none;max-width:90vw}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .split{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:var(--s4) 0 var(--s3)}
 .ring{display:flex;flex-direction:column;align-items:center;gap:5px}
@@ -115,48 +107,78 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 /* ── Карточка дня по шагам: один вопрос на экран ── */
 .day-card .dc-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .day-card .dc-head .text-action{min-height:32px;padding:0;font-size:13px}
-.dc-dots{display:flex;gap:6px;margin:10px 0 14px}.dc-dots i{flex:0 0 22px;height:4px;border-radius:2px;background:var(--line)}.dc-dots i.done{background:rgba(217,184,104,.45)}.dc-dots i.on{background:var(--gold)}
-.dc-names{display:flex;flex-wrap:wrap;gap:0 6px;margin:-8px 0 14px;font-size:12px;color:var(--faint);line-height:1.5}.dc-names span.on{color:var(--gold-2);font-weight:600}.dc-names span.done{color:var(--muted)}.dc-names i{font-style:normal;color:var(--line)}
-.dc-echo{margin:0 0 8px;font-size:13px;color:var(--muted);line-height:1.45}.dc-echo b{color:var(--text-2);font-weight:500}
+.dc-dots{display:flex;gap:6px;margin:10px 0 14px}
+.dc-dots i{flex:0 0 22px;height:4px;border-radius:2px;background:var(--line)}
+.dc-dots i.done{background:rgba(217,184,104,.45)}
+.dc-dots i.on{background:var(--gold)}
+.dc-names{display:flex;flex-wrap:wrap;gap:0 6px;margin:-8px 0 14px;font-size:12px;color:var(--faint);line-height:1.5}
+.dc-names span.on{color:var(--gold-2);font-weight:600}
+.dc-names span.done{color:var(--muted)}
+.dc-names i{font-style:normal;color:var(--line)}
+.dc-echo{margin:0 0 8px;font-size:13px;color:var(--muted);line-height:1.45}
+.dc-echo b{color:var(--text-2);font-weight:500}
 /* строка «Вечером записываю: …» под карточкой и предложение шага после сохранения */
-.evening-set{margin:10px 2px 0;font-size:13px;color:var(--muted);line-height:1.6}.evening-set b{font-weight:500;color:var(--text-2)}.evening-set .es-label{color:var(--faint)}
-.evening-set .text-action{min-height:28px;padding:0 0 0 6px;font-size:13px}.evening-set .chip.fixed{opacity:.75}
-.dc-offer{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.35);font-size:14px;line-height:1.5;color:var(--text-2)}.dc-offer p{margin:0}.dc-offer .eyebrow{margin-bottom:4px}
+.evening-set{margin:10px 2px 0;font-size:13px;color:var(--muted);line-height:1.6}
+.evening-set b{font-weight:500;color:var(--text-2)}
+.evening-set .es-label{color:var(--faint)}
+.evening-set .text-action{min-height:28px;padding:0 0 0 6px;font-size:13px}
+.evening-set .chip.fixed{opacity:.75}
+.dc-offer{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.35);font-size:14px;line-height:1.5;color:var(--text-2)}
+.dc-offer p{margin:0}
+.dc-offer .eyebrow{margin-bottom:4px}
 html[data-theme] body.inner .dc-offer p.hint{margin:0;font-size:13px;line-height:1.45;color:var(--muted);font-weight:400}
-.dc-offer-actions{display:flex;align-items:center;gap:14px;margin-top:10px}.dc-offer-actions .btn.sm{min-height:40px}
+.dc-offer-actions{display:flex;align-items:center;gap:14px;margin-top:10px}
+.dc-offer-actions .btn.sm{min-height:40px}
 .dc-q{margin:0 0 12px;font-size:21px;font-weight:600;line-height:1.3;letter-spacing:-.01em;color:var(--text)}
-.dc-sub{margin:-6px 0 12px;font-size:13px;color:var(--faint)}
-.dc-wrap{position:relative}.dc-wrap textarea{width:100%;padding-right:48px}
+.dc-wrap{position:relative}
+.dc-wrap textarea{width:100%;padding-right:48px}
 .dc-mic{position:absolute;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;background:var(--selected);border:1px solid rgba(217,184,104,.45);color:var(--gold-2);display:grid;place-items:center;cursor:pointer;padding:0}
-.dc-mic svg{width:18px;height:18px;display:block}.dc-mic.on{background:var(--gold);color:#1d1738;animation:dcPulse 1.2s ease-in-out infinite}
+.dc-mic svg{width:18px;height:18px;display:block}
+.dc-mic.on{background:var(--gold);color:#1d1738;animation:dcPulse 1.2s ease-in-out infinite}
 @keyframes dcPulse{50%{box-shadow:0 0 0 6px rgba(217,184,104,.25)}}
 .dc-hint{margin:8px 0 0;font-size:13px;color:var(--faint);line-height:1.45}
 /* фото дня: камера рядом с микрофоном, превью под полем, полное — в дне для чтения, миниатюра — в строке дня */
-.dc-wrap.with-cam textarea{padding-right:92px}.dc-cam{right:52px}
-.dc-photo{display:flex;align-items:center;gap:12px;margin-top:10px}.dc-photo:empty{display:none}
-.dc-photo-row .chip{display:inline-flex;align-items:center;gap:6px}.dc-photo-row .chip svg{width:16px;height:16px}
+.dc-wrap.with-cam textarea{padding-right:92px}
+.dc-cam{right:52px}
+.dc-photo{display:flex;align-items:center;gap:12px;margin-top:10px}
+.dc-photo:empty{display:none}
+.dc-photo-row .chip{display:inline-flex;align-items:center;gap:6px}
+.dc-photo-row .chip svg{width:16px;height:16px}
 .dc-photo img{width:72px;height:72px;border-radius:12px;object-fit:cover;display:block;box-shadow:0 6px 16px -8px rgba(0,0,0,.7)}
-.dc-photo .hint{flex:1;margin:0}.dc-photo .text-action{min-height:32px;padding:0}
+.dc-photo .hint{flex:1;margin:0}
+.dc-photo .text-action{min-height:32px;padding:0}
 body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:auto;max-height:280px;object-fit:cover;border-radius:16px;margin:12px 0 0;box-shadow:0 10px 28px -14px rgba(0,0,0,.7)}
-.day-row.has-photo{grid-template-columns:40px minmax(0,1fr) 44px}.day-row img.ph{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block}
+.day-row.has-photo{grid-template-columns:40px minmax(0,1fr) 44px}
+.day-row img.ph{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block}
 .dc-skip{display:block;width:100%;text-align:center;margin-top:2px;color:var(--muted)}
-.dc-secondary{display:flex;justify-content:center;gap:22px;margin-top:2px}.dc-secondary .text-action{min-height:36px}
+.dc-secondary{display:flex;justify-content:center;gap:22px;margin-top:2px}
+.dc-secondary .text-action{min-height:36px}
 .wg-art{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:var(--r-l);margin:0 0 16px;box-shadow:0 14px 34px -18px rgba(0,0,0,.8)}
-.home-art{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:14px;margin:0 0 10px}.home-art[hidden]{display:none}
+.home-art{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:14px;margin:0 0 10px}
+.home-art[hidden]{display:none}
 .push-row small{display:block;grid-column:1/span 2;font-size:13px;color:var(--muted);line-height:1.4}
-.home-action{margin:14px 0 0}.home-action[hidden]{display:none}
-.ha{padding:16px 18px}.ha .eyebrow{display:block}.ha-q{margin:6px 0 10px;font-size:18px;font-weight:600;line-height:1.35;color:var(--text)}
-.ha .field{margin:0 0 10px}.ha textarea{min-height:48px}.ha .btn{width:100%}.ha .answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0}
-.ha .entry-text{margin:0 0 8px;font-size:15px;line-height:1.5}.ha .saved-state{font-size:13px;color:var(--muted)}
+.home-action{margin:14px 0 0}
+.home-action[hidden]{display:none}
+.ha{padding:16px 18px}
+.ha .eyebrow{display:block}
+.ha-q{margin:6px 0 10px;font-size:18px;font-weight:600;line-height:1.35;color:var(--text)}
+.ha .field{margin:0 0 10px}
+.ha textarea{min-height:48px}
+.ha .btn{width:100%}
+.ha .answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0}
+.ha .entry-text{margin:0 0 8px;font-size:15px;line-height:1.5}
+.ha .saved-state{font-size:13px;color:var(--muted)}
 .week-daylink{background:none;border:0;padding:0;color:var(--gold-2);font:inherit;cursor:pointer}
 .week-carried .t2{margin:6px 0 0}
 .thought{margin:14px 0 4px;padding:14px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.3);text-align:left}
 .thought-q{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--text)}
-.thought .field{margin:0 0 8px}.thought textarea{min-height:48px}
+.thought .field{margin:0 0 8px}
+.thought textarea{min-height:48px}
 .thought .entry-text{margin:0 0 8px;font-size:15px;line-height:1.5;color:var(--text)}
 .thought .answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0}
 .thought .saved-state,.ha .saved-state{font-size:13px;color:var(--muted);background:none;border:0;padding:0;margin:0}
-.wg-foot{padding:18px 0 8px;display:flex;justify-content:center}.wg-return{min-height:48px;padding:0 26px;border-radius:999px;color:var(--text);font-weight:600}
+.wg-foot{padding:18px 0 8px;display:flex;justify-content:center}
+.wg-return{min-height:48px;padding:0 26px;border-radius:999px;color:var(--text);font-weight:600}
 .wg-return:active{transform:scale(.98)}
 .dc-echo-q{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line)}
 .dc-echo-q>span{font-size:13px;color:var(--muted);flex:1 1 100%}
@@ -173,39 +195,54 @@ body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:
 @keyframes dcSpark{0%{transform:rotate(var(--a)) translateY(0) scale(.3);opacity:0}25%{opacity:1}100%{transform:rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1);opacity:0}}
 .dc-party p{position:absolute;left:0;right:0;bottom:14px;margin:0;font-size:18px;font-weight:600;opacity:0;animation:dcText .6s ease .8s forwards}
 @keyframes dcText{to{opacity:1}}
-@media(prefers-reduced-motion:reduce){.dc-party *{animation:none!important;opacity:1!important;transform:none!important}}
+@media(prefers-reduced-motion:reduce){
+  .dc-party *{animation:none!important;opacity:1!important;transform:none!important}
+}
 /* день записан — читается как текст */
 .dc-read{margin:14px 0 0;font-size:16px;line-height:1.6;white-space:pre-line}
 .dc-read small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:3px;white-space:normal}
 .dc-read .q{display:block;color:var(--muted);font-size:14px;margin-bottom:2px}
-.dc-moods{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.dc-moods i{font-style:normal;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--selected);color:var(--gold-2);border:1px solid rgba(217,184,104,.35)}
-.dc-morning{border-left:2px solid var(--gold);padding:6px 12px;margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5}.dc-morning b{display:block;color:var(--text);font-weight:500;font-size:15px}
+.dc-moods{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.dc-moods i{font-style:normal;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--selected);color:var(--gold-2);border:1px solid rgba(217,184,104,.35)}
+.dc-morning{border-left:2px solid var(--gold);padding:6px 12px;margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+.dc-morning b{display:block;color:var(--text);font-weight:500;font-size:15px}
 .dc-morning .dc-lunar{display:block;margin-top:4px;color:var(--faint)}
-.evening-set .es-extra{color:var(--muted);font-weight:400}
 .day-row .t p.quiet{color:var(--faint)}
 .dc-quiet{margin:12px 0 0;font-size:13px;color:var(--faint);line-height:1.5}
-.dc-bridge{margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line);font-size:14px;color:var(--muted);line-height:1.5}.dc-bridge b{color:var(--text-2);font-weight:500}
+.dc-bridge{margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line);font-size:14px;color:var(--muted);line-height:1.5}
+.dc-bridge b{color:var(--text-2);font-weight:500}
 .dc-warm{margin:14px 0 0;font-size:15px;color:var(--text-2);line-height:1.5}
 .dc-done-actions{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
 .dc-x{margin-left:8px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--faint);font:inherit;font-size:14px;line-height:1;cursor:pointer;vertical-align:middle;padding:0}
 .dc-moods .dc-x{align-self:center}
-.day-nav{display:flex;justify-content:space-between;gap:12px;margin-top:22px;padding-top:12px;border-top:1px solid var(--line)}.day-nav .text-action{padding:0}
+.day-nav{display:flex;justify-content:space-between;gap:12px;margin-top:22px;padding-top:12px;border-top:1px solid var(--line)}
+.day-nav .text-action{padding:0}
 /* ── прошлые дни: полоска настроения и строки ── */
 .past-days .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .past-days .sec-head .text-action{min-height:32px;padding:0;font-size:13px}
-.days-strip{display:flex;gap:5px;margin:0 0 12px}.days-strip i{flex:1;height:22px;border-radius:7px;background:rgba(245,242,234,.06)}
+.days-strip{display:flex;gap:5px;margin:0 0 12px}
+.days-strip i{flex:1;height:22px;border-radius:7px;background:rgba(245,242,234,.06)}
 .days-strip i.today{box-shadow:inset 0 0 0 1px var(--gold)}
-.days-strip i.t-plus{background:rgba(159,230,189,.32)}.days-strip i.t-zero{background:rgba(217,184,104,.32)}.days-strip i.t-minus{background:rgba(255,179,179,.26)}.days-strip i.t-own{background:rgba(233,199,126,.3)}
+.days-strip i.t-plus{background:rgba(159,230,189,.32)}
+.days-strip i.t-zero{background:rgba(217,184,104,.32)}
+.days-strip i.t-minus{background:rgba(255,179,179,.26)}
+.days-strip i.t-own{background:rgba(233,199,126,.3)}
 .days-list{border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;background:var(--surface)}
 .days-list .hint{padding:14px 16px;margin:0}
 .day-row{display:grid;grid-template-columns:36px minmax(0,1fr) 14px;column-gap:10px;align-items:center;width:100%;padding:9px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}
 .day-row:last-child{border-bottom:0}
-.day-row .n{text-align:center}.day-row .n b{display:block;font-size:17px;font-weight:600;line-height:1}.day-row .n small{display:block;font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
-.day-row .t{min-width:0}.day-row .t p{margin:0;font-size:14px;line-height:1.4;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.day-row .t small{display:block;font-size:12px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.day-row .t small em{font-style:normal;color:var(--gold-2)}
+.day-row .n{text-align:center}
+.day-row .n b{display:block;font-size:17px;font-weight:600;line-height:1}
+.day-row .n small{display:block;font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.day-row .t{min-width:0}
+.day-row .t p{margin:0;font-size:14px;line-height:1.4;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day-row .t small{display:block;font-size:12px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day-row .t small em{font-style:normal;color:var(--gold-2)}
 .day-row.empty .t p{color:var(--faint)}
 .day-row .a{color:var(--faint);font-size:18px}
-#days-box .days-strip{margin:4px 0 14px}#days-box .days-list{margin-top:4px;border-radius:0;border-left:0;border-right:0}#days-box .btn{margin-top:12px}
+#days-box .days-strip{margin:4px 0 14px}
+#days-box .days-list{margin-top:4px;border-radius:0;border-left:0;border-right:0}
+#days-box .btn{margin-top:12px}
 .days-month{padding:16px 0 6px!important;margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 #days-box .days-list .days-month:first-child{padding-top:4px!important}
 /* открытый день */
@@ -217,26 +254,26 @@ body.inner .wpane .dayview .dc-read small{color:var(--gold);font-size:11px}
 .push-note b{display:block;font-size:17px;font-weight:600;line-height:1.4}
 .push-note p{margin:8px 0 0;white-space:pre-line;color:var(--text-2);font-size:15px;line-height:1.55}
 .push-note .text-action{margin-top:4px;padding-left:0}
-.invite-actions .btn{width:100%}   /* «Поделиться» и «Скопировать» — во всю ширину, одна под другой (.btn.sm сужает) */
+.invite-actions .btn{width:100%}
+/* «Поделиться» и «Скопировать» — во всю ширину, одна под другой (.btn.sm сужает) */
 .ring svg{transform:rotate(-90deg)}
-.ring .val{font-size:12px;color:var(--violet-2)}.ring .lbl{font-size:11px;color:var(--muted)}
+.ring .val{font-size:12px;color:var(--violet-2)}
+.ring .lbl{font-size:11px;color:var(--muted)}
 .ring circle.v{stroke-dasharray:151;stroke-dashoffset:151;transition:stroke-dashoffset .8s var(--sp)}
 .sug{position:relative}
-.sug-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:var(--surface);border:1px solid var(--line);
-  border-radius:var(--r-m);overflow:hidden;box-shadow:0 22px 60px rgba(11,10,20,.7);display:none}
+.sug-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);overflow:hidden;box-shadow:0 22px 60px rgba(11,10,20,.7);display:none}
 .sug-list.on{display:block}
-.sug-list button{display:block;width:100%;text-align:left;padding:13px 16px;background:none;border:0;border-bottom:1px solid var(--line);
-  color:var(--text);font:inherit;font-size:15px;cursor:pointer}
+.sug-list button{display:block;width:100%;text-align:left;padding:13px 16px;background:none;border:0;border-bottom:1px solid var(--line);color:var(--text);font:inherit;font-size:15px;cursor:pointer}
 .sug-list button:last-child{border-bottom:0}
 .sug-list button:hover,.sug-list button.hl{background:rgba(217,184,104,.14)}
 .sug-list small{display:block;color:var(--faint);font-size:13px;margin-top:2px}
 .geo{font-size:13px;color:var(--faint);margin-top:6px;min-height:1px}
 .consent a{color:var(--gold-2);text-decoration:underline;text-underline-offset:3px}
 .geo b{color:var(--violet-2);font-weight:600}
-@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-
-.back{display:inline-flex;align-items:center;gap:7px;font-size:15px;color:var(--gold-2);background:none;
-  border:0;padding:8px 0;cursor:pointer;font-family:inherit;min-height:44px}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+.back{display:inline-flex;align-items:center;gap:7px;font-size:15px;color:var(--gold-2);background:none;border:0;padding:8px 0;cursor:pointer;font-family:inherit;min-height:44px}
 /* анкета: без прокрутки на обычном телефоне — шапка в одну строку, поля ниже */
 .onb-head{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;padding:2px 0 8px;text-align:left}
 .onb-head img{grid-row:span 2}
@@ -256,26 +293,25 @@ body.inner .wpane .dayview .dc-read small{color:var(--gold);font-size:11px}
 #v-onb #o-auth .btn.ghost.sm{width:auto!important;min-height:36px;padding:0 14px;margin-top:0!important}
 #v-onb #o-auth .field,#v-onb #o-auth .btn:not(.sm),#v-onb #o-auth .msg{flex:1 1 100%}
 #v-onb #o-auth .field{text-align:left}
-#v-onb.on{margin-bottom:-16px}   /* нижний отступ обертки не должен давать пустую прокрутку */
-
+#v-onb.on{margin-bottom:-16px}
+/* нижний отступ обертки не должен давать пустую прокрутку */
 /* ── iOS-оболочка (App Store) ──
    Правило 3.1.1 запрещает внешние оплаты и цены на цифровое внутри приложения,
    правило 2.1 — разделы «скоро» и пустые экраны. Поэтому в сборке для App Store
    не показываем платежное: остается только работающее.
    Установка PWA внутри приложения тоже ни к чему. */
-
 /* ── натальная карта ── */
 .nt{width:100%;border-collapse:collapse;font-size:15px;margin-top:8px}
 .nt th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
 .nt td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .nt td small{color:var(--faint)}
-
 /* ── чат с поддержкой ── */
 .dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px rgba(11,10,20,.9)}
 .dot[hidden]{display:none}
 .sup-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 .sup-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 14px;border-radius:var(--r-m);background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
-.sup-item b{font-size:15px;display:block}.sup-item small{color:var(--faint);font-size:13px}
+.sup-item b{font-size:15px;display:block}
+.sup-item small{color:var(--faint);font-size:13px}
 .sup-item .badge{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--bg);background:var(--gold-2);border-radius:var(--r-pill);padding:2px 8px}
 .thread{display:flex;flex-direction:column;gap:8px;max-height:46dvh;overflow:auto;margin-top:12px;padding:12px;border-radius:var(--r-m);background:rgba(255,255,255,.04);border:1px solid var(--line)}
 .thread .m{max-width:84%;padding:9px 12px;border-radius:var(--r-m);font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
@@ -283,7 +319,6 @@ body.inner .wpane .dayview .dc-read small{color:var(--gold);font-size:11px}
 .thread .m.support{align-self:flex-start;background:rgba(255,255,255,.08)}
 .thread .m small{display:block;color:var(--faint);font-size:12px;margin-bottom:3px}
 .sup-status{display:inline-block;padding:2px 9px;border-radius:var(--r-pill);border:1px solid var(--line);font-size:13px;color:var(--muted)}
-
 /* ── вход в приложение ── */
 body.hello .wrap{max-width:1180px;min-height:100dvh;padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))}
 #v-hello.on{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
@@ -345,7 +380,9 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 }
 .acct{position:absolute;right:0;top:0;width:44px;height:44px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--gold);font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:grid;place-items:center}
 .news-dot{position:absolute;right:1px;top:1px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px var(--bg),0 0 12px rgba(240,215,154,.55)}
-.account-group{margin-top:24px}.account-group>.eyebrow{margin-bottom:10px}.account-group .wids{margin-top:0}
+.account-group{margin-top:24px}
+.account-group>.eyebrow{margin-bottom:10px}
+.account-group .wids{margin-top:0}
 /* сотрудникам и админам — обратный путь в кабинеты прямо с главной; кнопка не сдвигает статичный экран */
 .cabs{position:absolute;right:52px;top:0;height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:var(--r-pill);background:var(--glass-bg);border:1px solid rgba(217,184,104,.45);box-shadow:var(--glass-shadow);color:var(--gold-2);font-size:14px;font-weight:650;text-decoration:none;white-space:nowrap}
 .cabs[hidden]{display:none}
@@ -366,9 +403,9 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .picker{text-align:center;padding:6px 0 2px}
 .picker-q{margin:0 0 10px;font-size:15px;font-weight:600;color:var(--text)}
 .fan-rows{display:grid;gap:2px}
-.fan{display:flex;justify-content:center;align-items:flex-end;padding:14px 6px 8px;min-height:110px;--w:46px;--a:calc(26deg / var(--n))}   /* ряд веера: карты 46px внахлест (--ml считает fitFans), поворот от центра ряда */
-.fan-card{position:relative;flex:0 0 auto;width:var(--w);aspect-ratio:200/360;margin-left:var(--ml,calc(var(--w) * -.42));padding:0;border:0;background:none;border-radius:6px;
-  transform-origin:50% 230%;transform:rotate(calc((var(--i, 0) - (var(--n) - 1) / 2) * var(--a)));transition:transform .28s var(--sp),filter .28s;cursor:pointer;filter:drop-shadow(0 6px 12px rgba(0,0,0,.6))}
+.fan{display:flex;justify-content:center;align-items:flex-end;padding:14px 6px 8px;min-height:110px;--w:46px;--a:calc(26deg / var(--n))}
+/* ряд веера: карты 46px внахлест (--ml считает fitFans), поворот от центра ряда */
+.fan-card{position:relative;flex:0 0 auto;width:var(--w);aspect-ratio:200/360;margin-left:var(--ml,calc(var(--w) * -.42));padding:0;border:0;background:none;border-radius:6px;transform-origin:50% 230%;transform:rotate(calc((var(--i, 0) - (var(--n) - 1) / 2) * var(--a)));transition:transform .28s var(--sp),filter .28s;cursor:pointer;filter:drop-shadow(0 6px 12px rgba(0,0,0,.6))}
 .fan-card:first-child{margin-left:0}
 .fan-card img{display:block;width:100%;height:100%;object-fit:cover;border-radius:6px;border:1px solid rgba(240,215,154,.35)}
 .fan-card:hover{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * var(--a))) translateY(-10px)}
@@ -378,20 +415,44 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .fan-card.on .pick-n:not(:empty){display:block}
 .picker.rune .fan{align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0 6px;min-height:0}
 .picker.rune .fan-card{width:44px;aspect-ratio:44/60;margin-left:0;transform:none;transform-origin:center}
-.picker.rune .fan-card:hover{transform:translateY(-6px)}.picker.rune .fan-card.on{transform:translateY(-10px) scale(1.06)}
+.picker.rune .fan-card:hover{transform:translateY(-6px)}
+.picker.rune .fan-card.on{transform:translateY(-10px) scale(1.06)}
 .stone-back{display:block;width:100%;height:100%;border-radius:50%/48%;background:radial-gradient(circle at 40% 32%,#3a2f68,#1a1533 60%,#0f0c1e);border:1px solid rgba(240,215,154,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 .picker.done .fan-card:not(.on){opacity:0;transform:translateY(12px)}
 .picker.done .fan-card.on{transition:transform .4s var(--sp),opacity .3s}
 .rune-thumb{display:block;width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 auto;box-shadow:0 0 14px -4px rgba(240,215,154,.5)}
 .rune-thumb img{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.35)}
-.card-thumb{display:block;width:34px;height:56px;border-radius:5px;overflow:hidden;flex:0 0 auto;box-shadow:0 6px 14px -6px rgba(0,0,0,.8),0 0 16px -6px rgba(240,215,154,.5);transform:rotate(-4deg)}.card-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.card-thumb{display:block;width:34px;height:56px;border-radius:5px;overflow:hidden;flex:0 0 auto;box-shadow:0 6px 14px -6px rgba(0,0,0,.8),0 0 16px -6px rgba(240,215,154,.5);transform:rotate(-4deg)}
+.card-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 .ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
-.ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.wish{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
+.ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}
+.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}
+.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}
+.ico.wish{--m:url(/app/assets/brand/icons/spark.svg)}
+.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}
+.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}
+.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}
+.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}
+.ico.person{--m:url(/app/assets/brand/icons/person.svg)}
+.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}
+.ico.users{--m:url(/app/assets/brand/icons/users.svg)}
+.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}
+.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}
+.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}
+.ico.question{--m:url(/app/assets/brand/icons/question.svg)}
+.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}
+.ico.share{--m:url(/app/assets/brand/icons/share.svg)}
+.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}
+.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}
+.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}
+.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}
+.ico.check{--m:url(/app/assets/brand/icons/check.svg)}
+.ico.list{--m:url(/app/assets/brand/icons/list.svg)}
+.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
 .ico.star{--m:url(/app/assets/brand/icons/spark.svg)}
 /* плитки разделов */
 .wids{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
-.wid{display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:15px 14px;border-radius:var(--r-l);background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);
-  width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:transform var(--t-fast) var(--sp)}
+.wid{display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:15px 14px;border-radius:var(--r-l);background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:transform var(--t-fast) var(--sp)}
 .wid:active{transform:scale(.98)}
 .wid .ico{width:26px;height:26px;margin-bottom:4px}
 .wid b{display:block;font-size:15px;font-weight:650;color:var(--text);line-height:1.3}
@@ -399,7 +460,8 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .rows{display:grid;gap:var(--s2);margin-top:var(--s5)}
 .rowbtn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:var(--r-m);background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
 .rowbtn .ico{width:22px;height:22px;background:var(--muted)}
-.rowbtn.warn{color:var(--warn)}.rowbtn.warn .ico{background:var(--warn)}
+.rowbtn.warn{color:var(--warn)}
+.rowbtn.warn .ico{background:var(--warn)}
 .stubtext{color:var(--faint);font-size:16px;text-align:center;margin-top:44px}
 /* виджет: на телефоне во весь экран, на широком — панель по центру */
 .wg-bg{position:fixed;inset:0;z-index:150;display:none;background:rgba(11,10,20,.8);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -441,15 +503,18 @@ body.inner .app-nav{display:grid}
   .wids{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:28px}
   .rows{grid-template-columns:repeat(2,1fr);gap:12px;margin-top:28px}
   .daycard{width:210px;height:334px}
-  .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,92vw);max-height:88vh;border-radius:var(--r-sheet);
-    background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
+  .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,92vw);max-height:88vh;border-radius:var(--r-sheet);background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
 }
-@media(min-width:1400px){.heromoon{width:1200px;height:1200px;left:calc(50% - 120px);top:calc(50% - 600px)}}
+@media(min-width:1400px){
+  .heromoon{width:1200px;height:1200px;left:calc(50% - 120px);top:calc(50% - 600px)}
+}
 /* ── карта дня: иллюстрация аркана на лицевой стороне ── */
 .daycard{width:196px;height:368px}
 .dc-front{padding:0;overflow:hidden;border:1px solid rgba(217,184,104,.55)}
 .dc-front img{width:100%;height:100%;object-fit:cover;display:block;border-radius:var(--r-xl)}
-@media(min-width:900px){.daycard{width:224px;height:420px}}
+@media(min-width:900px){
+  .daycard{width:224px;height:420px}
+}
 .kw{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:7px;line-height:1.5}
 .today{color:var(--strong);font-size:15px;margin-bottom:8px}
 .card p+p{margin-top:10px}
@@ -494,7 +559,9 @@ body.inner .app-nav{display:grid}
 .lay .c button{position:relative;background:none;border:0;padding:0;cursor:pointer;display:block}
 .lay .thumb{width:58px;height:109px;border-radius:var(--r-xs);object-fit:cover;display:block;border:1px solid rgba(217,184,104,.35);box-shadow:0 8px 18px -8px rgba(0,0,0,.8)}
 .lay .num{position:absolute;top:-7px;left:-7px;width:20px;height:20px;border-radius:50%;background:var(--gold);color:var(--bg);font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.lay .c.p2{z-index:2}.lay .c.p2 .thumb{transform:rotate(90deg);opacity:.94}.lay .c.p2 .num{top:auto;bottom:-7px;left:auto;right:-7px}
+.lay .c.p2{z-index:2}
+.lay .c.p2 .thumb{transform:rotate(90deg);opacity:.94}
+.lay .c.p2 .num{top:auto;bottom:-7px;left:auto;right:-7px}
 .glyph{width:58px;height:58px;border-radius:var(--r-m);background:linear-gradient(150deg,#2a2150,#0b0a14);border:1px solid rgba(217,184,104,.4);display:grid;place-items:center}
 .glyph svg{width:34px;height:34px}
 .glyph.lg{margin:var(--s1) auto var(--s3);width:90px;height:90px}
@@ -506,10 +573,12 @@ body.inner .app-nav{display:grid}
 .pos b{display:block;font-size:16px;color:var(--gold);font-weight:650;margin-top:var(--s2)}
 .pos .pn{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800;line-height:1.35}
 .pos .pn small{display:block;letter-spacing:0;text-transform:none;font-weight:400;color:var(--faint);font-size:13px;margin-top:2px}
-.laydesc{font-size:14px;margin-top:10px;color:var(--muted)}.laydesc b{color:var(--strong);font-weight:600}
+.laydesc{font-size:14px;margin-top:10px;color:var(--muted)}
+.laydesc b{color:var(--strong);font-weight:600}
 /* история: запись раскрывается в тот же вид, что и свежий результат */
 .histhead{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
-.histhead>span{min-width:0}.histhead b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
+.histhead>span{min-width:0}
+.histhead b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
 .histhead svg{flex:0 0 auto;color:var(--faint);transition:transform var(--t) var(--sp)}
 .hist.on .histhead svg{transform:rotate(180deg);color:var(--gold)}
 .histbody{display:none;margin-top:12px}
@@ -525,14 +594,19 @@ body.inner .app-nav{display:grid}
 .yr-art h4{font-size:16px;font-weight:600;color:var(--text);line-height:1.35;margin:20px 0 4px}
 .yr-art .yr-cap+h4,.yr-art>h4:first-child{margin-top:0}
 .yr-art p{font-size:15px;line-height:1.6;margin:10px 0 0;color:var(--text-2)}
-.yr-art b{display:inline;font-size:inherit;margin:0;color:var(--strong);font-weight:600}   /* выделение внутри строки, а не заголовок карточки */
+.yr-art b{display:inline;font-size:inherit;margin:0;color:var(--strong);font-weight:600}
+/* выделение внутри строки, а не заголовок карточки */
 .yr-art ul,.yr-art ol{margin:8px 0 0;padding-left:22px;color:var(--text-2);font-size:15px;line-height:1.6}
-.yr-art li{margin-top:6px}.yr-art li::marker{color:var(--gold)}
+.yr-art li{margin-top:6px}
+.yr-art li::marker{color:var(--gold)}
 .yr-art ul ul{margin-top:4px;padding-left:18px}
-.yr-art{min-width:0}   /* карточка в сетке не растягивается под широкую таблицу — таблица прокручивается внутри */
-.yr-art a{color:var(--gold-2);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}   /* ссылки на источники — как в файле */
+.yr-art{min-width:0}
+/* карточка в сетке не растягивается под широкую таблицу — таблица прокручивается внутри */
+.yr-art a{color:var(--gold-2);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+/* ссылки на источники — как в файле */
 /* лунный день: полоска всех 30 дней, над главой — номер дня и ее тема */
-.ln-days{margin-top:6px}.ln-days .chip{min-width:44px;padding:9px 0;text-align:center;font-size:14px}
+.ln-days{margin-top:6px}
+.ln-days .chip{min-width:44px;padding:9px 0;text-align:center;font-size:14px}
 .ln-eb{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--gold);margin:14px 0 0}
 .yr-art .ln-eb{margin-top:14px}
 .yr-art .ln-title{font-size:18px;font-weight:600;line-height:1.3;color:var(--text);margin:4px 0 0}
@@ -545,13 +619,18 @@ body.inner .app-nav{display:grid}
 /* ── напоминания: переключатель, время, регулярность ── */
 .sw{width:46px;height:28px;border-radius:var(--r-pill);border:1px solid var(--line);background:rgba(255,255,255,.1);position:relative;cursor:pointer;flex:0 0 46px;padding:0;transition:background var(--t)}
 .sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform var(--t) var(--sp),background var(--t)}
-.sw.on{background:rgba(217,184,104,.35);border-color:rgba(217,184,104,.6)}.sw.on i{transform:translateX(18px);background:var(--gold-2)}
+.sw.on{background:rgba(217,184,104,.35);border-color:rgba(217,184,104,.6)}
+.sw.on i{transform:translateX(18px);background:var(--gold-2)}
 .rem-head{display:flex;align-items:center;gap:12px}
-.rem-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.rem-actions .btn{min-height:44px}
-.rem .sw{min-height:28px;background-clip:padding-box;border-top:9px solid transparent;border-bottom:9px solid transparent;box-sizing:content-box}.rem .sw i{top:3px}
-.rem .rem-lbl small{color:var(--muted)}.rem-body input{max-width:100%}
+.rem-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.rem-actions .btn{min-height:44px}
+.rem .sw{min-height:28px;background-clip:padding-box;border-top:9px solid transparent;border-bottom:9px solid transparent;box-sizing:content-box}
+.rem .sw i{top:3px}
+.rem .rem-lbl small{color:var(--muted)}
+.rem-body input{max-width:100%}
 .rem-lbl{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit}
-.rem-lbl b{display:block;font-size:15px;font-weight:650}.rem-lbl small{display:block;color:var(--faint);font-size:13px;margin-top:2px;line-height:1.35}
+.rem-lbl b{display:block;font-size:15px;font-weight:650}
+.rem-lbl small{display:block;color:var(--faint);font-size:13px;margin-top:2px;line-height:1.35}
 .rem-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);animation:in var(--t) var(--sp)}
 .rem-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .rem-row label{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
@@ -559,9 +638,20 @@ body.inner .app-nav{display:grid}
 .rem-status{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.45}
 .hint{font-size:13px;color:var(--faint);line-height:1.45}
 /* отступы по шкале и роли текста — вместо inline-стилей в шаблонах */
-.mt-0{margin-top:0!important}.mt-1{margin-top:var(--s1)!important}.mt-2{margin-top:var(--s2)!important}.mt-3{margin-top:var(--s3)!important}.mt-4{margin-top:var(--s4)!important}.mt-5{margin-top:var(--s5)!important}
-.mb-0{margin-bottom:0!important}.mb-2{margin-bottom:var(--s2)!important}.mb-3{margin-bottom:var(--s3)!important}.mb-4{margin-bottom:var(--s4)!important}
-.center{text-align:center}.left{text-align:left}.full{width:100%}.italic{font-style:normal}
+.mt-0{margin-top:0!important}
+.mt-1{margin-top:var(--s1)!important}
+.mt-2{margin-top:var(--s2)!important}
+.mt-3{margin-top:var(--s3)!important}
+.mt-4{margin-top:var(--s4)!important}
+.mt-5{margin-top:var(--s5)!important}
+.mb-0{margin-bottom:0!important}
+.mb-2{margin-bottom:var(--s2)!important}
+.mb-3{margin-bottom:var(--s3)!important}
+.mb-4{margin-bottom:var(--s4)!important}
+.center{text-align:center}
+.left{text-align:left}
+.full{width:100%}
+.italic{font-style:normal}
 .title-gold{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:22px;line-height:1.25;color:var(--gold)}
 .num-mark{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:36px;line-height:1.1;color:var(--gold);width:44px;flex:0 0 44px;text-align:center}
 .row.top{align-items:flex-start;gap:var(--s4)}
@@ -577,12 +667,13 @@ body.inner .app-nav{display:grid}
 .hd{width:30px;height:40px;border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--faint);font:inherit;font-size:11px}
 .hd::before{content:'';width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(217,184,104,.5);box-sizing:border-box}
 .hd.on::before{background:var(--gold);border-color:var(--gold)}
-.hd.today{color:var(--gold-2)}.hd.today::before{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
-.linkbtn{display:block;margin:0;background:none;border:0;color:var(--faint);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.hd.today{color:var(--gold-2)}
+.hd.today::before{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
 /* ── отчет по настроениям ── */
 .mr-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
 .mr-day{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--faint);font-size:11px;padding:6px 0;border-radius:var(--r-s)}
-.mr-day.today{background:rgba(217,184,104,.1)}.mr-day svg{color:var(--gold-2)}
+.mr-day.today{background:rgba(217,184,104,.1)}
+.mr-day svg{color:var(--gold-2)}
 .mr-empty{width:30px;height:30px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.18);display:block}
 /* ── небо ── */
 .skyev.now{border-color:rgba(217,184,104,.5)}
@@ -614,23 +705,14 @@ body.inner .app-nav{display:grid}
 /* «Установить на телефон» ведет на инструкцию /app/install (в Chrome на телефоне — сразу системный диалог); уже установленным не нужна:
    оболочке App Store и приложению, открытому с экрана «Домой» */
 .ios-shell #t-install{display:none!important}
-@media(display-mode:standalone){#t-install{display:none!important}}
+@media(display-mode:standalone){
+  #t-install{display:none!important}
+}
 a.wid,a.later-row{text-decoration:none}
 /* Микровзаимодействия команд: один короткий золотой отклик вместо постоянной анимации. */
-:is(.wid,.moonline){
-  position:relative;isolation:isolate;overflow:hidden;
-  transition:transform var(--t) var(--sp),border-color var(--t) ease,background-color var(--t) ease,box-shadow var(--t) ease;
-  -webkit-tap-highlight-color:transparent;touch-action:manipulation
-}
-:is(.wid){
-  backdrop-filter:none;-webkit-backdrop-filter:none;
-  box-shadow:var(--glass-shadow),inset 0 0 0 .5px rgba(255,255,255,.07)
-}
-:is(.wid,.moonline)::after{
-  content:'';position:absolute;z-index:0;left:var(--tap-x,50%);top:var(--tap-y,50%);width:18px;height:18px;border-radius:50%;
-  background:radial-gradient(circle,rgba(255,244,207,.42) 0,rgba(217,184,104,.18) 38%,transparent 72%);
-  opacity:0;transform:translate(-50%,-50%) scale(.2);pointer-events:none
-}
+:is(.wid,.moonline){position:relative;isolation:isolate;overflow:hidden;transition:transform var(--t) var(--sp),border-color var(--t) ease,background-color var(--t) ease,box-shadow var(--t) ease;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+:is(.wid){backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--glass-shadow),inset 0 0 0 .5px rgba(255,255,255,.07)}
+:is(.wid,.moonline)::after{content:'';position:absolute;z-index:0;left:var(--tap-x,50%);top:var(--tap-y,50%);width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,rgba(255,244,207,.42) 0,rgba(217,184,104,.18) 38%,transparent 72%);opacity:0;transform:translate(-50%,-50%) scale(.2);pointer-events:none}
 :is(.wid,.moonline)>*{position:relative;z-index:1}
 :is(.wid,.moonline).reward::after{animation:reward-ring .58s var(--sp)}
 :is(.wid,.moonline).reward>.ico{animation:reward-icon .5s var(--sp)}
@@ -641,10 +723,7 @@ a.wid,a.later-row{text-decoration:none}
 .wg-bg.on .wg{animation:panel-open var(--t-slow) var(--sp)}
 @keyframes panel-open{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(hover:hover) and (pointer:fine){
-  :is(.wid,.moonline):hover{
-    transform:translateY(-2px);border-color:rgba(217,184,104,.58);
-    box-shadow:var(--glass-shadow),0 16px 34px -22px rgba(240,215,154,.75)
-  }
+  :is(.wid,.moonline):hover{transform:translateY(-2px);border-color:rgba(217,184,104,.58);box-shadow:var(--glass-shadow),0 16px 34px -22px rgba(240,215,154,.75)}
   :is(.wid):hover::before{opacity:.72}
 }
 :is(.wid,.moonline):active{transform:scale(.98)}
@@ -653,11 +732,12 @@ a.wid,a.later-row{text-decoration:none}
   :is(.wid,.moonline)::after{display:none}
   :is(.wid,.moonline):hover{transform:none}
 }
-
 .hb-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .hb-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
 .hb-columns .hb-rule{margin:0;font-size:13px;font-weight:400;color:var(--muted)}
-.mfam{flex-wrap:wrap}.mfam .chips{min-width:180px}.mchip{min-height:40px}
+.mfam{flex-wrap:wrap}
+.mfam .chips{min-width:180px}
+.mchip{min-height:40px}
 /* Спокойные поверхности для чтения, стекло — у навигации и коротких действий. */
 [hidden]{display:none!important}
 body.inner :is(.card,.item,.wid){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
@@ -680,9 +760,13 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
    ближайшие фазы; полоска недели — семь маленьких лун. Все — одна кнопка, ведет в лунный день ── */
 .home-hero{position:relative;display:grid;justify-items:center;width:100%;margin:0;padding:6px 0 2px;background:none;border:0;color:var(--text);text-align:center;cursor:pointer;font:inherit;-webkit-appearance:none;appearance:none}
 .home-hero .hero-glow{position:absolute;left:50%;top:150px;width:min(460px,120vw);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(240,215,154,.20),rgba(240,215,154,.07) 40%,transparent 68%);pointer-events:none;z-index:0}
-.moon-hero-cv{position:relative;z-index:1;display:block;width:min(300px,80vw);height:auto;aspect-ratio:1;margin:-14px 0 -20px}   /* диск ≈ 204 px — шаг под Луной виден без прокрутки на 390×844 */   /* диск ≈ 68 % стороны холста — 218 px; остальное — нимб */
+.moon-hero-cv{position:relative;z-index:1;display:block;width:min(300px,80vw);height:auto;aspect-ratio:1;margin:-14px 0 -20px}
+/* диск ≈ 204 px — шаг под Луной виден без прокрутки на 390×844 */
+/* диск ≈ 68 % стороны холста — 218 px; остальное — нимб */
 .hero-phase{position:relative;z-index:1;display:block;font-size:22px;line-height:1.25;font-weight:600;letter-spacing:-.01em;color:var(--text);text-wrap:balance;padding:0 8px}
-@media(max-width:400px){.hero-phase{font-size:20px}}
+@media(max-width:400px){
+  .hero-phase{font-size:20px}
+}
 .hero-me{position:relative;z-index:1;display:block;margin-top:6px;font-size:14px;line-height:1.4;font-weight:500;color:var(--text-2)}
 .hero-next{position:relative;z-index:1;display:block;margin-top:6px;font-size:11px;line-height:1.4;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .hero-me[hidden],.hero-next[hidden]{display:none}
@@ -729,8 +813,10 @@ body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150
 .segmented{display:flex;gap:4px;padding:4px;border-radius:var(--r-m);background:var(--field);margin:20px 0 16px;border:1px solid var(--line)}
 .segmented button{flex:1;min-width:0;min-height:44px;padding:8px 10px;border:0;border-radius:var(--r-s);background:none;color:var(--muted);font:inherit;font-size:13px;line-height:1.4;cursor:pointer}
 .segmented button[aria-selected=true]{background:var(--selected);color:var(--text);box-shadow:0 1px 3px #0003}
-.mood-own-row{margin-top:20px}.mood-own-row label{font-size:13px;color:var(--muted);display:block;margin-bottom:8px}
-.mood-own-row input{min-width:0}.mood-own-row .btn{flex:0 0 auto}
+.mood-own-row{margin-top:20px}
+.mood-own-row label{font-size:13px;color:var(--muted);display:block;margin-bottom:8px}
+.mood-own-row input{min-width:0}
+.mood-own-row .btn{flex:0 0 auto}
 .mpick.saved-state{border-radius:var(--r-s);border:1px solid var(--line);border-left:2px solid var(--ok);color:var(--text);margin:16px 0}
 .mpick.saved-state small{display:block;font-size:12px;line-height:1.5;color:var(--muted);margin-top:4px}
 .emotion-families{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
@@ -739,7 +825,8 @@ body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150
 .emotion-family>span:last-child{margin-left:auto;color:var(--muted)}
 .emotion-family.on{border-color:var(--c)}
 .mood-shades{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);margin:4px 0 12px}
-.mood-shades .chips{margin-top:12px}.mchip{min-height:44px;font-size:14px}
+.mood-shades .chips{margin-top:12px}
+.mchip{min-height:44px;font-size:14px}
 .mood-picker .mfam{gap:10px;display:block;padding:14px 0}
 .mood-picker .mfam .fname{display:block;width:auto;margin-bottom:10px;padding:0;color:var(--muted)}
 .hb-check{width:44px;height:44px;min-height:44px;flex-basis:44px;border-radius:var(--r-m)}
@@ -750,11 +837,29 @@ body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150
 .hb .icon-action{min-width:40px;flex:0 0 40px}
 .hb .grow{overflow-wrap:anywhere}
 .add-action{margin-top:12px}
-@media(hover:hover) and (pointer:fine){body.inner :is(.wid,.moonline):hover{transform:translateY(-2px);border-color:rgba(236,231,249,.32);box-shadow:none}body.inner :is(.text-action,.emotion-family):hover{color:var(--strong)}body.inner :is(.wid,.moonline):active{transform:scale(.98)}}
-@media(max-width:370px){.wg{padding-left:14px;padding-right:14px}.emotion-family{padding:10px 8px;gap:6px;font-size:12px}.emotion-family svg{width:22px;flex-basis:22px}.hb{gap:8px;padding:12px}.hb b.hb-columns{grid-template-columns:1fr}.hb .icon-action{min-width:32px;flex-basis:32px}.mood-own-row .row{flex-wrap:wrap}.mood-own-row input{flex:1 1 100%}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.wg-bg.on .wg{translate:none}body.inner :is(.wid,.moonline):hover{transform:none}}
-@media(prefers-reduced-transparency:reduce){body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:#28233c;backdrop-filter:none;-webkit-backdrop-filter:none}}
-
+@media(hover:hover) and (pointer:fine){
+  body.inner :is(.wid,.moonline):hover{transform:translateY(-2px);border-color:rgba(236,231,249,.32);box-shadow:none}
+  body.inner :is(.text-action,.emotion-family):hover{color:var(--strong)}
+  body.inner :is(.wid,.moonline):active{transform:scale(.98)}
+}
+@media(max-width:370px){
+  .wg{padding-left:14px;padding-right:14px}
+  .emotion-family{padding:10px 8px;gap:6px;font-size:12px}
+  .emotion-family svg{width:22px;flex-basis:22px}
+  .hb{gap:8px;padding:12px}
+  .hb b.hb-columns{grid-template-columns:1fr}
+  .hb .icon-action{min-width:32px;flex-basis:32px}
+  .mood-own-row .row{flex-wrap:wrap}
+  .mood-own-row input{flex:1 1 100%}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  .wg-bg.on .wg{translate:none}
+  body.inner :is(.wid,.moonline):hover{transform:none}
+}
+@media(prefers-reduced-transparency:reduce){
+  body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:#28233c;backdrop-filter:none;-webkit-backdrop-filter:none}
+}
 /* Четыре маршрута: день, вопрос, записи, личное. */
 #v-home.on{display:block;min-height:0}
 #v-home .hdr h1{margin-top:var(--s1)}
@@ -774,16 +879,22 @@ body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer
 #home-sky .lunar-advice{font-size:13px;line-height:1.5;color:var(--muted)}
 .lunar-arrow{flex:0 0 auto;color:var(--gold-2);font-size:20px}
 #home-sky .moonline::after{display:none}
-.profile-summary{margin-top:20px}.profile-summary h2{font-size:22px;margin-bottom:16px}.profile-summary>p{margin-top:14px;font-size:14px}
+.profile-summary{margin-top:20px}
+.profile-summary h2{font-size:22px;margin-bottom:16px}
+.profile-summary>p{margin-top:14px;font-size:14px}
 :is(.lunar-period,.lunar-library)>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:14px;color:var(--muted)}
 .upcoming{margin-top:20px}
-.danger-zone{margin-top:44px}.danger-zone .warn{margin-top:20px}
-.question-entry{grid-template-columns:1fr}.question-entry .wid{min-height:100px}
+.danger-zone{margin-top:44px}
+.danger-zone .warn{margin-top:20px}
+.question-entry{grid-template-columns:1fr}
+.question-entry .wid{min-height:100px}
 .quick-moods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .quick-mood{display:flex;align-items:center;gap:10px;min-height:70px;padding:14px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
 .quick-mood.on{border-color:var(--gold);background:var(--selected)}
 .quick-mood .ico{width:30px;height:30px;background:var(--muted)}
-#hub-chips{margin-top:16px}#hub-opts .chips{margin:12px 0 20px}.hubq .field{margin:24px 0 0}
+#hub-chips{margin-top:16px}
+#hub-opts .chips{margin:12px 0 20px}
+.hubq .field{margin:24px 0 0}
 #hub-res{margin-top:20px}
 .material-note{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
 .material-note a{color:var(--muted)}
@@ -792,13 +903,19 @@ body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer
 .lunar-library,.lunar-period{margin-top:18px}
 #ln-preview{padding-top:8px}
 body.inner .utility-actions .text-action{color:var(--muted)}
-@media(min-width:900px){.practice-links{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-summary{max-width:660px}.account-group .compact-links{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}}
-@media(max-width:370px){.quick-mood{padding:12px;font-size:14px}.practice-links{grid-template-columns:1fr}.app-nav button{font-size:11px}}
-@media(hover:hover) and (pointer:fine){body.inner .wid:hover,.quick-mood:hover{border-color:rgba(217,184,104,.5)}}
-
+@media(min-width:900px){
+  .profile-summary{max-width:660px}
+  .account-group .compact-links{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}
+}
+@media(max-width:370px){
+  .quick-mood{padding:12px;font-size:14px}
+  .app-nav button{font-size:11px}
+}
+@media(hover:hover) and (pointer:fine){
+  body.inner .wid:hover,.quick-mood:hover{border-color:rgba(217,184,104,.5)}
+}
 /* Стили приложения одним файлом (19.09): токены — theme.css, разметка экранов — <style> в index.html, здесь — все остальное
    в прежнем порядке каскада. Правило нового кода: не добавлять четвертый слой — править существующее правило. */
-
 /* ═══════════════════════════ ЭКРАНЫ И ФОРМЫ (бывший experience.css) ═══════════════════════════ */
 /* Reading layout and controls; moon-glass.css supplies the final day/night material. */
 body:not(.inner){color-scheme:dark}
@@ -821,8 +938,6 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 .answer-form .field{margin:20px 0 0}
 .answer-actions{position:sticky;bottom:0;z-index:9;padding:12px 0 calc(12px + env(safe-area-inset-bottom));background:var(--sheet);border:0}
 .answer-actions .btn{width:100%}
-#journal-card .answer-actions{background:var(--bg);bottom:calc(74px + env(safe-area-inset-bottom) + var(--keyboard-gap,0px))}
-#j-text{width:100%}
 #v-practice{max-width:760px;margin:0 auto;min-height:80dvh;padding-bottom:60px}
 .practice-header{padding:0 0 24px}
 .practice-header h1{margin:12px 0 0;font-size:clamp(26px,4vw,36px)}
@@ -831,29 +946,11 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 #practice-tools:empty{display:none}
 #practice-tools{margin:0 0 24px}
 #practice-tools .rem-body{display:none}
-#w-journal>.eyebrow{display:none}
-#w-journal #m-journal{margin-top:40px}
 /* Каталог инструментов: карточки по разделам, у каждой «Посмотреть» и «Добавить/Убрать»; вход — обычная плитка внизу Дневника */
-.tools-link{margin-top:28px}
-.diary-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:24px 0}
-.diary-actions .text-action{padding:8px}
-.diary-actions .btn{width:auto}
-.timeline-filters{display:flex;gap:8px;overflow:auto;padding:4px 3px 14px;scrollbar-width:thin}
-.timeline-filters .chip{white-space:nowrap;flex-shrink:0;min-height:44px}
-.timeline-filters [aria-pressed=true]{background:var(--selected);border-color:var(--gold);color:var(--text)}
 .timeline{max-width:780px;margin:0 auto}
-.timeline-day{margin:30px 0 12px;font-weight:500;letter-spacing:0;text-transform:none}
 .timeline-entry{border:0;border-bottom:1px solid var(--line);padding:20px 0;overflow-wrap:anywhere}
 .timeline-entry p{white-space:pre-wrap;margin:8px 0 0}
-.timeline-kind{display:block;margin-bottom:8px}
-.timeline-title{font-weight:550}
-.timeline-link{display:flex;justify-content:space-between;gap:20px;width:100%;padding:8px 0;min-height:44px;border:0;background:none;color:var(--text);font:inherit;font-size:18px;line-height:1.6;text-align:left;cursor:pointer}
-.timeline-link>span{color:var(--gold-2)}
-#timeline-more{margin:24px 0}
-.diary-library{margin-top:40px;border-top:1px solid var(--line);padding-top:20px}
-.diary-library>summary{cursor:pointer;min-height:44px;font-size:17px}
 .timeline-empty{padding:32px 0}
-.timeline-long summary{list-style:none;cursor:pointer}.timeline-long summary::-webkit-details-marker{display:none}.timeline-long summary>.entry-text{display:block}.timeline-long[open] summary>.entry-text{display:none}.timeline-long[open] summary .text-action{font-size:0}.timeline-long[open] summary .text-action::after{content:'Свернуть';font-size:16px}
 .mr-day{color:var(--text);font:inherit;border:0;cursor:pointer;background:var(--field);min-height:72px;min-width:0}
 .wish-form{padding:0;background:none;border:0;box-shadow:none}
 .wish-form label{display:block;margin-bottom:8px;font-size:16px}
@@ -871,7 +968,8 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 .theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:24px 0}
 .theme-option{border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);color:var(--text);font:inherit;font-size:15px;padding:12px;cursor:pointer}
 .theme-option>span{display:grid;place-items:center;font-size:32px;height:110px;margin-bottom:12px;border-radius:var(--r-s);background:#f0edf8;color:#2a2150}
-.theme-option.dark>span{background:#1c192c;color:#f5f2ea}.theme-option.system>span{background:linear-gradient(90deg,#f0edf8 50%,#1c192c 50%);color:#2a2150}
+.theme-option.dark>span{background:#1c192c;color:#f5f2ea}
+.theme-option.system>span{background:linear-gradient(90deg,#f0edf8 50%,#1c192c 50%);color:#2a2150}
 .theme-option[aria-pressed=true]{outline:2px solid var(--gold);outline-offset:2px}
 html[data-theme=light] body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:rgba(245,242,234,.28);color:var(--text);border-color:var(--line);box-shadow:0 4px 20px #2820400c,inset 0 1px 0 #fff}
 html[data-theme=light] body.inner :is(.orb,.cloud){opacity:.035}
@@ -887,7 +985,6 @@ html[data-theme=light] body.inner :is(.chip.on,.mchip.on,.chip[aria-pressed=true
 html[data-theme=light] body.inner :is(.text-action,.emotion-family):hover{color:var(--text)}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:16px;line-height:1.5}
 body.inner #home-sky .moonline small{font-size:14px;line-height:1.5}
-body.inner .timeline-filters .chip{color:var(--text)}
 body.inner .app-nav{height:70px;width:min(470px,calc(100% - 16px))}
 body.inner .app-nav button{font-size:15px;line-height:1.3;font-weight:500;padding:3px 0;color:var(--muted);min-width:0}
 body.inner .app-nav button.on{color:var(--text)}
@@ -895,9 +992,25 @@ body.inner .toast{background:var(--selected);color:var(--text);border-color:var(
 body.inner .morebtn{font-size:16px;min-height:44px}
 .mr-month-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-top:16px}
 .mr-month-days .mr-day{border-radius:var(--r-s);padding:8px 2px}
-@media(min-width:760px){#journal-card .answer-actions{bottom:var(--keyboard-gap,0px)}.wg{max-height:min(88vh,var(--visible-height,88vh))}}
-@media(max-width:759px){.wg{height:var(--visible-height,100dvh);bottom:auto}.wg-head{top:calc(-16px - env(safe-area-inset-top))}.wg{padding-bottom:env(safe-area-inset-bottom)}.wish-grid{grid-template-columns:1fr}.wish-picture{aspect-ratio:4/3}.theme-options{gap:8px}.theme-option{padding:8px;font-size:15px}.theme-option>span{height:90px}.app-nav{padding-bottom:env(safe-area-inset-bottom)}body.practice-open:has(textarea:focus) .app-nav{visibility:hidden}body.practice-open:has(textarea:focus) #journal-card .answer-actions{bottom:var(--keyboard-gap,0px)}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.wish-card,.timeline-entry{animation:none}}
+@media(min-width:760px){
+  .wg{max-height:min(88vh,var(--visible-height,88vh))}
+}
+@media(max-width:759px){
+  .wg{height:var(--visible-height,100dvh);bottom:auto}
+  .wg-head{top:calc(-16px - env(safe-area-inset-top))}
+  .wg{padding-bottom:env(safe-area-inset-bottom)}
+  .wish-grid{grid-template-columns:1fr}
+  .wish-picture{aspect-ratio:4/3}
+  .theme-options{gap:8px}
+  .theme-option{padding:8px;font-size:15px}
+  .theme-option>span{height:90px}
+  .app-nav{padding-bottom:env(safe-area-inset-bottom)}
+  body.practice-open:has(textarea:focus) .app-nav{visibility:hidden}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .wish-card,.timeline-entry{animation:none}
+}
 body.inner .wrap{padding-top:calc(32px + env(safe-area-inset-top));padding-bottom:calc(112px + env(safe-area-inset-bottom))}
 body.inner :is(#v-ask,#v-history,#v-news){max-width:820px;margin-inline:auto}
 body.inner :is(h1,#v-home .hdr h1){font-size:32px;line-height:1.2;letter-spacing:-.035em;font-weight:600}
@@ -911,7 +1024,6 @@ body.inner .wpane :is(p,.entry-text){overflow-wrap:anywhere}
 body.inner .wpane p+p{margin-top:14px}
 body.inner :is(.wpane h3,.item b,.histhead b,.rem-lbl b){font-size:17px;line-height:1.5}
 body.inner :is(.wpane h3,.field label){text-transform:none;letter-spacing:0}
-
 /* One clear action; secondary actions remain quiet but easy to hit. */
 body.inner .btn{min-height:52px;border-radius:var(--radius-control);padding:13px 20px;line-height:1.45;font-weight:600;box-shadow:none}
 body.inner .btn.sm{min-height:48px;padding:11px 18px;font-size:16px}
@@ -927,10 +1039,10 @@ body.inner .utility-actions+.utility-actions{margin-top:4px;border:0;padding-top
 body.inner .saved-state{padding:12px 16px;border:1px solid color-mix(in srgb,var(--ok) 30%,transparent);border-radius:var(--r-m);background:color-mix(in srgb,var(--ok) 7%,var(--surface));color:var(--ok)!important}
 body.inner .saved-state:empty{display:none}
 body.inner .toast{border-radius:var(--r-m);padding:12px 18px;line-height:1.5;box-shadow:0 8px 32px #0002;max-width:min(480px,calc(100% - 32px))}
-
 /* Destination cards: generous text and a consistent directional cue. */
 body.inner .wids{gap:18px}
-body.inner .wid{position:relative}   /* размеры, поля и переходы плиток — moon-glass.css */
+body.inner .wid{position:relative}
+/* размеры, поля и переходы плиток — moon-glass.css */
 body.inner .wid b{padding-right:20px;font-size:17px;line-height:1.4;letter-spacing:-.015em}
 body.inner .wid>span:not(.dot){font-size:15px;line-height:1.55;color:var(--muted)}
 body.inner .wid .ico{width:24px;height:24px;margin-bottom:4px}
@@ -942,12 +1054,10 @@ body.inner .compact-links .wid>span.destination-arrow{position:static;grid-colum
 body.inner .compact-links .wid .ico{width:24px;height:24px}
 body.inner .compact-links .wid>span:empty{display:none}
 body.inner .compact-links .wid .dot{position:absolute;right:43px;top:22px}
-
 /* Today: one focal card, then quick actions and personal practices. */
 body.inner #home-sky .moonline{padding:20px 0;margin-bottom:12px;align-items:flex-start;gap:14px}
 body.inner #home-sky .moon-sm{margin-top:4px}
 body.inner #home-sky .lunar-arrow{align-self:center}
-
 /* Choosing a method reads as three equal options, without an orphan card. */
 body.inner .question-entry .wid{background:var(--accent-soft);min-height:150px;padding:24px;border-color:transparent}
 body.inner .question-entry .wid b{font-size:22px}
@@ -956,22 +1066,14 @@ body.inner .method-grid .wid{display:grid;grid-template-columns:28px minmax(0,1f
 body.inner .method-grid .wid .ico{grid-row:1/span 2;margin:0;width:28px;height:28px}
 body.inner .method-grid .wid b,body.inner .method-grid .wid>span:not(.destination-arrow){grid-column:2;padding:0}
 body.inner .method-grid .wid>span.destination-arrow{position:static;grid-column:3;grid-row:1/span 2;align-self:center}
-
 /* The diary is a reading surface. Filters never conceal available record types. */
-body.inner .diary-actions{margin:32px 0 24px;gap:12px 20px}
-body.inner .timeline-filters{flex-wrap:wrap;overflow:visible;gap:8px;padding:0 0 12px}
-body.inner .timeline-filters .chip{padding:9px 14px;font-size:15px}
-body.inner .timeline-day{font-size:14px;letter-spacing:.01em;margin:28px 0 4px}
 body.inner .timeline-entry{padding:22px 0}
 body.inner .timeline-empty{padding:28px 24px;background:var(--surface);border:1px dashed var(--control-border);border-radius:var(--r-l);margin:20px 0}
-body.inner .diary-library{padding-top:28px;margin-top:44px}
-body.inner .diary-library>summary{font-size:18px;font-weight:500}
 body.inner .wish-card{border-radius:var(--r-xl)}
 body.inner .wish-copy{padding:24px}
 body.inner .wish-copy p{font-weight:500}
 body.inner .wish-picture:not(:has(img)){background:var(--accent-soft);border-bottom:1px dashed var(--control-border);aspect-ratio:auto;min-height:140px}
 body.inner .wish-create-actions{gap:12px}
-
 /* Profile and app settings form two stable groups on wide screens. */
 .account-layout{margin-top:32px}
 body.inner .profile-summary{margin-top:0;padding:24px;border-radius:var(--radius-panel);max-width:none}
@@ -983,7 +1085,6 @@ body.inner .danger-zone{gap:0;border-top:1px solid var(--line);padding-top:20px}
 body.inner .danger-zone .eyebrow{color:var(--muted);margin-bottom:10px}
 body.inner .danger-zone .rowbtn{border:0;border-radius:var(--r-s);background:none;min-height:48px;padding:12px 4px;font-size:15px}
 body.inner .danger-zone .warn{margin-top:8px}
-
 /* Forms use one surface and labels directly attached to their fields. */
 body.inner .field{gap:10px;margin-bottom:28px}
 body.inner .field label{font-size:16px;line-height:1.5;font-weight:500;color:var(--text)}
@@ -1032,7 +1133,6 @@ body.inner .nt :is(th,td){padding:12px 6px}
 body.inner .thread .m{font-size:17px;line-height:1.65;background:var(--surface);color:var(--text);padding:14px 16px}
 body.inner .thread .m.user{background:var(--accent-soft)}
 body.inner .sup-item{border-radius:var(--r-l);padding:18px}
-
 /* Short settings are sheets; longer content keeps the full reading height. */
 body.inner .wg{border-color:var(--line);border-radius:var(--r-sheet);scroll-padding-top:100px}
 body.inner .wg-head{padding-bottom:22px;margin-bottom:28px;gap:24px}
@@ -1046,7 +1146,6 @@ body.inner .app-nav button.on{background:var(--selected)}
 html[data-theme] body.inner .theme-option.dark>span{color:#f5f2ea}
 html[data-theme] body.inner .theme-option.light>span{color:#2a2150}
 html[data-theme] body.inner .theme-option.system>span{color:#d9b868}
-
 /* The entry keeps its moon and copy; the form gains the same readable controls. */
 body:not(.inner) :is(#v-onb,#v-login) .card{background:#171323;backdrop-filter:none;box-shadow:none;border-color:#514963;border-radius:var(--r-xl);padding:24px}
 body:not(.inner) :is(#v-onb,#v-login) .field{gap:10px;margin-bottom:28px}
@@ -1061,11 +1160,12 @@ body:not(.inner) #v-hello .trust{font-size:14px}
 body:not(.inner):not(.hello) .bg{display:none}
 @media(hover:hover) and (pointer:fine){
   body.inner :is(.wid,.quick-mood,.emotion-family):hover{background:var(--hover);border-color:var(--control-border);transform:translateY(-2px)}
-  
   body.inner :is(.btn,.text-action,.back):hover{filter:brightness(1.04)}
   body.inner .text-action:hover{color:var(--text)}
 }
-@media(min-width:600px) and (max-width:899px){body.inner .wrap{max-width:700px;padding-inline:32px}}
+@media(min-width:600px) and (max-width:899px){
+  body.inner .wrap{max-width:700px;padding-inline:32px}
+}
 @media(min-width:900px){
   body.inner .wrap{padding:48px 48px 120px}
   /* аккаунт: две колонки одной высоты — раскладка в moon-glass.css («Аккаунт») */
@@ -1075,12 +1175,15 @@ body:not(.inner):not(.hello) .bg{display:none}
   body.inner .method-grid .wid>span.destination-arrow{position:absolute;top:22px;right:18px}
 }
 /* «Обо мне»: на телефоне плитки в один столбец — «Совместимость» и «Нумерология» в полстолбца не помещаются и резались */
-@media(max-width:599px){body.inner .about-links{grid-template-columns:1fr}}
+@media(max-width:599px){
+  body.inner .about-links{grid-template-columns:1fr}
+}
 @media(max-width:759px){
   body.inner .wg{border-radius:0;padding:calc(20px + env(safe-area-inset-top)) 20px env(safe-area-inset-bottom)}
   body.inner .wg-head{top:calc(-20px - env(safe-area-inset-top));padding-top:20px}
   body.inner #wg:is([data-kind=appearance],[data-kind=tools],[data-kind=askDate]) .wg{height:auto;max-height:calc(var(--visible-height,100dvh) - 20px);bottom:var(--keyboard-gap,0px);top:auto;border-radius:var(--r-sheet) var(--r-sheet) 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom))}
-  body.inner .app-nav{padding-bottom:6px;height:auto}   /* safe-area учтена один раз — в bottom (index.html .app-nav) */
+  body.inner .app-nav{padding-bottom:6px;height:auto}
+  /* safe-area учтена один раз — в bottom (index.html .app-nav) */
   body.inner .wpane .hb-entry{grid-template-columns:1fr;gap:0}
   body.inner .wish-create-actions .btn{flex:1}
 }
@@ -1094,9 +1197,12 @@ body:not(.inner):not(.hello) .bg{display:none}
   body.inner .hb{padding:14px;gap:10px}
   body.inner .profile-summary{padding:20px}
 }
-@media(prefers-reduced-motion:reduce){body.inner :is(.wid,.quick-mood,.emotion-family):hover{transform:none}}
-@media(prefers-reduced-transparency:reduce){body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}}
-
+@media(prefers-reduced-motion:reduce){
+  body.inner :is(.wid,.quick-mood,.emotion-family):hover{transform:none}
+}
+@media(prefers-reduced-transparency:reduce){
+  body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
 /* Each form step has its own space; the shared auth flow also serves the profile. */
 body .auth-flow>.field{margin:0;gap:10px}
 body .auth-flow .auth-submit{margin-top:24px;min-height:60px;font-size:18px}
@@ -1120,14 +1226,15 @@ body.inner .wpane>.list,body.inner #rem-all{gap:16px}
 body.inner .wpane>.card+.card{margin-top:20px}
 body.inner .wpane>.card:not(:only-child){padding:24px}
 body.inner .list>.item{padding:20px}
-@media(min-width:900px){body:not(.inner) #v-login{padding-top:24px}}
+@media(min-width:900px){
+  body:not(.inner) #v-login{padding-top:24px}
+}
 @media(max-width:599px){
   body.inner :is(.feature-group,.account-group){margin-top:36px}
   body.inner .wids{gap:14px}
   body.inner .compact-links{gap:0}
   body:not(.inner) #v-onb #o-form{padding:24px 20px}
 }
-
 /* The code after registration uses the same open layout as the returning-user flow. */
 body:not(.inner) #v-onb .onb-head{display:block}
 body:not(.inner) #v-onb .onb-head h1{font-size:37px;line-height:1.5;margin-bottom:12px}
@@ -1138,16 +1245,19 @@ body:not(.inner) #v-onb #o-codebox .field{margin:0;gap:12px}
 body:not(.inner) #v-onb #o-codebox input{min-height:68px}
 body:not(.inner) #v-onb #o-codebox .auth-submit{margin-top:32px;min-height:64px}
 body:not(.inner) #v-onb #o-codebox .auth-secondary{margin-top:20px;min-height:48px;border:0;background:none;box-shadow:none}
-
 /* Роли текста и компактный ввод: явная роль элемента сильнее общих правил чтения (они заменили inline-стили) */
-.t2{color:var(--text-2)!important}.strong{color:var(--strong)!important}.faint{color:var(--faint)!important}.t-gold{color:var(--gold)!important}
+.t2{color:var(--text-2)!important}
+.strong{color:var(--strong)!important}
+.faint{color:var(--faint)!important}
+.t-gold{color:var(--gold)!important}
 body.inner input.compact{font-size:14px}
-
 /* экран трёх напоминаний после анкеты */
 .rhythm-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
 .rhythm-row:first-child{border-top:0}
 .rhythm-row input[type=checkbox]{width:22px;height:22px;flex:0 0 22px;accent-color:var(--gold)}
-.rhythm-row .grow{min-width:0}.rhythm-row b{display:block;font-size:17px;font-weight:600}.rhythm-row small{display:block;font-size:14px;line-height:1.4;color:var(--muted)}
+.rhythm-row .grow{min-width:0}
+.rhythm-row b{display:block;font-size:17px;font-weight:600}
+.rhythm-row small{display:block;font-size:14px;line-height:1.4;color:var(--muted)}
 .rhythm-row input[type=time]{width:auto;flex:0 0 auto;padding:8px 10px;font-size:16px}
 .rhythm-card .btn{margin-top:18px;width:100%}
 /* мастер после анкеты: два шага */
@@ -1156,20 +1266,16 @@ body.inner input.compact{font-size:14px}
 .rhythm-card>.hint{margin:0 0 6px}
 .rh-list{margin-top:6px}
 .rhythm-row small{text-wrap:pretty}
-.rh-foot{margin:14px 0 0;text-align:center;text-wrap:balance}
 .rhythm-card .utility-actions{justify-content:center;margin-top:6px}
 #v-rhythm .onb-head p{color:var(--muted)}
-
 /* ── Подсказки по приложению (tour.js): затемнение, кольцо вокруг элемента, карточка «N / 8» ── */
 .tour{position:fixed;inset:0;z-index:400}
 .tour[hidden]{display:none}
 .tour-scrim{position:fixed;inset:0;background:rgba(8,7,16,.6)}
 .tour-scrim[hidden]{display:none}
-.tour-ring{position:fixed;border:2px solid var(--gold-2);border-radius:20px;pointer-events:none;
-  box-shadow:0 0 0 200vmax rgba(8,7,16,.6),0 0 0 6px rgba(240,215,154,.16);transition:left var(--t-slow) var(--sp),top var(--t-slow) var(--sp),width var(--t-slow) var(--sp),height var(--t-slow) var(--sp)}
+.tour-ring{position:fixed;border:2px solid var(--gold-2);border-radius:20px;pointer-events:none;box-shadow:0 0 0 200vmax rgba(8,7,16,.6),0 0 0 6px rgba(240,215,154,.16);transition:left var(--t-slow) var(--sp),top var(--t-slow) var(--sp),width var(--t-slow) var(--sp),height var(--t-slow) var(--sp)}
 .tour-ring[hidden]{display:none}
-.tour-card{position:fixed;box-sizing:border-box;padding:18px 20px 16px;border-radius:22px;background:var(--sheet);border:1px solid var(--line);
-  box-shadow:0 24px 60px rgba(0,0,0,.45);color:var(--text);transition:left var(--t-slow) var(--sp),top var(--t-slow) var(--sp)}
+.tour-card{position:fixed;box-sizing:border-box;padding:18px 20px 16px;border-radius:22px;background:var(--sheet);border:1px solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,.45);color:var(--text);transition:left var(--t-slow) var(--sp),top var(--t-slow) var(--sp)}
 .tour-step{display:block;font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;color:var(--gold-2)}
 .tour-text{margin:10px 0 0;font-size:17px;line-height:1.45;text-wrap:pretty}
 .tour-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px}
@@ -1178,8 +1284,9 @@ body.inner input.compact{font-size:14px}
 .tour-next:focus-visible,.tour-skip:focus-visible{outline:2px solid var(--gold-2);outline-offset:3px}
 html[data-theme=light] .tour-next{color:#fff}
 html[data-theme=light] .tour-card{box-shadow:0 24px 60px rgba(42,33,80,.25)}
-@media(prefers-reduced-motion:reduce){.tour-ring,.tour-card{transition:none}}
-
+@media(prefers-reduced-motion:reduce){
+  .tour-ring,.tour-card{transition:none}
+}
 /* ═══════════════════════════ МАТЕРИАЛ: НОЧЬ, СВЕТ, СТЕКЛО, СВЕТЛАЯ ТЕМА (бывший moon-glass.css) ═══════════════════════════ */
 /* Lunario's material layer. Layout, forms and saved data remain in experience.*. */
 html[data-theme] body.inner{background:var(--moon-ground);background-attachment:fixed}
@@ -1187,17 +1294,16 @@ html[data-theme] body.inner{background:var(--moon-ground);background-attachment:
 body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 42% 44% at 93% 74%,rgba(217,184,104,.12),transparent 100%),radial-gradient(ellipse 32% 30% at 4% 18%,rgba(240,215,154,.07),transparent 100%)}
 body.hello::before{z-index:0;background:radial-gradient(ellipse 30% 24% at 26% 72%,rgba(240,215,154,.28),rgba(217,184,104,.10) 48%,transparent 100%),radial-gradient(ellipse 36% 42% at 100% 63%,rgba(240,215,154,.21),transparent 100%);mix-blend-mode:screen}
 html[data-theme=light] body.inner::before{opacity:1;background:radial-gradient(ellipse 36% 45% at 100% 65%,rgba(109,91,208,.10),transparent 100%),radial-gradient(ellipse 30% 24% at 3% 20%,rgba(255,255,255,.50),transparent 100%)}
-body.inner .bg .orb{opacity:.24}body.inner .bg .cloud{opacity:.14}
-body.inner .sky.on{display:block;opacity:.48}body.hello .sky.on{opacity:.72}
+body.inner .bg .orb{opacity:.24}
+body.inner .bg .cloud{opacity:.14}
+body.inner .sky.on{display:block;opacity:.48}
+body.hello .sky.on{opacity:.72}
 html[data-theme=light] body.inner .sky.on{opacity:.22}
 body.inner .wrap{max-width:1240px}
 body.inner .view>h1,body.inner .practice-header h1{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em}
 body.inner :is(.feature-group,.account-group)>h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
 /* Материал плиток (.wid) задаёт блок «стекла» ниже (:is(...) с #v-hello — специфичность с ID); здесь — только то, что не плитка */
-body.inner :is(.profile-summary,.wish-card){
-  background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);
-  border:1px solid transparent;box-shadow:var(--moon-shadow);
-}
+body.inner :is(.profile-summary,.wish-card){background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow)}
 body.inner .wid{border-radius:var(--r-xl);padding:26px;min-height:158px;gap:12px}
 body.inner .wid b{font-size:17px;font-weight:600}
 body.inner .wid .ico{width:28px;height:28px;background-color:var(--gold-2);filter:drop-shadow(0 0 7px #d8b96b24)}
@@ -1212,7 +1318,6 @@ body.inner :is(.text-action,.back){font-weight:400}
 body.inner .text-action.secondary{color:var(--muted)}
 body.inner :is(input,textarea,select){border-color:var(--line);background:var(--field);box-shadow:inset 0 1px 3px #0000000a}
 body.inner :is(input,textarea,select):focus-visible{border-color:var(--gold);outline-color:var(--focus)}
-
 /* The moon is decorative; the existing calculated phase remains in “Луна и небо”. */
 .compact-brand{display:inline-flex;align-items:baseline;font:300 37px/1.5 Comfortaa,sans-serif;letter-spacing:-1.3px;margin:0 0 12px;color:var(--text)}
 .compact-brand .o-wrap{position:relative;display:inline-block;isolation:isolate}
@@ -1233,15 +1338,13 @@ body.inner #h-date{font-size:13px;font-weight:400;letter-spacing:.03em;text-tran
 body.inner #h-acct{width:44px;height:44px;font-weight:600}
 body.inner .acct,body.inner .avatar{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;border:1px solid transparent;box-shadow:var(--moon-shadow);color:var(--gold-2)}
 .home-intro{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;gap:32px;overflow:visible;margin:0;padding:28px 0 36px;min-height:0}
-.home-moon{position:relative;order:2;width:100%;aspect-ratio:1;pointer-events:none;opacity:.94}
-.home-moon img{display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 24px #d9b86825)}
 body.inner .home-intro .daily-statement{order:1;margin:0;max-width:none;position:relative}
 body.inner .home-intro #h-wish{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:clamp(26px,3vw,36px);font-weight:600;line-height:1.5;letter-spacing:-.01em;margin:0;text-wrap:pretty;overflow-wrap:anywhere;color:var(--text)}
-body.inner #home-sky .moonline{border-radius:var(--r-xl)}   /* поля, отступы и материал — в блоке «Сегодня» ниже */
+body.inner #home-sky .moonline{border-radius:var(--r-xl)}
+/* поля, отступы и материал — в блоке «Сегодня» ниже */
 body.inner #home-sky .moon-sm{width:50px;height:50px;flex-basis:50px}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:16px;line-height:1.6}
 body.inner #home-sky .moonline small{font-size:13px;line-height:1.6}
-
 /* Reading surfaces are dense and quiet, with a warm edge rather than nested glass. */
 body.inner .wg,body.inner .wg-head{background:var(--sheet)}
 body.inner .wg{border-color:var(--line);box-shadow:0 24px 80px #0005,inset 0 1px 0 #fff3d712}
@@ -1249,10 +1352,7 @@ body.inner .wg-head{border-color:var(--line)}
 body.inner .wg-head h2{font-weight:600;font-size:24px}
 body.inner .wpane .practice-question{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-size:25px!important;font-weight:600;line-height:1.6}
 body.inner .answer-actions{background:var(--sheet)}
-body.inner #journal-card .answer-actions{background:var(--bg)}
 body.inner .timeline-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:var(--r-l);padding:28px;margin-bottom:18px;box-shadow:inset 0 1px 0 #fff2d20a}
-body.inner .timeline-kind{font-size:13px;color:var(--gold-2)}
-body.inner .timeline-day{margin:30px 0 14px}
 body.inner .timeline-empty{background:var(--moon-reader);border:1px solid var(--line);box-shadow:var(--moon-shadow)}
 body.inner .wish-picture:not(:has(img)){background:var(--moon-empty);border-bottom:1px solid var(--line)}
 body.inner :is(.hb,.practice-card){border-color:var(--line);background:var(--surface)}
@@ -1268,9 +1368,7 @@ html[data-theme] body.inner :is(.rem-summary,.wg-x){background:var(--moon-glass)
 body.inner .theme-option.light>span{background:linear-gradient(135deg,#f5f2ea,#e4ddf4)}
 body.inner .theme-option.dark>span{background:linear-gradient(135deg,#141126,#0b0a14)}
 body.inner .theme-option.system>span{background:linear-gradient(90deg,#f0edf8 50%,#141126 50%)}
-html[data-theme=light] .home-moon{opacity:.55}
 body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 0 #f6ddb723,0 18px 42px #0d081a54;background:linear-gradient(135deg,#1d1738,#141126)}
-
 @media(min-width:900px){
   body.inner .wrap{padding-top:38px}
   .home-intro{padding-top:28px;padding-bottom:40px}
@@ -1300,9 +1398,12 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
   /* подъём и тень плиток при наведении — в блоке «стекла» ниже */
   body.inner :is(.text-action,.back):hover{color:var(--gold-2)}
 }
-@media(prefers-reduced-motion:reduce){body.inner :is(.wid):hover{transform:none}}
-@media(prefers-reduced-transparency:reduce){html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}}
-
+@media(prefers-reduced-motion:reduce){
+  body.inner :is(.wid):hover{transform:none}
+}
+@media(prefers-reduced-transparency:reduce){
+  html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
 /* Приветствие — один экран без прокрутки (решение владелицы 17.09: «первая страница статичная»).
    Mobile-first: луна справа сверху, три обещания, кнопка; на компьютере тот же макет внутри корпуса телефона (frame.css). */
 #v-hello .hello-stage{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:22px;padding-block:12px}
@@ -1320,12 +1421,27 @@ body:not(.inner) #v-onb .card{border:1px solid #d8b56f61;box-shadow:inset 0 1px 
 #v-hello .cta{margin-top:28px;position:relative;isolation:isolate}
 #v-hello .cta .btn{position:relative;min-height:56px;padding:14px 22px;gap:14px;font-size:17px;font-weight:600;line-height:1.3;border-radius:var(--r-xl);color:#f5f2ea;white-space:nowrap}
 body.hello::before{background:radial-gradient(ellipse 90% 25% at 20% 76%,rgba(240,215,154,.25),transparent 100%),radial-gradient(ellipse 70% 32% at 110% 24%,rgba(240,215,154,.16),transparent 100%)}
-@media(max-width:370px){#v-hello .hello-claim{font-size:22px}#v-hello .gift{gap:12px}}
+@media(max-width:370px){
+  #v-hello .hello-claim{font-size:22px}
+  #v-hello .gift{gap:12px}
+}
 /* низкие экраны (телефон с адресной строкой, маленькое окно): всё равно один экран */
-@media(max-height:640px){#v-hello .hello-stage{gap:12px;padding-block:10px}#v-hello .heromoon{width:104px}#v-hello .gifts{gap:10px}#v-hello .hello-claim{font-size:21px;margin-bottom:12px}#v-hello .cta{margin-top:18px}}
-@media(prefers-reduced-motion:reduce){.compact-brand .moon-img{animation:none!important}#v-hello .cta .btn{transition:none}#v-hello .cta .btn::after{display:none}#v-hello .cta .btn:hover{transform:none}}
-@media(prefers-reduced-transparency:reduce){#v-hello .cta .btn{background:#302742;backdrop-filter:none;-webkit-backdrop-filter:none}}
-
+@media(max-height:640px){
+  #v-hello .hello-stage{gap:12px;padding-block:10px}
+  #v-hello .heromoon{width:104px}
+  #v-hello .gifts{gap:10px}
+  #v-hello .hello-claim{font-size:21px;margin-bottom:12px}
+  #v-hello .cta{margin-top:18px}
+}
+@media(prefers-reduced-motion:reduce){
+  .compact-brand .moon-img{animation:none!important}
+  #v-hello .cta .btn{transition:none}
+  #v-hello .cta .btn::after{display:none}
+  #v-hello .cta .btn:hover{transform:none}
+}
+@media(prefers-reduced-transparency:reduce){
+  #v-hello .cta .btn{background:#302742;backdrop-filter:none;-webkit-backdrop-filter:none}
+}
 /* Readability: original ivory and gold, stronger Onest; metadata remains quieter. */
 body{font-size:18px;font-weight:500}
 body.inner :is(.feature-group,.account-group)>h2{font-size:21px;color:var(--text)}
@@ -1345,63 +1461,24 @@ body:not(.inner) :is(#v-onb,#v-login) input:not([type=checkbox]){font-size:18px;
 body:not(.inner) :is(#v-onb,#v-login) .btn{font-size:20px;font-weight:600}
 body:not(.inner) #v-hello .hello-login{font-size:18px;font-weight:600}
 body:not(.inner) #v-hello .trust{color:var(--muted);font-weight:500}
-
 /* Glass follows the brief without backdrop filtering: a highlight over a dense base.
    Edge reflections and shadows provide depth; only toast and widget scrim may blur. */
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){
-  isolation:isolate;overflow:hidden;
-  background:var(--glass-bg);
-  backdrop-filter:none;
-  -webkit-backdrop-filter:none;
-  border:1px solid transparent;background-clip:padding-box;background-color:var(--glass-base);
-  box-shadow:var(--glass-shadow);
-  --glass-x:50%;--glass-y:0%;--glass-edge:0;
-  transition:transform var(--t) var(--sp),box-shadow var(--t) ease;
-}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline){isolation:isolate;overflow:hidden;background:var(--glass-bg);backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid transparent;background-clip:padding-box;background-color:var(--glass-base);box-shadow:var(--glass-shadow);--glass-x:50%;--glass-y:0%;--glass-edge:0;transition:transform var(--t) var(--sp),box-shadow var(--t) ease}
 /* Explicit containing blocks keep reflections inside controls without backdrop-filter. */
 body.inner :is(.rem-summary,#home-sky .moonline,.wg-x){position:relative}
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{
-  content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;
-  background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),rgba(255,255,255,.75) 0deg,rgba(244,223,168,.55) 40deg,rgba(255,255,255,.08) 110deg,rgba(255,255,255,.05) 220deg,rgba(244,223,168,.35) 300deg,rgba(255,255,255,.75) 360deg);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude;
-  pointer-events:none;opacity:1;box-shadow:none;transform:none;animation:none;
-}
-:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{
-  content:'';display:block;position:absolute;inset:-40%;border-radius:inherit;z-index:-1;pointer-events:none;
-  background:radial-gradient(circle at var(--glass-x) var(--glass-y),rgba(255,255,255,.28) 0%,rgba(244,223,168,.14) 18%,transparent 46%);
-  opacity:0;transition:opacity var(--t-slow) ease;transform:none;animation:none;
-}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::before{content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:1px;z-index:-1;background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),rgba(255,255,255,.75) 0deg,rgba(244,223,168,.55) 40deg,rgba(255,255,255,.08) 110deg,rgba(255,255,255,.05) 220deg,rgba(244,223,168,.35) 300deg,rgba(255,255,255,.75) 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:1;box-shadow:none;transform:none;animation:none}
+:is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline)::after{content:'';display:block;position:absolute;inset:-40%;border-radius:inherit;z-index:-1;pointer-events:none;background:radial-gradient(circle at var(--glass-x) var(--glass-y),rgba(255,255,255,.28) 0%,rgba(244,223,168,.14) 18%,transparent 46%);opacity:0;transition:opacity var(--t-slow) ease;transform:none;animation:none}
 @media(hover:hover) and (pointer:fine){
   :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .app-nav,body.inner .rem-summary,body.inner .acct,body.inner .wg-x,body.inner #home-sky .moonline):hover::after{opacity:1}
-  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .rem-summary):hover{
-    transform:translateY(-2px);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.18),0 18px 44px -14px rgba(217,184,104,.4);
-  }
+  :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .rem-summary):hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.18),0 18px 44px -14px rgba(217,184,104,.4)}
 }
 :is(#v-hello .welcome-primary,body.inner .wid,body.inner body.inner .rem-summary):active{transform:scale(.98)}
 /* Daylight glass: a dense light base, white bevel and a violet shadow.
    Diary cards share the material but stay still while reading. */
-html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
-  isolation:isolate;
-  background:var(--moon-panel);background-clip:padding-box;background-color:var(--glass-base);
-  border:1px solid rgba(255,255,255,.75);
-  backdrop-filter:none;-webkit-backdrop-filter:none;
-  box-shadow:var(--glass-shadow);
-  --glass-x:30%;--glass-y:0%;--glass-edge:0;
-}
+html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){isolation:isolate;background:var(--moon-panel);background-clip:padding-box;background-color:var(--glass-base);border:1px solid rgba(255,255,255,.75);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--glass-shadow);--glass-x:30%;--glass-y:0%;--glass-edge:0}
 html[data-theme=light] body.inner :is(.timeline-entry,.timeline-empty,.profile-summary,.wish-card){position:relative;overflow:hidden}
-html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{
-  content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:2px;z-index:-1;pointer-events:none;
-  background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),#fff 0deg,#ffffffa6 55deg,#ffffff0a 120deg,#2a215033 210deg,#ffffff66 285deg,#fff 360deg);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
-  opacity:1;box-shadow:none;transform:none;animation:none;
-}
-html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{
-  content:'';display:block;position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;
-  background:radial-gradient(300px circle at var(--glass-x) var(--glass-y),#ffffff85,transparent 72%);
-  opacity:.28;transition:opacity var(--t) ease;transform:none;animation:none;
-}
+html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before{content:'';display:block;position:absolute;inset:0;border-radius:inherit;padding:2px;z-index:-1;pointer-events:none;background:conic-gradient(from calc(var(--glass-edge) * 1deg) at var(--glass-x) var(--glass-y),#fff 0deg,#ffffffa6 55deg,#ffffff0a 120deg,#2a215033 210deg,#ffffff66 285deg,#fff 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:1;box-shadow:none;transform:none;animation:none}
+html[data-theme=light] body.inner :is(.wid,.app-nav,.rem-summary,.acct,.wg-x,#home-sky .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{content:'';display:block;position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;background:radial-gradient(300px circle at var(--glass-x) var(--glass-y),#ffffff85,transparent 72%);opacity:.28;transition:opacity var(--t) ease;transform:none;animation:none}
 html[data-theme=light] body.inner :is(.ico,.app-nav .on .ico){background-color:var(--gold-2);filter:none}
 html[data-theme=light] body.inner :is(.eyebrow,.big,.avatar,.acct,.kw,.timeline-kind,.card-question h3,.lunar-arrow,.app-nav button.on,.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true],.chip.on,.chip[aria-pressed=true]){color:var(--text)}
 html[data-theme=light] body.inner .btn:not(.ghost){color:#f5f2ea;border-color:#ffffff70;box-shadow:inset 0 1px 0 #ffffff66,0 8px 22px -12px #2a215080}
@@ -1438,7 +1515,6 @@ html[data-theme=light] body.inner .bar i{background:linear-gradient(90deg,#2a215
 /* The account status dot lives outside the avatar and must not be clipped by the glass. */
 html[data-theme] body.inner #h-acct{overflow:visible}
 html[data-theme] body.inner #h-acct::after{inset:0;clip-path:circle(50%)}
-
 /* Restored prompts stay readable; history separates questions from daily cards. */
 body.inner .card-question{margin:28px 0;padding:0}
 body.inner .card-question h3{color:var(--gold-2);font-size:18px;margin-bottom:10px}
@@ -1446,7 +1522,6 @@ body.inner .entries-tabs{margin:0 0 24px;display:flex;flex-wrap:wrap;gap:6px;bac
 body.inner .entries-tabs button{flex:1 1 auto;min-height:48px;white-space:normal;padding:10px 14px;border:1px solid var(--line)}
 body.inner .entries-tabs [aria-selected=true]{background:var(--selected);border-color:var(--gold);color:var(--gold-2)}
 body.inner #entries-more{margin-top:24px;width:100%}
-
 /* Restored shortcuts and progress use the same materials in both themes. */
 body.inner .forecast-bars{display:grid;gap:12px;margin:28px 0}
 body.inner .forecast-bars .barrow{margin:0;gap:12px}
@@ -1460,15 +1535,17 @@ body.inner .hd::before{border-color:var(--control-border)}
 body.inner .hd.planned:not(.on)::before{background:var(--selected)}
 body.inner .hd.rest:not(.on)::before{border-style:dashed;opacity:.5;box-shadow:none}
 body.inner .hd.on::before{background:var(--gold);border-color:var(--gold)}
-body.inner .habit-calendar-key{font-size:15px!important;color:var(--muted);margin:14px 0}
-
 /* ── Аккаунт: экран настроек. Шапка компактная, профиль в одну строку, каждая группа — одна стеклянная панель
    с рядами по 64px и тонкими разделителями; «Управление аккаунтом» — такая же группа. Ряды не «взлетают» при наведении,
    а подсвечиваются; раскрытие «Данных для расчётов» и вход на экран — по общему ритму движения (--t, --sp) ── */
 /* на телефоне — столбик: профиль, приложение, помощь, управление аккаунтом (последним — там удаление); колонки из разметки не участвуют */
-#v-account .account-layout{display:flex;flex-direction:column;gap:28px;margin-top:6px}   /* сразу после логотипа: заголовка и «назад» на экране нет, назад — вкладка «Сегодня» */
+#v-account .account-layout{display:flex;flex-direction:column;gap:28px;margin-top:6px}
+/* сразу после логотипа: заголовка и «назад» на экране нет, назад — вкладка «Сегодня» */
 #v-account .account-col{display:contents}
-#ag-profile{order:1}#ag-app{order:2}#ag-help{order:3}#ag-manage{order:4}
+#ag-profile{order:1}
+#ag-app{order:2}
+#ag-help{order:3}
+#ag-manage{order:4}
 /* профиль */
 body.inner #v-account .profile-summary{padding:20px}
 #v-account .profile-head{display:flex;align-items:center;gap:16px}
@@ -1511,18 +1588,15 @@ body.inner #v-account .danger-zone{padding-top:0;border-top:0}
   /* две колонки одной высоты: слева Профиль и Управление аккаунтом, справа Приложение и Помощь. Верх, низ и края
      совпадают; в более короткой колонке нижняя панель дотягивается до общей линии — её ряды делят лишние пиксели поровну */
   #v-account .account-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:32px;align-items:stretch;margin-top:2px}
-  body.inner:has(#v-account.on) .wrap{padding-top:32px}   /* четыре панели целиком над навигацией на экране 900px высотой */
+  body.inner:has(#v-account.on) .wrap{padding-top:32px}
+  /* четыре панели целиком над навигацией на экране 900px высотой */
   body.inner #v-account :is(.compact-links .wid,.rowbtn){padding-top:11px;padding-bottom:11px}
   #v-account .account-col{display:flex;flex-direction:column;gap:28px;min-width:0}
   #v-account .account-col>.account-group:last-child{flex:1;display:flex;flex-direction:column}
   body.inner #v-account .account-col>.account-group:last-child>:is(.compact-links,.rows){flex:1;grid-auto-rows:minmax(64px,1fr)}
   #v-account .profile-block>h2{display:block}
 }
-
 /* каталог инструментов: подписи разделов золотой капителью, карточки как панели */
-body.inner .wpane .tool-card p{font-size:15px;line-height:1.5;color:var(--muted);margin:4px 0 0}
-body.inner .wpane .tool-card b{font-size:17px}
-
 /* утро на «Сегодня»: вопрос с плитками-ответами, лента выбранного, остальное — маленькими квадратами */
 body.inner .morning-picker{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow)}
 body.inner .morning-picker h2{line-height:1.3;margin:0}
@@ -1538,13 +1612,15 @@ body.inner .mini-grid .moonline .grow{flex:0 0 auto}
    плитки в ряду — одной высоты (общий верх и общий низ), поля внутри карточек одинаковые — 24px */
 body.inner .morning-picker{padding:24px;border-radius:var(--r-xl)}
 body.inner .morning-picker h2{font-size:20px}
-body.inner .morning-picker #morning-q~.hint{margin:6px 0 14px;font-size:14px;line-height:1.5}   /* сильнее общего правила .hint с #profile-summary в :is() */
+body.inner .morning-picker #morning-q~.hint{margin:6px 0 14px;font-size:14px;line-height:1.5}
+/* сильнее общего правила .hint с #profile-summary в :is() */
 body.inner .morning-picker .chips{padding-bottom:0}
 body.inner #morning-feed{align-items:stretch;gap:14px}
 body.inner #morning-feed>*{margin:0;max-width:none;min-height:150px}
 /* плитка ленты: колонка под иконку такая же, как под луну, — текст во всех плитках начинается с одной линии;
    заголовок и подпись держатся вместе по центру, а не расползаются по высоте */
-body.inner #morning-feed .wid{padding:24px;grid-template-columns:50px minmax(0,1fr) 18px;column-gap:14px;align-content:start;align-items:start;row-gap:4px}   /* заголовки соседних плиток — на одной линии */
+body.inner #morning-feed .wid{padding:24px;grid-template-columns:50px minmax(0,1fr) 18px;column-gap:14px;align-content:start;align-items:start;row-gap:4px}
+/* заголовки соседних плиток — на одной линии */
 body.inner #morning-feed .wid .ico{justify-self:center}
 body.inner #morning-feed .wid b{font-size:18px;line-height:1.45}
 body.inner #morning-feed .wid>span:not(.dot):not(.destination-arrow){font-size:16px;line-height:1.55;color:var(--text)}
@@ -1552,8 +1628,10 @@ body.inner #home-sky .moonline{margin:0;padding:24px;gap:14px;align-items:flex-s
 body.inner #home-sky .moonline .grow{min-width:0}
 body.inner #home-sky .moonline :is(b,.lunar-advice){font-size:18px;line-height:1.45}
 body.inner #home-sky .moonline .lunar-advice{font-size:16px;line-height:1.55}
-body.inner #home-sky .moonline .lunar-arrow{display:none}   /* стрелки — только у строк-переходов; плитки утра — контент */
-html[data-theme=light] body.inner #home-sky .moonline .lunar-advice{color:var(--muted)}   /* в светлой теме подписи всех плиток ряда — одним цветом */
+body.inner #home-sky .moonline .lunar-arrow{display:none}
+/* стрелки — только у строк-переходов; плитки утра — контент */
+html[data-theme=light] body.inner #home-sky .moonline .lunar-advice{color:var(--muted)}
+/* в светлой теме подписи всех плиток ряда — одним цветом */
 body.inner .mini-grid{grid-auto-rows:1fr;gap:14px}
 body.inner .mini-grid .wid,body.inner .mini-grid .moonline{min-height:104px;height:100%;padding:16px 10px;border-radius:var(--r-xl)}
 /* квадрат Луны — тот же материал, что у соседей, без отступов-пережитков и с подписью тем же кеглем */
@@ -1564,9 +1642,11 @@ body.inner .mini-grid .moonline b{font-size:13px}
 body.inner .mini-grid[data-count="4"],body.inner .mini-grid[data-count="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
 body.inner .mini-grid[data-count="1"]{grid-template-columns:minmax(0,1fr)}
 @media(min-width:900px){
-  body.inner .mini-grid,body.inner .mini-grid[data-count="4"],body.inner .mini-grid[data-count="2"],body.inner .mini-grid[data-count="1"]{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:24px}   /* сколько бы ни осталось — ряд от края до края */
+  body.inner .mini-grid,body.inner .mini-grid[data-count="4"],body.inner .mini-grid[data-count="2"],body.inner .mini-grid[data-count="1"]{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:24px}
+  /* сколько бы ни осталось — ряд от края до края */
   body.inner #morning-feed{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;column-gap:24px;row-gap:24px}
-  body.inner #morning-feed>:last-child:nth-child(odd){grid-column:1/-1}   /* нечётная последняя — во всю ширину, без пустого угла */
+  body.inner #morning-feed>:last-child:nth-child(odd){grid-column:1/-1}
+  /* нечётная последняя — во всю ширину, без пустого угла */
 }
 /* строка над настроем: тема дня и её источник */
 body.inner #h-theme{display:block;margin-bottom:8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
@@ -1612,7 +1692,6 @@ body.inner .wrap{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
   .home-intro{grid-template-columns:minmax(0,1fr) clamp(82px,24vw,100px);gap:12px}
   body.inner .home-intro #h-wish{font-size:clamp(24px,7vw,27px)}
 }
-
 /* карточка дня в Дневнике: ячейки-вопросы, настроение чипами, привычки и аскеза строками */
 body.inner .day-card{padding:20px;border-radius:var(--r-l);background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow);margin-top:18px}
 body.inner .day-card h2{font-size:22px;margin:4px 0 14px}
@@ -1620,9 +1699,6 @@ body.inner .day-card .field{margin-top:14px}
 body.inner .day-card .field label{font-size:15px;font-weight:600;line-height:1.4;color:var(--text);margin-bottom:6px}
 body.inner .day-card .field label span{font-weight:500;color:var(--muted)}
 body.inner .day-card textarea{min-height:56px;font-size:16px}
-body.inner .dc-block{margin-top:18px}
-body.inner .dc-block.empty{display:none}
-body.inner .dc-label{display:block;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
 body.inner .dc-own{margin-top:8px}
 body.inner .dc-own input{font-size:15px}
 body.inner .dc-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:16px}
@@ -1637,18 +1713,18 @@ body.inner .dc-ask .grow{flex:1 1 100%}
 body.inner .dc-ask input{font-size:15px}
 body.inner .day-card .answer-actions{margin-top:18px}
 body.inner #dc-state:empty{display:none}
-body.inner .dc-prompts{margin-top:8px;min-width:0;max-width:100%}
 /* ячейка — грид: ряд подсказок с прокруткой не должен раздвигать колонку до своей полной ширины */
 body.inner .day-card .field{grid-template-columns:minmax(0,1fr)}
-body.inner .dc-prompts .chips{width:100%}
-body.inner .dc-prompts .chip{font-size:13px;padding:6px 12px}
-body.inner .dc-prompts .hint{margin-top:6px;font-size:12px}
 /* под настроем на «Сегодня»: сохранить открыткой на экран, поделиться */
-body.inner .hero-actions{display:flex;flex-wrap:wrap;gap:4px 18px;margin:6px 0 0 -4px;padding-top:0;border:0;justify-content:flex-start}   /* текст кнопок — по левому краю настроя */
+body.inner .hero-actions{display:flex;flex-wrap:wrap;gap:4px 18px;margin:6px 0 0 -4px;padding-top:0;border:0;justify-content:flex-start}
+/* текст кнопок — по левому краю настроя */
 body.inner .hero-actions .text-action{font-size:14px}
 body.inner .hero-actions:empty{display:none}
 /* на телефоне обе кнопки в одну строку рядом с луной */
-@media(max-width:599px){body.inner .hero-actions{gap:2px 12px}body.inner .hero-actions .ico{display:none}}
+@media(max-width:599px){
+  body.inner .hero-actions{gap:2px 12px}
+  body.inner .hero-actions .ico{display:none}
+}
 /* «Моя неделя: про что она» — по воскресеньям плитка сверху Дневника, внутри — пять частей карточками */
 body.inner .week-top{display:block;width:100%;text-align:left;margin-top:18px;padding:18px 20px;border-radius:var(--r-l);background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow);color:var(--text);font:inherit;cursor:pointer}
 body.inner .week-top b{display:block;font-size:19px;font-weight:600;margin:4px 0 2px}
@@ -1686,16 +1762,9 @@ body.inner .week-dot.none{opacity:.25}
 body.inner .week-phrase{margin-top:12px}
 body.inner #wk-reflect-state:empty{display:none}
 /* лента по дням: день — одна карточка, записи внутри разделены линиями */
-body.inner .day-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:var(--r-l);padding:6px 22px;margin-bottom:16px;box-shadow:inset 0 1px 0 #fff2d20a}
-body.inner .day-entry .timeline-day{margin:12px 0 4px;font-size:15px;font-weight:600;color:var(--text)}
-body.inner .day-entry .timeline-entry{background:none;border:0;border-top:1px solid var(--line);border-radius:0;padding:14px 0;margin:0;box-shadow:none}
-body.inner .day-entry .timeline-entry:first-of-type{border-top:0}
-body.inner .day-entry .timeline-kind{font-size:12px;letter-spacing:.06em;text-transform:uppercase}
-
 /* ═══════════════ Каркас на телефоне и плоский материал светлой темы (ревью 17.09) ═══════════════
    Порядок важен: блок стоит последним и намеренно повторяет специфичность блока «стекла» (:is() с #home-sky …),
    чтобы победить его порядком, а не ещё большим весом. Тёмная тема меняется только там, где сказано «обе темы». */
-
 /* ── Строки-переходы (обе темы): иконка · заголовок · подпись в одну строку · «›», один контейнер с разделителями —
       тот же формат, что в Аккаунте; списки «Обо мне», способы «Свериться», «Инструменты» Дневника ── */
 body.inner .wids.list-rows{display:grid;grid-template-columns:1fr;gap:0;margin:0;padding:0;overflow:hidden;border-radius:var(--r-xl);background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow)}
@@ -1709,12 +1778,16 @@ body.inner .list-rows .wid .ico{width:24px;height:24px;margin:0;grid-row:1/span 
 body.inner .list-rows .wid b{grid-column:2;padding:0;font-size:17px;line-height:1.35;font-weight:600;letter-spacing:-.01em}
 body.inner .list-rows .wid>span:not(.dot):not(.destination-arrow){grid-column:2;font-size:14px;line-height:1.45;font-weight:500;color:var(--muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 body.inner .list-rows .wid>span.destination-arrow{position:static;grid-column:3;grid-row:1/span 2;align-self:center;justify-self:end;font-size:20px;line-height:1;color:var(--gold-2);opacity:.7}
-@media(hover:hover) and (pointer:fine){body.inner .list-rows .wid:hover{background:var(--selected);box-shadow:none;transform:none}}
-@media(min-width:900px){body.inner .method-grid.list-rows{grid-template-columns:1fr}}
-
+@media(hover:hover) and (pointer:fine){
+  body.inner .list-rows .wid:hover{background:var(--selected);box-shadow:none;transform:none}
+}
+@media(min-width:900px){
+  body.inner .method-grid.list-rows{grid-template-columns:1fr}
+}
 /* ── Нижняя навигация (обе темы): 60px + safe-area один раз, иконки 24, подпись 11px (у «Свериться с собой» две строки),
       активный пункт — цветом, без заливки ── */
-html[data-theme] body.inner .app-nav{height:auto;padding:6px 6px;gap:2px;width:min(470px,calc(100% - 16px));grid-template-columns:1fr 1fr 1.5fr 1fr}   /* «Свериться с собой» — колонка шире, подпись в одну строку */
+html[data-theme] body.inner .app-nav{height:auto;padding:6px 6px;gap:2px;width:min(470px,calc(100% - 16px));grid-template-columns:1fr 1fr 1.5fr 1fr}
+/* «Свериться с собой» — колонка шире, подпись в одну строку */
 html[data-theme] body.inner .app-nav button{min-height:50px;padding:3px 2px 2px;gap:3px;justify-content:center;font-size:11px;line-height:1.15;font-weight:600;color:var(--muted);border-radius:var(--r-m)}
 html[data-theme] body.inner .app-nav .ico{width:24px;height:24px}
 html[data-theme] body.inner .app-nav button.on{background:none;box-shadow:none;color:var(--gold-2)}
@@ -1725,20 +1798,24 @@ html:has(body.inner){scroll-padding-bottom:calc(96px + env(safe-area-inset-botto
 body.inner textarea{scroll-margin-block:110px 130px}
 /* кнопка «Запомнить этот день» — липкая НАД навигацией */
 body.inner .day-card .answer-actions{position:sticky;bottom:calc(78px + env(safe-area-inset-bottom));z-index:9;padding:8px 0 4px;background:var(--glass-base);border-radius:12px}
-
 /* ── Шапка вкладок: заголовок 28px + тихая подпись + аватар в той же строке; вордмарк — только на «Сегодня» ── */
 body.inner:not(:has(#v-home.on)) .section-brand{display:none}
 body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-head{height:0;margin:0}
 body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{position:absolute;top:calc(30px + env(safe-area-inset-top));right:22px;margin:0;width:40px;height:40px;z-index:3}
-@media(max-width:370px){body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:16px}}
-@media(min-width:600px){body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:32px}}
-@media(min-width:900px){body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:48px}}
+@media(max-width:370px){
+  body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:16px}
+}
+@media(min-width:600px){
+  body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:32px}
+}
+@media(min-width:900px){
+  body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:48px}
+}
 body.inner :is(#v-ask,#v-history,#v-about)>h1{font-size:28px;line-height:1.2;margin:0 56px 0 0;padding-top:2px}
 body.inner :is(#v-ask,#v-history,#v-about)>h1+.section-caption,body.inner #v-about>.section-caption{margin:4px 56px 0 0;font-size:14px;line-height:1.45;font-weight:500;color:var(--muted)}
 body.inner :is(#v-ask,#v-history,#v-about)>h1+*:not(.section-caption),body.inner :is(#v-ask,#v-history,#v-about)>.section-caption+*{margin-top:18px}
 body.inner #v-home .compact-brand{font-size:32px;line-height:1.25}
 body.inner #v-home .hdr{margin-bottom:0}
-
 /* ── Единые размеры контролов (обе темы): чипы 36px/13px, кнопки, текстовые действия ── */
 html[data-theme] body.inner :is(.chip,.chips .chip,.chips.flow .chip,.timeline-filters .chip){min-height:36px;padding:7px 12px;font-size:13px;font-weight:500;line-height:1.35;border-radius:var(--r-pill);white-space:normal}
 html[data-theme] body.inner .chips{gap:6px}
@@ -1746,23 +1823,16 @@ html[data-theme] body.inner .chips.flow{row-gap:6px}
 html[data-theme] body.inner .chips:not(.flow){flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:0}
 html[data-theme] body.inner .chips:not(.flow)::-webkit-scrollbar{display:none}
 html[data-theme] body.inner .chips:not(.flow) .chip{white-space:nowrap;flex:0 0 auto}
-html[data-theme] body.inner .timeline-filters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
-html[data-theme] body.inner .timeline-filters::-webkit-scrollbar{display:none}
-html[data-theme] body.inner .timeline-filters .chip{white-space:nowrap;flex:0 0 auto}
 html[data-theme] body.inner .btn{min-height:52px;font-size:16px;font-weight:600}
 html[data-theme] body.inner .btn.sm{min-height:40px;padding:0 14px;font-size:14px}
 html[data-theme] body.inner .text-action{min-height:40px;padding:6px 0;font-size:15px;font-weight:500}
 html[data-theme] body.inner .text-action.secondary{color:var(--muted)}
-
 /* ── Секции и типографика на телефоне: семь ступеней кегля, стык блоков 28px ── */
 body.inner :is(.feature-group,.account-group){margin-top:28px}
 body.inner :is(.feature-group>h2,.account-group>h2,.past-days .sec-head>h2){font-size:17px;line-height:1.35;letter-spacing:-.01em;margin:0}
 body.inner :is(.feature-group,.account-group)>.wids{margin-top:12px}
-body.inner .diary-more{margin:10px 0 0}
-body.inner .diary-more .text-action{min-height:36px}
 /* надзаголовки обычным регистром — капитель золотом остаётся только у темы дня над настроем */
 body.inner :is(.morning-summary,.later-row,.week-top) .eyebrow{text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--muted)}
-body.inner .dc-label{text-transform:none;letter-spacing:0;font-size:15px;font-weight:600;color:var(--text)}
 @media(max-width:599px){
   body.inner{font-size:17px}
   body.inner .wid b{font-size:18px}
@@ -1771,8 +1841,6 @@ body.inner .dc-label{text-transform:none;letter-spacing:0;font-size:15px;font-we
   body.inner .day-card .field label{font-size:15px;line-height:1.4}
   body.inner .day-card textarea{min-height:48px;padding:12px 14px}
   body.inner .day-card h2{font-size:22px;margin:2px 0 10px}
-  body.inner .dc-block{margin-top:16px}
-  body.inner .dc-prompts{margin-top:8px}
   body.inner .morning-summary{padding:12px 18px}
   body.inner .morning-summary b{font-size:15px}
   body.inner .later-row{padding:12px 18px}
@@ -1780,16 +1848,13 @@ body.inner .dc-label{text-transform:none;letter-spacing:0;font-size:15px;font-we
   body.inner .question-entry .wid{min-height:0;padding:20px}
   .home-intro{padding:12px 0 18px}
 }
-
 /* ── Светлая тема: плоский материал. Специфичность (1,3,2) — та же, что у «Daylight glass» выше, позже в файле → побеждает ── */
-html[data-theme=light] body.inner :is(.wid,.morning-summary,.later-row,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){
-  background:var(--surface);border:1px solid var(--line);box-shadow:var(--glass-shadow)}
+html[data-theme=light] body.inner :is(.wid,.morning-summary,.later-row,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card){background:var(--surface);border:1px solid var(--line);box-shadow:var(--glass-shadow)}
 html[data-theme=light] body.inner :is(.wid,.morning-summary,.later-row,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::before,
 html[data-theme=light] body.inner :is(.wid,.morning-summary,.later-row,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{content:none}
 html[data-theme=light] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn){background:none;border:0;border-bottom:1px solid var(--line);box-shadow:none}
 html[data-theme=light] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn):last-child{border-bottom:0}
 html[data-theme=light] body.inner :is(.wids.list-rows,.card.morning-picker,.day-card,.week-top,.tool-card,#v-account .compact-links,#v-account .rows){background:var(--surface);border:1px solid var(--line);box-shadow:var(--glass-shadow)}
-html[data-theme=light] body.inner .day-entry{background:var(--surface);border:1px solid var(--line);box-shadow:none}
 @media(hover:hover) and (pointer:fine){
   html[data-theme=light] body.inner :is(.wid,.rem-summary,#home-sky .moonline,#morning-more .moonline):hover{background:var(--surface);border-color:var(--control-border);box-shadow:var(--glass-shadow);transform:none}
   html[data-theme=light] body.inner .list-rows .wid:hover{background:var(--selected);border-color:var(--line)}
@@ -1807,31 +1872,31 @@ html[data-theme=light] body.inner .acct{background:var(--surface)}
   body.inner .home-intro .daily-statement{display:contents}
   body.inner #h-theme{grid-area:theme;align-self:end;font-size:11px;letter-spacing:.08em}
   body.inner .home-intro #h-wish{grid-area:wish;align-self:start}
-  .home-moon{grid-area:moon}
   body.inner .hero-actions{grid-area:actions;margin:4px 0 0 -4px;gap:2px 16px}
   body.inner .hero-actions .text-action{min-height:36px;font-size:14px}
 }
-
 /* ═══════════════════════════ КОМПАКТНЫЙ ВИД — единственный с 19.09 (бывший compact.css); префикс html[data-skin=compact] остается ради приоритета над блоками выше ═══════════════════════════ */
 /* ═══════════ «Компактный вид» — основной вид с 17.09; «Обычный» — по выбору (Аккаунт → Оформление, или ?skin=classic) ═══════════
    По референсам владелицы (17.09): всё — списками и строками, а не плакатами; иконка в кружке слева, заголовок 16,
    подпись 13 в одну строку, «›» справа; надзаголовки секций — мелкой капителью; карточки плоские с тонкой линией;
    навигация прижата к низу на всю ширину; настрой дня — 21px, без точки, в карточке, а не на полэкрана.
    Всё под html[data-skin=compact]; выключено — ни одно правило не действует. Палитра — токены Лунарио, только структура. */
-
 html[data-skin=compact]{--ck-radius:20px;--ck-row:64px}
 html[data-skin=compact] body.inner{font-size:15px;line-height:1.5}
 html[data-skin=compact] body.inner .wrap{padding-top:calc(16px + env(safe-area-inset-top));padding-inline:16px;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
-@media(min-width:600px){html[data-skin=compact] body.inner .wrap{padding-inline:24px}}
-
+@media(min-width:600px){
+  html[data-skin=compact] body.inner .wrap{padding-inline:24px}
+}
 /* ── материал: плоская карточка, тонкая линия, без скоса, блика и тени ── */
-  background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
+background:var(--surface);
+border:1px solid var(--line);
+box-shadow:none;
+border-radius:var(--ck-radius)}
 html[data-skin=compact] body.inner :is(.wid,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.profile-summary,.wish-card)::before,
 html[data-skin=compact] body.inner :is(.wid,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.profile-summary,.wish-card)::after{content:none}
 html[data-skin=compact] body.inner .wid:hover,html[data-skin=compact] body.inner .wid:active{transform:none;box-shadow:none}
 html[data-theme=dark][data-skin=compact]{--surface:#151327;--line:rgba(245,242,234,.10);--selected:rgba(217,184,104,.14)}
 html[data-theme=light][data-skin=compact]{--surface:#fff;--line:rgba(42,33,80,.10)}
-
 /* ── типографика: семь ступеней ── */
 html[data-skin=compact] body.inner h1{font-size:24px;line-height:1.2;letter-spacing:-.01em}
 html[data-skin=compact] body.inner :is(#v-ask,#v-history,#v-about)>h1{font-size:24px;margin-right:52px}
@@ -1840,12 +1905,9 @@ html[data-skin=compact] body.inner :is(.feature-group,.account-group){margin-top
 html[data-skin=compact] body.inner :is(.feature-group,.account-group)>.wids{margin-top:10px}
 html[data-skin=compact] body.inner .section-caption{font-size:13px;margin-top:2px}
 html[data-skin=compact] body.inner .eyebrow{font-size:11px;letter-spacing:.12em}
-
 /* ── строки: иконка в кружке 40px слева, заголовок 16, подпись 13, «›» справа, 64px, разделители ── */
 html[data-skin=compact] body.inner :is(.wids.list-rows,#v-account .compact-links,#v-account .rows,#morning-feed,#morning-more){display:grid;grid-template-columns:1fr;gap:0;margin:0;padding:0;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--ck-radius);box-shadow:none}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn,#morning-feed>.wid,#morning-feed>.moonline,#morning-more>.wid,#morning-more>.moonline){
-  position:relative;display:grid;grid-template-columns:40px minmax(0,1fr) 12px;column-gap:14px;row-gap:1px;align-items:center;align-content:center;
-  width:100%;min-height:var(--ck-row);height:auto;margin:0;padding:10px 16px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;box-shadow:none;text-align:left;color:var(--text)}
+html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn,#morning-feed>.wid,#morning-feed>.moonline,#morning-more>.wid,#morning-more>.moonline){position:relative;display:grid;grid-template-columns:40px minmax(0,1fr) 12px;column-gap:14px;row-gap:1px;align-items:center;align-content:center;width:100%;min-height:var(--ck-row);height:auto;margin:0;padding:10px 16px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;box-shadow:none;text-align:left;color:var(--text)}
 html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn,#morning-feed>*,#morning-more>*):last-child{border-bottom:0}
 /* кружок под иконкой — псевдоэлемент строки; сама иконка сверху в той же ячейке */
 html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid)::before{content:'';display:block;position:static;inset:auto;width:40px;height:40px;border-radius:50%;background:var(--selected);grid-column:1;grid-row:1/span 2;justify-self:center;mask:none;-webkit-mask:none;padding:0;z-index:0;opacity:1;animation:none;transform:none}
@@ -1867,8 +1929,9 @@ html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline .l
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline .lunar-arrow{display:none}
 html[data-skin=compact] body.inner #morning-more>.moonline #h-moon{display:block}
 html[data-skin=compact] body.inner #morning-feed>:last-child:nth-child(odd){grid-column:auto}
-@media(min-width:900px){html[data-skin=compact] body.inner :is(#morning-feed,#morning-more){grid-template-columns:1fr}}
-
+@media(min-width:900px){
+  html[data-skin=compact] body.inner :is(#morning-feed,#morning-more){grid-template-columns:1fr}
+}
 /* ── «Сегодня»: шапка компактная, настрой — карточкой с маленькой луной, а не на полэкрана ── */
 html[data-skin=compact] body.inner #v-home .compact-brand{font-size:26px;line-height:1.2}
 html[data-skin=compact] body.inner #v-home .hdr{margin-bottom:4px}
@@ -1893,7 +1956,6 @@ html[data-skin=compact] body.inner .later-row .eyebrow{font-size:11px;letter-spa
 html[data-skin=compact] body.inner .later-row b{font-size:15px}
 html[data-skin=compact] body.inner .later-row .later-go{font-size:13px}
 html[data-skin=compact] body.inner .home-later{gap:8px;margin-top:20px}
-
 /* ── контролы: чипы 32px, кнопки 48px пилюлей, активный чип — заливка акцента с тёмным текстом (как в референсе) ── */
 html[data-skin=compact] body.inner :is(.chip,.chips .chip,.chips.flow .chip,.timeline-filters .chip){min-height:32px;padding:6px 12px;font-size:13px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--text);box-shadow:none}
 /* активный чип: первый вариант в :is() задаёт специфичность выше базового правила строкой выше — иначе выбранное не отличить */
@@ -1902,22 +1964,16 @@ html[data-theme=light][data-skin=compact] body.inner :is(.chips.flow .chip.on,.c
 html[data-skin=compact] body.inner .btn{min-height:48px;border-radius:999px;font-size:15px;font-weight:600;box-shadow:none}
 html[data-skin=compact] body.inner .btn.sm{min-height:36px;font-size:13px}
 html[data-skin=compact] body.inner .text-action{font-size:14px;min-height:36px}
-
 /* ── Дневник: карточка дня плотнее ── */
 html[data-skin=compact] body.inner .day-card{padding:16px 18px}
 html[data-skin=compact] body.inner .day-card h2{font-size:19px;margin:2px 0 8px}
 html[data-skin=compact] body.inner .day-card .field{margin:12px 0 0;gap:6px}
 html[data-skin=compact] body.inner .day-card .field label{font-size:14px;line-height:1.35;font-weight:600}
 html[data-skin=compact] body.inner .day-card textarea{min-height:44px;padding:10px 12px;font-size:15px;border-radius:14px}
-html[data-skin=compact] body.inner .dc-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--muted)}
-html[data-skin=compact] body.inner .dc-block{margin-top:14px}
-html[data-skin=compact] body.inner .day-entry{padding:4px 16px;margin-bottom:10px}
-html[data-skin=compact] body.inner .timeline-day{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 html[data-skin=compact] body.inner .question-entry .wid{display:grid;grid-template-columns:40px minmax(0,1fr) 12px;column-gap:14px;min-height:72px;padding:14px 16px;align-items:center}
 html[data-skin=compact] body.inner .question-entry .wid .ico{grid-row:1/span 2;justify-self:center;width:22px;height:22px;margin:0}
 html[data-skin=compact] body.inner .question-entry .wid b{grid-column:2;font-size:17px;padding:0}
 html[data-skin=compact] body.inner .question-entry .wid>span:not(.destination-arrow){grid-column:2;font-size:13px;color:var(--muted)}
-
 /* ── навигация: прижата к низу на всю ширину, скруглённый верх, иконки 24 и подписи 11 ── */
 html[data-skin=compact] body.inner .app-nav{left:0;right:0;bottom:0;transform:none;width:100%;border-radius:24px 24px 0 0;border:1px solid var(--line);border-bottom:0;padding:8px 6px calc(6px + env(safe-area-inset-bottom));gap:0;background:var(--surface);box-shadow:0 -8px 30px -20px rgba(0,0,0,.5)}
 html[data-skin=compact] body.inner .app-nav button{min-height:46px;gap:4px;font-size:11px;font-weight:500;color:var(--muted);border-radius:12px;padding:2px}
@@ -1926,9 +1982,10 @@ html[data-skin=compact] body.inner .app-nav button.on{color:var(--gold-2);font-w
 html[data-skin=compact] body.inner .app-nav button.on .ico{background-color:var(--gold-2)}
 html[data-skin=compact] body.inner .acct{width:38px;height:38px}
 html[data-skin=compact] body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{top:calc(16px + env(safe-area-inset-top));right:16px;width:38px;height:38px}
-@media(min-width:600px){html[data-skin=compact] body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:24px}}
+@media(min-width:600px){
+  html[data-skin=compact] body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:24px}
+}
 html[data-skin=compact] body.inner #v-home #h-acct{margin-top:0}
-
 /* ── Панели-виджеты (карта дня, руна, лунный день, разбор вопроса, «Моя неделя», настройки): та же сетка, что и экраны ── */
 html[data-skin=compact] body.inner .wg{padding-inline:16px;font-size:15px;line-height:1.5}
 html[data-skin=compact] body.inner .wg-head h2{font-size:20px;line-height:1.25;letter-spacing:-.015em}
@@ -1956,7 +2013,6 @@ html[data-skin=compact] body.inner .profile-summary>p{font-size:13px}
 html[data-skin=compact] body.inner .avatar{width:64px;height:64px;font-size:24px}
 html[data-skin=compact] body.inner #v-account .compact-links .wid b{font-size:16px}
 html[data-skin=compact] body.inner #v-account .compact-links .wid>span:not(.dot):not(.destination-arrow){font-size:13px}
-
 /* ── Онбординг, вход и экран трёх напоминаний: та же типографика ── */
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) h1:not(.wordmark){font-size:26px;line-height:1.2}
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) :is(p,li,label){font-size:15px;line-height:1.5}
@@ -1970,14 +2026,14 @@ html[data-skin=compact] .rhythm-row small{font-size:13px}
 html[data-skin=compact] .rhythm-row input[type=time]{padding:6px 8px;font-size:15px}
 html[data-skin=compact] .onb-head p{font-size:15px}
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) .compact-brand{font-size:28px}
-
 /* ── Навигация: «Свериться с собой» в одну строку — колонка шире, подписи не переносятся ── */
 html[data-skin=compact] body.inner .app-nav{grid-template-columns:1fr 1fr 1.5fr 1fr}
-@media(min-width:360px){html[data-skin=compact] body.inner .app-nav button{white-space:nowrap}}
-
+@media(min-width:360px){
+  html[data-skin=compact] body.inner .app-nav button{white-space:nowrap}
+}
 /* ── Пустая лента Дневника — подсказка строкой, не карточка ── */
-html[data-skin=compact] body.inner #timeline-list .timeline-empty,html[data-skin=compact] body.inner :is(#timeline-list) .timeline-empty::before{background:none;border:0;box-shadow:none;padding:6px 4px;margin:0;font-size:14px;line-height:1.5;color:var(--muted);content:none}   /* специфичность с ID — как у блока стекла, позже в каскаде */
-
+html[data-skin=compact] body.inner #timeline-list .timeline-empty,html[data-skin=compact] body.inner :is(#timeline-list) .timeline-empty::before{background:none;border:0;box-shadow:none;padding:6px 4px;margin:0;font-size:14px;line-height:1.5;color:var(--muted);content:none}
+/* специфичность с ID — как у блока стекла, позже в каскаде */
 /* ── Светлая тема: активный чип — мягкое золото (как голубой в референсе, но в палитре Лунарио) ── */
 html[data-theme=light][data-skin=compact] body.inner :is(.chips.flow .chip.on,.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#efe0b3;border-color:#e4cf95;color:#2a2150}
 html[data-theme=light][data-skin=compact]{--selected:rgba(217,184,104,.22)}
@@ -1988,7 +2044,6 @@ html[data-theme=light][data-skin=compact] body.inner .app-nav button.on{color:#2
 html[data-skin=compact] body.inner #v-account .rowbtn::before{content:'';display:block;position:static;inset:auto;width:40px;height:40px;border-radius:50%;background:var(--selected);grid-column:1;grid-row:1/span 2;justify-self:center;mask:none;-webkit-mask:none;padding:0;z-index:0;opacity:1;animation:none;transform:none}
 html[data-skin=compact] body.inner #v-account .rowbtn .ico{grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;width:20px;height:20px;margin:0;z-index:1}
 html[data-skin=compact] body.inner #v-account .rowbtn.warn::before{background:rgba(120,90,160,.14)}
-
 /* ── Каскадные поправки по ревью 17.09: капитель в Аккаунте, отступ строк в «Уведомлениях», подсказки в панелях,
    точка новостей на кружке аккаунта, подписи строк «Ещё про этот день» ── */
 html[data-skin=compact] body.inner #v-account .account-group>h2{font-size:11px;line-height:1.3;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
@@ -2001,7 +2056,6 @@ html[data-skin=compact] body.inner .mini-grid .wid>span:not(.dot){text-align:lef
 html[data-skin=compact] body.inner .home-push{margin-top:12px}
 html[data-skin=compact] body.inner .home-push[hidden]{display:none}
 html[data-skin=compact] body.inner .home-push .later-row{border-color:rgba(240,215,154,.35)}
-
 /* ── карта дня в строке — предмет: миниатюра рубашки (после открытия — лица) вместо иконки в кружке ── */
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb::before{content:none}
 /* специфичность выше общей строки «>span:not(.dot):not(.destination-arrow)» — иначе миниатюра уезжает во вторую колонку */
@@ -2010,7 +2064,6 @@ html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thu
 /* строка «Руна дня»: после выбора — камень в кружке вместо иконки */
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb.rune-thumb:not(.dot){grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;display:block;width:40px;height:40px;overflow:hidden;font-size:0;z-index:1}
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb[hidden]{display:none}
-
 /* ═══════════════════════════ ЕДИНЫЙ СТИЛЬ (решение владелицы 19.09, вечер) ═══════════════════════════
    Плоские сине-черные карточки (#1d1738 — фон из слоя «ночь, свет, стекло»), стекло — только у главного действия каждой вкладки
    наверху (как «День записан» в слое «каркас»); все строки ниже — плоские, компактные. Без курсива, подписи 14px, ничего мельче 12px,
@@ -2021,7 +2074,8 @@ html[data-theme=dark][data-skin=compact]{--surface:#1d1738;--line:rgba(245,242,2
 html[data-skin=compact] body.inner :is(.wid,.card,.morning-summary,.morning-picker,.wids.list-rows,.day-entry,.timeline-entry,.wish-card,.rem-summary,#v-account .compact-links,#v-account .rows,#home-sky .moonline,#morning-more .moonline,.push-note,.home-intro,.dayview,.tool-card){background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
 /* стекло — главное действие вкладки: «День записан» и вопрос дня на «Сегодня», строка над записью и карточка шагов в Дневнике, «Моя неделя»,
    «Ответить себе на вопрос», карточка человека на «Обо мне», профиль в Аккаунте */
-html[data-skin=compact] body.inner .later-row{background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}   /* подсказки, «вчера», «завтра» — плоские строки */
+html[data-skin=compact] body.inner .later-row{background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
+/* подсказки, «вчера», «завтра» — плоские строки */
 html[data-skin=compact] body.inner :is(#home-action .later-row,#diary-action .later-row,.card.ha,#day-card:not(.done),#week-top,.question-entry .wid,.me-card,.profile-summary){background:var(--glass-bg);border:1px solid rgba(245,242,234,.16);box-shadow:var(--glass-shadow);border-radius:var(--ck-radius)}
 html[data-skin=compact] body.inner .day-card .later-row{background:var(--card-2);margin-top:12px}
 html[data-skin=compact] body.inner .later-row{padding:14px 20px}
