@@ -192,3 +192,6 @@ html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thu
 /* специфичность выше общей строки «>span:not(.dot):not(.destination-arrow)» — иначе миниатюра уезжает во вторую колонку */
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb>span.card-thumb.card-thumb:not(.dot){grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;display:block;width:34px;height:56px;overflow:hidden;font-size:0}
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb{min-height:72px}
+/* строка «Руна дня»: после выбора — камень в кружке вместо иконки */
+html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb.rune-thumb:not(.dot){grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;display:block;width:40px;height:40px;overflow:hidden;font-size:0;z-index:1}
+html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb[hidden]{display:none}

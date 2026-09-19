@@ -335,6 +335,7 @@ function dayPack(u, day) {
     theme: theme ? { key: theme.key, title: theme.title, source: Morning.themeSource(u, day, theme) } : null,
     morning: morningOf(preferences(u.preferences)),   /* выбранные плитки утра */
     cardOpened: Morning.openedOf(u, day, 'card'),     /* утро вытянуло карту само — в панели она ждет, пока ее откроют */
+    runeOpened: Morning.openedOf(u, day, 'dayrune'),  /* то же для руны дня: до выбора человек не видит, какая выпала */
     remembered: dayRemembered(u.id, day),             /* день уже записан — вечерняя строка на «Сегодня» скажет об этом */
     rune: (() => { const r = runeOfDay(u, day); return r ? runePublic(r) : null; })(),
     sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */

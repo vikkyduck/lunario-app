@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=87"></script>
+<script src="/app/boot.js?v=89"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -170,6 +170,9 @@ html[data-theme] body.inner .dc-offer p.hint{margin:0;font-size:13px;line-height
 body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:auto;max-height:280px;object-fit:cover;border-radius:16px;margin:12px 0 0;box-shadow:0 10px 28px -14px rgba(0,0,0,.7)}
 .day-row.has-photo{grid-template-columns:40px minmax(0,1fr) 44px}.day-row img.ph{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block}
 .dc-skip{display:block;width:100%;text-align:center;margin-top:2px;color:var(--muted)}
+.dc-secondary{display:flex;justify-content:center;gap:22px;margin-top:2px}.dc-secondary .text-action{min-height:36px}
+.wg-foot{padding:18px 0 8px;display:flex;justify-content:center}.wg-return{min-height:48px;padding:0 26px;border-radius:999px;color:var(--text);font-weight:600}
+.wg-return:active{transform:scale(.98)}
 .dc-echo-q{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line)}
 .dc-echo-q>span{font-size:13px;color:var(--muted);flex:1 1 100%}
 .dc-echo-q .chip{font-size:13px;padding:8px 12px}
@@ -210,7 +213,7 @@ body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:
 .days-strip i.t-plus{background:rgba(159,230,189,.32)}.days-strip i.t-zero{background:rgba(217,184,104,.32)}.days-strip i.t-minus{background:rgba(255,179,179,.26)}.days-strip i.t-own{background:rgba(233,199,126,.3)}
 .days-list{border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;background:var(--surface)}
 .days-list .hint{padding:14px 16px;margin:0}
-.day-row{display:grid;grid-template-columns:40px minmax(0,1fr) 14px;column-gap:12px;align-items:center;width:100%;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.day-row{display:grid;grid-template-columns:36px minmax(0,1fr) 14px;column-gap:10px;align-items:center;width:100%;padding:9px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}
 .day-row:last-child{border-bottom:0}
 .day-row .n{text-align:center}.day-row .n b{display:block;font-size:17px;font-weight:600;line-height:1}.day-row .n small{display:block;font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
 .day-row .t{min-width:0}.day-row .t p{margin:0;font-size:14px;line-height:1.4;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -375,6 +378,28 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .moonline p{font-size:16px;color:var(--text)}
 .moonline small{display:block;color:var(--faint);font-size:13px;margin-top:3px}
 .zsym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.18em;fill:none;stroke:var(--gold-2);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(240,215,154,.35))}
+/* ── веер рубашек и ряд камней: выбор руками ── */
+.picker{text-align:center;padding:6px 0 2px}
+.picker-q{margin:0 0 10px;font-size:15px;font-weight:600;color:var(--text)}
+.fan{display:flex;justify-content:center;align-items:flex-end;padding:18px 0 10px;min-height:150px}
+.fan{--w:clamp(38px,calc(290px / (var(--n) * .58 + .42)),60px);--a:calc(28deg / var(--n))}   /* веер всегда помещается в ширину телефона: чем больше карт, тем они меньше и плотнее */
+.fan-card{position:relative;flex:0 0 auto;width:var(--w);aspect-ratio:200/360;margin-left:calc(var(--w) * -.42);padding:0;border:0;background:none;border-radius:8px;
+  transform-origin:50% 230%;transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * var(--a)));transition:transform .28s var(--sp),filter .28s;cursor:pointer;filter:drop-shadow(0 8px 14px rgba(0,0,0,.6))}
+.fan-card:first-child{margin-left:0}
+.fan-card img{display:block;width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid rgba(240,215,154,.35)}
+.fan-card:hover{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * var(--a))) translateY(-10px)}
+.fan-card.on{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * var(--a))) translateY(-22px);filter:drop-shadow(0 0 18px rgba(240,215,154,.7));z-index:2}
+.fan-card.on img,.fan-card.on .stone-back{border-color:var(--gold-2)}
+.pick-n{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--gold);color:#1d1738;font-size:12px;font-weight:700;line-height:20px;display:none}
+.fan-card.on .pick-n:not(:empty){display:block}
+.picker.rune .fan{align-items:center;flex-wrap:wrap;gap:12px;padding:12px 0 6px;min-height:0}
+.picker.rune .fan-card{width:52px;aspect-ratio:52/72;margin-left:0;transform:none;transform-origin:center}
+.picker.rune .fan-card:hover{transform:translateY(-6px)}.picker.rune .fan-card.on{transform:translateY(-10px) scale(1.06)}
+.stone-back{display:block;width:100%;height:100%;border-radius:50%/48%;background:radial-gradient(circle at 40% 32%,#3a2f68,#1a1533 60%,#0f0c1e);border:1px solid rgba(240,215,154,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.picker.done .fan-card:not(.on){opacity:0;transform:translateY(12px)}
+.picker.done .fan-card.on{transition:transform .4s var(--sp),opacity .3s}
+.rune-thumb{display:block;width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 auto;box-shadow:0 0 14px -4px rgba(240,215,154,.5)}
+.rune-thumb img{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.35)}
 .card-thumb{display:block;width:34px;height:56px;border-radius:5px;overflow:hidden;flex:0 0 auto;box-shadow:0 6px 14px -6px rgba(0,0,0,.8),0 0 16px -6px rgba(240,215,154,.5);transform:rotate(-4deg)}.card-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 .ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.spark{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
@@ -788,11 +813,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=87">
-<link rel="stylesheet" href="/app/experience.css?v=87">
-<link rel="stylesheet" href="/app/moon-glass.css?v=87">
-<link rel="stylesheet" href="/app/compact.css?v=87">
-<link rel="stylesheet" href="/app/frame.css?v=87">
+<link rel="stylesheet" href="/app/theme.css?v=89">
+<link rel="stylesheet" href="/app/experience.css?v=89">
+<link rel="stylesheet" href="/app/moon-glass.css?v=89">
+<link rel="stylesheet" href="/app/compact.css?v=89">
+<link rel="stylesheet" href="/app/frame.css?v=89">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -871,7 +896,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     </div>
     <div class="card sec rhythm-card" id="rh-step-2">
       <h2 class="rh-title">Когда напоминать?</h2>
-      <p class="hint" id="rh-device-note">Уведомления придут на это устройство. Время можно поменять потом в Аккаунте</p>
+      <p class="hint" id="rh-device-note">Придут на это устройство</p>
       <div class="rh-list">
         <label class="rhythm-row"><input type="checkbox" id="rh-morning" checked><span class="grow"><b>Утро</b><small>настрой дня и то, что вы выбрали</small></span><input type="time" id="rh-time-morning" value="08:30" aria-label="Время утреннего напоминания"></label>
         <label class="rhythm-row"><input type="checkbox" id="rh-evening" checked><span class="grow"><b>Вечер</b><small>приглашение записать день</small></span><input type="time" id="rh-time-evening" value="22:00" aria-label="Время вечернего напоминания"></label>
@@ -885,7 +910,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <button data-on="click:go-hello" class="back">← Назад</button>
     <div class="onb-head">
       <h1 class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></h1>
-      <p>Чтобы подсказки были про вас, расскажите немного о себе.</p>
+      <p>Несколько слов о себе</p>
     </div>
     <!-- Анкета по шагам (решение владелицы 19.09): один вопрос на экран, «Дальше», как в дневнике. Поля и их id те же,
          что и раньше — отправка (o-go в app.js) не изменилась; показывается только текущий шаг (obStep) -->
@@ -905,7 +930,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       </div>
       <div class="ob-step" data-step="time" hidden>
         <p class="dc-q">Во сколько?</p>
-        <p class="dc-sub">Время рождения нужно для домов натальной карты</p>
         <div class="field"><input id="o-time" type="time" aria-label="Время рождения"></div>
         <button data-on="click:obNext" class="btn" type="button">Дальше</button>
         <button data-on="click:obSkipTime" class="text-action secondary dc-skip" type="button">Не знаю</button>
@@ -918,7 +942,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
             <input id="o-city" placeholder="Начните вводить: Мос…" maxlength="60" autocomplete="off" aria-label="Город рождения" enterkeyhint="next">
             <div class="sug-list" id="o-city-list"></div>
           </div>
-          <p class="geo" id="o-geo">Координаты и часовой пояс подставим сами</p>
+          <p class="geo" id="o-geo"></p>
         </div>
         <button data-on="click:obNext" class="btn" type="button">Дальше</button>
         <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
@@ -968,11 +992,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <div class="home-later home-push" id="home-yesterday" hidden></div>
     <div class="home-later home-push" id="home-natal" hidden></div>
     <div class="home-later home-push" id="home-tour" hidden></div>
-    <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Выбранное — сверху и в утреннем уведомлении. Можно все</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придет только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="text-action" id="morning-done" type="button" hidden>Готово</button></div></section>
+    <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Можно все</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придет только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="text-action" id="morning-done" type="button" hidden>Готово</button></div></section>
     <!-- после выбора вопрос сворачивается в строку: экран — для чтения, не для настроек -->
     <button data-on="click:morningEdit" class="morning-summary" id="morning-summary" type="button" hidden><span class="eyebrow">Утром показываем</span><b id="morning-summary-list"></b><span class="text-action" aria-hidden="true">Изменить</span></button>
     <section class="feature-group" id="home-sky" data-feature="around"><h2>Мое утро</h2><div class="wids compact-links" id="morning-feed"></div></section>
-    <section class="feature-group" id="morning-rest"><h2>Еще про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid has-thumb" data-feature="card" data-chip="Карта дня" type="button"><span class="card-thumb" aria-hidden="true"><img id="t-cardthumb" src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt=""></span><b>Карта дня</b><span id="t-cardsub">Одна карта на день: смысл и что сделать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" data-chip="Руна дня" type="button"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" data-chip="Планеты" type="button"><i class="ico star"></i><b>Влияние планет</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" data-chip="Прогноз дня" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" data-chip="Луна" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b class="moon-title">Луна</b><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" data-chip="Вопрос дня" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос по теме дня — ответ вечером в дневнике</span></button></div></section>
+    <section class="feature-group" id="morning-rest"><h2>Еще про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid has-thumb" data-feature="card" data-chip="Карта дня" type="button"><span class="card-thumb" aria-hidden="true"><img id="t-cardthumb" src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt=""></span><b>Карта дня</b><span id="t-cardsub">Одна карта на день: смысл и что сделать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" data-chip="Руна дня" type="button"><span class="rune-thumb" id="t-runethumb" hidden aria-hidden="true"><img src="" alt="" width="40" height="40"></span><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" data-chip="Планеты" type="button"><i class="ico star"></i><b>Влияние планет</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" data-chip="Прогноз дня" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" data-chip="Луна" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b class="moon-title">Луна</b><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" data-chip="Вопрос дня" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос по теме дня — ответ вечером в дневнике</span></button></div></section>
     <!-- вечером и по воскресеньям страница знает, что дальше: записать день, посмотреть неделю -->
     <div class="home-later" id="home-later" hidden></div>
   </section>
@@ -989,13 +1013,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <section class="card day-card" id="day-card" aria-live="polite"></section>
     <!-- из чего собран вечер: база + выбранные инструменты; «Изменить» разворачивает чипы на месте (paintEveningSet) -->
     <div class="evening-set" id="evening-set"></div>
-    <!-- Прошлые дни — по строке на день: число, первая фраза, настроение, что еще записано. Тап — день целиком -->
+    <!-- Практики — плашками сразу под карточкой дня (решение владелицы 19.09): видны всегда, состав вечера человек выбирает в «Мой вечер» -->
+    <section class="feature-group practices" id="diary-tools"><h2>Практики</h2><div class="wids mini-grid practice-grid">
+<button data-on="click:openWidget-habits" class="wid" type="button"><i class="ico check"></i><b>Привычки</b><span data-status="habits"></span></button><button data-on="click:openWidget-askesis" class="wid" type="button"><i class="ico flag"></i><b>Аскезы</b><span data-status="askesis"></span></button><button data-on="click:openWidget-gratitude" class="wid" type="button"><i class="ico heart"></i><b>Благодарность</b><span></span></button><button data-on="click:openWidget-wishes" class="wid" type="button"><i class="ico spark"></i><b>Желания</b><span data-status="wishes"></span></button><button data-on="click:openWidget-hmood" class="wid" type="button"><i class="ico smile"></i><b>Настроения</b><span id="hm-sub"></span></button><button data-on="click:openWidget-week" class="wid" type="button"><i class="ico calendar"></i><b>Неделя</b><span></span></button></div></section>
+    <!-- Прошлые дни — компактно, три строки и «Архив →» -->
     <section class="feature-group past-days" id="past-days"><div class="sec-head"><h2>Прошлые дни</h2><button data-on="click:openWidget-days" class="text-action" id="days-all" type="button" aria-label="Архив">Архив →</button></div>
       <div class="days-list" id="days-list"></div></section>
-    <section class="feature-group" id="diary-tools"><h2>Еще в дневнике</h2><div class="wids list-rows">
-<button data-on="click:openWidget-week" class="wid" type="button"><i class="ico calendar"></i><b>Моя неделя</b><span>Про что она была</span></button><button data-on="click:openWidget-habits" class="wid" data-feature="habits" type="button"><i class="ico check"></i><b>Дневник привычек</b><span data-status="habits">Свой ритм и ежедневные отметки</span></button><button data-on="click:openWidget-askesis" class="wid" data-feature="askesis" type="button"><i class="ico flag"></i><b>Аскезы</b><span data-status="askesis">Отказ до своей даты, заметки по желанию</span></button><button data-on="click:openWidget-wishes" class="wid" type="button"><i class="ico heart"></i><b>Мои желания</b><span data-status="wishes">Фото и планы</span></button><button data-on="click:openWidget-hmood" class="wid" type="button"><i class="ico smile"></i><b>История настроений</b><span id="hm-sub"></span></button></div></section>
   </section>
-  <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div></section>
+  <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div><div class="wg-foot"><button data-on="click:practiceBack" class="btn ghost wg-return" type="button">← Вернуться</button></div></section>
   <section class="view" id="v-news"><button data-on="click:go-account" class="back" type="button">← Аккаунт</button>
     <span class="eyebrow" id="news-sub">За этот месяц</span><h1>Новое в приложении</h1><div class="wids" id="news-box"></div>
     <section class="feature-group upcoming" id="news-soon" hidden><h2>Скоро</h2><p class="hint">Эти материалы еще готовятся</p><div class="list" id="news-soon-box"></div></section>
@@ -1052,14 +1077,15 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <div class="wpane" id="w-days"><div id="days-box"></div></div>
   <div class="wpane" id="w-dayrune"><div id="dayrune-box"><p class="hint">Тянем руну…</p></div></div>
   <div class="wpane" id="w-card">
-    <div data-on="click:flipCard" class="daycard glow" id="t-card">
+    <div id="t-pick" hidden></div>   <!-- веер рубашек: карту дня выбирают руками (paintCardPick) -->
+    <div data-on="click:flipCard" class="daycard glow" id="t-card" hidden>
       <div class="dc-in">
         <div class="dc-f dc-back"><img class="dc-back-art" src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt=""></div>
         <div class="dc-f dc-front" id="c-face"></div>
       </div>
     </div>
     <div id="t-after" class="mt-4" style="display:none"></div>
-    <button class="btn mt-4" id="t-open">Открыть карту дня</button>
+    <button class="btn mt-4" id="t-open" hidden>Открыть карту дня</button>
   </div>
   <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p class="hint mt-3 center" id="t-moodstat"></p><div id="mood-extra"></div></div>
   <div class="wpane" id="w-habits"><div id="hb-box"></div></div>
@@ -1138,6 +1164,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     </div>
     <div id="wg-tools" class="wg-tools"></div>
     <div class="wg-body" id="wg-body"></div>
+    <!-- явный выход из любой панели (решение владелицы 19.09): одного крестика наверху не хватало — «замираю и не знаю, что делать» -->
+    <div class="wg-foot"><button data-on="click:closeWidget" class="btn ghost wg-return" type="button">← Вернуться</button></div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1147,14 +1175,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=87"></script>
+<script src="/app/moon-logo.js?v=89"></script>
 
-<script type="module" src="/app/sky.js?v=87"></script>
+<script type="module" src="/app/sky.js?v=89"></script>
 
-<script src="/app/experience.js?v=87"></script>
-<script src="/app/app.js?v=87"></script>
-<script src="/app/tour.js?v=87"></script>
-<script src="/app/handlers.js?v=87"></script>
-<script src="/app/on.js?v=87"></script>
+<script src="/app/experience.js?v=89"></script>
+<script src="/app/app.js?v=89"></script>
+<script src="/app/tour.js?v=89"></script>
+<script src="/app/handlers.js?v=89"></script>
+<script src="/app/on.js?v=89"></script>
 </body>
 </html>
