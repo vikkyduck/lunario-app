@@ -365,7 +365,7 @@ async function paintHomeAction(){
   const box=$('home-action'), d=S.day; if(!box||!d)return;
   if(isEvening()){
     box.innerHTML=d.remembered
-      ?row('Вечер','День записан ✓','Дополнить →','click:goDayCard')
+      ?row('Вечер',ui('diary.done','День записан ✦'),'Дополнить →','click:goDayCard')
       :`<div class="card ha"><span class="eyebrow">Вечер</span><p class="ha-q">${ui('home.evening_q','Что хочется сохранить из сегодняшнего дня?')}</p><button data-on="click:goDayCard" class="btn" type="button">${ui('home.evening_btn','Запомнить этот день')}</button></div>`;
     box.hidden=false; return;
   }
@@ -997,6 +997,7 @@ function dcFilled(key){
 function paintDayCard(){
   const s=DC.state, box=$('day-card'); if(!s||!box)return;
   if(DC.mode==='done'){ paintDayDone(); return; }
+  box.classList.remove('done'); const da=$('diary-action'); if(da){ da.hidden=true; da.innerHTML=''; }
   if(DC.mode==='celebrate'){ paintDayParty(); return; }
   const steps=dcSteps(); DC.step=Math.min(DC.step,steps.length-1); const i=DC.step, step=steps[i], last=i===steps.length-1;
   const dots=`<div class="dc-dots" aria-hidden="true">${steps.map((_,k)=>`<i class="${k<i?'done':k===i?'on':''}"></i>`).join('')}</div>
@@ -1151,7 +1152,10 @@ function paintDayDone(){
   const hour=new Date().getHours(), night=hour>=EVENING_HOUR||hour<4;
   const moods=s.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
   const warm=DC.forDay?'':(night?ui('diary.night','Спокойной ночи ✦'):ui('diary.day','Хорошего дня ✦'));
-  box.innerHTML=`<span class="eyebrow">${ui('diary.done','День записан ✦')} · ${DC.forDay===yesterdayC()?'вчера, ':''}${fmtDayWords(s.day)}</span>
+  /* главное действие вкладки — строкой в стекле над записью (решение владелицы 19.09); сама запись — плоской карточкой */
+  const da=$('diary-action'); if(da){ da.innerHTML=row(DC.forDay?(DC.forDay===yesterdayC()?'Вчера':fmtDayWords(s.day)):'Сегодня',ui('diary.done','День записан ✦'),'Дополнить →','click:dcEdit'); da.hidden=false; }
+  box.classList.add('done');
+  box.innerHTML=`<span class="eyebrow">${DC.forDay===yesterdayC()?'вчера, ':''}${fmtDayWords(s.day)}</span>
     ${moods.length?`<div class="dc-moods">${moods.map(m=>`<i>${esc(m)}</i>`).join('')}</div>`:''}
     ${photoFullHtml(s)}
     ${morningHtml(s)}
@@ -1161,7 +1165,7 @@ function paintDayDone(){
     <div class="dc-bridge" id="dc-bridge" hidden></div>
     ${DC.forDay?'':nextStepHtml()}
     ${DC.forDay?'':toolOfferHtml()}
-    <div class="dc-done-actions"><button data-on="click:dcEdit" class="text-action" type="button">Дополнить →</button>${DC.forDay?'<button data-on="click:dcToday" class="text-action secondary" type="button">К сегодняшнему дню →</button>':''}</div><p class="hint" id="dc-state" role="status"></p>`;
+    ${DC.forDay?'<div class="dc-done-actions"><button data-on="click:dcToday" class="text-action secondary" type="button">К сегодняшнему дню →</button></div>':''}<p class="hint" id="dc-state" role="status"></p>`;
   loadBridge();
 }
 /* После первого записанного дня — один следующий шаг (обязательства после ценности, решение 19.09): включить напоминания —

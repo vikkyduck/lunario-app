@@ -885,7 +885,7 @@ body.inner .week-dot.done{background:var(--gold);border-color:var(--gold)}
 body.inner .week-dot.due{border-style:dashed}
 body.inner .week-dot.missed{background:var(--line);border-color:transparent}
 body.inner .week-dot.none{opacity:.25}
-body.inner .week-phrase{margin-top:12px;font-style:italic}
+body.inner .week-phrase{margin-top:12px}
 body.inner #wk-reflect-state:empty{display:none}
 /* лента по дням: день — одна карточка, записи внутри разделены линиями */
 body.inner .day-entry{background:var(--moon-reader);border:1px solid var(--line);border-radius:var(--r-l);padding:6px 22px;margin-bottom:16px;box-shadow:inset 0 1px 0 #fff2d20a}
@@ -1212,3 +1212,34 @@ html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thu
 /* строка «Руна дня»: после выбора — камень в кружке вместо иконки */
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb.rune-thumb:not(.dot){grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;display:block;width:40px;height:40px;overflow:hidden;font-size:0;z-index:1}
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb[hidden]{display:none}
+
+/* ═══════════════════════════ ЕДИНЫЙ СТИЛЬ (решение владелицы 19.09, вечер) ═══════════════════════════
+   Плоские сине-черные карточки (#1d1738 — фон из слоя «ночь, свет, стекло»), стекло — только у главного действия каждой вкладки
+   наверху (как «День записан» в слое «каркас»); все строки ниже — плоские, компактные. Без курсива, подписи 14px, ничего мельче 12px,
+   приглушенные цвета светлее — ЦА тревожная, бледный мелкий текст раздражает. Практики в Дневнике — строками, как все.
+   Блок временно лежит поверх прежних слоев; при схлопывании файла сольется с ними. */
+html[data-theme=dark][data-skin=compact]{--surface:#1d1738;--line:rgba(245,242,234,.13);--muted:#dcd6ee;--faint:#b4adcf;--selected:rgba(217,184,104,.16)}
+/* плоский материал — правило компактного вида, потерявшее селектор в v97, восстановлено */
+html[data-skin=compact] body.inner :is(.wid,.card,.morning-summary,.morning-picker,.wids.list-rows,.day-entry,.timeline-entry,.wish-card,.rem-summary,#v-account .compact-links,#v-account .rows,#home-sky .moonline,#morning-more .moonline,.push-note,.home-intro,.dayview,.tool-card){background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
+/* стекло — главное действие вкладки: «День записан» и вопрос дня на «Сегодня», строка над записью и карточка шагов в Дневнике, «Моя неделя»,
+   «Ответить себе на вопрос», карточка человека на «Обо мне», профиль в Аккаунте */
+html[data-skin=compact] body.inner .later-row{background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}   /* подсказки, «вчера», «завтра» — плоские строки */
+html[data-skin=compact] body.inner :is(#home-action .later-row,#diary-action .later-row,.card.ha,#day-card:not(.done),#week-top,.question-entry .wid,.me-card,.profile-summary){background:var(--glass-bg);border:1px solid rgba(245,242,234,.16);box-shadow:var(--glass-shadow);border-radius:var(--ck-radius)}
+html[data-skin=compact] body.inner .day-card .later-row{background:var(--card-2);margin-top:12px}
+html[data-skin=compact] body.inner .later-row{padding:14px 20px}
+html[data-skin=compact] body.inner .later-row .eyebrow{text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;color:var(--muted)}
+html[data-skin=compact] body.inner .later-row b{font-size:16px}
+html[data-skin=compact] body.inner .diary-action{margin:14px 0 0}
+html[data-skin=compact] body.inner .diary-action+.day-card{margin-top:12px}
+html[data-skin=compact] body.inner .question-entry .wid{padding:16px 18px}
+/* типографика: тело 16, подписи 14, капитель 12 */
+html[data-skin=compact] body.inner{font-size:16px}
+html[data-skin=compact] body.inner :is(.feature-group>h2,.account-group>h2,.past-days .sec-head>h2,#v-account .account-group>h2){font-size:12px;letter-spacing:.1em}
+html[data-skin=compact] body.inner :is(.eyebrow,.wg-eb,.dc-label,.timeline-day,.morning-summary .eyebrow,#h-theme,.kw){font-size:12px;letter-spacing:.1em}
+html[data-skin=compact] body.inner #h-date{font-size:13px}
+html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid,.question-entry .wid)>span:not(.dot):not(.destination-arrow),
+html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline :is(small,.lunar-advice){font-size:14px;line-height:1.4}
+html[data-skin=compact] body.inner :is(.section-caption,.hint,.field label,.saved-state,.wpane small,.wpane p.hint,.profile-summary>p,.me-card .me-sub,.morning-picker .hint,.hero-actions .text-action,.morning-summary .text-action,.later-row .later-go,.theme-option,.week-quote p,.dc-read .q,.ha .saved-state,.timeline-empty,.day-row .t p,.dc-quiet,.dc-lunar,.profile-note){font-size:14px}
+html[data-skin=compact] body.inner .app-nav button{font-size:12px}
+html[data-skin=compact] body.inner .btn.sm{font-size:14px}
+html[data-skin=compact] body.inner .day-card.done .eyebrow{font-size:12px}
