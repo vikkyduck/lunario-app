@@ -12,6 +12,7 @@ if [ "${SKIP_CHECKS:-}" != "1" ]; then
   node tools/check-personal-features.mjs >/dev/null 2>&1 || { echo "❌ check-personal-features не прошёл — запустите node tools/check-personal-features.mjs"; exit 1; }
   node tools/check-sync.mjs >/dev/null 2>&1 || { echo "❌ check-sync не прошёл — запустите node tools/check-sync.mjs"; exit 1; }
   # те же проверки, что в CI (.github/workflows/check.yml): выпуск не должен уходить с красным CI
+  node tools/check-yo.mjs >/dev/null 2>&1 || { echo "❌ в приложении есть буква «ё» — node tools/check-yo.mjs"; exit 1; }
   for c in check-isolation check-entry-history check-daily-sets; do node tools/$c.mjs >/dev/null 2>&1 || { echo "❌ $c не прошёл — запустите node tools/$c.mjs"; exit 1; }; done
 fi
 # cities.db не в git: свежий клон без него не должен стереть серверный (rsync --delete)

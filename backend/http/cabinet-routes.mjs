@@ -1,12 +1,12 @@
 /* Рабочие кабинеты: HTTP-слой `/api/cabinet/*`.
 
-   Тонкий адаптер: разбирает запрос, проверяет роль и отдаёт ответ. Считают и пишут по-прежнему
+   Тонкий адаптер: разбирает запрос, проверяет роль и отдает ответ. Считают и пишут по-прежнему
    reports.mjs (числа), workspace.mjs (то, что сотрудники вносят сами), cabinet.mjs (роли и расходы),
    backup.mjs (копии) — сам этот файл ничего не вычисляет.
 
    Зависимости передаются явно, одним объектом, как у createShelves: видно, что именно нужно кабинету,
    и его можно собрать в проверке, не поднимая весь сервер. Правило доступа одно и то же на каждом
-   запросе — скрытая кнопка не защита; состав кабинетов задаёт админ, по умолчанию берётся из кода.
+   запросе — скрытая кнопка не защита; состав кабинетов задает админ, по умолчанию берется из кода.
 
    Возвращает true: запрос обработан, ответ отправлен. */
 import { readFileSync } from 'node:fs';
@@ -19,7 +19,7 @@ export function createCabinetRoutes(deps) {
 
   return async function cabinetRoutes({ p, req, res, url, u }) {
     const roles = rolesFor(u.email);
-    const cfg = getConfig();   // состав кабинетов задаёт админ; по умолчанию — из кода
+    const cfg = getConfig();   // состав кабинетов задает админ; по умолчанию — из кода
     if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom });
     if (!roles.length) return json(res, 403, { ok: false, error: 'no_access' });
     const admin = roles.includes('admin');
@@ -127,7 +127,7 @@ export function createCabinetRoutes(deps) {
     }
     if (p === '/api/cabinet/tasks') {
       if (!allowed('backlog')) return json(res, 403, { ok: false, error: 'no_access' });
-      // контент и поддержка видят только своё (с двумя ролями — обе области); продукт и админ — весь беклог
+      // контент и поддержка видят только свое (с двумя ролями — обе области); продукт и админ — весь беклог
       const own = admin || roles.includes('product') ? [] : roles.filter((r) => r === 'content' || r === 'support');
       const pick = url.searchParams.get('role') || '';   // срез одной роли — только тем, кому открыт весь беклог
       if (req.method === 'GET') return json(res, 200, { items: W.taskList(own.length ? own : pick ? [pick] : []), statuses: W.TASK_STATUS, roles: W.TASK_ROLES, canCreate: admin || roles.includes('product'), own });

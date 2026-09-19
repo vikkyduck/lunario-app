@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync } from 'no
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { MSK, dayIn } from './util.mjs';
+import { noYo } from './content.mjs';
 
 let db, seal = (s) => s, open_ = (s) => s, UPLOADS = '';
 export function initWorkspace(database, dataDir, sealFn, openFn) {
@@ -128,7 +129,8 @@ export function materialSave(b, by) {
 export function materialRemove(id) { db.prepare('DELETE FROM materials WHERE id = ?').run(Number(id)); return { ok: true }; }
 /* опубликованный материал на сегодня — подставляется в «Мой день» вместо текста из файла */
 export function materialForDay(kind, day) {
-  return one(`SELECT title, text, image FROM materials WHERE kind = ? AND status = 'published' AND (show_day = ? OR show_day = '') ORDER BY show_day DESC, updated_at DESC LIMIT 1`, kind, day) || null;
+  const m = one(`SELECT title, text, image FROM materials WHERE kind = ? AND status = 'published' AND (show_day = ? OR show_day = '') ORDER BY show_day DESC, updated_at DESC LIMIT 1`, kind, day);
+  return m ? { ...m, title: noYo(m.title), text: noYo(m.text) } : null;   /* у людей — без «е», как и в файлах контента */
 }
 
 /* ── картинки и файлы ── */

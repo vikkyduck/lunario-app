@@ -37,7 +37,7 @@
     body.addColorStop(0, '#fffbe8'); body.addColorStop(0.5, '#fae4a2'); body.addColorStop(1, '#f0cf78');
     g.fillStyle = body; g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.fill();
     g.save(); g.beginPath(); g.arc(0, 0, R, 0, Math.PI * 2); g.clip();
-    /* моря — тёмные пятна с мягким краем */
+    /* моря — темные пятна с мягким краем */
     for (const [x, y, rx, ry, rot] of MARIA) {
       g.save(); g.translate(x * R, y * R); g.rotate(rot); g.scale(rx * R, ry * R);
       const m = g.createRadialGradient(0, 0, 0, 0, 0, 1);
@@ -80,7 +80,7 @@
     const R = S * 0.34, Rp = R * dpr;
     const ph = cv.dataset.phase !== undefined ? +cv.dataset.phase : phase;   /* полоска недели: у каждого холста своя фаза в data-phase */
     const p = ph * Math.PI * 2, c = Math.cos(p), waxing = ph < 0.5, sign = waxing ? 1 : -1;
-    /* всё рисуем в устройственных пикселях; при убывающей луне зеркалим по x — свет на текстуре всегда справа */
+    /* все рисуем в устройственных пикселях; при убывающей луне зеркалим по x — свет на текстуре всегда справа */
     const litPath = (g) => { g.beginPath(); g.arc(0, 0, Rp, -Math.PI / 2, Math.PI / 2, false); g.ellipse(0, 0, Math.max(0.001, Rp * Math.abs(c)), Rp, 0, Math.PI / 2, -Math.PI / 2, c > 0); g.closePath(); };
 
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, px, px);
@@ -96,7 +96,7 @@
       return;
     }
     const tex = moonTexture(px, Rp, letter); if (!tex) return;
-    /* тёплый нимб — гаснет внутри холста, иначе виден его квадрат */
+    /* теплый нимб — гаснет внутри холста, иначе виден его квадрат */
     const haloR = Math.min(Rp * 2.1, px / 2);
     const halo = ctx.createRadialGradient(px / 2, px / 2, Rp * 0.6, px / 2, px / 2, haloR);
     halo.addColorStop(0, 'rgba(240,215,154,.30)'); halo.addColorStop(1, 'rgba(240,215,154,0)');
@@ -107,7 +107,7 @@
     ctx.drawImage(tex, -px / 2, -px / 2);
     ctx.fillStyle = 'rgba(22,19,42,.86)';
     ctx.beginPath(); ctx.arc(0, 0, Rp, 0, Math.PI * 2); ctx.fill();
-    /* освещённая часть с мягким терминатором: маска размывается, если холст умеет фильтры */
+    /* освещенная часть с мягким терминатором: маска размывается, если холст умеет фильтры */
     const lit = document.createElement('canvas'); lit.width = lit.height = px;
     const lg = lit.getContext('2d');
     if (lg) {
@@ -173,7 +173,7 @@
   /* нарисовать луну с заданной фазой в любой холст (полоска недели на «Сегодня»); холст должен иметь атрибут width */
   window.moonPaint = function (cv, p) { if (!cv) return; cv.dataset.phase = String(Math.min(1, Math.max(0, +p || 0))); draw(cv); };
   /* Chrome в фоне «усыпляет» холсты и может потерять их 2D-контекст; без обработчика на месте луны
-     остаётся серый квадрат с «сломанной картинкой». Просим контекст обратно и рисуем заново. */
+     остается серый квадрат с «сломанной картинкой». Просим контекст обратно и рисуем заново. */
   canvases.forEach((cv) => {
     cv.addEventListener('contextlost', (e) => e.preventDefault());
     cv.addEventListener('contextrestored', () => draw(cv));

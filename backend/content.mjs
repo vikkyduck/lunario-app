@@ -22,6 +22,11 @@ const img = (kind, file) => {
   return `/app/content/${kind}/${file}?v=${v}`;
 };
 
+/* Правило владелицы: в приложении нет буквы «е». Файлы контента могут приходить с «е» — сами файлы не трогаем,
+   а на чтении заменяем: тексты у людей всегда через «е». То же делает кабинет для материалов (workspace.mjs). */
+export const noYo = (s) => String(s).replace(/\u0451/g, '\u0435').replace(/\u0401/g, '\u0415');   /* е с точками → е; сама буква в коде не пишется — проверка check-yo */
+const readText = (path) => noYo(readFileSync(path, 'utf8'));
+
 /* Читает файл как таблицу: строка = запись, поля разделены «|».
    Пустые строки и строки с # пропускаются — там заметки для человека. */
 function rows(file, minCols) {
@@ -29,7 +34,7 @@ function rows(file, minCols) {
   if (!existsSync(path)) return null;
   const out = [];
   let skipped = 0;
-  for (const raw of readFileSync(path, 'utf8').split('\n')) {
+  for (const raw of readText(path).split('\n')) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
     const cols = line.split('|').map((s) => s.trim());
@@ -43,7 +48,7 @@ function rows(file, minCols) {
 function lines(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
-  const out = readFileSync(path, 'utf8').split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('#'));
+  const out = readText(path).split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('#'));
   return out.length ? out : null;
 }
 const num = (v, d) => { const n = Number(String(v).trim()); return Number.isFinite(n) ? n : d; };
@@ -54,7 +59,7 @@ const num = (v, d) => { const n = Number(String(v).trim()); return Number.isFini
 function book(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
-  const text = readFileSync(path, 'utf8');
+  const text = readText(path);
   if (!/^=== /m.test(text)) return null;                 // старый строчный формат — не наш
   const out = [];
   let cur = null, sec = null, para = [];
@@ -83,7 +88,7 @@ function article(file) {
   if (!existsSync(path)) return null;
   const out = [];
   let cur = null, sec = null;
-  for (const raw of readFileSync(path, 'utf8').split('\n')) {
+  for (const raw of readText(path).split('\n')) {
     const line = raw.replace(/\s+$/, ''), t = line.trim();
     if (!t) continue;
     if (t.startsWith('=== ')) { cur = { name: t.slice(4).trim(), fields: {}, sections: {} }; out.push(cur); sec = null; continue; }
