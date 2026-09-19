@@ -38,12 +38,16 @@ export function createDayRoutes({ json, readBody, day }) {
       if (p === '/api/day/bridge') { const x = url.searchParams.get('day') || ''; return json(res, 200, { item: day.bridge(u, ISO.test(x) && x <= d ? x : d) }); }   /* «мост» и для открытого прошлого дня */
     }
     if (p !== '/api/day') return false;
-    if (req.method === 'GET') return json(res, 200, day.state(u, d));
+    /* день можно дописать и поправить задним числом — до года назад; сегодняшний — как прежде */
+    const past = (x) => ISO.test(x || '') && x < d && x >= new Date(Date.parse(d + 'T12:00:00Z') - 366 * 864e5).toISOString().slice(0, 10);
+    if (req.method === 'GET') { const x = url.searchParams.get('day') || ''; if (x && x !== d && !past(x)) return json(res, 400, { ok: false, error: 'bad_day' }); return json(res, 200, day.state(u, x && x !== d ? x : d, { today: !x || x === d })); }
     if (req.method === 'POST') {
       const b = await readBody(req);
       if (!b || typeof b !== 'object') return json(res, 400, { ok: false, error: 'bad_body' });
-      return json(res, 200, day.save(u, d, b));
+      const x = typeof b.day === 'string' ? b.day : ''; if (x && x !== d && !past(x)) return json(res, 400, { ok: false, error: 'bad_day' });
+      return json(res, 200, day.save(u, x && x !== d ? x : d, b, { today: !x || x === d }));
     }
+    if (req.method === 'DELETE') { const x = url.searchParams.get('day') || d; if (x !== d && !past(x)) return json(res, 400, { ok: false, error: 'bad_day' }); const r = day.remove(u, x, url.searchParams.get('what') || ''); return json(res, r.ok ? 200 : 400, r); }
     return false;
   };
 }

@@ -496,6 +496,16 @@ try {
   assert.ok(!/undefined|NaN/.test(dossierText), 'No undefined in dossier text');
   console.log('PASS: dossier and context text use the same askesis contract as the practices model.');
 
+  // ── Прошлый день: дописать и поправить можно до года назад, серия не трогается; удалить блок; далекое прошлое — 400 ──
+  { const me=await askOwner.json('/me'), y=new Date(Date.parse(me.day.date+'T12:00:00Z')-864e5).toISOString().slice(0,10), streak=me.user.streak;
+    const st=await askOwner.json('/day?day='+y); assert.equal(st.today,false); assert.equal(st.day,y,'yesterday state is served as a past day');
+    const r=await askOwner.json('/day','POST',{day:y,text:'Дописала утром',moods:['joy']}); assert.ok(r.ok&&r.saved.includes('text')&&r.today===false,'a past day is saved');
+    assert.equal((await askOwner.json('/me')).user.streak,streak,'editing yesterday does not touch the streak');
+    assert.equal((await askOwner.json('/days?calendar=1')).items[0].text,'Дописала утром','the past-days list shows the late entry');
+    assert.equal((await askOwner.json('/day?day='+y+'&what=moods','DELETE')).removed,1,'a block of a day can be deleted');
+    assert.equal((await askOwner.raw('/day','POST',{day:'2020-01-01',text:'x'})).status,400,'days older than a year are not editable');
+    console.log('PASS: a past day can be written and corrected within a year; deleting a block works; the streak stays.'); }
+
   // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
   { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);
     const put = (who, thumb, full, q = '') => fetch(`${base}/api/day/photo?thumb=${thumb.length}&w=1280&h=960${q}`, { method: 'PUT', headers: { Cookie: who.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': who.ip }, body: Buffer.concat([thumb, full]) });

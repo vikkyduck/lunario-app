@@ -23,11 +23,12 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
   const photoMeta = (uid, d) => db.prepare('SELECT ts, w, h FROM day_photos WHERE user_id = ? AND day = ?').get(uid, d) || null;
   const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 
-  function state(u, d) {
+  function state(u, d, { today = true } = {}) {
     const kept = new Map(db.prepare('SELECT askesis_id, kept, note FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ?').all(u.id, d).map((n) => [n.askesis_id, n]));
-    const m = morningOf(u, d);   /* сегодняшнее утро — то же, что на «Сегодня»: вечер продолжает его, а не начинает заново */
+    /* сегодняшнее утро — то же, что на «Сегодня»: вечер продолжает его; прошлый день (дописать вчера, поправить запись) — утро как оно выпало, без дорисовки */
+    const m = today ? morningOf(u, d) : morningStored(u.id, d);
     return {
-      day: d, question: questionOf(u, d), set: m ? m.set : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d), lunar: lunarOf(u, d),
+      day: d, today, question: today ? questionOf(u, d) : (m ? m.question : ''), set: m ? m.set : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d), lunar: lunarOf(u, d),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')),
       moods: moodsOf(u.id, d),
       habits: habitList(u.id, d).map((h) => ({ id: h.id, title: h.title, due: h.due, today: h.today, rule: h.rule })),
@@ -95,14 +96,14 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
 
   /* Сохранение: все в одной транзакции — либо весь день записан, либо ничего (повтор с телефона безопасен).
      События и серия — после COMMIT: аналитика не должна отменять сохраненный день. */
-  function save(u, d, b) {
+  function save(u, d, b, { today = true } = {}) {
     const filled = [], events = [], emit = (t, x = '') => events.push([t, x]);
     transaction(db, () => {
       for (const [field, kind] of Object.entries(KINDS)) {
         if (b[field] === undefined || b[field] === null) continue;
         const text = cleanText(b[field], 2000); if (!text) continue;   /* пустое — не трогаем */
         const row = latest(u.id, d, kind);
-        const title = kind === 'answer' ? clean(b.question || questionOf(u, d), 300) : '';
+        const title = kind === 'answer' ? clean(b.question || (today ? questionOf(u, d) : (morningStored(u.id, d) || {}).question || ''), 300) : '';
         if (row) { if (open(row.text) !== text) db.prepare('UPDATE journal SET text = ? WHERE id = ? AND user_id = ?').run(seal(text), row.id, u.id); }
         else if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= dailyWrites) continue;   /* тот же дневной лимит, что у «Записать мысль» */
         else { db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title)); emit(kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add'); }
@@ -138,8 +139,16 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
       }
     });
     for (const [t, x] of events) track(u, t, x);
-    if (filled.length) { touchStreak(u); track(u, 'day_save', filled.join('|')); }
-    return { ok: true, saved: filled, ...state(u, d) };
+    /* деталь события: что заполнено, для прошлого дня — пометка past, для сегодняшнего — вариант порядка шагов (A/B: текст или настроение первым) */
+    if (filled.length) { if (today) touchStreak(u); track(u, 'day_save', [filled.join('|'), today ? clean(b.variant, 12) : 'past'].filter(Boolean).join(' @')); }
+    return { ok: true, saved: filled, ...state(u, d, { today }) };
+  }
+  /* Убрать из дня: запись / благодарность / ответ (все строки этого вида за день) или настроение; фото — своим маршрутом */
+  function remove(u, d, what) {
+    const kind = { text: '', gratitude: 'gratitude', answer: 'answer' }[what];
+    if (kind !== undefined) { const r = db.prepare('DELETE FROM journal WHERE user_id = ? AND day = ? AND kind = ?').run(u.id, d, kind); track(u, 'day_remove', what); return { ok: true, removed: r.changes }; }
+    if (what === 'moods') { db.prepare('DELETE FROM mood_marks WHERE user_id = ? AND day = ?').run(u.id, d); const r = db.prepare('DELETE FROM moods WHERE user_id = ? AND day = ?').run(u.id, d); track(u, 'day_remove', what); return { ok: true, removed: r.changes }; }
+    return { ok: false, error: 'bad_what' };
   }
   /* ── фото дня: один снимок на сегодня; миниатюра и полное — зашифрованными байтами; лимиты — на человека и на сутки ── */
   const PHOTO_MAX_FULL = 400 * 1024, PHOTO_MAX_THUMB = 40 * 1024, PHOTOS_PER_USER = 500, UPLOADS_PER_DAY = 30;
@@ -165,5 +174,5 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     return bytes ? { bytes, ts: row.ts } : null;
   }
   function photoDelete(u, d) { const r = db.prepare('DELETE FROM day_photos WHERE user_id = ? AND day = ?').run(u.id, d); return { ok: true, removed: r.changes > 0 }; }
-  return { state, save, view, days, bridge, photoPut, photoGet, photoDelete };
+  return { state, save, remove, view, days, bridge, photoPut, photoGet, photoDelete };
 }

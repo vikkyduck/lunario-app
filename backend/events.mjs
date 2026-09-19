@@ -70,6 +70,7 @@ export const EVENTS = [
   E('push_on', 'Подключил устройство к уведомлениям', 'server'),
   E('day_open', 'Открыл прошлый день', 'client', { section: 'Дневник', title: 'Прошлые дни' }),
   E('day_photo', 'Добавил фото дня', 'server', { core: true, section: 'Дневник', title: 'Фото дня' }),
+  E('day_remove', 'Убрал запись из дня', 'server'),
   E('bridge_view', 'Увидел «мост» из прошлого', 'client'),
   E('tool_offer_show', 'Увидел предложение шага вечера', 'client'),   /* деталь — ключ шага; предложения — после сохранения дня */
   E('tool_offer_accept', 'Добавил шаг вечера из предложения', 'client', { section: 'Дневник', title: 'Шаги вечера' }),
