@@ -57,6 +57,10 @@ import { createWeek } from './week.mjs';
 import { createMorning, skyEventOf, hash32, parseData, drawDistinct } from './morning.mjs';
 import { createDayRoutes } from './http/day-routes.mjs';
 import { createWeekRoutes } from './http/week-routes.mjs';
+import { createAuthRoutes } from './http/auth-routes.mjs';
+import { createReadingRoutes } from './http/reading-routes.mjs';
+import { createJournalRoutes } from './http/journal-routes.mjs';
+import { createPushRoutes } from './http/push-routes.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 5031);
@@ -593,6 +597,11 @@ function setSourceLabel(uid, day) {
 const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource: setSourceLabel });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
+const authRoutes = createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, flushShelves, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, scheduleShelves, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
+const readingRoutes = createReadingRoutes({ C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
+const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList });
+const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
+
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://x');
@@ -640,7 +649,6 @@ const server = createServer(async (req, res) => {
     /* Сводка по продукту: сколько людей, что нажимают, кто вернулся.
        Закрыта паролем; личных текстов внутри нет — только счетчики. */
 
-
     /* ── API ── */
     if (p.startsWith('/api/')) {
       /* Анонимный аккаунт заводится только там, где начинается работа, и не чаще ANON_RATE с адреса за окно;
@@ -661,14 +669,6 @@ const server = createServer(async (req, res) => {
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы — backend/http/cabinet-routes.mjs ── */
       if (p.startsWith('/api/cabinet/')) return cabinetRoutes({ p, req, res, url, u });
 
-      /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
-      if (p === '/api/natal' && req.method === 'GET') {
-        if (!ISO_DAY.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
-        const chart = natalFor(u);
-        if (!url.searchParams.has('quiet')) track(u, 'natal_view', chart.timeKnown ? 'with_time' : 'no_time');   /* quiet — карточка на «Обо мне», а не открытие карты */
-        return json(res, 200, chart);
-      }
-
       /* ── первый источник (UTM с лендинга или рекламы) — один раз ── */
       if (p === '/api/utm' && req.method === 'POST') { const b = await readBody(req); const r = W.setUtm(u.id, b); if (r.ok && !r.kept) track(u, 'utm_seen', clean(b.utm_source, 40)); return json(res, 200, r); }
 
@@ -681,85 +681,6 @@ const server = createServer(async (req, res) => {
         const id = url.searchParams.get('id');
         if (req.method === 'GET') { const t = W.ticketThread(id, u.id); return t ? json(res, 200, t) : json(res, 404, { ok: false, error: 'not_found' }); }
         if (req.method === 'POST') { const b = await readBody(req); const r = W.ticketMessage(id, 'user', b.text, '', u.id); return json(res, r.ok ? 200 : 400, r); }
-      }
-
-      /* ── вход по коду на почту ── */
-      if (p === '/api/auth/request' && req.method === 'POST') {
-        const b = await readBody(req);
-        const email = clean(b.email, 200).toLowerCase();
-        if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) return json(res, 400, { ok: false, error: 'bad_email' });
-        if (!allowRate(codeRate, clientIp(req), 5)) return json(res, 429, { ok: false, error: 'too_often' });
-        /* на один адрес — не больше 3 кодов за окно, а всего с сервера — не больше 200: чужую почту не бомбим,
-           репутацию отправителя не сжигаем, даже если адрес клиента подменен */
-        if (!allowRate(codeRateEmail, email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
-        if (Date.now() - codeRateAll.t > RATE_WINDOW_MS) { codeRateAll.n = 0; codeRateAll.t = Date.now(); }
-        if (++codeRateAll.n > 200) return json(res, 429, { ok: false, error: 'too_often' });
-        if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
-        const code = issueLoginCode(email);
-        try {
-          const m = loginMail(code);
-          await sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });
-        } catch (e) {
-          console.error('почта не ушла:', e.message);
-          logError('mail', e.message);
-          return json(res, 502, { ok: false, error: 'send_failed' });
-        }
-        return json(res, 200, { ok: true });
-      }
-
-      if (p === '/api/auth/verify' && req.method === 'POST') {
-        if (!allowRate(verifyRate, clientIp(req), 60)) return json(res, 429, { ok: false, error: 'too_often' });   /* перебор кодов по многим почтам с одного адреса */
-        const b = await readBody(req);
-        const email = clean(b.email, 200).toLowerCase();
-        /* Код не режем: раньше clean(b.code, 6) обрезал «1234567» до «123456», и подходил не тот код, что в письме.
-           Все остальное — проверка, привязка аккаунта, новая сессия, погашение кода — одной транзакцией в identity.mjs:
-           отказ посередине больше не оставляет человека без кода и без входа. */
-        const r = verifyLogin({
-          email, code: typeof b.code === 'string' ? b.code.trim() : '',
-          guest: u, ua: req.headers['user-agent'], currentToken: parseCookies(req).lunario_app,
-          /* анкету, заполненную только что на этом устройстве, переносим в найденный аккаунт — она про того же человека */
-          profileFields: { sql: `UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
-                                 consent_version=?, consent_ts=? WHERE id=?`,
-            values: (g, id) => [g.name, g.birth, g.birth_time, g.city, g.city_region, g.lat, g.lon, g.tz, g.consent_version, g.consent_ts, id] },
-          countGuestRecords: (id) => guestRecordCounts(db, id),
-          transferOffer: (guestId, accountId) => offerTransfer(guestId, accountId),
-        });
-        if (r.error) return json(res, r.error === 'too_many' ? 429 : 400, { ok: false, error: r.error });
-        /* Кука — только после COMMIT: при откате у человека не должно остаться куки несуществующей сессии. */
-        setSessionCookie(res, r.token);
-        const account = userById(r.accountId);
-        /* merged остается ради уже работающих клиентов: true означало «устройство переключилось на другой аккаунт».
-           Новое поле state говорит точнее, а transfer — что у гостя остались записи и их можно перенести. */
-        const merged = r.state === 'signed_in' || r.state === 'guest_transfer_required';
-        return json(res, 200, { ok: true, merged, state: r.state, user: publicUser(account),
-          ...(merged ? { day: dayPack(account, d) } : {}),
-          ...(r.transfer ? { transfer: { token: r.transfer, counts: r.counts } } : {}) });
-      }
-
-      /* Записи, сделанные до входа, переносятся только по явному согласию: вход в аккаунт — не доказательство,
-         что гостевой дневник принадлежит тому же человеку (общий компьютер). Приглашение подписано и живет полчаса. */
-      if (p === '/api/account/transfer' && req.method === 'POST') {
-        const b = await readBody(req);
-        const offer = readOffer(b.token);
-        if (!offer) return json(res, 400, { ok: false, error: 'bad_transfer_token' });
-        if (offer.accountId !== u.id) return json(res, 403, { ok: false, error: 'not_your_transfer' });
-        const done = transferGuestRecords(db, offer.guestId, offer.accountId);
-        if (!done.ok) return json(res, done.error === 'not_found' ? 404 : 409, { ok: false, error: done.error });
-        flushShelves(u.id, d); scheduleShelves(u.id, d, ['about', 'day', 'history']);
-        return json(res, 200, { ok: true, moved: done.moved, kept: done.kept, already: !!done.already });
-      }
-
-      if (p === '/api/auth/logout' && req.method === 'POST') {
-        const tok = parseCookies(req).lunario_app;
-        if (tok) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(tok));
-        clearSessionCookie(res);
-        return json(res, 200, { ok: true });
-      }
-      /* «Выйти на всех устройствах»: отзыв всех сессий аккаунта — если телефон потерян или токен утек */
-      if (p === '/api/auth/logout-all' && req.method === 'POST') {
-        const gone = db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id).changes;
-        clearSessionCookie(res);
-        return json(res, 200, { ok: true, devices: gone });
       }
 
       if (p === '/api/cities' && req.method === 'GET')
@@ -776,7 +697,6 @@ const server = createServer(async (req, res) => {
         }
         return json(res, 200, { ok: true });
       }
-
 
       if (p === '/api/me' && req.method === 'GET') {
         return json(res, 200, {
@@ -835,285 +755,11 @@ const server = createServer(async (req, res) => {
         return json(res, 200, { ok: true, user: publicUser(fresh), day: dayPack(fresh, d) });
       }
 
-      /* Карта дня: тянется случайно, один раз в день, и сразу ложится в историю. Повторное нажатие
-         возвращает ту же карту — колода на сегодня уже открыта. */
-      if (p === '/api/card' && req.method === 'POST') {
-        let card = cardOfDay(u, d);
-        if (card) markOpened(u, d, 'card', 'card_open', (Morning.cardOfDay(u, d) || {}).slug || '');
-        if (!card) {
-          const a = drawDistinct([...C.ARCANA], 1)[0];
-          db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-            .run(u.id, nowISO(), d, 'card', '', a.name, a.keys, JSON.stringify({ card: a.slug }));
-          card = cardPublic(a); track(u, 'card_open', a.slug);
-        }
-        return json(res, 200, { ok: true, card, streak: touchStreak(u) });
-      }
-
-      /* Руна дня: как карта дня — одна на день, запоминается в entries (kind dayrune), повторное открытие возвращает ту же */
-      if (p === '/api/dayrune' && req.method === 'POST') {
-        const row = db.prepare("SELECT data FROM entries WHERE user_id=? AND day=? AND kind='dayrune' ORDER BY id DESC LIMIT 1").get(u.id, d);
-        const slug = (parseData(row && row.data) || {}).rune;
-        let rune = slug ? [...C.RUNES].find((r) => r.slug === slug) : null;
-        if (rune) markOpened(u, d, 'dayrune', 'dayrune_open', slug);
-        if (!rune) {
-          rune = drawDistinct([...C.RUNES], 1)[0];
-          db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-            .run(u.id, nowISO(), d, 'dayrune', '', rune.name, rune.answer, JSON.stringify({ rune: rune.slug, layout: 'one', runes: [rune.slug] }));
-          track(u, 'dayrune_open', rune.slug);
-        }
-        return json(res, 200, { ok: true, day: d, rune: runePublic(rune) });
-      }
-
-      if (p === '/api/ask' && req.method === 'POST') {
-        const b = await readBody(req);
-        const q = clean(b.question, 300);
-        if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
-        if (db.prepare('SELECT COUNT(*) c FROM entries WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many' });
-        const kind = b.kind === 'rune' ? 'rune' : 'yesno';
-        const topic = topicOf(q);
-        let title, body, extra = {}, stored = kind, data = '';
-        if (kind === 'rune') {
-          /* руны выпадают случайно, без повторов внутри расклада; одна руна — kind «rune», расклад — «runes» */
-          const L = C.LAYOUTS.rune[b.layout] ? b.layout : 'one';
-          const pos = C.LAYOUTS.rune[L].pos;
-          const runes = drawDistinct([...C.RUNES], pos.length).map((r, i) => ({ pos: pos[i].name, ...runePublic(r) }));
-          title = runes.map((r) => r.name).join(' · ');
-          body = L === 'one' ? runes[0].answer : runes.map((r) => `${r.pos}: ${r.name} — ${r.answer}`).join(' ');
-          stored = L === 'one' ? 'rune' : 'runes';
-          data = JSON.stringify({ layout: L, runes: runes.map((r) => r.slug) });
-          extra = { layout: L, runes, path: runes[0].path };
-        } else {
-          const i = hash32(q) % 3;
-          title = C.YN_VERDICTS[i]; body = C.YN_RIDERS[topic][i];
-        }
-        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-          .run(u.id, nowISO(), d, stored, seal(q), title, body, data);
-        track(u, kind === 'rune' ? 'ask_rune' : 'ask_yesno', kind === 'rune' ? extra.layout : topic);
-        const prev = db.prepare("SELECT title, day FROM entries WHERE user_id=? AND kind='yesno' AND day<? AND title<>? ORDER BY id DESC LIMIT 1").get(u.id, d, title);
-        return json(res, 200, { ok: true, kind, title, body, topic, ...extra, streak: touchStreak(u), memory: kind === 'yesno' && prev ? { title: prev.title, day: prev.day } : null });
-      }
-
-      if (p === '/api/spread' && req.method === 'POST') {
-        const b = await readBody(req);
-        const q = clean(b.question, 300);
-        if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
-        /* Дневного лимита раскладов нет (решение владелицы 18.09: лимит был на случай платных ИИ-разборов, а тексты — свои).
-           Счетчик usage.spreads остается для статистики. Карты выпадают случайно и не повторяются внутри расклада */
-        const L = C.LAYOUTS.tarot[b.layout] ? b.layout : 'three';
-        const pos = C.LAYOUTS.tarot[L].pos;
-        const cards = drawDistinct([...C.ARCANA], pos.length).map((a, i) => ({ pos: pos[i].name, ...cardPublic(a) }));
-        db.prepare('INSERT INTO usage (user_id, day, spreads) VALUES (?,?,1) ON CONFLICT(user_id, day) DO UPDATE SET spreads = spreads + 1').run(u.id, d);
-        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-          .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.name} — ${c.keys}`).join(' '),
-               JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) }));
-        track(u, 'ask_spread', L);
-        return json(res, 200, { ok: true, layout: L, cards, streak: touchStreak(u) });
-      }
-
-      if (p === '/api/mood' && req.method === 'POST') {
-        const b = await readBody(req);
-        const mood = clean(b.mood, 30);
-        const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* свое слово: «own:собранно» */
-        if (!own && !C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
-        db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
-        db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);   /* карточка дня показывает все отмеченные */
-        track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* свое слово — личный текст, в аналитику не идет */
-        const month = d.slice(0, 7);
-        const stats = db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, month + '%');
-        return json(res, 200, { ok: true, mood, stats, streak: touchStreak(u) });
-      }
-
-      /* Дневник: обычная запись, благодарность («кому и за что я благодарна сегодня») или ответ на вопрос дня.
-         Все лежит в одной ленте, вид записи подписан. */
-      if (p === '/api/journal') {
-        if (req.method === 'PATCH') {
-          const b = await readBody(req), text = cleanText(b.text, 2000);
-          const item = db.prepare("SELECT id, day FROM journal WHERE id=? AND user_id=? AND kind='gratitude'").get(Number(b.id) || 0, u.id);
-          if (!item) return json(res, 404, { ok: false, error: 'not_found' });
-          if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
-          db.prepare('UPDATE journal SET text=? WHERE id=? AND user_id=?').run(seal(text), item.id, u.id);
-          return json(res, 200, { ok: true, item: { ...item, text } });
-        }
-        if (req.method === 'POST') {
-          const b = await readBody(req);
-          const text = cleanText(b.text, 2000);
-          if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
-          if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many' });
-          const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
-          const title = clean(b.title, 300);
-          /* ответ на вопрос дня — один на день: повторная отправка обновляет его, как и карточка дня в Дневнике */
-          if (kind === 'answer') {
-            const prev = db.prepare("SELECT id FROM journal WHERE user_id = ? AND day = ? AND kind = 'answer' ORDER BY id DESC LIMIT 1").get(u.id, d);
-            if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(title), prev.id, u.id); return json(res, 200, { ok: true, updated: true, item: { id: prev.id, day: d, text, kind, title } }); }
-          }
-          const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
-          track(u, kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add', '');
-          return json(res, 200, { ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });
-        }
-        const kind = url.searchParams.get('kind');
-        const rows = kind ? db.prepare('SELECT id, day, text, kind, title FROM journal WHERE user_id=? AND kind=? ORDER BY id DESC LIMIT 60').all(u.id, kind)
-          : db.prepare('SELECT id, day, text, kind, title FROM journal WHERE user_id=? ORDER BY id DESC LIMIT 60').all(u.id);
-        return json(res, 200, { items: rows.map((r) => ({ ...r, text: open_(r.text), title: open_(r.title || '') })), today: !!(kind && rows.find((r) => r.day === d)) });
-      }
-
-      /* Фото у желания — картинка для визуализации. Уменьшается в телефоне, хранится как есть, отдается только хозяйке. */
-      if (p === '/api/wishes/photo') {
-        const id = Number(url.searchParams.get('id') || 0);
-        if (req.method === 'GET') {
-          const w = db.prepare('SELECT photo FROM wishes WHERE id = ? AND user_id = ?').get(id, u.id);
-          if (!w || !w.photo) { res.writeHead(404); return res.end(); }
-          return sendDataUrl(res, w.photo);
-        }
-        if (req.method === 'POST') {
-          const b = await readBody(req, 1024 * 1024);
-          const wid = Number(b.id) || 0;
-          if (!db.prepare('SELECT 1 FROM wishes WHERE id = ? AND user_id = ?').get(wid, u.id)) return json(res, 404, { ok: false, error: 'not_found' });
-          const photo = dataUrlOk(b.photo, 600 * 1024); if (!photo) return json(res, 400, { ok: false, error: 'bad_photo' });
-          db.prepare('UPDATE wishes SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), wid);
-          track(u, 'wish_photo', '');
-        }
-        if (req.method === 'DELETE') db.prepare("UPDATE wishes SET photo = '', photo_ts = '' WHERE id = ? AND user_id = ?").run(id, u.id);
-        return json(res, 200, { items: wishList(u.id) });
-      }
-      /* Свое фото в аккаунте — показывается в кружке в правом верхнем углу */
-      if (p === '/api/photo') {
-        if (req.method === 'GET') { const photo = userPhoto(u.id); if (!photo) { res.writeHead(404); return res.end(); } return sendDataUrl(res, photo); }
-        if (req.method === 'POST') {
-          const b = await readBody(req, 512 * 1024);
-          const photo = dataUrlOk(b.photo, 300 * 1024); if (!photo) return json(res, 400, { ok: false, error: 'bad_photo' });
-          db.prepare('UPDATE users SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), u.id);
-          track(u, 'photo_set', '');
-        }
-        if (req.method === 'DELETE') db.prepare("UPDATE users SET photo = '', photo_ts = '' WHERE id = ?").run(u.id);
-        return json(res, 200, { ok: true, user: publicUser(userById(u.id)) });
-      }
-
-      if (p === '/api/wishes') {
-        if (req.method === 'POST') {
-          const b = await readBody(req, 1024 * 1024);
-          const text = clean(b.text, 200);
-          if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
-          if (db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(u.id).c >= WISHES_MAX) return json(res, 429, { ok: false, error: 'too_many' });
-          const photo=b.photo ? dataUrlOk(b.photo,600*1024) : '';
-          if (b.photo && !photo) return json(res,400,{error:'bad_photo'});
-          db.prepare('INSERT INTO wishes (user_id, ts, text, photo, photo_ts) VALUES (?,?,?,?,?)').run(u.id, nowISO(), seal(text),photo,photo?nowISO():'');
-          track(u, 'wish_add', photo ? 'photo' : '');
-        } else if (req.method === 'PATCH') {
-          const b = await readBody(req);
-          db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), Number(b.id) || 0, u.id);
-        }
-        return json(res, 200, { items: wishList(u.id) });
-      }
-
-      if (p === '/api/entries' && req.method === 'GET')
-        return json(res, 200, entryPage(db,u.id,url.searchParams,open_));
-
-
-      /* Напоминание утром: браузер дает адрес своей ячейки, мы его храним. */
-      if (p === '/api/push' && req.method === 'GET')
-        return json(res, 200, { key: PUSH.publicKey, on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id=?').get(u.id) });
-      if (p === '/api/push' && req.method === 'POST') {
-        const b = await readBody(req);
-        const endpoint = clean(b.endpoint, 500);
-        if (!pushEndpointOk(endpoint)) return json(res, 400, { ok: false, error: 'bad_endpoint' });
-        const holder = db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(endpoint);
-        /* Ячейка уже у другого аккаунта — не перехватываем: иначе тот, кто узнал чужой адрес, молча забрал бы себе
-           чужие уведомления. Выход из аккаунта ячейку НЕ освобождает — ее снимает только «выключить уведомления»
-           (DELETE /api/push). Поэтому на общем браузере второй человек включит свои после того, как первый выключит
-           у себя; приложение так ему и говорит (pushSubscribe в site/app.js, ответ endpoint_taken). */
-        if (holder && holder.user_id !== u.id) return json(res, 409, { ok: false, error: 'endpoint_taken' });
-        const fresh = !holder;
-        db.prepare('INSERT INTO push_subs (endpoint, user_id, created_at) VALUES (?,?,?) ON CONFLICT(endpoint) DO NOTHING').run(endpoint, u.id, nowISO());
-        /* устройств у аккаунта — не больше PUSH_DEVICES: лишние (самые старые) ячейки уходят, чтобы сервер не рассылал в тысячи адресов с одного аккаунта */
-        db.prepare(`DELETE FROM push_subs WHERE user_id = ? AND endpoint NOT IN (SELECT endpoint FROM push_subs WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ${PUSH_DEVICES})`).run(u.id, u.id);
-        if (fresh) track(u, 'push_on', '');
-        return json(res, 200, { ok: true });
-      }
-      if (p === '/api/push' && req.method === 'DELETE') {
-        db.prepare('DELETE FROM push_subs WHERE user_id=?').run(u.id);
-        return json(res, 200, { ok: true });
-      }
-
-      /* Приглашение подруги: у каждого свой код; пришла по ссылке — записываем, от кого (users.invited_by). Подарка за
-         приглашение больше нет (лимит раскладов снят), поле bonus_until остается в базе для совместимости и не пишется */
-      if (p === '/api/invite' && req.method === 'GET') {
-        const code = refCodeOf(u);
-        /* кто пришел по ссылке: имена тех, кто заполнил анкету, остальные — счетом; почты и записей здесь нет */
-        const came = db.prepare('SELECT name FROM users WHERE invited_by=? ORDER BY created_at').all(u.id);
-        return json(res, 200, {
-          link: `${PUBLIC_BASE}/app/?ref=${code}`, installLink: `${PUBLIC_BASE}/app/install?ref=${code}`,
-          brought: came.length, broughtNames: came.map((r) => firstName(r.name)).filter(Boolean).slice(0, 20),
-        });
-      }
-      if (p === '/api/invite' && req.method === 'POST') {
-        const b = await readBody(req);
-        const code = clean(b.code, 16);
-        if (!code || u.invited_by || u.ref_code === code) return json(res, 200, { ok: false });
-        const host = inviteHost(code);
-        if (!host || host.id === u.id) return json(res, 200, { ok: false });
-        db.prepare('UPDATE users SET invited_by=? WHERE id=?').run(host.id, u.id);
-        track(u, 'invite_used', String(host.id));   /* кто от кого пришел — в событиях и в users.invited_by; раньше событие с клиента отбрасывалось */
-        return json(res, 200, { ok: true, from: firstName(host.name) });
-      }
-
-      /* Отчет по настроениям: неделя по дням, месяц по долям, итог словами */
-      if (p === '/api/mood/report' && req.method === 'GET') {
-        const w = weekSummary(u);
-        const week = [];
-        for (let i = 6; i >= 0; i--) {
-          const day = new Date(Date.parse(d) - i * 864e5).toISOString().slice(0, 10);
-          const row = db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, day);
-          week.push({ day, mood: row ? row.mood : '' });
-        }
-        const month = d.slice(0, 7);
-        const stats = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day LIKE ? GROUP BY mood ORDER BY c DESC').all(u.id, month + '%');
-        const total = db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ?').get(u.id).c;
-        const monthEntries=db.prepare('SELECT day,mood FROM moods WHERE user_id=? AND day LIKE ? ORDER BY day').all(u.id,month+'%');
-        return json(res, 200, { week, month: { key: month, stats, entries:monthEntries, days: stats.reduce((s, m) => s + m.c, 0) }, total, summary: w.summary });
-      }
-
-      /* ── напоминания по функциям ── */
-      if (p === '/api/reminders/preview' && req.method === 'GET') {
-        const item = previewNotification(u, url.searchParams.get('feature'));
-        return json(res, item ? 200 : 400, item ? { item } : { error: 'bad_feature' });
-      }
-      /* план локальных уведомлений телефона на 14 дней: ?feature=morning|evening|week (старые адреса — на тот же план) */
-      if ((p === '/api/reminders/native-plan' || p === '/api/reminders/sky-plan' || p === '/api/reminders/askesis-plan') && req.method === 'GET')
-        return json(res, 200, nativePlan(u, REMINDER_FEATURES[url.searchParams.get('feature')] ? url.searchParams.get('feature') : 'morning'));
-      if (p === '/api/reminders' && req.method === 'GET')
-        return json(res, 200, { items: listReminders(u.id), push: { on: !!db.prepare('SELECT 1 FROM push_subs WHERE user_id = ?').get(u.id), key: PUSH.publicKey,
-          /* по устройствам: когда подключено, когда сервер последний раз доставил сигнал и когда устройство откликнулось */
-          devices: db.prepare('SELECT endpoint, created_at, last_sent, last_wake FROM push_subs WHERE user_id = ? ORDER BY created_at DESC').all(u.id) } });
-      if (p === '/api/reminders' && req.method === 'POST') {
-        const b = await readBody(req);
-        const r = saveReminder(u.id, b);
-        if (!r.ok) return json(res, 400, r);
-        if (b.enabled !== undefined) track(u, b.enabled ? 'reminder_on' : 'reminder_off', b.feature);
-        return json(res, 200, r);
-      }
-      if (p === '/api/reminders/test' && req.method === 'POST') {
-        const b = await readBody(req);
-        if (!allowRate(testRate, String(u.id), 3)) return json(res, 429, { ok: false, error: 'too_many' });
-        const r = await sendNow(u, String(b.feature || 'card'), PUSH, clean(b.endpoint, 500));
-        if (r.ok) track(u, 'reminder_test', b.feature);
-        return json(res, r.ok ? 200 : 400, r);
-      }
-      /* сигнал пришел — service worker забирает тексты, которые еще не показывал на этом устройстве */
-      /* Последнее уведомление за сутки — текстом: на телефоне уведомление обрезается, а в приложении человек ищет «тот текст».
-         «Сегодня» показывает его карточкой, пока не скроют */
-      if (p === '/api/push/last' && req.method === 'GET') {
-        const since = new Date(Date.now() - 20 * 3600e3).toISOString();
-        const item = db.prepare('SELECT id, ts, feature, title, body, url FROM push_queue WHERE user_id = ? AND ts >= ? ORDER BY id DESC LIMIT 1').get(u.id, since) || null;
-        return json(res, 200, { item });
-      }
-      if (p === '/api/push/next' && req.method === 'POST') {
-        const b = await readBody(req);
-        const endpoint = clean(b.endpoint, 500);
-        if (endpoint) db.prepare('UPDATE push_subs SET last_wake = ? WHERE endpoint = ? AND user_id = ?').run(nowISO(), endpoint, u.id);   /* устройство откликнулось */
-        return json(res, 200, { items: pendingFor(u.id, endpoint) });
-      }
-
-      /* ── практики дня: что сделано сегодня, привычки, аскеза — backend/http/practice-routes.mjs ── */
+      /* ── остальные маршруты — по модулям в backend/http/: вход и аккаунт, гадания, дневник, уведомления, практики, день, неделя ── */
+      if (await authRoutes({ p, req, res, url, u, d })) return;
+      if (await readingRoutes({ p, req, res, url, u, d })) return;
+      if (await journalRoutes({ p, req, res, url, u, d })) return;
+      if (await pushRoutes({ p, req, res, url, u, d })) return;
       if (await practiceRoutes({ p, req, res, url, u, d })) return;
       if (await dayRoutes({ p, req, res, url, u, d })) return;
       if (await weekRoutes({ p, req, res, url, u, d })) return;
@@ -1125,58 +771,6 @@ const server = createServer(async (req, res) => {
       if (p === '/api/shelves' && req.method === 'GET') { flushShelves(u.id, d); return json(res, 200, Shelves.read(u, d)); }
       if (p === '/api/shelves/context' && req.method === 'GET') { flushShelves(u.id, d); return json(res, 200, { text: Shelves.contextText(Shelves.read(u, d)) }); }
 
-      if (p === '/api/numerology' && req.method === 'GET') {
-        if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
-        const dn = destinyNum(u.birth), dd = dayNum(d), py = personalYearAt(u.birth, d);
-        return json(res, 200, {
-          destiny: { n: dn, title: C.NUM_DESTINY[dn][0], text: C.NUM_DESTINY[dn][1], formula: numFormula(u.birth) },
-          year: { ...py, text: C.NUM_YEAR[py.n], info: C.YEARS[py.n] || null },
-          day: { n: dd, text: C.NUM_DAY[dd] },
-        });
-      }
-
-      if (p === '/api/compat' && req.method === 'POST') {
-        const b = await readBody(req);
-        const other = clean(b.birth, 10);
-        if (!ISO_DAY.test(other)) return json(res, 400, { ok: false, error: 'bad_birth' });
-        if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
-        const a = signOf(u.birth), o = signOf(other);
-        const seed = hash32([u.birth, other].sort().join('|'));
-        const mk = (k, lo, hi) => lo + (hash32(seed + k) % (hi - lo + 1));
-        const rings = [['Эмоции', mk('e', 55, 95)], ['Общение', mk('c', 50, 95)], ['Быт', mk('b', 45, 90)], ['Страсть', mk('p', 55, 95)]];
-        track(u, 'compat_calc', '');
-        const total = Math.round(rings.reduce((s, r) => s + r[1], 0) / rings.length);
-        return json(res, 200, {
-          total, rings, you: a.name, other: o.name,
-          // черта знака в контенте может уже начинаться с «вы …» — не дублируем обращение
-          text: `${a.name} и ${o.name}. ${/^вы\s/i.test(a.trait) ? a.trait[0].toUpperCase() + a.trait.slice(1) : 'Вы ' + a.trait}; партнер — ${o.trait}. Это союз, который растет, когда каждый уважает темп другого.`,
-        });
-      }
-
-      /* «Очистить историю» и «Удалить аккаунт» — одна политика на все личные таблицы (account-data.mjs) */
-      if (p === '/api/data' && req.method === 'DELETE') { clearHistory(db, u); return json(res, 200, { ok: true }); }
-      /* Удаление необратимо, поэтому у аккаунта с почтой оно подтверждается отдельным кодом из письма:
-         одной кнопки на чужом или забытом устройстве мало. Аккаунту без почты подтверждать нечем — там только кнопка. */
-      if (p === '/api/account/delete-code' && req.method === 'POST') {
-        if (!u.email) return json(res, 200, { ok: true, sent: false, reason: 'no_email' });
-        if (!allowRate(codeRate, clientIp(req), 5) || !allowRate(codeRateEmail, u.email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
-        if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
-        try {
-          const m = deleteMail(issueLoginCode(u.email, 'delete'));
-          await sendMail({ to: u.email, subject: m.subject, text: m.text, html: m.html });
-        } catch (e) { logError('mail', e.message); return json(res, 502, { ok: false, error: 'send_failed' }); }
-        return json(res, 200, { ok: true, sent: true });
-      }
-      if (p === '/api/account' && req.method === 'DELETE') {
-        if (u.email) {
-          const b = await readBody(req).catch(() => ({}));
-          const bad = checkLoginCode(u.email, clean(b.code, 6), 'delete');
-          if (bad) return json(res, bad === 'too_many' ? 429 : 400, { ok: false, error: bad });
-        }
-        deleteAccount(db, u);
-        clearSessionCookie(res);
-        return json(res, 200, { ok: true });
-      }
       return json(res, 404, { ok: false, error: 'not_found' });
     }
 
