@@ -187,16 +187,6 @@ html[data-skin=compact] body.inner .home-push{margin-top:12px}
 html[data-skin=compact] body.inner .home-push[hidden]{display:none}
 html[data-skin=compact] body.inner .home-push .later-row{border-color:rgba(240,215,154,.35)}
 
-/* ── Антиква ритуала (по разбору референсов 19.09): только там, где приложение «говорит» — настрой дня, заголовки разделов,
-   заголовки панелей, имена карт, рун и лунных дней, приветствие. Кнопки, строки и подписи остаются в Onest. ── */
-html[data-skin=compact] body.inner :is(#v-ask,#v-history,#v-about)>h1{font-family:var(--serif);font-size:32px;line-height:1.1;font-weight:600;letter-spacing:0}
-html[data-skin=compact] body.inner .home-intro #h-wish{font-family:var(--serif);font-size:25px;line-height:1.3;font-weight:500;letter-spacing:0}
-html[data-skin=compact] body.inner .wg-head h2{font-family:var(--serif);font-size:28px;line-height:1.15;font-weight:600;letter-spacing:0}
-html[data-skin=compact] body.inner :is(.title-gold,.ln-title){font-family:var(--serif);font-size:26px;line-height:1.2;font-weight:600;letter-spacing:0}
-html[data-skin=compact] body.inner .practice-header h1{font-family:var(--serif);font-size:28px;font-weight:600;letter-spacing:0}
-html[data-skin=compact] #v-hello .hello-claim{font-family:var(--serif);font-size:34px;line-height:1.1;font-weight:500;letter-spacing:0}
-html[data-skin=compact] :is(#v-onb,#v-login,#v-rhythm) h1:not(.wordmark){font-family:var(--serif);font-size:32px;line-height:1.1;font-weight:600;letter-spacing:0}
-
 /* ── карта дня в строке — предмет: миниатюра рубашки (после открытия — лица) вместо иконки в кружке ── */
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb::before{content:none}
 /* специфичность выше общей строки «>span:not(.dot):not(.destination-arrow)» — иначе миниатюра уезжает во вторую колонку */

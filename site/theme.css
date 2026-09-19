@@ -60,7 +60,6 @@
   --radius-control:var(--r-m);
   --radius-panel:var(--r-xl);
   --read-size:18px;
-  --serif:'Cormorant Garamond',Georgia,'Times New Roman',serif;   /* антиква ритуала: настрой дня, заголовки разделов, имена карт, рун и лунных дней */
   --sp:cubic-bezier(.2,.85,.3,1);
   --t-fast:120ms;
   --t:180ms;
