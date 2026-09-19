@@ -222,7 +222,7 @@ let natalCache = null;
 /* ── руна дня: одна на день, тянется на сервере при первом открытии и дальше показывается та же ── */
 async function loadDayRune(){
   const box=$('dayrune-box');if(!box)return;
-  if(!S.day?.runeOpened){ await pickCards(box,'rune',1); if(wgOpen!=='dayrune')return; }   /* руну выбирают руками — камень из ряда */
+  if(!S.day?.runeOpened){ await loadCatalog().catch(()=>{}); await pickCards(box,'rune',1); if(wgOpen!=='dayrune')return; }   /* руну выбирают руками — камень из мешочка */
   box.innerHTML='<p class="hint">Тянем руну…</p>';
   try{
     const [r]=await Promise.all([api('/dayrune',{method:'POST'}),loadCatalog()]);
@@ -1554,15 +1554,23 @@ function cardDayHtml(c, day, compact){
    и ждет касаний; обещание исполняется, когда выбрано need штук. ══════════ */
 let PICK=null;
 const pickWord=(kind,n)=>kind==='tarot'?plural(n,'карту','карты','карт'):plural(n,'руну','руны','рун');
+/* вся колода (22 карты веером в два ряда) и все руны (мешочек): выбор не выглядит обрезанным — решение владелицы 19.09 */
 function pickerHtml(kind,need,total){
   const back=kind==='tarot'?`<img src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt="">`:`<span class="stone-back"></span>`;
-  return `<div class="picker ${kind}" id="picker"><p class="picker-q">${need===1?(kind==='tarot'?'Выберите карту':'Выберите руну'):`Выберите ${need} ${pickWord(kind,need)}`}</p>
-    <div class="fan" style="--n:${total}">${Array.from({length:total},(_,i)=>`<button data-on="click:pickerTap-a0" data-a0="${i}" class="fan-card" style="--i:${i}" type="button" aria-label="${kind==='tarot'?'Карта':'Руна'} ${i+1}">${back}<span class="pick-n"></span></button>`).join('')}</div></div>`;
+  const card=(i)=>`<button data-on="click:pickerTap-a0" data-a0="${i}" class="fan-card" type="button" aria-label="${kind==='tarot'?'Карта':'Руна'} ${i+1}">${back}<span class="pick-n"></span></button>`;
+  let rows;
+  if(kind==='tarot'){ const nRows=Math.ceil(total/11), per=Math.ceil(total/nRows); rows=Array.from({length:nRows},(_,r)=>{ const idx=Array.from({length:Math.min(per,total-r*per)},(_,k)=>r*per+k); return `<div class="fan" style="--n:${idx.length}">${idx.map((i,k)=>card(i).replace('class="fan-card"',`class="fan-card" style="--i:${k}"`)).join('')}</div>`; }).join(''); }
+  else rows=`<div class="fan" style="--n:${total}">${Array.from({length:total},(_,i)=>card(i)).join('')}</div>`;
+  return `<div class="picker ${kind}" id="picker"><p class="picker-q">${need===1?(kind==='tarot'?'Выберите карту':'Выберите руну'):`Выберите ${need} ${pickWord(kind,need)}`}</p><div class="fan-rows">${rows}</div></div>`;
+}
+/* карты в ряду ложатся внахлест ровно так, чтобы ряд поместился в ширину экрана */
+function fitFans(box){
+  box.querySelectorAll('.picker.tarot .fan').forEach(fan=>{ const cards=[...fan.children]; if(cards.length<2)return; const w=cards[0].getBoundingClientRect().width||46, avail=fan.clientWidth-12; const step=Math.min(w*.62,(avail-w)/(cards.length-1)); fan.style.setProperty('--ml',(step-w).toFixed(1)+'px'); });
 }
 function pickCards(box,kind,need,{scroll=false}={}){
-  const total=Math.max(7,need+3);
+  const total=kind==='tarot'?(Object.keys(CAT?.cards||{}).length||22):(Object.keys(CAT?.runes||{}).length||24);
   box.innerHTML=pickerHtml(kind,need,total); box.style.display='block';
-  if(scroll)requestAnimationFrame(()=>box.scrollIntoView({behavior:'smooth',block:'center'}));
+  requestAnimationFrame(()=>{ fitFans(box); if(scroll)box.scrollIntoView({behavior:'smooth',block:'center'}); });
   return new Promise((res)=>{ PICK={need,chosen:[],res}; });
 }
 function pickerTap(i){
@@ -1576,6 +1584,7 @@ async function paintCardPick(){
   const pick=$('t-pick'), card=$('t-card'); if(!pick||!card)return;
   if(S.flipped){ pick.hidden=true; pick.innerHTML=''; card.hidden=false; return; }
   card.hidden=true; pick.hidden=false;
+  await loadCatalog().catch(()=>{});
   await pickCards(pick,'tarot',1);
   if(S.flipped||wgOpen!=='card')return;
   pick.hidden=true; pick.innerHTML=''; card.hidden=false;
