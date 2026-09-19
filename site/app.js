@@ -407,7 +407,7 @@ const SYNODIC=29.530588;
 const fmtDayMonth=(iso)=>new Date(iso+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
 function paintHero(d){
   const ph=$('hero-phase'); if(!ph||!d)return;
-  ph.textContent=[d.moon,d.lunar?`${ordinal(d.lunar.n)} лунный день`:''].filter(Boolean).join(' · ');
+  ph.innerHTML=[esc(d.moon||''),d.lunar?`<span class="nowrap">${ordinal(d.lunar.n)} лунный</span> день`:''].filter(Boolean).join('\u00a0· ');   /* «8-й» не рвется по дефису, точка держится за фазой */
   if(typeof d.moonPhase==='number') window.moonPaint?.($('moonHero'),d.moonPhase);   /* своя фаза у холста — герой не зависит от общего рисования */
   const name=String(S.user?.name||'').trim().split(/\s+/)[0];
   const me=[name,d.moonSign?`Луна ${d.moonSign}`:''].filter(Boolean).join(' · ');
@@ -1293,7 +1293,7 @@ async function paintMeCard(){
   const name=String(u.name||'').trim();
   const paint=(c)=>{
     const moon=c?.planets?.find(p=>p.key==='moon'), lb=c?.lunarBirth;
-    const line=[moon?`Натальная Луна ${moon.signIn}`:'', lb?`родились в ${ordinal(lb.n)} лунный день`:''].filter(Boolean).join(' · ');
+    const line=[moon?`Натальная Луна ${esc(moon.signIn)}`:'', lb?`родились в <span class="nowrap">${ordinal(lb.n)} лунный</span> день`:''].filter(Boolean).join(' · ');
     box.innerHTML=`<b class="me-name">${esc(name||'Обо мне')}</b>${line?`<span class="me-line">${line}</span>`:''}<span class="me-sub">${[fmtDay(u.birth),u.city].filter(Boolean).map(esc).join(' · ')}</span>`;
     box.hidden=false; const sub=$('ab-sub'); if(sub) sub.hidden=true;   /* имя и знак под заголовком — теперь в карточке */
   };
