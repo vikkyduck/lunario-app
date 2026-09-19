@@ -1,3 +1,801 @@
+/* ═══════════════════════════ ОСНОВА (бывший <style> в index.html) ═══════════════════════════ */
+@font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
+@font-face{font-family:'Comfortaa';font-style:normal;font-weight:300 700;font-display:swap;src:url('/app/assets/fonts/comfortaa-300-700-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg)}
+body{
+  font-family:Onest,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);
+  background:linear-gradient(180deg,#141126 0%,#0b0a14 70%);
+  background-attachment:fixed;min-height:100dvh;overscroll-behavior-y:none;
+}
+/* ── фон обложки: орбы, ночные облака и живое небо с настоящими созвездиями ── */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55}
+.orb-1{width:56vw;height:56vw;max-width:760px;max-height:760px;top:-22vw;left:50%;transform:translateX(-50%);
+  background:radial-gradient(circle,#6d5bd0 0%,transparent 65%);animation:drift 22s ease-in-out infinite}
+.orb-2{width:34vw;height:34vw;max-width:460px;max-height:460px;bottom:-12vw;right:-8vw;
+  background:radial-gradient(circle,rgba(217,184,104,.5) 0%,transparent 65%);animation:drift2 26s ease-in-out infinite}
+.cloud{position:absolute;border-radius:50%;filter:blur(110px);opacity:.22;animation:cloudtone 64s ease-in-out infinite;will-change:opacity,transform}
+.cloud-1{width:70vw;height:26vw;top:6%;left:-18vw;background:radial-gradient(ellipse,rgba(141,130,190,.5) 0%,transparent 68%)}
+.cloud-2{width:60vw;height:22vw;bottom:2%;right:-20vw;animation-delay:-31s;background:radial-gradient(ellipse,rgba(120,132,190,.42) 0%,transparent 68%)}
+.sky{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity 2.4s ease}
+.sky.on{opacity:1}
+body.inner .sky.on{opacity:.45}    /* реальные созвездия тише за рабочим содержимым */
+@keyframes drift{0%,100%{transform:translate(-50%,0) scale(1)}50%{transform:translate(-46%,4%) scale(1.06)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-4%,-5%) scale(1.08)}}
+@keyframes cloudtone{0%,100%{opacity:.18;transform:translateX(0) scale(1)}50%{opacity:.34;transform:translateX(3%) scale(1.07)}}
+/* ── луна с обложки: настоящая фаза на сегодня, дыхание и искры ── */
+.mark{position:relative;display:inline-block;line-height:0;margin:6px 0 4px;animation:float 8s ease-in-out infinite;
+  filter:drop-shadow(0 8px 40px rgba(217,184,104,.28));will-change:transform}
+.moon-img{width:104px;height:104px;display:block;animation:moonbreathe 7s ease-in-out infinite}
+.moon-sm{width:46px;height:46px;flex:0 0 46px;display:block;filter:drop-shadow(0 4px 18px rgba(217,184,104,.28))}
+@keyframes moonbreathe{0%,100%{filter:brightness(1) saturate(1);opacity:.92}50%{filter:brightness(1.18) saturate(1.12);opacity:1}}
+@keyframes float{0%,100%{transform:translateY(-6px)}50%{transform:translateY(8px)}}
+.spark{position:absolute;width:5px;height:5px;border-radius:50%;opacity:0;pointer-events:none;
+  background:radial-gradient(circle,#fff8e6 0%,rgba(244,223,168,.7) 45%,transparent 70%)}
+.spark.s1{top:6%;right:10%;animation:sparkle 4.6s ease-in-out infinite}
+.spark.s2{bottom:14%;left:4%;animation:sparkle 5.8s ease-in-out 1.9s infinite}
+.spark.s3{top:38%;right:-4%;animation:sparkle 6.7s ease-in-out 3.4s infinite}
+@keyframes sparkle{0%,100%{opacity:0;transform:scale(.4)}8%{opacity:1;transform:scale(1.25)}22%{opacity:0;transform:scale(.5)}}
+@media(max-width:620px){.moon-img{width:82px;height:82px}}
+@media(prefers-reduced-motion:reduce){.mark,.moon-img,.spark,.orb,.cloud{animation:none!important}}
+.wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom))}
+h1,h2,.serif{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;letter-spacing:-.01em;margin:0}
+h1{font-size:28px;line-height:1.12}
+h2{font-size:22px;line-height:1.2}
+.wordmark{font-family:"Comfortaa",ui-rounded,Onest,system-ui,sans-serif;font-weight:300;letter-spacing:.01em;font-size:37px;line-height:1.16}
+p{margin:0;color:var(--muted);line-height:1.62;font-size:16px}
+.eyebrow{text-transform:uppercase;letter-spacing:.12em;font-size:11px;font-weight:700;color:var(--gold);display:block}
+.card{background:var(--glass-bg);border:1px solid var(--line);border-radius:var(--r-xl);padding:20px;box-shadow:var(--glass-shadow);backdrop-filter:none;-webkit-backdrop-filter:none}
+.card+.card{margin-top:var(--s3)}
+.sec{margin-top:var(--s5)}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:62px;padding:0 20px;border:0;border-radius:var(--r-pill);
+  background:linear-gradient(135deg,#f0d79a 0%,#d9b868 55%,#b98f3e 100%);color:#1c1430;font:inherit;font-size:16px;font-weight:700;cursor:pointer;
+  box-shadow:0 12px 34px rgba(217,184,104,.3);transition:transform var(--t-fast) var(--sp),opacity var(--t)}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.45;box-shadow:none}
+.btn.ghost{background:rgba(255,255,255,.06);box-shadow:none;border:1px solid var(--line);color:var(--text)}
+.btn.sm{min-height:44px;font-size:15px;width:auto;padding:0 18px}
+.field{display:grid;gap:7px;margin-bottom:14px}
+.field label{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+input,textarea{width:100%;min-height:54px;border-radius:var(--r-m);border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);
+  padding:14px 16px;color:var(--strong);font:inherit;font-size:16px;outline:none}
+textarea{min-height:104px;resize:none;line-height:1.55}
+input:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(217,184,104,.15)}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips.flow{flex-wrap:wrap;overflow:visible}
+.chips.flow .chip{font-size:14px;padding:10px 13px}
+.chip{flex:0 0 auto;padding:11px 15px;border-radius:var(--r-pill);border:1px solid var(--line);background:rgba(255,255,255,.05);
+  color:var(--text);font:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:rgba(217,184,104,.16);border-color:rgba(217,184,104,.55)}
+.view{display:none;animation:in var(--t) var(--sp)}
+.view.on{display:block}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.rise{animation:in var(--t-slow) var(--sp) both;animation-delay:calc(var(--i,0)*40ms)}
+/* карта дня */
+.daycard{width:180px;height:286px;margin:14px auto 0;perspective:1000px;cursor:pointer}
+.dc-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s var(--sp)}
+/* карта — предмет: до открытия лежит чуть наклонно и дышит светом, открывается — выравнивается */
+.daycard{transition:transform .6s var(--sp)}.daycard:not(.flip){transform:rotate(-3deg)}
+.dc-back-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;filter:none}
+.daycard.flip .dc-in{transform:rotateY(180deg)}
+.dc-f{position:absolute;inset:0;backface-visibility:hidden;border-radius:var(--r-xl);display:grid;place-items:center;padding:18px;text-align:center}
+.dc-back img{filter:drop-shadow(0 6px 22px rgba(217,184,104,.35))}
+.dc-back{background:#141126;border:1px solid rgba(240,215,154,.35);box-shadow:0 30px 70px rgba(11,10,20,.7),0 0 40px -10px rgba(240,215,154,.35);overflow:hidden;padding:0}
+.dc-front{transform:rotateY(180deg);background:linear-gradient(160deg,#1d1738,#0b0a14);border:1px solid rgba(217,184,104,.45);box-shadow:0 30px 70px rgba(11,10,20,.65)}
+.glow{animation:breathe 5s ease-in-out infinite}
+@keyframes breathe{0%,100%{filter:drop-shadow(0 14px 34px rgba(217,184,104,.24))}50%{filter:drop-shadow(0 18px 52px rgba(240,215,154,.38))}}
+/* настроение */
+.bar{height:7px;border-radius:var(--r-pill);background:rgba(255,255,255,.09);overflow:hidden;flex:1}
+.bar i{display:block;height:100%;border-radius:var(--r-pill);width:0;background:linear-gradient(90deg,#b98f3e,#f0d79a);transition:width .6s var(--sp)}
+.barrow{display:flex;align-items:center;gap:10px;font-size:14px;margin-top:9px}
+.barrow .l{width:92px;color:var(--muted)}
+.barrow .v{width:34px;text-align:right;font-size:12px;color:var(--muted)}
+.msg{font-size:14px;line-height:1.5;margin-top:10px;min-height:1px}
+.msg.err{color:var(--warn)}
+.big{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:52px;line-height:1;text-align:center;color:var(--gold);margin:6px 0}
+.list{display:grid;gap:var(--s2)}
+.item{padding:14px 16px;border-radius:var(--r-m);background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid var(--line);box-shadow:inset 0 1px rgba(255,255,255,.09),inset 0 -1px rgba(3,2,10,.2);backdrop-filter:none;-webkit-backdrop-filter:none}
+.item b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
+.item small{color:var(--faint);font-size:13px}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translate(-50%,-16px);z-index:300;
+  background:rgba(29,23,56,.94);border:1px solid rgba(217,184,104,.4);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  padding:11px 18px;border-radius:var(--r-pill);font-size:14px;opacity:0;transition:var(--t) var(--sp);pointer-events:none;max-width:90vw}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.split{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:var(--s4) 0 var(--s3)}
+.ring{display:flex;flex-direction:column;align-items:center;gap:5px}
+/* позвать партнера после расчета совместимости — отделено линией от результата */
+.compat-invite{border-top:1px solid var(--line);padding-top:var(--s4)}
+/* ── Карточка дня по шагам: один вопрос на экран ── */
+.day-card .dc-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.day-card .dc-head .text-action{min-height:32px;padding:0;font-size:13px}
+.dc-dots{display:flex;gap:6px;margin:10px 0 14px}.dc-dots i{flex:0 0 22px;height:4px;border-radius:2px;background:var(--line)}.dc-dots i.done{background:rgba(217,184,104,.45)}.dc-dots i.on{background:var(--gold)}
+.dc-names{display:flex;flex-wrap:wrap;gap:0 6px;margin:-8px 0 14px;font-size:12px;color:var(--faint);line-height:1.5}.dc-names span.on{color:var(--gold-2);font-weight:600}.dc-names span.done{color:var(--muted)}.dc-names i{font-style:normal;color:var(--line)}
+.dc-echo{margin:0 0 8px;font-size:13px;color:var(--muted);line-height:1.45}.dc-echo b{color:var(--text-2);font-weight:500}
+/* строка «Вечером записываю: …» под карточкой и предложение шага после сохранения */
+.evening-set{margin:10px 2px 0;font-size:13px;color:var(--muted);line-height:1.6}.evening-set b{font-weight:500;color:var(--text-2)}.evening-set .es-label{color:var(--faint)}
+.evening-set .text-action{min-height:28px;padding:0 0 0 6px;font-size:13px}.evening-set .chip.fixed{opacity:.75}
+.dc-offer{margin-top:14px;padding:12px 14px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.35);font-size:14px;line-height:1.5;color:var(--text-2)}.dc-offer p{margin:0}.dc-offer .eyebrow{margin-bottom:4px}
+html[data-theme] body.inner .dc-offer p.hint{margin:0;font-size:13px;line-height:1.45;color:var(--muted);font-weight:400}
+.dc-offer-actions{display:flex;align-items:center;gap:14px;margin-top:10px}.dc-offer-actions .btn.sm{min-height:40px}
+.dc-q{margin:0 0 12px;font-size:21px;font-weight:600;line-height:1.3;letter-spacing:-.01em;color:var(--text)}
+.dc-sub{margin:-6px 0 12px;font-size:13px;color:var(--faint)}
+.dc-wrap{position:relative}.dc-wrap textarea{width:100%;padding-right:48px}
+.dc-mic{position:absolute;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;background:var(--selected);border:1px solid rgba(217,184,104,.45);color:var(--gold-2);display:grid;place-items:center;cursor:pointer;padding:0}
+.dc-mic svg{width:18px;height:18px;display:block}.dc-mic.on{background:var(--gold);color:#1d1738;animation:dcPulse 1.2s ease-in-out infinite}
+@keyframes dcPulse{50%{box-shadow:0 0 0 6px rgba(217,184,104,.25)}}
+.dc-hint{margin:8px 0 0;font-size:13px;color:var(--faint);line-height:1.45}
+/* фото дня: камера рядом с микрофоном, превью под полем, полное — в дне для чтения, миниатюра — в строке дня */
+.dc-wrap.with-cam textarea{padding-right:92px}.dc-cam{right:52px}
+.dc-photo{display:flex;align-items:center;gap:12px;margin-top:10px}.dc-photo:empty{display:none}
+.dc-photo-row .chip{display:inline-flex;align-items:center;gap:6px}.dc-photo-row .chip svg{width:16px;height:16px}
+.dc-photo img{width:72px;height:72px;border-radius:12px;object-fit:cover;display:block;box-shadow:0 6px 16px -8px rgba(0,0,0,.7)}
+.dc-photo .hint{flex:1;margin:0}.dc-photo .text-action{min-height:32px;padding:0}
+body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:auto;max-height:280px;object-fit:cover;border-radius:16px;margin:12px 0 0;box-shadow:0 10px 28px -14px rgba(0,0,0,.7)}
+.day-row.has-photo{grid-template-columns:40px minmax(0,1fr) 44px}.day-row img.ph{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block}
+.dc-skip{display:block;width:100%;text-align:center;margin-top:2px;color:var(--muted)}
+.dc-secondary{display:flex;justify-content:center;gap:22px;margin-top:2px}.dc-secondary .text-action{min-height:36px}
+.wg-art{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:var(--r-l);margin:0 0 16px;box-shadow:0 14px 34px -18px rgba(0,0,0,.8)}
+.home-art{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:14px;margin:0 0 10px}.home-art[hidden]{display:none}
+.push-row small{display:block;grid-column:1/span 2;font-size:13px;color:var(--muted);line-height:1.4}
+.home-action{margin:14px 0 0}.home-action[hidden]{display:none}
+.ha{padding:16px 18px}.ha .eyebrow{display:block}.ha-q{margin:6px 0 10px;font-size:18px;font-weight:600;line-height:1.35;color:var(--text)}
+.ha .field{margin:0 0 10px}.ha textarea{min-height:48px}.ha .btn{width:100%}.ha .answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0}
+.ha .entry-text{margin:0 0 8px;font-size:15px;line-height:1.5}.ha .saved-state{font-size:13px;color:var(--muted)}
+.week-daylink{background:none;border:0;padding:0;color:var(--gold-2);font:inherit;cursor:pointer}
+.week-carried .t2{margin:6px 0 0}
+.thought{margin:14px 0 4px;padding:14px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.3);text-align:left}
+.thought-q{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--text)}
+.thought .field{margin:0 0 8px}.thought textarea{min-height:48px}
+.thought .entry-text{margin:0 0 8px;font-size:15px;line-height:1.5;color:var(--text)}
+.thought .answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0}
+.thought .saved-state,.ha .saved-state{font-size:13px;color:var(--muted);background:none;border:0;padding:0;margin:0}
+.wg-foot{padding:18px 0 8px;display:flex;justify-content:center}.wg-return{min-height:48px;padding:0 26px;border-radius:999px;color:var(--text);font-weight:600}
+.wg-return:active{transform:scale(.98)}
+.dc-echo-q{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line)}
+.dc-echo-q>span{font-size:13px;color:var(--muted);flex:1 1 100%}
+.dc-echo-q .chip{font-size:13px;padding:8px 12px}
+/* праздник: луна разгорается, искры разлетаются, подпись проявляется */
+.dc-party{position:relative;min-height:230px;display:grid;place-items:center;text-align:center;overflow:hidden}
+.dc-party .moon{width:88px;height:88px;border-radius:50%;background:radial-gradient(circle at 38% 34%,#f8ecc8,#ecd28d 55%,#c9a24b);animation:dcMoon 1.5s var(--sp) forwards}
+@keyframes dcMoon{0%{transform:scale(.15);opacity:0}45%{transform:scale(1.1);opacity:1}65%{transform:scale(.96)}100%{transform:scale(1);box-shadow:0 0 70px 18px rgba(240,215,154,.28)}}
+.dc-party .ring{position:absolute;left:50%;top:44%;width:88px;height:88px;margin:-44px;border-radius:50%;border:2px solid rgba(240,215,154,.7);opacity:0;animation:dcRing 1.6s ease-out .25s forwards}
+.dc-party .ring.r2{animation-delay:.6s;border-width:1px}
+@keyframes dcRing{0%{transform:scale(.4);opacity:.9}100%{transform:scale(3.2);opacity:0}}
+.dc-party .spark{position:absolute;left:50%;top:44%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 8px rgba(240,215,154,.9);opacity:0;animation:dcSpark 1.6s ease-out forwards;animation-delay:var(--w)}
+.dc-party .spark.s{width:4px;height:4px;margin:-2px;background:#fff}
+@keyframes dcSpark{0%{transform:rotate(var(--a)) translateY(0) scale(.3);opacity:0}25%{opacity:1}100%{transform:rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1);opacity:0}}
+.dc-party p{position:absolute;left:0;right:0;bottom:14px;margin:0;font-size:18px;font-weight:600;opacity:0;animation:dcText .6s ease .8s forwards}
+@keyframes dcText{to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.dc-party *{animation:none!important;opacity:1!important;transform:none!important}}
+/* день записан — читается как текст */
+.dc-read{margin:14px 0 0;font-size:16px;line-height:1.6;white-space:pre-line}
+.dc-read small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:3px;white-space:normal}
+.dc-read .q{display:block;color:var(--muted);font-size:14px;margin-bottom:2px}
+.dc-moods{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.dc-moods i{font-style:normal;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--selected);color:var(--gold-2);border:1px solid rgba(217,184,104,.35)}
+.dc-morning{border-left:2px solid var(--gold);padding:6px 12px;margin:12px 0 0;font-size:13px;color:var(--muted);line-height:1.5}.dc-morning b{display:block;color:var(--text);font-weight:500;font-size:15px}
+.dc-morning .dc-lunar{display:block;margin-top:4px;color:var(--faint)}
+.evening-set .es-extra{color:var(--muted);font-weight:400}
+.day-row .t p.quiet{color:var(--faint)}
+.dc-quiet{margin:12px 0 0;font-size:13px;color:var(--faint);line-height:1.5}
+.dc-bridge{margin-top:14px;padding:12px 14px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line);font-size:14px;color:var(--muted);line-height:1.5}.dc-bridge b{color:var(--text-2);font-weight:500}
+.dc-warm{margin:14px 0 0;font-size:15px;color:var(--text-2);line-height:1.5}
+.dc-done-actions{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.dc-x{margin-left:8px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--faint);font:inherit;font-size:14px;line-height:1;cursor:pointer;vertical-align:middle;padding:0}
+.dc-moods .dc-x{align-self:center}
+.day-nav{display:flex;justify-content:space-between;gap:12px;margin-top:22px;padding-top:12px;border-top:1px solid var(--line)}.day-nav .text-action{padding:0}
+/* ── прошлые дни: полоска настроения и строки ── */
+.past-days .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.past-days .sec-head .text-action{min-height:32px;padding:0;font-size:13px}
+.days-strip{display:flex;gap:5px;margin:0 0 12px}.days-strip i{flex:1;height:22px;border-radius:7px;background:rgba(245,242,234,.06)}
+.days-strip i.today{box-shadow:inset 0 0 0 1px var(--gold)}
+.days-strip i.t-plus{background:rgba(159,230,189,.32)}.days-strip i.t-zero{background:rgba(217,184,104,.32)}.days-strip i.t-minus{background:rgba(255,179,179,.26)}.days-strip i.t-own{background:rgba(233,199,126,.3)}
+.days-list{border:1px solid var(--line);border-radius:var(--r-l);overflow:hidden;background:var(--surface)}
+.days-list .hint{padding:14px 16px;margin:0}
+.day-row{display:grid;grid-template-columns:36px minmax(0,1fr) 14px;column-gap:10px;align-items:center;width:100%;padding:9px 12px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.day-row:last-child{border-bottom:0}
+.day-row .n{text-align:center}.day-row .n b{display:block;font-size:17px;font-weight:600;line-height:1}.day-row .n small{display:block;font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+.day-row .t{min-width:0}.day-row .t p{margin:0;font-size:14px;line-height:1.4;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.day-row .t small{display:block;font-size:12px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.day-row .t small em{font-style:normal;color:var(--gold-2)}
+.day-row.empty .t p{color:var(--faint)}
+.day-row .a{color:var(--faint);font-size:18px}
+#days-box .days-strip{margin:4px 0 14px}#days-box .days-list{margin-top:4px;border-radius:0;border-left:0;border-right:0}#days-box .btn{margin-top:12px}
+.days-month{padding:16px 0 6px!important;margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+#days-box .days-list .days-month:first-child{padding-top:4px!important}
+/* открытый день */
+.dayview .dc-read{margin-top:16px}
+body.inner .wpane .dayview .dc-read small{color:var(--gold);font-size:11px}
+/* карточка уведомления на «Сегодня»: заголовок пуша и его текст построчно, как в самом уведомлении */
+.push-note{margin-top:var(--s3);border-color:rgba(217,184,104,.35)}
+.push-note .eyebrow{margin-bottom:6px}
+.push-note b{display:block;font-size:17px;font-weight:600;line-height:1.4}
+.push-note p{margin:8px 0 0;white-space:pre-line;color:var(--text-2);font-size:15px;line-height:1.55}
+.push-note .text-action{margin-top:4px;padding-left:0}
+.invite-actions .btn{width:100%}   /* «Поделиться» и «Скопировать» — во всю ширину, одна под другой (.btn.sm сужает) */
+.ring svg{transform:rotate(-90deg)}
+.ring .val{font-size:12px;color:var(--violet-2)}.ring .lbl{font-size:11px;color:var(--muted)}
+.ring circle.v{stroke-dasharray:151;stroke-dashoffset:151;transition:stroke-dashoffset .8s var(--sp)}
+.sug{position:relative}
+.sug-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-m);overflow:hidden;box-shadow:0 22px 60px rgba(11,10,20,.7);display:none}
+.sug-list.on{display:block}
+.sug-list button{display:block;width:100%;text-align:left;padding:13px 16px;background:none;border:0;border-bottom:1px solid var(--line);
+  color:var(--text);font:inherit;font-size:15px;cursor:pointer}
+.sug-list button:last-child{border-bottom:0}
+.sug-list button:hover,.sug-list button.hl{background:rgba(217,184,104,.14)}
+.sug-list small{display:block;color:var(--faint);font-size:13px;margin-top:2px}
+.geo{font-size:13px;color:var(--faint);margin-top:6px;min-height:1px}
+.consent a{color:var(--gold-2);text-decoration:underline;text-underline-offset:3px}
+.geo b{color:var(--violet-2);font-weight:600}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.back{display:inline-flex;align-items:center;gap:7px;font-size:15px;color:var(--gold-2);background:none;
+  border:0;padding:8px 0;cursor:pointer;font-family:inherit;min-height:44px}
+/* анкета: без прокрутки на обычном телефоне — шапка в одну строку, поля ниже */
+.onb-head{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;padding:2px 0 8px;text-align:left}
+.onb-head img{grid-row:span 2}
+.onb-head h1{font-size:26px;line-height:1.1}
+.onb-head p{margin:2px 0 0;font-size:14px;line-height:1.35}
+#v-onb .card.sec{padding:12px 16px}
+#v-onb .field{gap:4px;margin-bottom:8px}
+#v-onb .field label{font-size:12px}
+#v-onb input{min-height:44px;padding:10px 14px;border-radius:var(--r-s)}
+#v-onb .geo{margin:3px 0 0;font-size:12px;line-height:1.3}
+#v-onb #o-go{min-height:54px}
+/* «уже пользовались» — строкой под анкетой, а не отдельной карточкой */
+#v-onb #o-back{background:none;border:0;box-shadow:none;padding:4px 0 0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;text-align:center}
+#v-onb #o-back p{margin:0;font-size:13px}
+#v-onb #o-back p+p{display:none}
+#v-onb #o-auth{display:contents}
+#v-onb #o-auth .btn.ghost.sm{width:auto!important;min-height:36px;padding:0 14px;margin-top:0!important}
+#v-onb #o-auth .field,#v-onb #o-auth .btn:not(.sm),#v-onb #o-auth .msg{flex:1 1 100%}
+#v-onb #o-auth .field{text-align:left}
+#v-onb.on{margin-bottom:-16px}   /* нижний отступ обертки не должен давать пустую прокрутку */
+
+/* ── iOS-оболочка (App Store) ──
+   Правило 3.1.1 запрещает внешние оплаты и цены на цифровое внутри приложения,
+   правило 2.1 — разделы «скоро» и пустые экраны. Поэтому в сборке для App Store
+   не показываем платежное: остается только работающее.
+   Установка PWA внутри приложения тоже ни к чему. */
+
+/* ── натальная карта ── */
+.nt{width:100%;border-collapse:collapse;font-size:15px;margin-top:8px}
+.nt th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line)}
+.nt td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.nt td small{color:var(--faint)}
+
+/* ── чат с поддержкой ── */
+.dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px rgba(11,10,20,.9)}
+.dot[hidden]{display:none}
+.sup-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sup-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 14px;border-radius:var(--r-m);background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
+.sup-item b{font-size:15px;display:block}.sup-item small{color:var(--faint);font-size:13px}
+.sup-item .badge{flex:0 0 auto;font-size:12px;font-weight:700;color:var(--bg);background:var(--gold-2);border-radius:var(--r-pill);padding:2px 8px}
+.thread{display:flex;flex-direction:column;gap:8px;max-height:46dvh;overflow:auto;margin-top:12px;padding:12px;border-radius:var(--r-m);background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.thread .m{max-width:84%;padding:9px 12px;border-radius:var(--r-m);font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.thread .m.user{align-self:flex-end;background:rgba(217,184,104,.18);border:1px solid rgba(217,184,104,.35)}
+.thread .m.support{align-self:flex-start;background:rgba(255,255,255,.08)}
+.thread .m small{display:block;color:var(--faint);font-size:12px;margin-bottom:3px}
+.sup-status{display:inline-block;padding:2px 9px;border-radius:var(--r-pill);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+
+/* ── вход в приложение ── */
+body.hello .wrap{max-width:1180px;min-height:100dvh;padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))}
+#v-hello.on{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+#v-hello .hello-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+#v-hello .hero{display:block;font-size:clamp(30px,8.2vw,38px);line-height:1.15;white-space:nowrap}
+#v-hello .o-wrap{position:relative;display:inline-block}
+#v-hello .hero .mark{position:absolute;left:var(--mx,50%);top:var(--my,50%);width:var(--ms,.9em);height:var(--ms,.9em);margin:0;transform:translate(-50%,-50%);animation:none;line-height:0}
+#v-hello .hero .moon-img{width:100%;height:100%}
+#v-hello .hello-login{flex-shrink:0;min-width:72px;min-height:44px;padding:10px 16px;border:1px solid rgba(255,255,255,.18);border-radius:var(--r-pill);background:rgba(11,10,20,.8);color:var(--text);font:inherit;font-size:15px;cursor:pointer}
+#v-hello .hello-login:hover{background:rgba(34,29,51,.95);text-decoration:underline;text-underline-offset:4px}
+#v-hello button:focus-visible{outline:2px solid var(--gold-2);outline-offset:5px}
+#v-hello .hello-content{width:100%;max-width:440px;margin:auto 0;padding:48px 0}
+#v-hello .hello-content h2{font-size:clamp(25px,6.8vw,32px);line-height:1.2;font-weight:500;text-wrap:balance}
+#v-hello .gifts{margin:28px 0 0;padding:0;list-style:none;display:grid;gap:22px}
+#v-hello .gift{display:flex;align-items:center;gap:16px}
+#v-hello .gift .ico{width:24px;height:24px;flex:0 0 24px;color:var(--muted)}
+#v-hello .gift b{display:block;font-size:17px;font-weight:500;line-height:1.4;color:var(--text)}
+#v-hello .gift small{display:block;font-size:15px;line-height:1.5;color:var(--muted);margin-top:3px}
+#v-hello .cta{margin-top:34px}
+/* «Обо мне»: карточка человека над списком разборов */
+.me-card{display:grid;gap:4px;width:100%;margin:14px 0 0;padding:18px 18px 16px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--ck-radius,20px);color:var(--text);cursor:pointer;font:inherit;-webkit-appearance:none;appearance:none}
+.me-card[hidden]{display:none}
+.me-card .me-name{font-size:22px;line-height:1.2;font-weight:600;letter-spacing:-.01em}
+.me-card .me-line{font-size:15px;line-height:1.45;color:var(--text-2);font-weight:500}
+.me-card .me-sub{font-size:13px;line-height:1.4;color:var(--muted)}
+.me-card .me-memo{margin-top:6px;font-size:14px;line-height:1.45;color:var(--text-2)}
+.me-card:active{background:var(--selected)}
+/* анкета по шагам: вопрос, поле, «Дальше»; вспомогательные действия — тонкой строкой под кнопкой */
+.ob-card .ob-step[hidden]{display:none}
+.ob-card .ob-step .field{margin:0 0 14px}
+.ob-card .ob-step .field input:not([type=checkbox]){font-size:17px;min-height:48px}
+.ob-card .ob-step .btn{width:100%}
+.ob-card .dc-skip{min-height:36px;margin-top:6px}
+.ob-card .consent{margin:4px 0 14px}
+.ob-card #o-mailfield{margin-bottom:14px}
+#v-hello .hello-live{margin:10px 0 0;font-size:13px;line-height:1.4;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-2);font-weight:600}
+#v-hello .hello-live[hidden]{display:none}
+#v-hello .hello-ritual{margin:22px 0 -14px;font-size:11px;line-height:1.3;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+#v-hello .hello-free{margin:12px 0 0;text-align:center;font-size:13px;line-height:1.4;color:var(--muted)}
+#v-hello .cta .btn{min-height:58px;padding:15px 20px;background:linear-gradient(115deg,#eddaa7,#d9bd7c);box-shadow:0 6px 24px rgba(217,184,104,.12);font-weight:600}
+#v-hello .trust{max-width:440px;font-size:13px;line-height:1.6;color:var(--muted);text-wrap:balance}
+/* Светлая сторона Луны остается справа, вне основной текстовой колонки. */
+.heromoon{position:absolute;display:none;pointer-events:none;width:760px;height:760px;right:-460px;top:calc(50% - 380px)}
+body.hello .heromoon{display:block}
+.heromoon img{width:100%;height:100%;display:block;object-fit:contain}
+body.hello .sky.on{opacity:.3}
+body.hello .orb{opacity:.25}
+body.hello .cloud{display:none}
+body.hello :is(.orb,.moon-img){animation:none}
+body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,10,20,.7),rgba(11,10,20,.5) 60%,rgba(11,10,20,.08))}
+@media(min-width:600px) and (max-width:899px){
+  body.hello .wrap{padding-left:40px;padding-right:40px}
+  .heromoon{right:-400px}
+}
+@media(max-height:700px){
+  #v-hello .hello-content{padding-top:32px;padding-bottom:32px}
+  #v-hello .gifts{margin-top:22px;gap:18px}
+  #v-hello .cta{margin-top:28px}
+}
+.acct{position:absolute;right:0;top:0;width:44px;height:44px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--gold);font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:grid;place-items:center}
+.news-dot{position:absolute;right:1px;top:1px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px var(--bg),0 0 12px rgba(240,215,154,.55)}
+.account-group{margin-top:24px}.account-group>.eyebrow{margin-bottom:10px}.account-group .wids{margin-top:0}
+/* сотрудникам и админам — обратный путь в кабинеты прямо с главной; кнопка не сдвигает статичный экран */
+.cabs{position:absolute;right:52px;top:0;height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:var(--r-pill);background:var(--glass-bg);border:1px solid rgba(217,184,104,.45);box-shadow:var(--glass-shadow);color:var(--gold-2);font-size:14px;font-weight:650;text-decoration:none;white-space:nowrap}
+.cabs[hidden]{display:none}
+#v-home .row.hdr .cabs,#v-home .row.hdr .acct{position:static;flex:0 0 auto}
+#v-home .row.hdr .acct{position:relative;top:auto;right:auto}
+#v-home .row.hdr{gap:8px}
+#v-home .row.hdr .grow{min-width:0}
+#v-home .row.hdr h1{overflow-wrap:anywhere}
+@media(max-width:600px){
+  .cabs{width:42px;padding:0;justify-content:center;font-size:0;gap:0}
+  .cabs::before{content:'';width:20px;height:20px;background:var(--gold);-webkit-mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat;mask:url(/app/assets/brand/icons/users.svg?v=2) center/contain no-repeat}
+}
+.moonline{display:flex;align-items:center;gap:12px;margin-top:14px;background:none;border:0;padding:0;color:var(--text);font:inherit;text-align:left;cursor:pointer;width:100%}
+.moonline p{font-size:16px;color:var(--text)}
+.moonline small{display:block;color:var(--faint);font-size:13px;margin-top:3px}
+.zsym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.18em;fill:none;stroke:var(--gold-2);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(240,215,154,.35))}
+/* ── веер рубашек и ряд камней: выбор руками ── */
+.picker{text-align:center;padding:6px 0 2px}
+.picker-q{margin:0 0 10px;font-size:15px;font-weight:600;color:var(--text)}
+.fan-rows{display:grid;gap:2px}
+.fan{display:flex;justify-content:center;align-items:flex-end;padding:14px 6px 8px;min-height:110px;--w:46px;--a:calc(26deg / var(--n))}   /* ряд веера: карты 46px внахлест (--ml считает fitFans), поворот от центра ряда */
+.fan-card{position:relative;flex:0 0 auto;width:var(--w);aspect-ratio:200/360;margin-left:var(--ml,calc(var(--w) * -.42));padding:0;border:0;background:none;border-radius:6px;
+  transform-origin:50% 230%;transform:rotate(calc((var(--i, 0) - (var(--n) - 1) / 2) * var(--a)));transition:transform .28s var(--sp),filter .28s;cursor:pointer;filter:drop-shadow(0 6px 12px rgba(0,0,0,.6))}
+.fan-card:first-child{margin-left:0}
+.fan-card img{display:block;width:100%;height:100%;object-fit:cover;border-radius:6px;border:1px solid rgba(240,215,154,.35)}
+.fan-card:hover{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * var(--a))) translateY(-10px)}
+.fan-card.on{transform:rotate(calc((var(--i) - (var(--n) - 1) / 2) * var(--a))) translateY(-22px);filter:drop-shadow(0 0 18px rgba(240,215,154,.7));z-index:2}
+.fan-card.on img,.fan-card.on .stone-back{border-color:var(--gold-2)}
+.pick-n{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--gold);color:#1d1738;font-size:12px;font-weight:700;line-height:20px;display:none}
+.fan-card.on .pick-n:not(:empty){display:block}
+.picker.rune .fan{align-items:center;flex-wrap:wrap;gap:8px;padding:10px 0 6px;min-height:0}
+.picker.rune .fan-card{width:44px;aspect-ratio:44/60;margin-left:0;transform:none;transform-origin:center}
+.picker.rune .fan-card:hover{transform:translateY(-6px)}.picker.rune .fan-card.on{transform:translateY(-10px) scale(1.06)}
+.stone-back{display:block;width:100%;height:100%;border-radius:50%/48%;background:radial-gradient(circle at 40% 32%,#3a2f68,#1a1533 60%,#0f0c1e);border:1px solid rgba(240,215,154,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.picker.done .fan-card:not(.on){opacity:0;transform:translateY(12px)}
+.picker.done .fan-card.on{transition:transform .4s var(--sp),opacity .3s}
+.rune-thumb{display:block;width:40px;height:40px;border-radius:50%;overflow:hidden;flex:0 0 auto;box-shadow:0 0 14px -4px rgba(240,215,154,.5)}
+.rune-thumb img{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.35)}
+.card-thumb{display:block;width:34px;height:56px;border-radius:5px;overflow:hidden;flex:0 0 auto;box-shadow:0 6px 14px -6px rgba(0,0,0,.8),0 0 16px -6px rgba(240,215,154,.5);transform:rotate(-4deg)}.card-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
+.ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.wish{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
+.ico.star{--m:url(/app/assets/brand/icons/spark.svg)}
+/* плитки разделов */
+.wids{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+.wid{display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:15px 14px;border-radius:var(--r-l);background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);
+  width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:transform var(--t-fast) var(--sp)}
+.wid:active{transform:scale(.98)}
+.wid .ico{width:26px;height:26px;margin-bottom:4px}
+.wid b{display:block;font-size:15px;font-weight:650;color:var(--text);line-height:1.3}
+.wid span{display:block;font-size:13px;color:var(--muted);line-height:1.45}
+.rows{display:grid;gap:var(--s2);margin-top:var(--s5)}
+.rowbtn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:var(--r-m);background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.rowbtn .ico{width:22px;height:22px;background:var(--muted)}
+.rowbtn.warn{color:var(--warn)}.rowbtn.warn .ico{background:var(--warn)}
+.stubtext{color:var(--faint);font-size:16px;text-align:center;margin-top:44px}
+/* виджет: на телефоне во весь экран, на широком — панель по центру */
+.wg-bg{position:fixed;inset:0;z-index:150;display:none;background:rgba(11,10,20,.8);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.wg-bg.on{display:block;animation:fade var(--t) ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.wg{position:absolute;inset:0;overflow:auto;padding:calc(16px + env(safe-area-inset-top)) 18px calc(40px + env(safe-area-inset-bottom))}
+.wg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.wg-x{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--line);color:var(--text);font-size:24px;line-height:1;cursor:pointer;flex:0 0 auto}
+.wg-body{margin-top:22px}
+body.wg-open{overflow:hidden}
+body.inner{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.app-nav{position:fixed;z-index:120;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:auto;padding:5px;display:none;grid-template-columns:repeat(4,1fr);gap:3px;border:1px solid rgba(255,255,255,.13);border-radius:var(--r-xl);background:rgba(19,16,34,.78);box-shadow:inset 0 1px rgba(255,255,255,.15),0 16px 48px rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
+body.inner .app-nav{display:grid}
+.app-nav button{border:0;border-radius:var(--r-l);background:transparent;color:var(--faint);font:inherit;font-size:11px;line-height:1.1;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px;text-align:center;cursor:pointer}
+.app-nav button .ico{width:21px;height:21px;background:var(--faint)}
+.app-nav button.on{background:rgba(255,255,255,.08);color:var(--text);box-shadow:inset 0 1px rgba(255,255,255,.1)}
+.app-nav button.on .ico{background:var(--gold-2)}
+#v-ask>.back,#v-history>.back,#v-about>.back{display:none}
+#v-account>.back,#v-news>.back{margin-bottom:6px}
+.danger-zone{margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
+.danger-zone>.eyebrow{color:var(--muted);margin-bottom:10px}
+/* на телефоне навигации внизу нет: разделы открываются с главной */
+/* ── широкий экран (≥900px): два формата, а не растянутый телефон. Контейнер во всю ширину до 1180px,
+   плитки раскладываются по ширине; формы (анкета, вход) остаются колонкой — им ширина ни к чему ── */
+@media(min-width:900px){
+  .wrap{max-width:1180px;padding:36px 48px 56px}
+  body.inner .wrap{max-width:1180px;padding:36px 48px 56px}
+  h1{font-size:36px}
+  #v-onb.on,#v-login.on{max-width:520px;margin:0 auto}
+  .chip:hover{border-color:rgba(217,184,104,.45)}
+  .btn.ghost:hover{background:rgba(255,255,255,.1)}
+  .wid:hover{border-color:rgba(217,184,104,.6)}
+  /* вход: шапка на всю ширину, содержание слева, Луна справа */
+  /* вход: на широком экране приложение показывается в корпусе телефона (frame.css) — тот же макет, что на телефоне */
+  #v-home h1{font-size:34px;max-width:760px}
+  #v-home .row.hdr{gap:12px;align-items:flex-start}
+  .moonline{max-width:560px;margin-top:18px}
+  /* разделы: плитки по ширине, сколько влезает по 230px; последний ряд растягивается */
+  .wids{grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:28px}
+  .rows{grid-template-columns:repeat(2,1fr);gap:12px;margin-top:28px}
+  .daycard{width:210px;height:334px}
+  .wg{inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,92vw);max-height:88vh;border-radius:var(--r-sheet);
+    background:var(--card-solid,#1d1738);border:1px solid var(--line);padding:24px 26px 30px;box-shadow:0 40px 90px rgba(11,10,20,.7)}
+}
+@media(min-width:1400px){.heromoon{width:1200px;height:1200px;left:calc(50% - 120px);top:calc(50% - 600px)}}
+/* ── карта дня: иллюстрация аркана на лицевой стороне ── */
+.daycard{width:196px;height:368px}
+.dc-front{padding:0;overflow:hidden;border:1px solid rgba(217,184,104,.55)}
+.dc-front img{width:100%;height:100%;object-fit:cover;display:block;border-radius:var(--r-xl)}
+@media(min-width:900px){.daycard{width:224px;height:420px}}
+.kw{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:7px;line-height:1.5}
+.today{color:var(--strong);font-size:15px;margin-bottom:8px}
+.card p+p{margin-top:10px}
+.card h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
+.card h3:first-child,.card p+h3:first-of-type{margin-top:0}
+.card>h3:first-child{margin-top:0}
+.card.memory{border-color:rgba(217,184,104,.35)}
+/* сворачиваемое «читать полностью» */
+.ln-topics{margin:10px 0 4px}
+.ln-topics .chip{font-size:14px;padding:9px 13px}
+.ln-topics .chip.meta{opacity:.85}
+.ln-all{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:14px;color:var(--faint)}
+.ln-all button{background:none;border:0;padding:6px 0;color:var(--gold-2);font:inherit;font-size:14px;cursor:pointer;min-height:36px}
+.hbars .l{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.hbars .l:last-child{border-bottom:0}
+.hbars b{font-weight:600;white-space:nowrap;color:var(--gold)}
+.ln-sec{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
+.ln-hidden{margin-top:6px}
+.ln-hidden details{border-top:1px solid var(--line)}
+.ln-hidden summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:11px 0;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:800}
+.ln-hidden summary::-webkit-details-marker{display:none}
+.ln-hidden summary::after{content:'+';margin-left:auto;color:var(--gold-2);font-size:16px;letter-spacing:0}
+.ln-hidden details[open] summary::after{content:'–'}
+.ln-hidden details[open] summary{color:var(--gold)}
+.more{margin-top:var(--s3)}
+.morebtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:none;border:0;border-top:1px solid var(--line);padding:12px 0 2px;color:var(--gold-2);font:inherit;font-size:14px;cursor:pointer}
+.morebtn svg{transition:transform var(--t) var(--sp)}
+.more.on .morebtn svg{transform:rotate(180deg)}
+.morebody{display:none;padding-top:8px}
+.morebody p+p{margin-top:10px}
+.morebody h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:16px 0 6px;font-weight:800}
+.more.on .morebody{display:block;animation:in var(--t) var(--sp)}
+/* действия под результатом: второстепенные, не спорят с основным */
+.resrow{display:flex;gap:var(--s2);justify-content:center;flex-wrap:wrap;margin-top:var(--s4)}
+.resrow .btn.sm{min-height:40px;font-size:14px;padding:0 16px;font-weight:600}
+.resrow .btn.ghost.sm{color:var(--muted)}
+/* руна: камень из книги */
+.stone{width:150px;height:150px;border-radius:var(--r-sheet);margin:4px auto 10px;display:block;box-shadow:0 18px 40px -16px rgba(0,0,0,.75)}
+/* схема расклада: где лежит какая карта или руна */
+.lay{display:grid;gap:12px;justify-content:center;margin:8px auto 16px;width:fit-content}
+.lay .c{position:relative;display:grid;place-items:center}
+.lay .c button{position:relative;background:none;border:0;padding:0;cursor:pointer;display:block}
+.lay .thumb{width:58px;height:109px;border-radius:var(--r-xs);object-fit:cover;display:block;border:1px solid rgba(217,184,104,.35);box-shadow:0 8px 18px -8px rgba(0,0,0,.8)}
+.lay .num{position:absolute;top:-7px;left:-7px;width:20px;height:20px;border-radius:50%;background:var(--gold);color:var(--bg);font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.lay .c.p2{z-index:2}.lay .c.p2 .thumb{transform:rotate(90deg);opacity:.94}.lay .c.p2 .num{top:auto;bottom:-7px;left:auto;right:-7px}
+.glyph{width:58px;height:58px;border-radius:var(--r-m);background:linear-gradient(150deg,#2a2150,#0b0a14);border:1px solid rgba(217,184,104,.4);display:grid;place-items:center}
+.glyph svg{width:34px;height:34px}
+.glyph.lg{margin:var(--s1) auto var(--s3);width:90px;height:90px}
+/* позиции расклада */
+.pos{display:flex;gap:12px;align-items:flex-start;transition:border-color var(--t-slow)}
+.pos.hl{border-color:rgba(217,184,104,.7)}
+.pos .thumb{width:64px;height:120px;border-radius:var(--r-xs);object-fit:cover;flex:0 0 64px;border:1px solid rgba(217,184,104,.35)}
+.pos .glyph{flex:0 0 58px}
+.pos b{display:block;font-size:16px;color:var(--gold);font-weight:650;margin-top:var(--s2)}
+.pos .pn{display:block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800;line-height:1.35}
+.pos .pn small{display:block;letter-spacing:0;text-transform:none;font-weight:400;color:var(--faint);font-size:13px;margin-top:2px}
+.laydesc{font-size:14px;margin-top:10px;color:var(--muted)}.laydesc b{color:var(--strong);font-weight:600}
+/* история: запись раскрывается в тот же вид, что и свежий результат */
+.histhead{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.histhead>span{min-width:0}.histhead b{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
+.histhead svg{flex:0 0 auto;color:var(--faint);transition:transform var(--t) var(--sp)}
+.hist.on .histhead svg{transform:rotate(180deg);color:var(--gold)}
+.histbody{display:none;margin-top:12px}
+.hist.on .histbody{display:block;animation:in var(--t) var(--sp)}
+.hist .card{background:rgba(255,255,255,.04);box-shadow:none;padding:16px}
+/* открытка на iOS без системного меню: показываем картинку, ее можно зажать */
+.pc-bg{position:fixed;inset:0;z-index:200;background:rgba(11,10,20,.94);display:none;padding:calc(20px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));overflow:auto}
+.pc-bg.on{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.pc-bg img{max-height:68vh;max-width:100%;border-radius:var(--r-l);box-shadow:0 30px 80px rgba(0,0,0,.7)}
+/* личный год: иллюстрация, планета и энергия, описание с подзаголовками, списками и таблицами из файла */
+.yr-img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:var(--r-s);background:var(--field);border:1px solid rgba(217,184,104,.25)}
+.yr-cap{font-size:14px;color:var(--muted);text-align:center;margin-bottom:6px}
+.yr-art h4{font-size:16px;font-weight:600;color:var(--text);line-height:1.35;margin:20px 0 4px}
+.yr-art .yr-cap+h4,.yr-art>h4:first-child{margin-top:0}
+.yr-art p{font-size:15px;line-height:1.6;margin:10px 0 0;color:var(--text-2)}
+.yr-art b{display:inline;font-size:inherit;margin:0;color:var(--strong);font-weight:600}   /* выделение внутри строки, а не заголовок карточки */
+.yr-art ul,.yr-art ol{margin:8px 0 0;padding-left:22px;color:var(--text-2);font-size:15px;line-height:1.6}
+.yr-art li{margin-top:6px}.yr-art li::marker{color:var(--gold)}
+.yr-art ul ul{margin-top:4px;padding-left:18px}
+.yr-art{min-width:0}   /* карточка в сетке не растягивается под широкую таблицу — таблица прокручивается внутри */
+.yr-art a{color:var(--gold-2);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}   /* ссылки на источники — как в файле */
+/* лунный день: полоска всех 30 дней, над главой — номер дня и ее тема */
+.ln-days{margin-top:6px}.ln-days .chip{min-width:44px;padding:9px 0;text-align:center;font-size:14px}
+.ln-eb{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--gold);margin:14px 0 0}
+.yr-art .ln-eb{margin-top:14px}
+.yr-art .ln-title{font-size:18px;font-weight:600;line-height:1.3;color:var(--text);margin:4px 0 0}
+.yr-tw{overflow-x:auto;margin-top:12px;-webkit-overflow-scrolling:touch}
+.yr-t{width:100%;border-collapse:collapse;font-size:14px;line-height:1.45;min-width:420px}
+.yr-t th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:left;padding:6px 8px 8px;border-bottom:1px solid rgba(217,184,104,.35);vertical-align:bottom}
+.yr-t td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--text-2)}
+.yr-t tr>*:first-child{color:var(--text);font-weight:600;padding-left:0}
+.yr-t tr>*:last-child{padding-right:0}
+/* ── напоминания: переключатель, время, регулярность ── */
+.sw{width:46px;height:28px;border-radius:var(--r-pill);border:1px solid var(--line);background:rgba(255,255,255,.1);position:relative;cursor:pointer;flex:0 0 46px;padding:0;transition:background var(--t)}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform var(--t) var(--sp),background var(--t)}
+.sw.on{background:rgba(217,184,104,.35);border-color:rgba(217,184,104,.6)}.sw.on i{transform:translateX(18px);background:var(--gold-2)}
+.rem-head{display:flex;align-items:center;gap:12px}
+.rem-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.rem-actions .btn{min-height:44px}
+.rem .sw{min-height:28px;background-clip:padding-box;border-top:9px solid transparent;border-bottom:9px solid transparent;box-sizing:content-box}.rem .sw i{top:3px}
+.rem .rem-lbl small{color:var(--muted)}.rem-body input{max-width:100%}
+.rem-lbl{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;color:inherit;font:inherit}
+.rem-lbl b{display:block;font-size:15px;font-weight:650}.rem-lbl small{display:block;color:var(--faint);font-size:13px;margin-top:2px;line-height:1.35}
+.rem-body{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);animation:in var(--t) var(--sp)}
+.rem-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rem-row label{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.rem-row input[type=time]{width:auto;min-height:44px;padding:8px 14px;font-size:18px;color-scheme:dark}
+.rem-status{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.45}
+.hint{font-size:13px;color:var(--faint);line-height:1.45}
+/* отступы по шкале и роли текста — вместо inline-стилей в шаблонах */
+.mt-0{margin-top:0!important}.mt-1{margin-top:var(--s1)!important}.mt-2{margin-top:var(--s2)!important}.mt-3{margin-top:var(--s3)!important}.mt-4{margin-top:var(--s4)!important}.mt-5{margin-top:var(--s5)!important}
+.mb-0{margin-bottom:0!important}.mb-2{margin-bottom:var(--s2)!important}.mb-3{margin-bottom:var(--s3)!important}.mb-4{margin-bottom:var(--s4)!important}
+.center{text-align:center}.left{text-align:left}.full{width:100%}.italic{font-style:normal}
+.title-gold{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:22px;line-height:1.25;color:var(--gold)}
+.num-mark{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:36px;line-height:1.1;color:var(--gold);width:44px;flex:0 0 44px;text-align:center}
+.row.top{align-items:flex-start;gap:var(--s4)}
+.sub{color:var(--muted);font-weight:400;font-size:13px}
+.code-input{letter-spacing:8px;text-align:center;font-size:22px}
+.consent{display:flex;gap:var(--s3);align-items:flex-start;font-size:15px;line-height:1.6;color:var(--muted);cursor:pointer;margin:var(--s2) 0 var(--s5)}
+.consent input{width:20px;min-height:20px;flex:0 0 20px;margin-top:2px;accent-color:var(--gold)}
+/* ── привычки ── */
+.hb{display:flex;align-items:flex-start;gap:12px}
+.hb-check{width:34px;height:34px;min-height:34px;border-radius:50%;flex:0 0 34px;border:1.5px solid var(--gold);background:transparent;color:var(--bg);cursor:pointer;display:grid;place-items:center;font-weight:800;margin-top:2px;padding:0}
+.hb.on .hb-check{background:var(--gold)}
+.hd-row{display:flex;gap:6px;margin-top:8px}
+.hd{width:30px;height:40px;border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--faint);font:inherit;font-size:11px}
+.hd::before{content:'';width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(217,184,104,.5);box-sizing:border-box}
+.hd.on::before{background:var(--gold);border-color:var(--gold)}
+.hd.today{color:var(--gold-2)}.hd.today::before{box-shadow:0 0 0 3px rgba(217,184,104,.2)}
+.linkbtn{display:block;margin:0;background:none;border:0;color:var(--faint);font:inherit;font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+/* ── отчет по настроениям ── */
+.mr-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.mr-day{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--faint);font-size:11px;padding:6px 0;border-radius:var(--r-s)}
+.mr-day.today{background:rgba(217,184,104,.1)}.mr-day svg{color:var(--gold-2)}
+.mr-empty{width:30px;height:30px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.18);display:block}
+/* ── небо ── */
+.skyev.now{border-color:rgba(217,184,104,.5)}
+.skyev b{margin-bottom:2px}
+/* ── главная: шесть квадратов, три в ряд ── */
+.acct{overflow:visible;padding:0}
+.acct-content{display:grid;place-items:center;width:100%;height:100%;overflow:hidden;border-radius:inherit}
+.acct img{width:100%;height:100%;object-fit:cover;display:block}
+/* ── круг эмоций Плутчика ── */
+.mfam{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.mfam:first-child{border-top:0;padding-top:0}
+.mfam .fname{width:84px;flex:0 0 84px;font-size:12px;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;font-weight:700;padding-top:9px;line-height:1.2}
+.mfam .chips{flex:1}
+.mchip{border-color:var(--c,var(--line))}
+.mchip.on{background:color-mix(in srgb,var(--c,var(--gold)) 28%,transparent);border-color:var(--c,var(--gold));color:var(--strong)}
+.mpick{display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:12px 14px;border-radius:var(--r-m);background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.mpick svg{flex:0 0 40px}
+/* ── «что вас беспокоит»: свой запрос и плашки ── */
+.hubq textarea{min-height:84px}
+/* ── привычки: регулярность и награды ── */
+.hb-rule{display:inline-block;font-size:12px;color:var(--muted);background:rgba(255,255,255,.07);border-radius:var(--r-pill);padding:2px 8px;margin-left:6px;vertical-align:middle}
+.hb-edit{display:none;margin-top:10px}
+.hb.editing .hb-edit{display:block}
+/* ── желания: фото ── */
+/* ── аккаунт: фото ── */
+.avatar{width:84px;height:84px;border-radius:50%;overflow:hidden;background:var(--glass-bg);border:1px solid rgba(217,184,104,.45);display:grid;place-items:center;color:var(--gold);font-size:30px;font-weight:700;flex:0 0 84px}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+/* ── новое в приложении ── */
+/* «Установить на телефон» ведет на инструкцию /app/install (в Chrome на телефоне — сразу системный диалог); уже установленным не нужна:
+   оболочке App Store и приложению, открытому с экрана «Домой» */
+.ios-shell #t-install{display:none!important}
+@media(display-mode:standalone){#t-install{display:none!important}}
+a.wid,a.later-row{text-decoration:none}
+/* Микровзаимодействия команд: один короткий золотой отклик вместо постоянной анимации. */
+:is(.wid,.moonline){
+  position:relative;isolation:isolate;overflow:hidden;
+  transition:transform var(--t) var(--sp),border-color var(--t) ease,background-color var(--t) ease,box-shadow var(--t) ease;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation
+}
+:is(.wid){
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  box-shadow:var(--glass-shadow),inset 0 0 0 .5px rgba(255,255,255,.07)
+}
+:is(.wid,.moonline)::after{
+  content:'';position:absolute;z-index:0;left:var(--tap-x,50%);top:var(--tap-y,50%);width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,244,207,.42) 0,rgba(217,184,104,.18) 38%,transparent 72%);
+  opacity:0;transform:translate(-50%,-50%) scale(.2);pointer-events:none
+}
+:is(.wid,.moonline)>*{position:relative;z-index:1}
+:is(.wid,.moonline).reward::after{animation:reward-ring .58s var(--sp)}
+:is(.wid,.moonline).reward>.ico{animation:reward-icon .5s var(--sp)}
+@keyframes reward-ring{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(18)}}
+@keyframes reward-icon{0%,100%{transform:none}42%{transform:translateY(-2px) scale(1.1);filter:drop-shadow(0 0 9px rgba(240,215,154,.55))}}
+.command-enter{animation:command-enter var(--t) var(--sp) backwards}
+@keyframes command-enter{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.wg-bg.on .wg{animation:panel-open var(--t-slow) var(--sp)}
+@keyframes panel-open{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(hover:hover) and (pointer:fine){
+  :is(.wid,.moonline):hover{
+    transform:translateY(-2px);border-color:rgba(217,184,104,.58);
+    box-shadow:var(--glass-shadow),0 16px 34px -22px rgba(240,215,154,.75)
+  }
+  :is(.wid):hover::before{opacity:.72}
+}
+:is(.wid,.moonline):active{transform:scale(.98)}
+:is(.wid,.moonline):focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){
+  :is(.wid,.moonline)::after{display:none}
+  :is(.wid,.moonline):hover{transform:none}
+}
+
+.hb-entry{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hb-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+.hb-columns .hb-rule{margin:0;font-size:13px;font-weight:400;color:var(--muted)}
+.mfam{flex-wrap:wrap}.mfam .chips{min-width:180px}.mchip{min-height:40px}
+/* Спокойные поверхности для чтения, стекло — у навигации и коротких действий. */
+[hidden]{display:none!important}
+body.inner :is(.card,.item,.wid){background:var(--surface);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none}
+body.inner .card{border-radius:var(--r-l)}
+body.inner .btn{box-shadow:0 4px 14px rgba(217,184,104,.12);min-height:52px}
+body.inner .btn.sm{min-height:44px}
+body.inner .btn.ghost{box-shadow:none}
+body.inner :is(input,textarea){background:var(--field);border-color:rgba(236,231,249,.2);color:var(--text);font-size:16px}
+body.inner textarea{line-height:1.6;resize:vertical}
+body.inner :is(.orb,.cloud){animation:none;opacity:.13}
+:is(button,input,textarea,summary,a):focus-visible{outline:2px solid var(--gold-2);outline-offset:3px}
+.text-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 4px;background:none;border:0;color:var(--gold-2);font:inherit;font-size:14px;line-height:1.4;cursor:pointer;text-align:left}
+.text-action.secondary{color:var(--muted)}
+.nowrap{white-space:nowrap}
+.text-action:disabled{opacity:.55;cursor:default}
+.utility-actions{display:flex;gap:6px 20px;flex-wrap:wrap;align-items:center;margin-top:16px;padding-top:8px;border-top:1px solid var(--line)}
+.utility-actions .ico{width:17px;height:17px}
+#v-home #h-date{color:var(--muted)}
+/* ── Герой «Сегодня»: Луна с настоящей фазой (moon-logo.js), под ней фаза и лунный день антиквой, имя и транзитная Луна,
+   ближайшие фазы; полоска недели — семь маленьких лун. Все — одна кнопка, ведет в лунный день ── */
+.home-hero{position:relative;display:grid;justify-items:center;width:100%;margin:0;padding:6px 0 2px;background:none;border:0;color:var(--text);text-align:center;cursor:pointer;font:inherit;-webkit-appearance:none;appearance:none}
+.home-hero .hero-glow{position:absolute;left:50%;top:150px;width:min(460px,120vw);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(240,215,154,.20),rgba(240,215,154,.07) 40%,transparent 68%);pointer-events:none;z-index:0}
+.moon-hero-cv{position:relative;z-index:1;display:block;width:min(300px,80vw);height:auto;aspect-ratio:1;margin:-14px 0 -20px}   /* диск ≈ 204 px — шаг под Луной виден без прокрутки на 390×844 */   /* диск ≈ 68 % стороны холста — 218 px; остальное — нимб */
+.hero-phase{position:relative;z-index:1;display:block;font-size:22px;line-height:1.25;font-weight:600;letter-spacing:-.01em;color:var(--text);text-wrap:balance;padding:0 8px}
+@media(max-width:400px){.hero-phase{font-size:20px}}
+.hero-me{position:relative;z-index:1;display:block;margin-top:6px;font-size:14px;line-height:1.4;font-weight:500;color:var(--text-2)}
+.hero-next{position:relative;z-index:1;display:block;margin-top:6px;font-size:11px;line-height:1.4;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.hero-me[hidden],.hero-next[hidden]{display:none}
+.home-hero:active .moon-hero-cv{transform:scale(.985)}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:6px 0 0;padding:0 2px}
+.ws-day{display:grid;justify-items:center;gap:1px;padding:5px 0 4px;border-radius:12px;border:0;background:none;color:inherit;font:inherit;cursor:pointer}
+.ws-day.future{cursor:default;opacity:.55}
+button.ws-day:active{background:var(--selected)}
+.ws-day.on{background:var(--selected)}
+.ws-day canvas{width:26px;height:26px;display:block}
+.ws-day i{font-style:normal;font-size:11px;line-height:1.3;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.ws-day small{font-size:12px;line-height:1.3;color:var(--muted)}
+.ws-day.on i,.ws-day.on small{color:var(--gold-2);font-weight:600}
+html[data-theme=light] .home-hero .hero-glow{background:radial-gradient(circle,rgba(42,33,80,.08),transparent 62%)}
+.daily-statement{margin:26px 0 8px;max-width:820px}
+.daily-statement #h-wish{font-size:clamp(21px,3vw,28px);line-height:1.45;letter-spacing:-.015em;color:var(--text);margin-top:10px;text-wrap:pretty}
+.daily-statement .text-action{margin-top:4px}
+.wg-bg{background:rgba(6,5,13,.78)}
+.wg{background:var(--sheet);scroll-padding-top:94px}
+.wg-head{position:sticky;top:calc(-16px - env(safe-area-inset-top));z-index:8;background:var(--sheet);padding:16px 0 12px;border-bottom:1px solid var(--line);align-items:center}
+.wg-head h2{font-size:24px;line-height:1.3}
+.wg-head .eyebrow{color:var(--muted)}
+.wg-tools{margin:12px 0 20px}
+.wg-tools:empty{display:none}
+.rem-summary{justify-content:flex-start;max-width:100%;color:var(--muted);font-size:13px;padding:9px 12px;border:1px solid var(--line);border-radius:var(--r-m);overflow-wrap:anywhere}
+.rem-summary .ico{width:17px;height:17px;flex:0 0 17px;background:var(--muted)}
+.rem-summary>span:last-child{margin-left:auto}
+#rem-all .rem-summary{margin-top:12px}
+.wg-tools .rem-body{padding:16px;margin-top:10px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--field)}
+.rem-status{font-size:13px;line-height:1.55;color:var(--muted)}
+.rem-actions{gap:6px 16px;flex-wrap:wrap}
+.rem-head small{line-height:1.45}
+body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:radial-gradient(150px circle at var(--glass-x,25%) var(--glass-y,0%),rgba(255,255,255,.14),transparent 70%),rgba(40,35,60,.84);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 0 rgba(255,255,255,.04)}
+.practice-question{font-size:21px;line-height:1.45;color:var(--text);margin:16px 0;font-weight:500}
+.practice-card{margin-top:16px}
+.practice-card h3.practice-question{margin:0 0 12px;font-size:21px;line-height:1.45;font-weight:500;color:var(--text);text-transform:none;letter-spacing:normal}
+.practice-card .field{margin-top:16px}
+.practice-progress{color:var(--muted);font-size:14px;margin:16px 0;line-height:1.5}
+.saved-state{color:var(--ok);font-size:13px;line-height:1.5;margin:16px 0 10px;padding-left:12px;border-left:2px solid var(--ok)}
+.entry-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text);font-size:16px;line-height:1.7}
+.observation,.practice-create{margin-top:20px}
+:is(.observation,.practice-create)>summary{min-height:44px;padding:10px 0;cursor:pointer;color:var(--gold-2);font-size:14px;line-height:1.5}
+:is(.observation,.practice-create)[open]>summary{margin-bottom:8px}
+.segmented{display:flex;gap:4px;padding:4px;border-radius:var(--r-m);background:var(--field);margin:20px 0 16px;border:1px solid var(--line)}
+.segmented button{flex:1;min-width:0;min-height:44px;padding:8px 10px;border:0;border-radius:var(--r-s);background:none;color:var(--muted);font:inherit;font-size:13px;line-height:1.4;cursor:pointer}
+.segmented button[aria-selected=true]{background:var(--selected);color:var(--text);box-shadow:0 1px 3px #0003}
+.mood-own-row{margin-top:20px}.mood-own-row label{font-size:13px;color:var(--muted);display:block;margin-bottom:8px}
+.mood-own-row input{min-width:0}.mood-own-row .btn{flex:0 0 auto}
+.mpick.saved-state{border-radius:var(--r-s);border:1px solid var(--line);border-left:2px solid var(--ok);color:var(--text);margin:16px 0}
+.mpick.saved-state small{display:block;font-size:12px;line-height:1.5;color:var(--muted);margin-top:4px}
+.emotion-families{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.emotion-family{display:flex;align-items:center;gap:9px;min-height:64px;border-radius:var(--r-m);padding:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:inherit;font-size:13px;cursor:pointer;text-align:left}
+.emotion-family svg{flex:0 0 28px;color:var(--c)}
+.emotion-family>span:last-child{margin-left:auto;color:var(--muted)}
+.emotion-family.on{border-color:var(--c)}
+.mood-shades{padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-m);margin:4px 0 12px}
+.mood-shades .chips{margin-top:12px}.mchip{min-height:44px;font-size:14px}
+.mood-picker .mfam{gap:10px;display:block;padding:14px 0}
+.mood-picker .mfam .fname{display:block;width:auto;margin-bottom:10px;padding:0;color:var(--muted)}
+.hb-check{width:44px;height:44px;min-height:44px;flex-basis:44px;border-radius:var(--r-m)}
+.hb b.hb-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(70px,.75fr);gap:10px}
+.hb-columns .hb-rule{background:none;padding:0;overflow-wrap:anywhere}
+.hd-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px}
+.hd{width:100%;min-height:44px}
+.hb .icon-action{min-width:40px;flex:0 0 40px}
+.hb .grow{overflow-wrap:anywhere}
+.add-action{margin-top:12px}
+@media(hover:hover) and (pointer:fine){body.inner :is(.wid,.moonline):hover{transform:translateY(-2px);border-color:rgba(236,231,249,.32);box-shadow:none}body.inner :is(.text-action,.emotion-family):hover{color:var(--strong)}body.inner :is(.wid,.moonline):active{transform:scale(.98)}}
+@media(max-width:370px){.wg{padding-left:14px;padding-right:14px}.emotion-family{padding:10px 8px;gap:6px;font-size:12px}.emotion-family svg{width:22px;flex-basis:22px}.hb{gap:8px;padding:12px}.hb b.hb-columns{grid-template-columns:1fr}.hb .icon-action{min-width:32px;flex-basis:32px}.mood-own-row .row{flex-wrap:wrap}.mood-own-row input{flex:1 1 100%}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.wg-bg.on .wg{translate:none}body.inner :is(.wid,.moonline):hover{transform:none}}
+@media(prefers-reduced-transparency:reduce){body.inner :is(.app-nav,.rem-summary,.acct,.wg-x){background:#28233c;backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+/* Четыре маршрута: день, вопрос, записи, личное. */
+#v-home.on{display:block;min-height:0}
+#v-home .hdr h1{margin-top:var(--s1)}
+#v-home .morning-picker{margin-top:22px}
+.section-caption{margin-top:8px;font-size:14px;color:var(--muted);line-height:1.5}
+.feature-group,.account-group{margin-top:30px}
+.feature-group>h2,.account-group>h2{font-size:18px;line-height:1.4;font-weight:600}
+.feature-group>.wids,.account-group>.wids{margin-top:12px}
+body.inner .compact-links{grid-template-columns:1fr;gap:0;border-top:1px solid var(--line)}
+body.inner .compact-links .wid{display:grid;grid-template-columns:24px 1fr;align-items:center;gap:3px 12px;min-height:68px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:14px 2px}
+.compact-links .wid .ico{grid-column:1;grid-row:1/span 2;margin:0}
+.compact-links .wid b,.compact-links .wid>span:not(.dot){grid-column:2}
+body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer;background:none;box-shadow:none;border:0;min-height:64px}
+#home-sky .moonline .grow{min-width:0;display:grid;gap:5px}
+#home-sky .moonline b{font-size:14px;line-height:1.5;font-weight:500}
+#home-sky .moonline small{font-size:12px;line-height:1.5;margin:0;color:var(--muted)}
+#home-sky .lunar-advice{font-size:13px;line-height:1.5;color:var(--muted)}
+.lunar-arrow{flex:0 0 auto;color:var(--gold-2);font-size:20px}
+#home-sky .moonline::after{display:none}
+.profile-summary{margin-top:20px}.profile-summary h2{font-size:22px;margin-bottom:16px}.profile-summary>p{margin-top:14px;font-size:14px}
+:is(.lunar-period,.lunar-library)>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:14px;color:var(--muted)}
+.upcoming{margin-top:20px}
+.danger-zone{margin-top:44px}.danger-zone .warn{margin-top:20px}
+.question-entry{grid-template-columns:1fr}.question-entry .wid{min-height:100px}
+.quick-moods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.quick-mood{display:flex;align-items:center;gap:10px;min-height:70px;padding:14px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.quick-mood.on{border-color:var(--gold);background:var(--selected)}
+.quick-mood .ico{width:30px;height:30px;background:var(--muted)}
+#hub-chips{margin-top:16px}#hub-opts .chips{margin:12px 0 20px}.hubq .field{margin:24px 0 0}
+#hub-res{margin-top:20px}
+.material-note{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.material-note a{color:var(--muted)}
+.lunar-heading h3{font-size:22px;margin:16px 0 0;line-height:1.4;color:var(--text)}
+.lunar-heading .practice-question{margin:6px 0;font-size:18px}
+.lunar-library,.lunar-period{margin-top:18px}
+#ln-preview{padding-top:8px}
+body.inner .utility-actions .text-action{color:var(--muted)}
+@media(min-width:900px){.practice-links{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-summary{max-width:660px}.account-group .compact-links{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}}
+@media(max-width:370px){.quick-mood{padding:12px;font-size:14px}.practice-links{grid-template-columns:1fr}.app-nav button{font-size:11px}}
+@media(hover:hover) and (pointer:fine){body.inner .wid:hover,.quick-mood:hover{border-color:rgba(217,184,104,.5)}}
+
 /* Стили приложения одним файлом (19.09): токены — theme.css, разметка экранов — <style> в index.html, здесь — все остальное
    в прежнем порядке каскада. Правило нового кода: не добавлять четвертый слой — править существующее правило. */
 
