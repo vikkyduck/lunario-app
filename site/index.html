@@ -718,11 +718,13 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
 .hero-me[hidden],.hero-next[hidden]{display:none}
 .home-hero:active .moon-hero-cv{transform:scale(.985)}
 .week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:6px 0 0;padding:0 2px}
-.ws-day{display:grid;justify-items:center;gap:1px;padding:5px 0 4px;border-radius:12px}
+.ws-day{display:grid;justify-items:center;gap:1px;padding:5px 0 4px;border-radius:12px;border:0;background:none;color:inherit;font:inherit;cursor:pointer}
+.ws-day.future{cursor:default;opacity:.55}
+button.ws-day:active{background:var(--selected)}
 .ws-day.on{background:var(--selected)}
 .ws-day canvas{width:26px;height:26px;display:block}
-.ws-day i{font-style:normal;font-size:10px;line-height:1.3;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
-.ws-day small{font-size:11px;line-height:1.3;color:var(--muted)}
+.ws-day i{font-style:normal;font-size:11px;line-height:1.3;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.ws-day small{font-size:12px;line-height:1.3;color:var(--muted)}
 .ws-day.on i,.ws-day.on small{color:var(--gold-2);font-weight:600}
 html[data-theme=light] .home-hero .hero-glow{background:radial-gradient(circle,rgba(42,33,80,.08),transparent 62%)}
 .daily-statement{margin:26px 0 8px;max-width:820px}
@@ -886,7 +888,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
   <!-- ВХОД ПО ПОЧТЕ -->
   <section class="view" id="v-login">
-    <button data-on="click:go-hello" class="back">← Назад</button>
+    <button data-on="click:go-hello" class="back" data-ui="back">← Назад</button>
     <span class="eyebrow">Вход</span>
     <h1>Войти по почте</h1>
     <p class="login-intro">Пришлем шестизначный код — пароль не нужен. Профиль, записи и практики откроются на этом устройстве.</p>
@@ -918,7 +920,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     </div>
   </section>
   <section class="view" id="v-onb">
-    <button data-on="click:go-hello" class="back">← Назад</button>
+    <button data-on="click:go-hello" class="back" data-ui="back">← Назад</button>
     <div class="onb-head">
       <h1 class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></h1>
       <p data-ui="onb.lead">Несколько слов о себе</p>
@@ -937,14 +939,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
         <p class="dc-q" data-ui="onb.birth">Когда вы родились?</p>
         <div class="field"><input id="o-birth" type="date" required aria-label="Дата рождения"></div>
         <button data-on="click:obNext" class="btn" type="button" data-ui="onb.next">Дальше</button>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
       <div class="ob-step" data-step="time" hidden>
         <p class="dc-q" data-ui="onb.time">Во сколько?</p>
         <div class="field"><input id="o-time" type="time" aria-label="Время рождения"></div>
         <button data-on="click:obNext" class="btn" type="button" data-ui="onb.next">Дальше</button>
         <button data-on="click:obSkipTime" class="text-action secondary dc-skip" type="button" data-ui="onb.skip_time">Не знаю</button>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
       <div class="ob-step" data-step="city" hidden>
         <p class="dc-q" data-ui="onb.city">Где вы родились?</p>
@@ -956,10 +958,10 @@ body.inner .utility-actions .text-action{color:var(--muted)}
           <p class="geo" id="o-geo"></p>
         </div>
         <button data-on="click:obNext" class="btn" type="button" data-ui="onb.next">Дальше</button>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
       <div class="ob-step" data-step="done" hidden>
-        <p class="dc-q" id="ob-done-q">Почти готово</p>
+        <p class="dc-q" id="ob-done-q" data-ui="onb.done">Почти готово</p>
         <div class="field" id="o-mailfield"><label>Почта</label><input id="o-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru"></div>
         <label class="consent">
           <input type="checkbox" id="o-consent">
@@ -967,7 +969,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
         </label>
         <button class="btn" id="o-go" data-ui="onb.go">Открыть мой день</button>
         <p class="msg" id="o-msg"></p>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button">← Назад</button>
+        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
     </div>
     <div class="card sec" id="o-codebox" style="display:none"></div>
@@ -991,7 +993,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <span class="hero-me" id="hero-me"></span>
       <span class="hero-next" id="hero-next"></span>
     </button>
-    <div class="week-strip" id="week-strip" aria-hidden="true"></div>
+    <div class="week-strip" id="week-strip" aria-label="Неделя: открыть день"></div>
     <!-- один шаг сразу под Луной (по обзору 19.09): днем — вопрос дня с полем, вечером — «Запомнить этот день» (paintHomeAction) -->
     <div class="home-action" id="home-action" hidden></div>
     <div class="home-intro">
@@ -1035,13 +1037,13 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <section class="feature-group past-days" id="past-days"><div class="sec-head"><h2 data-ui="diary.past">Прошлые дни</h2><button data-on="click:openWidget-days" class="text-action" id="days-all" type="button" aria-label="Архив" data-ui="diary.archive">Архив →</button></div>
       <div class="days-list" id="days-list"></div></section>
   </section>
-  <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div><div class="wg-foot"><button data-on="click:practiceBack" class="btn ghost wg-return" type="button" data-ui="return">← Вернуться</button></div></section>
+  <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button" data-ui="back">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div><div class="wg-foot"><button data-on="click:practiceBack" class="btn ghost wg-return" type="button" data-ui="return">← Вернуться</button></div></section>
   <section class="view" id="v-news"><button data-on="click:go-account" class="back" type="button">← Аккаунт</button>
     <span class="eyebrow" id="news-sub">За этот месяц</span><h1>Новое в приложении</h1><div class="wids" id="news-box"></div>
     <section class="feature-group upcoming" id="news-soon" hidden><h2>Скоро</h2><p class="hint">Эти материалы еще готовятся</p><div class="list" id="news-soon-box"></div></section>
   </section>
   <!-- ОБО МНЕ: вкладка внизу — разборы по дате рождения; анкета и настройки живут в аккаунте (кружок с фото на главной) -->
-  <section class="view" id="v-about"><h1>Обо мне</h1><p class="section-caption" id="ab-sub">Мой профиль</p>
+  <section class="view" id="v-about"><h1 data-ui="about.title">Обо мне</h1><p class="section-caption" id="ab-sub">Мой профиль</p>
     <!-- экран начинается с человека, а не с меню (по разбору референсов 19.09): имя, натальная Луна, лунный день рождения; тап — в натальную карту -->
     <button data-on="click:openWidget-natal" class="me-card" id="me-card" type="button" hidden></button>
     <div class="wids about-links list-rows"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты, дома, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнера</span></button><button data-on="click:openWidget-tests" class="wid" data-feature="tests" type="button" aria-label="Тесты"><i class="ico list"></i><b>Тесты</b><span id="tests-sub">Узнать себя через вопросы</span></button></div>

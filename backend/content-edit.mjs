@@ -3,9 +3,10 @@
    короткие поля «поле: значение», затем разделы «[Раздел]» и текст. Таблицы (настрой, вопросы, темы, напоминания…):
    строка = запись, поля через «|», строки с # — заметки, они сохраняются как есть.
    Читаем и пишем только сам файл в папке контента; приложение перечитывает его само (watch в content.mjs). */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
-import { CONTENT_DIR, noYo } from './content.mjs';
+import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
+import * as C from './content.mjs';
 
 /* какие файлы — «книга/статья», какие — таблица и как называются колонки (по ПРОЧТИ-МЕНЯ.txt) */
 export const BOOKS = {
@@ -151,4 +152,45 @@ export function tableSave(name, rows, by) {
   const body = clean.map((r) => r.join(' | ')).join('\n');
   write(name, (notes.length ? notes.join('\n') + '\n\n' : '') + body + '\n', by);
   return { ok: true, rows: clean.length };
+}
+
+/* ── Файлы контента списком и целиком (страница «Тексты» и вкладка «Файлы целиком») ── */
+export const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
+  const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
+  const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;
+  return { name, lines, size: text.length, mtime: statSync(join(CONTENT_DIR, name)).mtime.toISOString().slice(0, 16).replace('T', ' ') };
+});
+export const readContent = (name) => read(name);
+export const writeContent = (name, text, by) => writeFile(name, text, by);   /* прежняя версия — в архив, без «е с точками» */
+
+/* ── Картинки к записям каталогов: какие наборы есть и как заменить картинку у записи ── */
+export const CONTENT_IMAGE_SETS = {
+  tarot: { title: 'Карты Таро', file: 'карты-таро.txt', items: () => [...C.ARCANA].map((c) => ({ key: c.slug, name: c.name, image: c.image })) },
+  runes: { title: 'Руны', file: 'руны.txt', items: () => [...C.RUNES].map((r) => ({ key: r.slug, name: r.name, image: r.image })) },
+  lunar: { title: 'Лунные дни', file: 'лунные-дни.txt', items: () => [...C.LUNAR_INFO].map((d) => ({ key: String(d.n), name: `${d.n} · ${d.theme || d.symbol || ''}`, image: d.image })) },
+  year: { title: 'Личный год', file: 'личный-год.txt', items: () => [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22, 33].map((n) => C.YEARS[n]).filter(Boolean).map((y) => ({ key: String(y.n), name: `${y.n} · ${y.title || y.energy || ''}`, image: y.image })) },   /* YEARS — прокси без списка ключей */
+};
+const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+export function contentImageList() { return Object.entries(CONTENT_IMAGE_SETS).map(([kind, s]) => ({ kind, title: s.title, items: s.items() })); }
+export function contentImagePut({ kind, key, type, data, by }) {
+  const set = CONTENT_IMAGE_SETS[kind]; if (!set) return { ok: false, error: 'bad_kind' };
+  const item = set.items().find((i) => i.key === String(key)); if (!item) return { ok: false, error: 'not_found' };
+  /* имя текущего файла — из текстового файла на диске, а не из памяти: тексты перечитываются с задержкой, и две замены подряд иначе расходятся */
+  try { const fresh = bookRecords(set.file).find((r) => r.key === String(key)); if (fresh) item.image = fresh.image ? `/app/content/${kind}/${fresh.image}` : ''; } catch { /* оставим как в памяти */ }
+  const ext = IMAGE_EXT[type]; if (!ext) return { ok: false, error: 'bad_type' };
+  const buf = Buffer.from(String(data || '').replace(/^data:[^,]*,/, ''), 'base64');
+  if (!buf.length || buf.length > 6 * 1024 * 1024) return { ok: false, error: 'too_big' };
+  const dir = join(CONTENT_DIR, 'картинки', IMAGE_DIRS[kind]); if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const oldName = item.image ? decodeURIComponent(item.image.split('/').pop().split('?')[0]) : '';
+  const base = oldName ? oldName.replace(/\.[^.]+$/, '') : String(key).replace(/[^\w.-]/g, '') || 'img';
+  const name = `${base}.${ext}`;
+  if (oldName) archiveImage(IMAGE_DIRS[kind], oldName, by);   /* прежняя картинка — в архив, вернуть можно из записи */
+  writeFileSync(join(dir, name), buf);
+  if (oldName && oldName !== name) {   /* новое расширение — переписываем имя в текстовом файле, старый файл убираем */
+    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name), by); } catch { /* текст не тронули — картинка все равно на месте */ }
+    try { unlinkSync(join(dir, oldName)); } catch {}
+  } else if (!oldName) {
+    return { ok: true, name, note: 'В текстовом файле у записи нет поля «картинка» — впишите имя файла: ' + name };
+  }
+  return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
 }

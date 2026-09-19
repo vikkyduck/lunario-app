@@ -14,7 +14,7 @@ import { basename, extname } from 'node:path';
 
 export function createCabinetRoutes(deps) {
   const { json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, REPORT_META, OVERVIEW_BLOCKS,
-    Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, IMAGE_DIRS, Backup, W,
+    Reports, userCard, CE, IMAGE_DIRS, Backup, W,
     staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive, memoryPreview } = deps;
 
   return async function cabinetRoutes({ p, req, res, url, u, d }) {
@@ -42,7 +42,7 @@ export function createCabinetRoutes(deps) {
       if (!allowed(kind)) return json(res, 403, { ok: false, error: 'no_access' });
       const r = await Reports.report(kind, Object.fromEntries(url.searchParams));
       if (!r) return json(res, 404, { ok: false, error: 'not_found' });
-      if (kind === 'content') r.files = contentFiles();
+      if (kind === 'content') r.files = CE.contentFiles();
       return json(res, 200, r);
     }
     /* ── резервные копии: список — всем, у кого есть «Здоровье системы»; снять и скачать — только админам ── */
@@ -70,13 +70,13 @@ export function createCabinetRoutes(deps) {
     if (p === '/api/cabinet/content') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const name = String(url.searchParams.get('file') || '');
-      if (!contentFiles().some((f) => f.name === name)) return json(res, 404, { ok: false, error: 'not_found' });
-      if (req.method === 'GET') return json(res, 200, { name, text: readContent(name) });
+      if (!CE.contentFiles().some((f) => f.name === name)) return json(res, 404, { ok: false, error: 'not_found' });
+      if (req.method === 'GET') return json(res, 200, { name, text: CE.readContent(name) });
       if (req.method === 'POST') {
         const b = await readBody(req);
         const text = String(b.text || '');
         if (text.length > 200000) return json(res, 400, { ok: false, error: 'too_long' });
-        writeContent(name, text, u.email);   // папка под наблюдением — тексты перечитаются сами; прежняя версия — в архив
+        CE.writeContent(name, text, u.email);   // папка под наблюдением — тексты перечитаются сами; прежняя версия — в архив
         console.log(`[контент] ${u.email} сохранил ${name} (${text.length} симв.)`);
         return json(res, 200, { ok: true });
       }
@@ -84,7 +84,7 @@ export function createCabinetRoutes(deps) {
     /* тексты записями и строками (content-edit.mjs): книги — карты, руны, лунные дни, личный год; таблицы — настрой, пуши, темы… */
     if (p === '/api/cabinet/content-map') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
-      const files = contentFiles();
+      const files = CE.contentFiles();
       return json(res, 200, { books: Object.entries(CE.BOOKS).map(([file, b]) => ({ file, ...b, lines: (files.find((f) => f.name === file) || {}).lines || 0 })),
         tables: Object.entries(CE.TABLES).map(([file, t]) => ({ file, title: t.title, cols: t.cols, lines: (files.find((f) => f.name === file) || {}).lines || 0 })),
         other: files.filter((f) => !CE.BOOKS[f.name] && !CE.TABLES[f.name]).map((f) => f.name), features: W.FEATURE_GROUPS });
@@ -129,16 +129,16 @@ export function createCabinetRoutes(deps) {
       const kind = String(url.searchParams.get('kind') || ''), dir = IMAGE_DIRS[kind]; if (!dir) return json(res, 404, { ok: false });
       if (req.method === 'GET') return json(res, 200, { items: CE.imageVersions(dir, String(url.searchParams.get('base') || '')) });
       if (req.method === 'POST') { const b = await readBody(req); const f = CE.imageArchivePath(dir, String(b.id || '')); if (!f) return json(res, 404, { ok: false, error: 'not_found' });
-        const ext = extname(f).slice(1); const type = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext]; const r = contentImagePut({ kind, key: b.key, type, data: readFileSync(f).toString('base64'), by: u.email }); return json(res, r.ok ? 200 : 400, r); }
+        const ext = extname(f).slice(1); const type = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext]; const r = CE.contentImagePut({ kind, key: b.key, type, data: readFileSync(f).toString('base64'), by: u.email }); return json(res, r.ok ? 200 : 400, r); }
     }
     /* картинки функций: список по наборам и замена файла */
     if (p === '/api/cabinet/content-images') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
-      if (req.method === 'GET') return json(res, 200, { sets: contentImageList() });
+      if (req.method === 'GET') return json(res, 200, { sets: CE.contentImageList() });
       if (req.method === 'POST') {
         const b = await readBody(req, 8 * 1024 * 1024);
         if (b.mediaId) { const f = W.mediaFile(b.mediaId); if (!f) return json(res, 404, { ok: false, error: 'not_found' }); b.type = f.type; b.data = readFileSync(f.path).toString('base64'); }   /* картинка из библиотеки — на карту, руну, день */
-        b.by = u.email; const r = contentImagePut(b);
+        b.by = u.email; const r = CE.contentImagePut(b);
         if (r.ok) console.log(`[контент] ${u.email} заменил картинку ${b.kind}/${b.key} → ${r.name}`);
         return json(res, r.ok ? 200 : 400, r);
       }

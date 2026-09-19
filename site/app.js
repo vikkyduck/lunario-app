@@ -432,8 +432,10 @@ function paintHero(d){
   const nxEl=$('hero-next'); nxEl.textContent=parts.map(([k,day])=>`${k==='full'?'Полнолуние':'Новолуние'} ${fmtDayMonth(day)}`).join(' · '); nxEl.hidden=!parts.length;
   const strip=$('week-strip'); if(!strip)return;
   const today=new Date(d.date+'T12:00:00Z'), dow=(today.getUTCDay()+6)%7;
-  strip.innerHTML=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((n,i)=>{ const off=i-dow, dt=new Date(today.getTime()+off*864e5), phase=((((d.moonPhase||0)+off/SYNODIC)%1)+1)%1;
-    return `<span class="ws-day${off===0?' on':''}"><canvas width="26" height="26" data-phase="${phase.toFixed(3)}"></canvas><i>${n}</i><small>${dt.getUTCDate()}</small></span>`; }).join('');
+  /* день недели — кнопка: прошлые и сегодня открывают этот день в Дневнике, будущие — нет (по обзору экспертов 19.09: полоска выглядела нажимаемой) */
+  strip.innerHTML=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((n,i)=>{ const off=i-dow, dt=new Date(today.getTime()+off*864e5), phase=((((d.moonPhase||0)+off/SYNODIC)%1)+1)%1, day=dt.toISOString().slice(0,10);
+    const inner=`<canvas width="26" height="26" data-phase="${phase.toFixed(3)}"></canvas><i>${n}</i><small>${dt.getUTCDate()}</small>`;
+    return off>0?`<span class="ws-day future">${inner}</span>`:`<button data-on="click:openDay-a0" data-a0="${day}" class="ws-day${off===0?' on':''}" type="button" aria-label="${off===0?'Сегодня в Дневнике':fmtDayWords(day)}">${inner}</button>`; }).join('');
   strip.querySelectorAll('canvas').forEach(cv=>window.moonPaint?.(cv,+cv.dataset.phase));
 }
 function paintHome(){
@@ -865,7 +867,7 @@ function obStep(n){
   document.querySelectorAll('#o-form .ob-step').forEach((el,i)=>{ el.hidden=i!==obIdx; });
   $('ob-dots').innerHTML=OB_STEPS.map((_,i)=>`<i class="${i<obIdx?'done':i===obIdx?'on':''}"></i>`).join('');
   $('ob-names').innerHTML=OB_STEPS.map(([,t],i)=>`<span class="${i<obIdx?'done':i===obIdx?'on':''}">${t}</span>`).join('<i>·</i>');
-  if(obIdx===OB_STEPS.length-1){ const askMail=S.mailReady&&!S.user?.email; $('ob-done-q').textContent=askMail?'Куда прислать код?':'Почти готово'; }
+  if(obIdx===OB_STEPS.length-1){ const askMail=S.mailReady&&!S.user?.email; $('ob-done-q').textContent=askMail?'Куда прислать код?':ui('onb.done','Почти готово'); }
   const inp=document.querySelector('#o-form .ob-step:not([hidden]) input:not([type=checkbox])');
   if(inp&&obIdx>0&&inp.type!=='date'&&inp.type!=='time') setTimeout(()=>inp.focus({preventScroll:true}),60);
   scrollToTop(0);
@@ -2338,7 +2340,7 @@ function paintSky(){
   const s = S.sky, box = $('sky-box');
   const id = regRes({ type: 'sky', sky: s, day: s.date });
   const ev = (e, cls) => `<div class="item skyev${cls ? ' ' + cls : ''}"><b>${esc(e.title)}</b><small>${fmtWhen(e.at)}</small>${e.note ? `<p class="mt-2">${esc(e.note)}</p>` : ''}</div>`;
-  box.innerHTML = `<div class="card center"><span class="eyebrow">Сегодня</span>
+  box.innerHTML = `<div class="card center"><span class="eyebrow">${ui('card.today','Сегодня')}</span>
       <div class="title-gold mt-2">${esc(s.moon.phase)} ${esc(s.moon.signIn)}</div>
       <p class="mt-1">Луна освещена на ${s.moon.illumination}% · ${s.moon.waxing ? 'растет' : 'убывает'} · Солнце ${esc(s.sun.signIn)}</p>
       <p class="t2">${s.retro.length ? s.retro.map(r => `${r.symbol} ${esc(r.name)} — ${r.adj}`).join(' · ') : 'Ретроградных планет сейчас нет'}</p>

@@ -253,7 +253,7 @@ const LUNAR_DAYS_FALLBACK = [
 /* Темы чтения: ключ | заголовок раздела в статье | по умолчанию. Заголовки разделов лунных дней — служебные:
    по ним код узнает тему; сравнение после нормализации (регистр, е/е, пробелы). symbol и advice — не разделы,
    а вступление статьи и поле «рекомендация». */
-const normTitle = (s) => String(s || '').toLowerCase().replace(/е/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();
+const normTitle = (s) => String(s || '').toLowerCase().replace(/[^a-zа-я0-9]+/g, ' ').trim();
 const readingTopicsFrom = (rowsIn) => {
   const src = rowsIn.map((c) => [c[0], /^\(/.test(c[1]) ? '' : c[1], c[2] || '', /^(да|yes|1)$/i.test(c[3] || '')]);
   return src.filter((t) => /^[a-z][a-z0-9-]{1,19}$/.test(t[0])).map(([key, title, label, def]) => ({ key, title, label: label || title, def: !!def, norm: normTitle(title) }));

@@ -2,7 +2,7 @@
    Слушает 127.0.0.1, за nginx. Своя папка и свой порт — не пересекается с лендингом.
    Аккаунт анонимный: httpOnly-cookie с токеном, e-mail можно привязать позже. */
 import { createServer } from 'node:http';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, normalize, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt, createHash } from 'node:crypto';
@@ -22,14 +22,6 @@ import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
 import { MSK, MOSCOW, ISO_DAY, dayIn, addDays, clean, cleanText } from './util.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
-/* Тексты приложения читает и правит кабинет контента; папка под наблюдением — правки перечитываются сами */
-const readContent = (name) => readFileSync(join(CONTENT_DIR, name), 'utf8');
-const writeContent = (name, text, by) => CE.writeFile(name, text, by);   /* прежняя версия — в архив, без «е с точками» */
-const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
-  const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
-  const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;
-  return { name, lines, size: text.length, mtime: statSync(join(CONTENT_DIR, name)).mtime.toISOString().slice(0, 16).replace('T', ' ') };
-});
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
 import { sendMail, mailReady, loginMail, staffMail, deleteMail, verifySmtp } from './mailer.mjs';
 import { lunarDay, lunarPeriodText, moonState, moonPhasesBetween } from './lunar.mjs';
@@ -543,38 +535,8 @@ setTimeout(() => {
 /* Картинки функций для кабинета «Контент»: что нарисовано у карт, рун, лунных дней и личного года, и замена файла на месте.
    Файл пишется в папку контента (картинки/<папка>/<имя>); если расширение новое — имя в текстовом файле переписывается,
    а адреса у людей обновляются сами: версия в адресе — время файла. */
-const CONTENT_IMAGE_SETS = {
-  tarot: { title: 'Карты Таро', file: 'карты-таро.txt', items: () => [...C.ARCANA].map((c) => ({ key: c.slug, name: c.name, image: c.image })) },
-  runes: { title: 'Руны', file: 'руны.txt', items: () => [...C.RUNES].map((r) => ({ key: r.slug, name: r.name, image: r.image })) },
-  lunar: { title: 'Лунные дни', file: 'лунные-дни.txt', items: () => [...C.LUNAR_INFO].map((d) => ({ key: String(d.n), name: `${d.n} · ${d.theme || d.symbol || ''}`, image: d.image })) },
-  year: { title: 'Личный год', file: 'личный-год.txt', items: () => [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22, 33].map((n) => C.YEARS[n]).filter(Boolean).map((y) => ({ key: String(y.n), name: `${y.n} · ${y.title || y.energy || ''}`, image: y.image })) },   /* YEARS — прокси без списка ключей */
-};
-const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-function contentImageList() { return Object.entries(CONTENT_IMAGE_SETS).map(([kind, s]) => ({ kind, title: s.title, items: s.items() })); }
-function contentImagePut({ kind, key, type, data, by }) {
-  const set = CONTENT_IMAGE_SETS[kind]; if (!set) return { ok: false, error: 'bad_kind' };
-  const item = set.items().find((i) => i.key === String(key)); if (!item) return { ok: false, error: 'not_found' };
-  /* имя текущего файла — из текстового файла на диске, а не из памяти: тексты перечитываются с задержкой, и две замены подряд иначе расходятся */
-  try { const fresh = CE.bookRecords(set.file).find((r) => r.key === String(key)); if (fresh) item.image = fresh.image ? `/app/content/${kind}/${fresh.image}` : ''; } catch { /* оставим как в памяти */ }
-  const ext = IMAGE_EXT[type]; if (!ext) return { ok: false, error: 'bad_type' };
-  const buf = Buffer.from(String(data || '').replace(/^data:[^,]*,/, ''), 'base64');
-  if (!buf.length || buf.length > 6 * 1024 * 1024) return { ok: false, error: 'too_big' };
-  const dir = join(CONTENT_DIR, 'картинки', IMAGE_DIRS[kind]); if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const oldName = item.image ? decodeURIComponent(item.image.split('/').pop().split('?')[0]) : '';
-  const base = oldName ? oldName.replace(/\.[^.]+$/, '') : String(key).replace(/[^\w.-]/g, '') || 'img';
-  const name = `${base}.${ext}`;
-  if (oldName) CE.archiveImage(IMAGE_DIRS[kind], oldName, by);   /* прежняя картинка — в архив, вернуть можно из записи */
-  writeFileSync(join(dir, name), buf);
-  if (oldName && oldName !== name) {   /* новое расширение — переписываем имя в текстовом файле, старый файл убираем */
-    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name), by); } catch { /* текст не тронули — картинка все равно на месте */ }
-    try { unlinkSync(join(dir, oldName)); } catch {}
-  } else if (!oldName) {
-    return { ok: true, name, note: 'В текстовом файле у записи нет поля «картинка» — впишите имя файла: ' + name };
-  }
-  return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
-}
 const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, memoryPreview: (u, d) => Memory.preview(u, d),
-  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, IMAGE_DIRS, Backup, W,
+  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, CE, IMAGE_DIRS, Backup, W,
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
