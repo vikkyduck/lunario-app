@@ -18,13 +18,13 @@ import { entryPage } from './entries.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak } from './practices.mjs';
-import { CONTENT_DIR, IMAGE_DIRS } from './content.mjs';
+import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
 import { MSK, MOSCOW, ISO_DAY, dayIn, addDays } from './util.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 /* Тексты приложения читает и правит кабинет контента; папка под наблюдением — правки перечитываются сами */
 const readContent = (name) => readFileSync(join(CONTENT_DIR, name), 'utf8');
-const writeContent = (name, text) => writeFileSync(join(CONTENT_DIR, name), text, 'utf8');
+const writeContent = (name, text) => writeFileSync(join(CONTENT_DIR, name), noYo(text), 'utf8');   /* из кабинета — тоже без «е с точками» */
 const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
   const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
   const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;

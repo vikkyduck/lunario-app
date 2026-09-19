@@ -117,7 +117,7 @@ export const MATERIAL_STATUS = { draft: 'Черновик', review: 'На про
 export function materialList() { return all(`SELECT * FROM materials ORDER BY CASE status WHEN 'published' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'review' THEN 2 ELSE 3 END, show_day DESC, updated_at DESC`); }
 export function materialSave(b, by) {
   const kind = b.kind in MATERIAL_KINDS ? b.kind : 'note', status = b.status in MATERIAL_STATUS ? b.status : 'draft';
-  const text = clean(b.text, 4000), title = clean(b.title, 120);
+  const text = noYo(clean(b.text, 4000)), title = noYo(clean(b.title, 120));   /* правило: без «е с точками» — и в хранимом тексте */
   if (!text && !title && kind !== 'image') return { ok: false, error: 'empty' };
   if (kind === 'image' && !FEATURE_ART.some(([k]) => k === b.section)) return { ok: false, error: 'no_feature' };
   if (kind === 'image' && !clean(b.image, 300)) return { ok: false, error: 'no_image' };

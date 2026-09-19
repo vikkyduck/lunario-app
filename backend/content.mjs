@@ -6,7 +6,7 @@
    владелец продукта без программиста. Здесь остаются запасные значения:
    если файла нет или строка испорчена, приложение возьмет их и продолжит
    работать, а в журнал напишет, что именно не прочиталось. */
-import { readFileSync, existsSync, statSync, watch } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, watch } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,10 +22,17 @@ const img = (kind, file) => {
   return `/app/content/${kind}/${file}?v=${v}`;
 };
 
-/* Правило владелицы: в приложении нет буквы «е». Файлы контента могут приходить с «е» — сами файлы не трогаем,
-   а на чтении заменяем: тексты у людей всегда через «е». То же делает кабинет для материалов (workspace.mjs). */
-export const noYo = (s) => String(s).replace(/\u0451/g, '\u0435').replace(/\u0401/g, '\u0415');   /* е с точками → е; сама буква в коде не пишется — проверка check-yo */
-const readText = (path) => noYo(readFileSync(path, 'utf8'));
+/* Правило владелицы: в приложении нет буквы «е с точками» — и в файлах контента тоже. Файл пришел с ней (кабинет, rsync,
+   правка на сервере) — при чтении переписывается без нее, и у людей тексты всегда через «е». Кабинет делает то же с материалами. */
+export const noYo = (s) => String(s).replace(/\u0451/g, '\u0435').replace(/\u0401/g, '\u0415');   /* сама буква в коде не пишется — проверка check-yo */
+const hasYo = (s) => /[\u0451\u0401]/.test(s);
+function readText(path) {
+  const raw = readFileSync(path, 'utf8');
+  if (!hasYo(raw)) return raw;
+  const fixed = noYo(raw);
+  try { writeFileSync(path, fixed, 'utf8'); } catch { /* нет прав на запись — покажем исправленный текст, файл останется как есть */ }
+  return fixed;
+}
 
 /* Читает файл как таблицу: строка = запись, поля разделены «|».
    Пустые строки и строки с # пропускаются — там заметки для человека. */
