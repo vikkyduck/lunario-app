@@ -226,7 +226,7 @@ async function loadDayRune(){
   box.innerHTML='<p class="hint">Тянем руну…</p>';
   try{
     const [r]=await Promise.all([api('/dayrune',{method:'POST'}),loadCatalog()]);
-    box.innerHTML=runesHtml({layout:'one',runes:[r.rune.slug],live:[r.rune],q:'',day:r.day});preparePending();
+    box.innerHTML=runesHtml({layout:'one',runes:[r.rune.slug],live:[r.rune],q:'',day:r.day});preparePending();paintThoughts();
     if(S.day){ S.day.rune=r.rune; S.day.runeOpened=true; } paintRuneTile();
   }catch(e){box.innerHTML='<p class="msg err">Не получилось вытянуть руну. Попробуйте еще раз.</p>';}
 }
@@ -346,10 +346,8 @@ function paintHomeTheme(d){
 function paintHomeLater(d){
   const box = $('home-later'); if (!box || !d?.date) return;
   const rows = [];
-  const dow = new Date(d.date + 'T12:00:00Z').getUTCDay(), evening = new Date().getHours() >= 18;
-  if (evening) rows.push(d.remembered
-    ? `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>День записан ✓</b><span class="later-go">Дополнить →</span></button>`
-    : `<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>Запомнить этот день</b><span class="later-go">В дневник →</span></button>`);
+  const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
+  /* вечерний шаг — в карточке действия под Луной (paintHomeAction), здесь не повторяется */
   if (dow === 0 || dow === 1) rows.push(`<button data-on="click:goWeek" class="later-row" type="button"><span class="eyebrow">${dow === 0 ? 'Воскресенье' : 'Понедельник'}</span><b>Неделя собралась</b><span class="later-go">Моя неделя →</span></button>`);
   box.hidden = !rows.length; box.innerHTML = rows.join('');
   paintPushNudge();
@@ -364,8 +362,9 @@ async function loadPushNote(force=false){
   if (force || S.pushLast === undefined) { try { S.pushLast = (await api('/push/last')).item || false; } catch(e) { S.pushLast = S.pushLast ?? false; } }   /* один запрос на сессию; из уведомления — заново */
   const it = S.pushLast;
   if (!it || String(it.id) === pushHidden()) { box.hidden = true; box.replaceChildren(); return null; }
+  if (it.feature === 'morning' && S.day?.set?.text && it.title === S.day.set.text) { box.hidden = true; box.replaceChildren(); return null; }   /* утреннее — тот же настрой, что уже на экране */
   const when = new Date(it.ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  box.innerHTML = `<span class="eyebrow">${PUSH_KIND[it.feature] || 'Уведомление'} · ${when}</span><b>${esc(it.title)}</b>${it.body ? `<p>${esc(it.body)}</p>` : ''}<button data-on="click:hidePushNote" class="text-action secondary" type="button">Скрыть</button>`;
+  box.innerHTML = `<button data-on="click:hidePushNote" class="later-row push-row" type="button"><span class="eyebrow">${PUSH_KIND[it.feature] || 'Уведомление'} · ${when}</span><b>${esc(it.title)}</b>${it.body ? `<small>${esc(it.body)}</small>` : ''}<span class="later-go" aria-label="Скрыть">×</span></button>`;
   box.hidden = false; return box;
 }
 function hidePushNote(){ if (S.pushLast) { try { localStorage.setItem('lun_push_hidden', String(S.pushLast.id)); } catch(e) {} } const box = $('push-note'); if (box) { box.hidden = true; box.replaceChildren(); } hap(); }
@@ -389,6 +388,37 @@ function paintNatalRow(){
   box.hidden=!due; box.innerHTML=due?`<button data-on="click:openNatalFromHome" class="later-row" type="button"><span class="eyebrow">Обо мне</span><b>Натальная карта готова</b><span class="later-go">Открыть →</span></button>`:'';
 }
 function openNatalFromHome(){ try{ localStorage.setItem(natalRowKey(),'1'); }catch(e){} go('about'); openWidget('natal'); }
+/* ══════════ Карточка действия на «Сегодня» (по обзору 19.09): один шаг сразу под Луной. Днем — вопрос дня с полем и «Ответить себе»
+   (ответ есть — виден, «Продолжить»); вечером — «Запомнить этот день» или «День записан ✓ · Дополнить». Ответ — тот же, что в
+   панели «Вопрос дня» и в карточке дня (kind='answer', один на день) ══════════ */
+const HA={open:false};
+async function paintHomeAction(){
+  const box=$('home-action'), d=S.day; if(!box||!d)return;
+  if(new Date().getHours()>=17){
+    box.innerHTML=d.remembered
+      ?`<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>День записан ✓</b><span class="later-go">Дополнить →</span></button>`
+      :`<div class="card ha"><span class="eyebrow">Вечер</span><p class="ha-q">Что хочется сохранить из сегодняшнего дня?</p><button data-on="click:goDayCard" class="btn" type="button">Запомнить этот день</button></div>`;
+    box.hidden=false; return;
+  }
+  if(!d.question){ box.hidden=true; box.innerHTML=''; return; }
+  if(toneLoadedFor!==d.date){ try{ const st=await api('/day'); toneLoadedFor=d.date; if(st.answer&&!toneDraft)toneSaved={id:st.answer.id,day:st.day,text:st.answer.text}; }catch(e){} }
+  if(toneSaved&&toneSaved.day!==d.date)toneSaved=null;
+  const saved=toneSaved, editing=!saved||HA.open;
+  box.innerHTML=`<div class="card ha"><span class="eyebrow">Вопрос дня</span><p class="ha-q">${esc(d.question)}</p>${editing
+    ?`<div class="field"><textarea data-on="input:haInput-this" id="ha-a" maxlength="2000" rows="2" placeholder="Пара строк — как есть…">${esc(toneDraft||(saved?saved.text:''))}</textarea></div><div class="answer-actions"><button data-on="click:haSave" id="ha-save" class="btn" type="button" ${toneSaving?'disabled':''}>${toneSaving?'Сохраняем…':saved?'Обновить':'Ответить себе'}</button>${saved?`<button data-on="click:haCancel" class="text-action secondary" type="button">Отмена</button>`:''}</div>`
+    :`<p class="entry-text">${esc(saved.text)}</p><div class="answer-actions"><button data-on="click:haEdit" class="text-action" type="button">Продолжить</button><span class="saved-state">В дневнике</span></div>`}</div>`;
+  box.hidden=false; requestAnimationFrame(()=>{ const t=$('ha-a'); if(t)growTextarea(t); });
+}
+function haInput(el){ toneDraft=el.value; growTextarea(el); }
+function haEdit(){ HA.open=true; paintHomeAction().then(()=>$('ha-a')?.focus({preventScroll:true})); }
+function haCancel(){ HA.open=false; toneDraft=''; paintHomeAction(); }
+async function haSave(){
+  if(toneSaving)return; const t=($('ha-a')?.value||'').trim(); if(t.length<3){ toast('Напишите хотя бы пару слов'); return; }
+  toneSaving=true; await paintHomeAction();
+  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); toneDraft=''; toneSaved={id:r.item.id,day:r.item.day,text:r.item.text}; HA.open=false; toast(r.updated?'Ответ обновлен':'Записано в дневник'); hap('ok'); }
+  catch(e){ toast('Не получилось сохранить. Текст остался в поле'); toneDraft=t; HA.open=true; }
+  finally{ toneSaving=false; paintHomeAction(); if(wgOpen==='tone')paintTone(); }
+}
 /* Под настроем дня: расписание включено, а сюда уведомления не приходят — одна строка и одно нажатие */
 function paintPushNudge(){
   const box = $('home-push'); if (!box) return;
@@ -435,7 +465,7 @@ function paintHero(d){
   ph.innerHTML=[esc(d.moon||''),d.lunar?`<span class="nowrap">${ordinal(d.lunar.n)} лунный</span> день`:''].filter(Boolean).join('\u00a0· ');   /* «8-й» не рвется по дефису, точка держится за фазой */
   if(typeof d.moonPhase==='number') window.moonPaint?.($('moonHero'),d.moonPhase);   /* своя фаза у холста — герой не зависит от общего рисования */
   const name=String(S.user?.name||'').trim().split(/\s+/)[0];
-  const me=[name,d.moonSign?`Луна ${d.moonSign}`:''].filter(Boolean).join(' · ');
+  const me=[name,d.moonSign?`Луна сейчас ${d.moonSign}`:''].filter(Boolean).join(' · ');   /* транзитная, не натальная — та в «Обо мне» */
   const meEl=$('hero-me'); meEl.textContent=me; meEl.hidden=!me;
   const nx=d.moonNext||{}, parts=[['full',nx.full],['new',nx.new]].filter(x=>x[1]).sort((a,b)=>a[1].localeCompare(b[1]));
   const nxEl=$('hero-next'); nxEl.textContent=parts.map(([k,day])=>`${k==='full'?'Полнолуние':'Новолуние'} ${fmtDayMonth(day)}`).join(' · '); nxEl.hidden=!parts.length;
@@ -450,7 +480,7 @@ function paintHome(){
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('h-wish').textContent = d.set?.text || '';
-  paintHero(d); paintHomeArt(); paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d); paintNatalRow();
+  paintHero(d); paintHomeAction(); paintHomeArt(); paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d); paintNatalRow();
   if (!S.rem) loadReminders().then(paintPushNudge).catch(() => {});   /* строка «не подключены» — когда расписание известно */
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
@@ -709,16 +739,17 @@ function paintWeek(){
   const nav=`<div class="week-nav"><button data-on="click:weekShift-a0" data-a0="-1" type="button" class="text-action">← прошлая</button><span class="eyebrow">${wkRange(w.week.start,w.week.end)}</span>${w.week.current?'<span></span>':'<button data-on="click:weekShift-a0" data-a0="1" type="button" class="text-action">следующая →</button>'}</div>`;
   const quote=(f)=>`<blockquote class="week-quote"><small>${wkDate(f.day)} · ${WK_KIND[f.kind]||''}</small><p>${esc(f.text)}</p></blockquote>`;
   const saved=w.saved.length?`<section class="card week-part"><h3>Что вы сохранили</h3>${w.saved.map(quote).join('')}</section>`:'';
+  const carried=w.reflection.previous?`<section class="card week-part week-carried"><span class="eyebrow">С прошлой недели</span><p class="t2">«${esc(w.reflection.previous)}»</p></section>`:'';
   const reflect=`<section class="card week-part"><h3>${esc(w.reflection.question)}</h3><div class="field"><textarea data-on="input:growTextarea-this" id="wk-reflect" maxlength="2000" rows="2">${esc(w.reflection.text)}</textarea></div><div class="answer-actions"><button data-on="click:saveWeekReflection" class="btn sm" id="wk-reflect-save" type="button">Сохранить</button></div><p class="hint" id="wk-reflect-state" role="status"></p></section>`;
-  if(w.mode!=='full'){box.innerHTML=nav+`<section class="card week-part"><p class="t2">${esc(w.text)}</p></section>`+saved+reflect;growTextarea($('wk-reflect'));return;}
+  if(w.mode!=='full'){box.innerHTML=nav+carried+`<section class="card week-part"><p class="t2">${esc(w.text)}</p></section>`+saved+reflect;growTextarea($('wk-reflect'));return;}
   const days=w.moods.days;
-  const moods=`<section class="card week-part"><h3>Настроение недели</h3>${w.moods.count?`<div class="week-strip" aria-hidden="true">${days.map((d,i)=>`<div class="week-col${d.day>w.week.today?' future':''}"><span class="week-dow">${WK_DOW[i]}</span><span class="week-dot ${d.moods.length?'done':'none'}"></span></div>`).join('')}</div><div class="week-mood-list">${days.map((d,i)=>d.moods.length?`<p><b>${WK_DOW[i]}</b>${d.moods.map(esc).join(' · ')}</p>`:'').join('')}</div>${w.moods.top[0]?.count>1?`<p class="hint">Чаще всего — ${w.moods.top.filter(t=>t.count===w.moods.top[0].count).map(t=>esc(t.mood)).join(', ')}: ${w.moods.top[0].count} ${plural(w.moods.top[0].count,'день','дня','дней')} из ${w.moods.count}</p>`:`<p class="hint">${w.moods.count===1?'Один день с отметкой — картина сложится к концу недели':'Ничего не повторялось — каждый день был своим'}</p>`}`:'<p class="hint">Настроение на этой неделе не отмечали</p>'}</section>`;
-  const echoes=`<section class="card week-part"><h3>Что отозвалось</h3>${w.echoes.length?w.echoes.map(e=>`<div class="week-echo" data-day="${e.day}"><small>${wkDate(e.day)}${e.source?' · '+esc(e.source):''}</small><p><span class="week-when">Утром</span> ${esc(e.morning)}</p><p><span class="week-when">Вечером</span> ${esc(e.evening)}</p><div class="chips flow">${WK_VERDICT.map(([k,l])=>`<button data-on="click:weekEcho-a0-a1" data-a0="${e.day}" data-a1="${k}" type="button" class="chip${e.verdict===k?' on':''}" aria-pressed="${e.verdict===k}">${l}</button>`).join('')}</div></div>`).join(''):'<p class="hint">Пар «утро ↔ вечер» пока не набралось: для них нужны настрой утром и запись вечером</p>'}</section>`;
+  const moods=`<section class="card week-part"><h3>Настроение недели</h3>${w.moods.count?`<div class="week-strip" aria-hidden="true">${days.map((d,i)=>`<div class="week-col${d.day>w.week.today?' future':''}"><span class="week-dow">${WK_DOW[i]}</span><span class="week-dot ${d.moods.length?'done':'none'}"></span></div>`).join('')}</div><div class="week-mood-list">${days.map((d,i)=>d.moods.length?`<p><b>${WK_DOW[i]}</b>${d.moods.map(esc).join(' · ')}</p>`:'').join('')}</div>${w.moods.top[0]?.count>1?`<p class="hint">Чаще всего — ${w.moods.top.filter(t=>t.count===w.moods.top[0].count).map(t=>esc(t.mood)).join(', ')}: ${w.moods.top[0].count} ${plural(w.moods.top[0].count,'день','дня','дней')} из ${w.moods.count}</p>`:`<p class="hint">${w.moods.count===1?'Отметка за один день':`Отметки за ${w.moods.count} ${plural(w.moods.count,'день','дня','дней')} — настроения не повторялись`}</p>`}`:'<p class="hint">Настроение на этой неделе не отмечали</p>'}</section>`;
+  const echoes=`<section class="card week-part"><h3>Что отозвалось</h3>${w.echoes.length?w.echoes.map(e=>`<div class="week-echo" data-day="${e.day}"><small><button data-on="click:openDay-a0" data-a0="${e.day}" class="week-daylink" type="button">${wkDate(e.day)} →</button>${e.source?' · '+esc(e.source):''}</small><p><span class="week-when">Утром</span> ${esc(e.morning)}</p><p><span class="week-when">Вечером</span> ${esc(e.evening)}</p><div class="chips flow">${WK_VERDICT.map(([k,l])=>`<button data-on="click:weekEcho-a0-a1" data-a0="${e.day}" data-a1="${k}" type="button" class="chip${e.verdict===k?' on':''}" aria-pressed="${e.verdict===k}">${l}</button>`).join('')}</div></div>`).join(''):'<p class="hint">Пар «утро ↔ вечер» пока не набралось: для них нужны настрой утром и запись вечером</p>'}</section>`;
   const dots=(list,cls)=>`<div class="week-dots" aria-hidden="true">${days.map(d=>`<span class="week-dot ${cls(list.find(x=>x.day===d.day))}"></span>`).join('')}</div>`;
   const habits=w.rhythm.habits.map(h=>`<div class="week-row"><div class="grow"><b>${esc(h.title)}</b><small>${h.due?`${h.done} из ${h.due} ${plural(h.due,'дня','дней','дней')}`:`${h.done} ${plural(h.done,'день','дня','дней')}`}</small></div>${dots(h.days,x=>!x?'none':x.done?'done':'due')}</div>`).join('');
   const askesis=w.rhythm.askesis.map(a=>`<div class="week-row"><div class="grow"><b>${esc(a.title)}</b><small>${a.days.length?`держусь — ${a.kept}${a.missed?` · сорвалась — ${a.missed}`:''}`:'отметок на этой неделе нет'}</small></div>${dots(a.days,x=>!x?'none':x.kept?'done':'missed')}</div>`).join('');
   const rhythm=habits||askesis?`<section class="card week-part"><h3>Ваш ритм</h3>${habits}${askesis}${w.rhythm.phrase?`<p class="hint week-phrase">${esc(w.rhythm.phrase)}</p>`:''}</section>`:'';
-  box.innerHTML=nav+moods+saved+echoes+rhythm+reflect;growTextarea($('wk-reflect'));
+  box.innerHTML=nav+carried+moods+saved+echoes+rhythm+reflect;growTextarea($('wk-reflect'));
 }
 /* отметка «отозвалось»: повторное нажатие снимает */
 async function weekEcho(day,verdict){
@@ -1229,7 +1260,8 @@ function eveningStepToggle(key){ toggleEveningStep(key); }
 const lunarLine=(s)=>s.lunar&&s.lunar.n?`${s.lunar.n}-й лунный день${s.lunar.title?` · ${esc(s.lunar.title)}`:''}`:'';
 const morningHtml=(s)=>s.set||s.lunar?`<div class="dc-morning">${s.set?`Утром${s.theme?` · ${esc(s.theme)}`:''}<b>«${esc(s.set)}»</b>${s.question&&!s.answer?esc(s.question):''}`:''}${lunarLine(s)?`<span class="dc-lunar">☾ ${lunarLine(s)}</span>`:''}</div>`:'';
 /* записи прозой; editDay — в открытом дне у каждой есть «×» (удалить именно эту) */
-const dayProseHtml=(s,editDay='')=>[s.text?['Вечером',s.text.text,'','text']:null,s.gratitude?['Благодарность',s.gratitude.text,'','gratitude']:null,s.answer?['Ответ на вопрос дня',s.answer.text,s.answer.title||s.question||'','answer']:null]
+const dayProseHtml=(s,editDay='')=>[s.text?['Вечером',s.text.text,'','text']:null,s.gratitude?['Благодарность',s.gratitude.text,'','gratitude']:null,s.answer?['Ответ на вопрос дня',s.answer.text,s.answer.title||s.question||'','answer']:null,
+  ...((s.thoughts||[]).map(t=>[t.name||'Мысль',t.text,t.question||'','thought:'+t.id]))]   /* мысли к карте, руне, раскладу — с именем материала и его вопросом */
   .filter(Boolean).map(([label,text,q,what])=>`<p class="dc-read"><small>${label}${editDay?`<button data-on="click:dayRemove-a0-a1" data-a0="${editDay}" data-a1="${what}" class="dc-x" type="button" aria-label="Удалить">×</button>`:''}</small>${q?`<span class="q">${esc(q)}</span>`:''}${esc(text)}</p>`).join('');
 async function dayRemove(day,what){
   const names={text:'запись',gratitude:'благодарность',answer:'ответ на вопрос дня',moods:'настроение'};
@@ -1259,7 +1291,7 @@ const moodTone=(m)=>{ if(!m)return ''; if(m.startsWith('own:'))return 'own'; con
 const dayRowHtml=(x)=>{
   const dt=new Date(x.day+'T12:00:00'), wd=dt.toLocaleDateString('ru-RU',{weekday:'short'}).replace('.','');
   const moods=x.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,'')).map(m=>m.toLowerCase());
-  const kinds=x.kinds.map(k=>({gratitude:'благодарность',answer:'вопрос дня',habits:'привычки',askesis:'аскеза'})[k]).filter(Boolean);
+  const kinds=x.kinds.map(k=>({gratitude:'благодарность',answer:'вопрос дня',thought:'мысль к карте',habits:'привычки',askesis:'аскеза'})[k]).filter(Boolean);
   const meta=[moods.length?`<em>${esc(moods.join(' · '))}</em>`:'',...kinds.map(esc),x.lunar?`☾ ${x.lunar}`:''].filter(Boolean).join(' · ');
   const tail=x.photo?`<img class="ph" src="${API}/day/photo?day=${x.day}&size=thumb&t=${encodeURIComponent(x.photo)}" alt="" loading="lazy" decoding="async">`:`<span class="a" aria-hidden="true">›</span>`;
   return `<button data-on="click:openDay-a0" data-a0="${x.day}" class="day-row${x.empty?' empty':''}${x.photo?' has-photo':''}" type="button" aria-label="${fmtDayWords(x.day,true)}"><span class="n"><b>${dt.getDate()}</b><small>${wd}</small></span><span class="t"><p class="${x.text?'':'quiet'}">${x.text?esc(x.text):x.empty?'Без записей':x.photo?'Фото дня':'Без слов'}</p><small>${x.empty?[esc(x.theme||''),x.lunar?`☾ ${x.lunar}`:''].filter(Boolean).join(' · '):meta}</small></span>${tail}</button>`;
@@ -1463,12 +1495,57 @@ function actionsHtml(id, withShare){
 const qLine = (q) => q ? `<p class="italic center mb-3">«${esc(q)}»</p>` : '';
 
 /* ── карта дня: иллюстрация, ключи, образ, совет, вопрос себе; остальное — под «Читать полностью» ── */
+/* ══════════ Мысль к материалу (по обзору 19.09): карта, руна или расклад задают вопрос — и принимают ответ. Поле под «Вопросом себе»,
+   «Сохранить мысль»; хранится отдельно от ответа на вопрос дня, с источником, вопросом и датой; повторное открытие — та же мысль
+   и «Дополнить». Мысли за сегодня грузятся один раз (S.thoughts) ══════════ */
+const thoughtKey=(source,slug)=>`${source}:${slug}`;
+const TH={draft:{},edit:{},saving:{}};
+async function ensureThoughts(){
+  if(!S.day)return [];
+  if(S.thoughts&&S.thoughts.day===S.day.date)return S.thoughts.items;
+  try{ const r=await api('/thoughts'); S.thoughts={day:S.day.date,items:r.items||[]}; }catch(e){ S.thoughts={day:S.day.date,items:[]}; }
+  return S.thoughts.items;
+}
+const thoughtOf=(source,slug)=>((S.thoughts&&S.thoughts.day===S.day?.date?S.thoughts.items:[])).find(t=>t.source===source&&t.slug===slug)||null;
+function thoughtHtml(source,slug,name,question){
+  const key=thoughtKey(source,slug), saved=thoughtOf(source,slug), editing=!saved||TH.edit[key];
+  const text=TH.draft[key]!==undefined?TH.draft[key]:(saved?saved.text:'');
+  return `<section class="thought" id="th-${esc(key)}" data-key="${esc(key)}">${editing
+    ?`<p class="thought-q">Что в этом относится к моей ситуации?</p>
+       <div class="field"><textarea data-on="input:thoughtInput-a0-this" data-a0="${esc(key)}" maxlength="2000" rows="2" placeholder="Своими словами…">${esc(text)}</textarea></div>
+       <div class="answer-actions"><button data-on="click:thoughtSave-a0-a1-a2-a3" data-a0="${esc(source)}" data-a1="${esc(slug)}" data-a2="${esc(name)}" data-a3="${esc(question||'')}" class="btn sm" type="button" ${TH.saving[key]?'disabled':''}>${TH.saving[key]?'Сохраняем…':saved?'Обновить':'Сохранить мысль'}</button>${saved?`<button data-on="click:thoughtCancel-a0" data-a0="${esc(key)}" class="text-action secondary" type="button">Отмена</button>`:''}</div>`
+    :`<p class="thought-q">Моя мысль</p><p class="entry-text">${esc(saved.text)}</p>
+       <div class="answer-actions"><span class="saved-state">В дневнике · ${fmtDay(saved.day)}</span><button data-on="click:thoughtEdit-a0" data-a0="${esc(key)}" class="text-action" type="button">Дополнить</button><button data-on="click:openDay-a0" data-a0="${esc(saved.day)}" class="text-action secondary" type="button">Открыть запись →</button></div>`}
+  </section>`;
+}
+/* после отрисовки панели — подтянуть сохраненные мысли и перерисовать блоки на месте */
+async function paintThoughts(){
+  await ensureThoughts();
+  document.querySelectorAll('.thought[data-key]').forEach(el=>{ const [source,slug]=el.dataset.key.split(':'); const saved=thoughtOf(source,slug); if(!saved)return;
+    const name=el.querySelector('[data-a2]')?.dataset.a2||saved.name, q=el.querySelector('[data-a3]')?.dataset.a3||saved.question; el.outerHTML=thoughtHtml(source,slug,name,q); });
+}
+function thoughtInput(key,el){ TH.draft[key]=el.value; growTextarea(el); }
+function thoughtEdit(key){ TH.edit[key]=true; const el=$('th-'+key); const [source,slug]=key.split(':'); const saved=thoughtOf(source,slug); if(el&&saved){ el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question); $('th-'+key)?.querySelector('textarea')?.focus(); } }
+function thoughtCancel(key){ TH.edit[key]=false; delete TH.draft[key]; const el=$('th-'+key); const [source,slug]=key.split(':'); const saved=thoughtOf(source,slug); if(el&&saved)el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question); }
+async function thoughtSave(source,slug,name,question){
+  const key=thoughtKey(source,slug); if(TH.saving[key])return;
+  const el=$('th-'+key), text=(el?.querySelector('textarea')?.value||'').trim();
+  if(text.length<2){ toast('Напишите хотя бы пару слов'); return; }
+  TH.saving[key]=true; if(el)el.outerHTML=thoughtHtml(source,slug,name,question);
+  try{
+    const r=await api('/thought',{method:'POST',body:JSON.stringify({source,slug,name,question,text})});
+    await ensureThoughts(); const items=S.thoughts.items.filter(t=>!(t.source===source&&t.slug===slug)); items.push(r.item); S.thoughts.items=items;
+    delete TH.draft[key]; TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
+  }catch(e){ toast('Не получилось сохранить. Текст остался в поле'); TH.draft[key]=text; }
+  finally{ TH.saving[key]=false; const el2=$('th-'+key); if(el2)el2.outerHTML=thoughtHtml(source,slug,name,question); }
+}
 function cardDayHtml(c, day, compact){
   const id = regRes({ type: 'card', card: c, day });
   const s = c.sections || {};
   return `<div class="center"><div class="title-gold">${esc(c.name)}</div>${c.keys ? `<div class="kw">${esc(keysLine(c.keys))}</div>` : ''}</div>
     ${(c.today || (s.advice && s.advice.length)) ? `<div class="card mt-3"><h3>Сегодня</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : paras((s.advice||[]).slice(0,1))}</div>` : ''}
     ${c.question ? `<section class="card-question"><h3>Вопрос себе</h3><p>${esc(c.question)}</p></section>` : ''}
+    ${!compact && day === S.day?.date ? thoughtHtml('card', c.slug, c.name, c.question || '') : ''}
     ${moreBlock((s.image && s.image.length ? `<h3>Образ карты</h3>${paras(s.image)}` : '') + sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC) + ((c.today || (s.advice||[]).length>1)?'<h3>Совет карты</h3>'+paras(c.today?s.advice:(s.advice||[]).slice(1)):'') , 'Прочитать подробнее')}
     ${actionsHtml(id, !compact)}`;
 }
@@ -1510,7 +1587,7 @@ function paintCard(){
   const c = pub ? (cardBy(pub.slug) || pub) : null;
   $('c-face').innerHTML = c ? `<img src="${esc(c.image)}" alt="${esc(c.name)}">` : '';
   $('t-after').innerHTML = c ? cardDayHtml(c, S.day.date, false) : '';
-  paintCardTile();
+  paintCardTile(); if (c) paintThoughts();
 }
 function paintCardTile(){
   const opened = !!(S.day && S.day.card && (S.flipped || S.day.cardOpened));
@@ -1538,7 +1615,7 @@ async function openCard(){
     S.day.card = r.card;
     if (r.card && r.card.image) await preload(r.card.image);
     paintCard(); hap('ok');
-    showFlipped();
+    showFlipped(); paintThoughts();
     setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
   }catch(e){ toast('Не получилось открыть карту — попробуйте еще раз'); $('t-open').disabled = false; }
   S.opening = false;
@@ -1576,6 +1653,7 @@ function runesHtml(p){
         ${r.keyword ? `<div class="kw">${esc(r.keyword)}</div>` : ''}
         ${r.motto ? `<p class="mt-2 italic">${esc(r.motto)}</p>` : ''}
         <p class="mt-3 strong">${esc(r.answer || '')}</p>
+        ${p.day === S.day?.date ? thoughtHtml(p.q ? 'rune' : 'dayrune', r.slug, r.name, p.q || '') : ''}
         <div class="left">${moreBlock(sectionsHtml(r, ['meaning', 'advice', 'state', 'interact'], RUNE_SEC))}</div>
         ${actionsHtml(id)}</div>`;
   }
@@ -1657,6 +1735,7 @@ async function runAsk(mode, q, out, hint, layout){
     const r = await api('/ask', { method: 'POST', body: JSON.stringify({ question: q, kind: mode, layout: L }) });
     out.innerHTML = r.kind === 'rune' ? runesHtml({ q, layout: r.layout, runes: r.runes.map(x => x.slug), live: r.runes, day: S.day.date })
       : yesnoHtml({ q, title: r.title, body: r.body, day: S.day.date, memory: r.memory });
+    if (r.kind === 'rune') paintThoughts();
   }
   out.style.display = 'block'; hap('done'); preparePending();
 }

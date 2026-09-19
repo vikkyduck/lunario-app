@@ -24,6 +24,7 @@ export const EVENTS = [
   E('mood_set', 'Отметил настроение', 'server', { core: true, section: 'Сегодня', title: 'Настроение дня' }),
   E('forecast_view', 'Открыл прогноз дня', 'client', { core: true, section: 'Сегодня', title: 'Прогноз дня' }),
   E('answer_add', 'Ответил на вопрос дня', 'server', { core: true, section: 'Сегодня', title: 'Вопрос дня' }),
+  E('thought_save', 'Записал мысль к карте, руне или раскладу', 'server', { core: true, section: 'Сегодня', title: 'Мысль к материалу' }),
   E('habit_add', 'Добавил привычку', 'server', { core: true, section: 'Сегодня', title: 'Дневник привычек' }),
   E('habit_mark', 'Отметил привычку', 'server', { core: true }),
   E('askesis_start', 'Взял аскезу', 'server', { core: true, section: 'Сегодня', title: 'Взять аскезу' }),

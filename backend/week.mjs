@@ -20,7 +20,7 @@ export function weekOf(d, pick) {
   return { start, end, days: [...Array(7)].map((_, i) => addDays(start, i)) };
 }
 
-export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText }) {
+export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource = () => '' }) {
   const trim = (t) => t.length > FRAGMENT ? t.slice(0, FRAGMENT - 1).trimEnd() + '…' : t;
   const texts = (key) => [...(C.WEEK_TEXTS[key] || [])];
 
@@ -51,8 +51,9 @@ export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList,
       const set = db.prepare("SELECT text FROM daily_sets WHERE user_id = ? AND day = ? AND text <> ''").get(uid, day);
       const evening = rows.filter((r) => r.day === day).sort((a, b) => b.text.length - a.text.length)[0];
       if (!set || !evening) continue;
-      const card = db.prepare("SELECT title FROM entries WHERE user_id = ? AND day = ? AND kind IN ('card','dayrune') ORDER BY id LIMIT 1").get(uid, day);
-      out.push({ day, morning: set.text.replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim(), source: card ? card.title : '', evening: trim(evening.text), kind: evening.kind, verdict: verdicts.get(day) || '' });
+      /* источник настроя — настоящий: по карте дня, руне, планетам или прогнозу дня (по обзору 19.09: раньше подписывалась карта,
+         даже если настрой был по прогнозу) */
+      out.push({ day, morning: set.text.replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim(), source: setSource(uid, day), evening: trim(evening.text), kind: evening.kind, verdict: verdicts.get(day) || '' });
     }
     return out;
   }
@@ -79,7 +80,9 @@ export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList,
   }
   function reflectionOf(uid, w) {
     const row = db.prepare("SELECT id, text FROM journal WHERE user_id = ? AND day = ? AND kind = 'weekly' ORDER BY id DESC LIMIT 1").get(uid, w.end);
-    return { question: texts('рефлексия')[0] || '', day: w.end, text: row ? open(row.text) : '' };
+    /* строка прошлой недели — тема этой: то, что человек решил взять с собой, встречает его в следующем итоге */
+    const prev = db.prepare("SELECT text FROM journal WHERE user_id = ? AND day = ? AND kind = 'weekly' ORDER BY id DESC LIMIT 1").get(uid, addDays(w.end, -7));
+    return { question: texts('рефлексия')[0] || '', day: w.end, text: row ? open(row.text) : '', previous: prev ? open(prev.text) : '' };
   }
 
   function state(u, d, pick) {

@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=91"></script>
+<script src="/app/boot.js?v=92"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -173,6 +173,19 @@ body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:
 .dc-secondary{display:flex;justify-content:center;gap:22px;margin-top:2px}.dc-secondary .text-action{min-height:36px}
 .wg-art{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:var(--r-l);margin:0 0 16px;box-shadow:0 14px 34px -18px rgba(0,0,0,.8)}
 .home-art{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:14px;margin:0 0 10px}.home-art[hidden]{display:none}
+.push-row small{display:block;grid-column:1/span 2;font-size:13px;color:var(--muted);line-height:1.4}
+.home-action{margin:14px 0 0}.home-action[hidden]{display:none}
+.ha{padding:16px 18px}.ha .eyebrow{display:block}.ha-q{margin:6px 0 10px;font-size:18px;font-weight:600;line-height:1.35;color:var(--text)}
+.ha .field{margin:0 0 10px}.ha textarea{min-height:48px}.ha .btn{width:100%}.ha .answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0}
+.ha .entry-text{margin:0 0 8px;font-size:15px;line-height:1.5}.ha .saved-state{font-size:13px;color:var(--muted)}
+.week-daylink{background:none;border:0;padding:0;color:var(--gold-2);font:inherit;cursor:pointer}
+.week-carried .t2{margin:6px 0 0}
+.thought{margin:14px 0 4px;padding:14px;border-radius:14px;background:var(--selected);border:1px solid rgba(217,184,104,.3);text-align:left}
+.thought-q{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--text)}
+.thought .field{margin:0 0 8px}.thought textarea{min-height:48px}
+.thought .entry-text{margin:0 0 8px;font-size:15px;line-height:1.5;color:var(--text)}
+.thought .answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0}
+.thought .saved-state,.ha .saved-state{font-size:13px;color:var(--muted);background:none;border:0;padding:0;margin:0}
 .wg-foot{padding:18px 0 8px;display:flex;justify-content:center}.wg-return{min-height:48px;padding:0 26px;border-radius:999px;color:var(--text);font-weight:600}
 .wg-return:active{transform:scale(.98)}
 .dc-echo-q{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line)}
@@ -698,14 +711,14 @@ body.inner :is(.orb,.cloud){animation:none;opacity:.13}
    ближайшие фазы; полоска недели — семь маленьких лун. Все — одна кнопка, ведет в лунный день ── */
 .home-hero{position:relative;display:grid;justify-items:center;width:100%;margin:0;padding:6px 0 2px;background:none;border:0;color:var(--text);text-align:center;cursor:pointer;font:inherit;-webkit-appearance:none;appearance:none}
 .home-hero .hero-glow{position:absolute;left:50%;top:150px;width:min(460px,120vw);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(240,215,154,.20),rgba(240,215,154,.07) 40%,transparent 68%);pointer-events:none;z-index:0}
-.moon-hero-cv{position:relative;z-index:1;display:block;width:min(320px,86vw);height:auto;aspect-ratio:1;margin:-10px 0 -18px}   /* диск ≈ 68 % стороны холста — 218 px; остальное — нимб */
+.moon-hero-cv{position:relative;z-index:1;display:block;width:min(300px,80vw);height:auto;aspect-ratio:1;margin:-14px 0 -20px}   /* диск ≈ 204 px — шаг под Луной виден без прокрутки на 390×844 */   /* диск ≈ 68 % стороны холста — 218 px; остальное — нимб */
 .hero-phase{position:relative;z-index:1;display:block;font-size:22px;line-height:1.25;font-weight:600;letter-spacing:-.01em;color:var(--text);text-wrap:balance;padding:0 8px}
 @media(max-width:400px){.hero-phase{font-size:20px}}
 .hero-me{position:relative;z-index:1;display:block;margin-top:6px;font-size:14px;line-height:1.4;font-weight:500;color:var(--text-2)}
 .hero-next{position:relative;z-index:1;display:block;margin-top:6px;font-size:11px;line-height:1.4;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .hero-me[hidden],.hero-next[hidden]{display:none}
 .home-hero:active .moon-hero-cv{transform:scale(.985)}
-.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:10px 0 0;padding:0 2px}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:6px 0 0;padding:0 2px}
 .ws-day{display:grid;justify-items:center;gap:1px;padding:5px 0 4px;border-radius:12px}
 .ws-day.on{background:var(--selected)}
 .ws-day canvas{width:26px;height:26px;display:block}
@@ -815,11 +828,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=91">
-<link rel="stylesheet" href="/app/experience.css?v=91">
-<link rel="stylesheet" href="/app/moon-glass.css?v=91">
-<link rel="stylesheet" href="/app/compact.css?v=91">
-<link rel="stylesheet" href="/app/frame.css?v=91">
+<link rel="stylesheet" href="/app/theme.css?v=92">
+<link rel="stylesheet" href="/app/experience.css?v=92">
+<link rel="stylesheet" href="/app/moon-glass.css?v=92">
+<link rel="stylesheet" href="/app/compact.css?v=92">
+<link rel="stylesheet" href="/app/frame.css?v=92">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -983,6 +996,8 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <span class="hero-next" id="hero-next"></span>
     </button>
     <div class="week-strip" id="week-strip" aria-hidden="true"></div>
+    <!-- один шаг сразу под Луной (по обзору 19.09): днем — вопрос дня с полем, вечером — «Запомнить этот день» (paintHomeAction) -->
+    <div class="home-action" id="home-action" hidden></div>
     <div class="home-intro">
       <img class="home-art" id="h-art" src="" alt="" hidden decoding="async">   <!-- картинка к настрою дня из кабинета «Контент» -->
       <div class="daily-statement"><span class="eyebrow" id="h-theme" hidden></span><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
@@ -1178,14 +1193,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=91"></script>
+<script src="/app/moon-logo.js?v=92"></script>
 
-<script type="module" src="/app/sky.js?v=91"></script>
+<script type="module" src="/app/sky.js?v=92"></script>
 
-<script src="/app/experience.js?v=91"></script>
-<script src="/app/app.js?v=91"></script>
-<script src="/app/tour.js?v=91"></script>
-<script src="/app/handlers.js?v=91"></script>
-<script src="/app/on.js?v=91"></script>
+<script src="/app/experience.js?v=92"></script>
+<script src="/app/app.js?v=92"></script>
+<script src="/app/tour.js?v=92"></script>
+<script src="/app/handlers.js?v=92"></script>
+<script src="/app/on.js?v=92"></script>
 </body>
 </html>

@@ -35,8 +35,11 @@ export function createDayRoutes({ json, readBody, day }) {
       /* прошлые дни: список одной строкой (calendar — последние n дней, иначе страницей по дням с записями), открытый день, «мост» из прошлого */
       if (p === '/api/days') { const q = url.searchParams; return json(res, 200, day.days(u, d, { calendar: Math.min(31, Number(q.get('calendar')) || 0), before: q.get('before') || '', limit: Math.min(60, Number(q.get('limit')) || 30) })); }
       if (p === '/api/day/view') { const x = url.searchParams.get('day') || ''; if (!ISO.test(x) || x > d) return json(res, 400, { ok: false, error: 'bad_day' }); return json(res, 200, day.view(u, x)); }
+      if (p === '/api/thoughts') { const x = url.searchParams.get('day') || d; return json(res, 200, { items: day.thoughtsOf(u.id, ISO.test(x) && x <= d ? x : d) }); }   /* мысли к материалам за день */
       if (p === '/api/day/bridge') { const x = url.searchParams.get('day') || ''; return json(res, 200, { item: day.bridge(u, ISO.test(x) && x <= d ? x : d) }); }   /* «мост» и для открытого прошлого дня */
     }
+    /* мысль к карте, руне или раскладу — одна на материал в день, повтор обновляет */
+    if (p === '/api/thought' && req.method === 'POST') { const b = await readBody(req); const r = day.thoughtSave(u, d, b); return json(res, r.ok ? 200 : 400, r); }
     if (p !== '/api/day') return false;
     /* день можно дописать и поправить задним числом — до года назад; сегодняшний — как прежде */
     const past = (x) => ISO.test(x || '') && x < d && x >= new Date(Date.parse(d + 'T12:00:00Z') - 366 * 864e5).toISOString().slice(0, 10);

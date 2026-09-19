@@ -106,10 +106,10 @@ function paintMorning(){
   more.dataset.count=String(more.children.length);   /* сколько квадратов осталось — для ровных рядов на телефоне */
   feed.closest('.feature-group').hidden=!chosen.length;more.closest('.feature-group').hidden=chosen.length===MORNING.length;
   /* вопрос задан, пока на него не ответили; после выбора — одна строка «Утром показываем…», развернуть можно всегда */
-  const answered=Array.isArray(XP.prefs.morning),collapsed=answered&&!XP.morningOpen;
+  const answered=Array.isArray(XP.prefs.morning),collapsed=!XP.morningOpen;   /* свернуто по умолчанию (по обзору 19.09): экран — для чтения, не для настроек */
   const picker=$('morning-picker'),summary=$('morning-summary');
   if(picker)picker.hidden=collapsed;if(summary){summary.hidden=!collapsed;$('morning-summary-list').textContent=chosen.length?chosen.map(k=>MORNING.find(m=>m[0]===k)[1]).join(' · '):'только настрой дня';}
-  if($('morning-empty'))$('morning-empty').hidden=chosen.length>0;if($('morning-done'))$('morning-done').hidden=!answered;
+  if($('morning-empty'))$('morning-empty').hidden=chosen.length>0;if($('morning-done'))$('morning-done').hidden=false;
   if(!before)return;
   const dur=320,easing='cubic-bezier(.2,.7,.2,1)';
   for(const t of tiles){const a=before.get(t),b=t.getBoundingClientRect();if(!a.width||!b.width)continue;const dx=a.left-b.left,dy=a.top-b.top,sx=a.width/b.width,sy=a.height/b.height;

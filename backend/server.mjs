@@ -499,7 +499,7 @@ const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, pe
 const SHELF_TOUCH = {
   '/api/profile': ['about', 'day'], '/api/preferences': ['about'], '/api/data': ['about', 'day', 'history'],
   '/api/card': ['day', 'history'], '/api/ask': ['day', 'history'], '/api/spread': ['day', 'history'],
-  '/api/mood': ['day'], '/api/journal': ['day'], '/api/wishes': ['day'], '/api/habits': ['day'], '/api/askesis': ['day'],
+  '/api/mood': ['day'], '/api/journal': ['day'], '/api/thought': ['day'], '/api/wishes': ['day'], '/api/habits': ['day'], '/api/askesis': ['day'],
 };
 /* Серия действий подряд (отметки привычек) пересобирает полки один раз, а не на каждое, полки копятся;
    «Мои данные» дожидаются отложенной сборки */
@@ -570,7 +570,19 @@ const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitLis
   lunarOf: (u, d) => { try { const ld = lunarDay(Date.parse(d + 'T18:00:00Z'), u?.lat ?? MOSCOW.lat, u?.lon ?? MOSCOW.lon); return ld ? { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] } : null; } catch { return null; } },
   dailyWrites: DAILY_WRITES });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day });
-const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText });
+/* откуда настрой того дня — подпись для «Что отозвалось» в неделе: карта дня и ее имя, руна, планеты или прогноз дня */
+function setSourceLabel(uid, day) {
+  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(uid); if (!u) return '';
+  try {
+    const set = Morning.setOfDay(u, day); if (!set) return '';
+    const theme = Morning.themeFor(u, day, set), src = Morning.themeSource(u, day, theme);
+    if (src === 'card') { const c = Morning.cardFor(u, day); return 'по карте дня' + (c ? ' · ' + c.name : ''); }
+    if (src === 'dayrune') { const r = Morning.runeFor(u, day); return 'по руне дня' + (r ? ' · ' + r.name : ''); }
+    if (src === 'sky') { const e = skyEventOf(day); return 'по планетам' + (e ? ' · ' + e.title : ''); }
+    return 'по прогнозу дня';
+  } catch { return ''; }
+}
+const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource: setSourceLabel });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
 const server = createServer(async (req, res) => {
