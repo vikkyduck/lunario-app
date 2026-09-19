@@ -116,7 +116,7 @@ async function toggleMorning(key){
   if(set.has(key)&&THEME_SOURCE[key]){
     const src=MORNING.map(m=>m[0]).find(k=>THEME_SOURCE[k]&&set.has(k));   /* первый выбранный источник по порядку карта → руна → планеты */
     if(src===key)toast(`Настрой ${THEME_SOURCE[key]} — с завтрашнего утра`);
-    if(key==='card'||key==='dayrune'){try{const r=await api('/me');if(seq!==toggleMorning.seq)return;S.day=r.day;paintToday();paintMorningPostcard(S.day);paintHomeTheme(S.day);}catch{}}
+    if(key==='card'||key==='dayrune'){try{const r=await api('/me');if(seq!==toggleMorning.seq)return;S.day=r.day;paintToday();paintMorningPostcard(S.day);}catch{}}
   }
 }
 
@@ -124,7 +124,7 @@ async function toggleMorning(key){
 function diaryDay(day){openDay(day);}
 
 async function chooseWishPhoto(){const photo=await pickImage(1200,.82);if(!photo)return;XP.wishPhoto=photo;paintWishDraft();}
-function paintWishDraft(){const box=$('wish-preview');box.innerHTML=XP.wishPhoto?`<img src="${XP.wishPhoto}" alt="Фото нового желания"><button data-on="click:XP-wishPhoto-paintWishDraft" type="button" class="text-action">Убрать фото</button>`:'';$('wish-photo-pick').textContent=XP.wishPhoto?'Заменить фото':'Добавить фото';}
+function paintWishDraft(){const box=$('wish-preview');box.innerHTML=XP.wishPhoto?`<img src="${XP.wishPhoto}" alt="Фото нового желания"><button data-on="click:XP-wishPhoto-paintWishDraft" type="button" class="btn ghost sm">Убрать фото</button>`:'';$('wish-photo-pick').textContent=XP.wishPhoto?'Заменить фото':'Добавить фото';}
 function growTextarea(el){if(!el||el.tagName!=='TEXTAREA'||!el.getClientRects().length)return;const min=el.closest('.day-card')?56:160;   /* ячейки карточки дня — компактные */
   el.style.height='auto';el.style.height=Math.max(min,el.scrollHeight+2)+'px';}
 function enhanceInterface(root){

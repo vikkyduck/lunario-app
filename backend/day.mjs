@@ -61,12 +61,12 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
       day: d, set: m ? m.set : '', question: m ? m.question : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d), lunar: lunarOf(u, d),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')), thoughts: thoughtsOf(u.id, d),
       moods: moodsOf(u.id, d),
-      habits: db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(u.id, d).map((r) => r.title),
-      askesis: db.prepare('SELECT a.title, n.kept, n.note FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ? ORDER BY a.id').all(u.id, d).map((r) => ({ title: r.title, kept: !!r.kept, note: open(r.note || '') })),
+      habits: db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(u.id, d).map((r) => open(r.title)),   /* названия хранятся зашифрованными — как в habitList */
+      askesis: db.prepare('SELECT a.title, n.kept, n.note FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ? ORDER BY a.id').all(u.id, d).map((r) => ({ title: open(r.title), kept: !!r.kept, note: open(r.note || '') })),
     };
   }
 
-  /* Сводка дня одной строкой — для списка «Прошлые дни»: первая запись, настроение, что еще записано, тема утра */
+  /* Сводка дня одной строкой — для списка «Прошлые дни»: первая запись, настроение, что еще записано, лунный день с названием (строка показывает только его — решение владелицы 20.09) */
   function summary(u, d) {
     const uid = u.id;
     const rows = db.prepare("SELECT kind, text FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' ORDER BY id DESC").all(uid, d);
@@ -80,7 +80,7 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     const moods = moodsOf(uid, d), m = morningStored(uid, d), ph = photoMeta(uid, d);
     const text = first ? open(first.text).replace(/\s+/g, ' ').trim().slice(0, 140) : '';
     const ld = lunarOf(u, d);
-    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, empty: dayWritten ? !dayWritten(uid, d) : !text && !moods.length && !ph };   /* пусто — по тому же правилу, что пуш и «Сегодня» */
+    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, lunarTitle: ld ? ld.title || '' : '', empty: dayWritten ? !dayWritten(uid, d) : !text && !moods.length && !ph };   /* пусто — по тому же правилу, что пуш и «Сегодня» */
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
   function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {

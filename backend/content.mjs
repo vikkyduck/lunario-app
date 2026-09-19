@@ -25,7 +25,7 @@ export const UI_DEFAULT = {
   'home.evening_q': 'Что хочется сохранить из сегодняшнего дня?', 'home.evening_btn': 'Запомнить этот день', 'home.answer_btn': 'Ответить себе', 'home.answer_more': 'Продолжить',
   'home.natal_row': 'Натальная карта готова', 'home.tips_row': 'Как устроено приложение', 'home.morning_group': 'Мое утро', 'home.more_group': 'Еще про этот день',
   'diary.mood': 'Как вы сегодня?', 'diary.text': 'Что хочется оставить от этого дня?', 'diary.gratitude': 'Кому и за что вы сегодня благодарны?', 'diary.habits': 'Привычки сегодня', 'diary.askesis': 'Аскеза',
-  'diary.save': 'Запомнить этот день', 'diary.done': 'День записан ✦', 'diary.night': 'Спокойной ночи ✦', 'diary.day': 'Хорошего дня ✦', 'diary.practices': 'Практики', 'diary.past': 'Прошлые дни', 'diary.archive': 'Архив →',
+  'diary.save': 'Запомнить этот день', 'diary.done': 'День записан ✦', 'diary.night': 'Спокойной ночи ✦', 'diary.day': 'Хорошего дня ✦', 'diary.practices': 'Практики', 'diary.past': 'Прошлые дни', 'diary.archive': 'Архив',
   'thought.q': 'Что в этом относится к моей ситуации?', 'thought.save': 'Сохранить мысль', 'thought.mine': 'Моя мысль',
   'nav.today': 'Сегодня', 'nav.diary': 'Дневник', 'nav.ask': 'Свериться с собой', 'nav.about': 'Обо мне',
   'ask.title': 'Свериться с собой', 'ask.caption': 'Карты, руны, вопросы', 'about.title': 'Обо мне',

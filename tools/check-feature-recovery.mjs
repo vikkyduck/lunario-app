@@ -35,7 +35,7 @@ export async function checkFeatureRecovery({browser,base,owner}){
     const weekdays=page.locator('.hb').filter({hasText:'Рабочие дни'});
     assert.equal(await weekdays.locator('.hd.rest').count(),2);assert.equal(await weekdays.locator('.hd.planned').count(),5);
     assert.equal(await weekdays.locator('.hd.rest:not(.on)').first().evaluate(e=>getComputedStyle(e,'::before').borderStyle),'dashed');
-    await page.getByRole('button',{name:'+ Добавить привычку',exact:true}).click();
+    await page.getByRole('button',{name:'Добавить привычку',exact:true}).click();
     assert.equal(await page.locator('#hb-new').getAttribute('list'),'hb-ideas');
     assert.deepEqual(await page.locator('#hb-ideas option').evaluateAll(items=>items.map(e=>e.value)),catalog.habitIdeas);
     await page.locator('#hb-new').fill(catalog.habitIdeas[0]);await page.locator('#hb-rule').fill('каждые 17 дней');

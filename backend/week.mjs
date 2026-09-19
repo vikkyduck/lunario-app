@@ -71,7 +71,7 @@ export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList,
     const askesis = new Map();
     for (const a of askesisList(uid, d).active) askesis.set(a.id, { id: a.id, title: a.title, days: [] });
     for (const n of db.prepare('SELECT a.id, a.title, n.day, n.kept FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day BETWEEN ? AND ? ORDER BY n.day').all(uid, w.start, w.end)) {
-      const cur = askesis.get(n.id) || { id: n.id, title: n.title, days: [] }; cur.days.push({ day: n.day, kept: !!n.kept }); askesis.set(n.id, cur);
+      const cur = askesis.get(n.id) || { id: n.id, title: open(n.title), days: [] };   /* завершенная аскеза — название из базы, зашифрованное */ cur.days.push({ day: n.day, kept: !!n.kept }); askesis.set(n.id, cur);
     }
     const list = [...habits.values()].map((h) => ({ ...h, done: h.days.filter((x) => x.done).length, due: h.days.filter((x) => x.due).length }));
     const ask = [...askesis.values()].map((a) => ({ ...a, kept: a.days.filter((x) => x.kept).length, missed: a.days.filter((x) => !x.kept).length }));

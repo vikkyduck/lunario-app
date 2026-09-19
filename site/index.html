@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=102"></script>
+<script src="/app/boot.js?v=103"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=102">
-<link rel="stylesheet" href="/app/app.css?v=102">
-<link rel="stylesheet" href="/app/frame.css?v=102">
+<link rel="stylesheet" href="/app/theme.css?v=103">
+<link rel="stylesheet" href="/app/app.css?v=103">
+<link rel="stylesheet" href="/app/frame.css?v=103">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -118,7 +118,7 @@
         <label class="rhythm-row"><input type="checkbox" id="rh-week" checked><span class="grow"><b>Воскресенье</b><small>история вашей недели</small></span><input type="time" id="rh-time-week" value="13:00" aria-label="Время воскресного напоминания"></label>
       </div>
       <button data-on="click:rhythmEnable" class="btn" id="rh-go" type="button">Включить напоминания</button>
-      <div class="utility-actions"><button data-on="click:rhythmSkip" class="text-action secondary" type="button">Позже</button></div>
+      <div class="utility-actions"><button data-on="click:rhythmSkip" class="btn ghost sm" type="button">Позже</button></div>
     </div>
   </section>
   <section class="view" id="v-onb">
@@ -141,14 +141,14 @@
         <p class="dc-q" data-ui="onb.birth">Когда вы родились?</p>
         <div class="field"><input id="o-birth" type="date" required aria-label="Дата рождения"></div>
         <button data-on="click:obNext" class="btn" type="button" data-ui="onb.next">Дальше</button>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
+        <button data-on="click:obBack" class="btn ghost dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
       <div class="ob-step" data-step="time" hidden>
         <p class="dc-q" data-ui="onb.time">Во сколько?</p>
         <div class="field"><input id="o-time" type="time" aria-label="Время рождения"></div>
         <button data-on="click:obNext" class="btn" type="button" data-ui="onb.next">Дальше</button>
-        <button data-on="click:obSkipTime" class="text-action secondary dc-skip" type="button" data-ui="onb.skip_time">Не знаю</button>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
+        <button data-on="click:obSkipTime" class="btn ghost dc-skip" type="button" data-ui="onb.skip_time">Не знаю</button>
+        <button data-on="click:obBack" class="btn ghost dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
       <div class="ob-step" data-step="city" hidden>
         <p class="dc-q" data-ui="onb.city">Где вы родились?</p>
@@ -160,7 +160,7 @@
           <p class="geo" id="o-geo"></p>
         </div>
         <button data-on="click:obNext" class="btn" type="button" data-ui="onb.next">Дальше</button>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
+        <button data-on="click:obBack" class="btn ghost dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
       <div class="ob-step" data-step="done" hidden>
         <p class="dc-q" id="ob-done-q" data-ui="onb.done">Почти готово</p>
@@ -171,7 +171,7 @@
         </label>
         <button class="btn" id="o-go" data-ui="onb.go">Открыть мой день</button>
         <p class="msg" id="o-msg"></p>
-        <button data-on="click:obBack" class="text-action secondary dc-skip" type="button" data-ui="back">← Назад</button>
+        <button data-on="click:obBack" class="btn ghost dc-skip" type="button" data-ui="back">← Назад</button>
       </div>
     </div>
     <div class="card sec" id="o-codebox" style="display:none"></div>
@@ -186,21 +186,19 @@
   <section class="view" id="v-home">
     <div class="row hdr"><div class="grow"><div class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div><span class="eyebrow" id="h-date"></span><h1 class="sr-only">Сегодня</h1></div>
       <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
-    <!-- Герой дня (по разбору референсов 19.09): большая Луна с настоящей фазой, под ней фаза и лунный день, имя и транзитная Луна,
-         ближайшие новолуние и полнолуние, полоска недели. Тап — лунный день. Настрой дня — карточкой ниже, строки — потом -->
+    <!-- Герой дня (по разбору референсов 19.09): большая Луна с настоящей фазой, под ней фаза и лунный день, полоска недели.
+         Строки «имя · Луна сейчас» и даты полнолуния/новолуния сняты (решение владелицы 20.09). Тап — лунный день -->
     <button data-on="click:openWidget-lunar" class="home-hero" id="home-hero" type="button" aria-label="Луна сегодня: открыть лунный день">
       <span class="hero-glow" aria-hidden="true"></span>
       <canvas class="moon-hero-cv" id="moonHero" width="300" height="300" aria-hidden="true"></canvas>
       <b class="hero-phase" id="hero-phase"></b>
-      <span class="hero-me" id="hero-me"></span>
-      <span class="hero-next" id="hero-next"></span>
     </button>
     <div class="week-strip" id="week-strip" aria-label="Неделя: открыть день"></div>
     <!-- один шаг сразу под Луной (по обзору 19.09): днем — вопрос дня с полем, вечером — «Запомнить этот день» (paintHomeAction) -->
     <div class="home-action" id="home-action" hidden></div>
     <div class="home-intro">
       <img class="home-art" id="h-art" src="" alt="" hidden decoding="async">   <!-- картинка к настрою дня из кабинета «Контент» -->
-      <div class="daily-statement"><span class="eyebrow" id="h-theme" hidden></span><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
+      <div class="daily-statement"><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
     </div>
     <!-- Утро: человек отвечает, на что хочет обращать внимание; выбранное — сверху, остальное — маленькими квадратами ниже -->
     <p class="hint offline-note" id="offline-note" hidden role="status"></p>
@@ -210,13 +208,11 @@
     <div class="home-later home-push" id="home-yesterday" hidden></div>
     <div class="home-later home-push" id="home-natal" hidden></div>
     <div class="home-later home-push" id="home-tour" hidden></div>
-    <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Можно все</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придет только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="text-action" id="morning-done" type="button" hidden>Готово</button></div></section>
+    <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Можно все</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придет только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="btn ghost sm" id="morning-done" type="button" hidden>Готово</button></div></section>
     <!-- после выбора вопрос сворачивается в строку: экран — для чтения, не для настроек -->
-    <button data-on="click:morningEdit" class="morning-summary" id="morning-summary" type="button" hidden><span class="eyebrow">Утром показываем</span><b id="morning-summary-list"></b><span class="text-action" aria-hidden="true">Изменить</span></button>
+    <button data-on="click:morningEdit" class="morning-summary" id="morning-summary" type="button" hidden><span class="eyebrow">Утром показываем</span><b id="morning-summary-list"></b><span class="btn ghost sm" aria-hidden="true">Изменить</span></button>
     <section class="feature-group" id="home-sky" data-feature="around"><h2 data-ui="home.morning_group">Мое утро</h2><div class="wids compact-links" id="morning-feed"></div></section>
     <section class="feature-group" id="morning-rest"><h2 data-ui="home.more_group">Еще про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid has-thumb" data-feature="card" data-chip="Карта дня" type="button"><span class="card-thumb" aria-hidden="true"><img id="t-cardthumb" src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt=""></span><b>Карта дня</b><span id="t-cardsub">Одна карта на день: смысл и что сделать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" data-chip="Руна дня" type="button"><span class="rune-thumb" id="t-runethumb" hidden aria-hidden="true"><img src="" alt="" width="40" height="40"></span><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" data-chip="Планеты" type="button"><i class="ico star"></i><b>Влияние планет</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" data-chip="Прогноз дня" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" data-chip="Луна" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b class="moon-title">Луна</b><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" data-chip="Вопрос дня" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос по теме дня — ответ вечером в дневнике</span></button></div></section>
-    <!-- вечером и по воскресеньям страница знает, что дальше: записать день, посмотреть неделю -->
-    <div class="home-later" id="home-later" hidden></div>
   </section>
   <section class="view" id="v-ask"><h1 data-ui="ask.title">Свериться с собой</h1><p class="section-caption" data-ui="ask.caption">Карты, руны, вопросы</p>
     <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button"><i class="ico question"></i><b>Ответить себе на вопрос</b><span>Отношения, работа, решения, отношение к себе</span></button></div>
@@ -224,19 +220,17 @@
 <button data-on="click:openAsk-yesno" class="wid" type="button"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ с пояснением</span></button><button data-on="click:openAsk-rune" class="wid" type="button"><i class="ico rune"></i><b>Руны</b><span>Одна, три, крест, четыре стихии</span></button><button data-on="click:openAsk-spread" class="wid" type="button"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест</span></button></div>
     <div class="wids list-rows history-rows"><button data-on="click:openWidget-hentries" class="wid" data-feature="hentries" type="button"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b><span>Все, о чем спрашивали</span></button></div></section>
   <section class="view" id="v-history"><h1>Дневник</h1>
-    <!-- «Моя неделя» — первой плиткой по воскресеньям и понедельникам; в остальные дни живет в «Желания и итоги» -->
-    <button data-on="click:openWidget-week" class="week-top" id="week-top" type="button" hidden aria-label="Моя неделя: про что она"><span class="eyebrow">Неделя собралась</span><b>Моя неделя: про что она</b><span class="hint" id="week-top-sub"></span></button>
     <!-- Карточка сегодняшнего дня — по шагам: один вопрос на экран, «Дальше», в конце — праздник и день в режиме чтения.
          Все рисует paintDayCard(); ни один шаг не обязателен, пустое не сохраняется -->
     <div class="home-action diary-action" id="diary-action" hidden></div>
     <section class="card day-card" id="day-card" aria-live="polite"></section>
-    <!-- из чего собран вечер: база + выбранные инструменты; «Изменить» разворачивает чипы на месте (paintEveningSet) -->
+    <!-- из чего собран вечер: кнопка «Настроить вечер» разворачивает чипы на месте (paintEveningSet); строка «Мой вечер: …» снята (решение владелицы 20.09) -->
     <div class="evening-set" id="evening-set"></div>
-    <!-- Практики — плашками сразу под карточкой дня (решение владелицы 19.09): видны всегда, состав вечера человек выбирает в «Мой вечер» -->
+    <!-- Практики — плашками сразу под карточкой дня (решение владелицы 19.09): видны всегда. Одна строка на плашку, название — действием; «Неделя» — не практика (решение владелицы 20.09) -->
     <section class="feature-group practices" id="diary-tools"><h2 data-ui="diary.practices">Практики</h2><div class="wids list-rows practice-grid">
-<button data-on="click:openWidget-habits" class="wid" type="button"><i class="ico check"></i><b>Привычки</b><span data-status="habits"></span></button><button data-on="click:openWidget-askesis" class="wid" type="button"><i class="ico flag"></i><b>Аскезы</b><span data-status="askesis"></span></button><button data-on="click:openWidget-gratitude" class="wid" type="button"><i class="ico heart"></i><b>Благодарность</b><span>Кому и за что сегодня</span></button><button data-on="click:openWidget-wishes" class="wid" type="button"><i class="ico wish"></i><b>Желания</b><span data-status="wishes"></span></button><button data-on="click:openWidget-hmood" class="wid" type="button"><i class="ico smile"></i><b>Настроения</b><span id="hm-sub"></span></button><button data-on="click:openWidget-week" class="wid" type="button"><i class="ico calendar"></i><b>Неделя</b><span>Про что она</span></button></div></section>
-    <!-- Прошлые дни — компактно, три строки и «Архив →» -->
-    <section class="feature-group past-days" id="past-days"><div class="sec-head"><h2 data-ui="diary.past">Прошлые дни</h2><button data-on="click:openWidget-days" class="text-action" id="days-all" type="button" aria-label="Архив" data-ui="diary.archive">Архив →</button></div>
+<button data-on="click:openWidget-habits" class="wid" type="button"><i class="ico check"></i><b>Привычки</b></button><button data-on="click:openWidget-askesis" class="wid" type="button"><i class="ico flag"></i><b>Взять аскезу</b></button><button data-on="click:openWidget-gratitude" class="wid" type="button"><i class="ico heart"></i><b>Записать благодарность</b></button><button data-on="click:openWidget-wishes" class="wid" type="button"><i class="ico wish"></i><b>Загадать желание</b></button><button data-on="click:openWidget-hmood" class="wid" type="button"><i class="ico smile"></i><b>Отметить свое настроение</b></button></div></section>
+    <!-- Прошлые дни — компактно, три строки; «Моя неделя» и «Архив» — кнопками в заголовке -->
+    <section class="feature-group past-days" id="past-days"><div class="sec-head"><h2 data-ui="diary.past">Прошлые дни</h2><div class="sec-actions"><button data-on="click:openWidget-week" class="btn ghost sm" type="button">Моя неделя</button><button data-on="click:openWidget-days" class="btn ghost sm" id="days-all" type="button" aria-label="Архив" data-ui="diary.archive">Архив</button></div></div>
       <div class="days-list" id="days-list"></div></section>
   </section>
   <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button" data-ui="back">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div><div class="wg-foot"><button data-on="click:practiceBack" class="btn ghost wg-return" type="button" data-ui="return">← Вернуться</button></div></section>
@@ -256,7 +250,7 @@
     <section class="account-group profile-block" id="ag-profile"><h2>Профиль</h2>
     <section class="profile-summary card">
       <div class="profile-head"><div id="ac-photo"></div><div class="profile-id"><h2 id="ac-name"></h2><p id="profile-summary"></p></div></div>
-      <div class="profile-actions"><button data-on="click:openWidget-edit" class="text-action" data-feature="edit" type="button">Изменить мои данные</button><span id="ac-photo-actions"></span></div>
+      <div class="profile-actions"><button data-on="click:openWidget-edit" class="btn ghost sm" data-feature="edit" type="button">Изменить мои данные</button><span id="ac-photo-actions"></span></div>
       <p class="profile-note" id="ac-photo-note">Фото появится в кружке справа вверху</p>
     </section></section>
     <section class="account-group danger-zone" id="ag-manage"><h2>Управление аккаунтом</h2><div class="rows">
@@ -304,7 +298,7 @@
     </div>
     <div id="t-after" class="mt-4" style="display:none"></div>
   </div>
-  <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p class="hint mt-3 center" id="t-moodstat"></p><div id="mood-extra"></div></div>
+  <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><div id="mood-extra"></div></div>
   <div class="wpane" id="w-habits"><div id="hb-box"></div></div>
   <div class="wpane" id="w-askesis"><div id="as-box"></div></div>
   <div class="wpane" id="w-sky"><div id="sky-box"></div></div>
@@ -313,7 +307,7 @@
   <div class="wpane" id="w-tone"><div id="tone-box"></div></div>
   <div class="wpane" id="w-gratitude"><div id="gr-box"></div></div>
   <div class="wpane" id="w-wishes">
-    <div class="wish-form"><label for="w-text">Мое желание</label><input id="w-text" placeholder="Например: поехать к морю" maxlength="200"><div id="wish-preview"></div><div class="wish-create-actions"><button data-on="click:chooseWishPhoto" id="wish-photo-pick" class="text-action" type="button">Добавить фото</button><button data-on="click:addWish" class="btn sm" id="wish-save" type="button">Сохранить желание</button></div></div>
+    <div class="wish-form"><label for="w-text">Мое желание</label><input id="w-text" placeholder="Например: поехать к морю" maxlength="200"><div id="wish-preview"></div><div class="wish-create-actions"><button data-on="click:chooseWishPhoto" id="wish-photo-pick" class="btn ghost sm" type="button">Добавить фото</button><button data-on="click:addWish" class="btn sm" id="wish-save" type="button">Сохранить желание</button></div></div>
     <div class="wish-grid" id="m-wishes"></div>
   </div>
   <div class="wpane" id="w-ask">
@@ -359,7 +353,7 @@
   <div class="wpane" id="w-natal"><div id="natal-box"><p class="hint">Считаем…</p></div></div>
   <div class="wpane" id="w-tests"><div class="list" id="tests-box"><p class="hint">Тесты готовятся и появятся здесь.</p></div></div>
   <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
-  <div class="wpane" id="w-appinfo"><p>Лунарио — пространство, где можно услышать себя: замечать настроение, записывать мысли и смотреть на вопрос иначе.</p><p class="material-note" data-material-note></p><button data-on="click:openWidget-terms" class="text-action">Условия использования →</button></div>
+  <div class="wpane" id="w-appinfo"><p>Лунарио — пространство, где можно услышать себя: замечать настроение, записывать мысли и смотреть на вопрос иначе.</p><p class="material-note" data-material-note></p><button data-on="click:openWidget-terms" class="btn ghost sm" type="button">Условия использования</button></div>
   <div class="wpane" id="w-terms"><p>Карты, руны, астрологические и нумерологические интерпретации — материалы для размышления. Решения о своих действиях принимаете вы.</p><p class="material-note" data-material-note></p><p>Записи сохраняются, когда вы нажимаете кнопку сохранения. Напоминания включаются по вашему выбору. Скачать свои данные и управлять аккаунтом можно в «Аккаунте» — кружок с фото в правом верхнем углу главной.</p><p class="material-note"><a href="/politika" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/soglasie" target="_blank" rel="noopener">Обработка персональных данных</a></p></div>
 </div>
 <div data-on="click:closeWidget-event" class="wg-bg" id="wg">
@@ -381,15 +375,15 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=102"></script>
+<script src="/app/moon-logo.js?v=103"></script>
 
-<script type="module" src="/app/sky.js?v=102"></script>
+<script type="module" src="/app/sky.js?v=103"></script>
 
-<script src="/app/common.js?v=102"></script>
-<script src="/app/experience.js?v=102"></script>
-<script src="/app/app.js?v=102"></script>
-<script src="/app/tour.js?v=102"></script>
-<script src="/app/handlers.js?v=102"></script>
-<script src="/app/on.js?v=102"></script>
+<script src="/app/common.js?v=103"></script>
+<script src="/app/experience.js?v=103"></script>
+<script src="/app/app.js?v=103"></script>
+<script src="/app/tour.js?v=103"></script>
+<script src="/app/handlers.js?v=103"></script>
+<script src="/app/on.js?v=103"></script>
 </body>
 </html>

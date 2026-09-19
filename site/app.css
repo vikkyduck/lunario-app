@@ -2095,3 +2095,42 @@ html[data-skin=compact] body.inner :is(.section-caption,.hint,.field label,.save
 html[data-skin=compact] body.inner .app-nav button{font-size:12px}
 html[data-skin=compact] body.inner .btn.sm{font-size:14px}
 html[data-skin=compact] body.inner .day-card.done .eyebrow{font-size:12px}
+/* ── Кнопки вместо текстовых ссылок (решение владелицы 20.09): любое действие — закругленная плашка, текстовых ссылок в приложении нет.
+   Главное действие — золотая (.btn), остальные — синяя с золотой окантовкой (.btn.ghost). Классы .text-action в разметке больше не используются ── */
+html[data-theme] body.inner .btn.ghost{background:var(--surface);border:1px solid var(--gold);color:var(--text);box-shadow:none}
+body.inner .btn.ghost.sm{font-weight:500}
+body.inner .btn.sm{width:auto}
+/* ряды действий: плашки в строку, без линии сверху */
+body.inner :is(.utility-actions,.dc-secondary,.dc-done-actions,.day-nav,.week-nav,.rem-actions,.form-actions,.hero-actions,.dc-offer-actions,.profile-actions){display:flex;flex-wrap:wrap;align-items:center;gap:10px;border:0;padding-top:0}
+body.inner .utility-actions{margin-top:16px}
+body.inner .utility-actions+.utility-actions{margin-top:10px}
+.form-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+body.inner .dc-secondary{justify-content:center;margin-top:10px}
+body.inner .day-nav{justify-content:space-between;margin-top:22px;padding-top:12px;border-top:1px solid var(--line)}
+body.inner .dc-actions .dc-skip{width:100%;margin-top:0;color:var(--muted)}
+/* «Пропустить» — под главной кнопкой шага */
+body.inner .back{border:1px solid var(--gold);border-radius:var(--r-m);background:var(--surface);padding:8px 16px}
+.morebtn{border:1px solid var(--gold);border-radius:var(--r-m);background:var(--surface);padding:10px 16px;margin-top:12px}
+/* «Читать полностью» — плашка во всю ширину */
+.week-daylink,.ln-all button{border:1px solid var(--gold);border-radius:var(--r-pill);background:var(--surface);padding:4px 10px;color:var(--text)}
+/* дата в «Что отозвалось», «Показать все» у тем */
+.past-days .sec-head{align-items:center}
+.sec-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.hb-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* при правке привычки — название и «Удалить» в заглавной строке */
+.hb-head b{font-size:16px;line-height:1.5}
+body.inner .morning-summary .btn.ghost.sm{grid-column:2;grid-row:1/span 2;margin:0;pointer-events:none}
+/* «Изменить» внутри свернутого утреннего выбора — плашкой справа */
+.evening-set{margin-top:12px}
+.evening-set .chips{margin-bottom:0}
+.tour-skip{min-height:44px;padding:10px 18px;border:1px solid var(--gold);border-radius:var(--r-pill);background:var(--surface);color:var(--text)}
+/* «Пропустить» в подсказках — тоже плашка */
+.day-card .dc-head .btn{white-space:nowrap;flex:0 0 auto}
+/* «К сегодня» рядом с датой — в одну строку */
+/* раскрывающиеся разделы (details/summary) — тоже плашки: «Примеры аскез», «Добавить наблюдение», «Период и место расчета», «Все 30 лунных дней» */
+body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)>summary{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid var(--gold);border-radius:var(--r-m);background:var(--surface);color:var(--text);font-size:15px;font-weight:500;line-height:1.4;list-style:none;cursor:pointer}
+body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)>summary::-webkit-details-marker{display:none}
+body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)>summary::after{content:'⌄';color:var(--gold-2);line-height:1}
+body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)[open]>summary{margin-bottom:12px}
+body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)[open]>summary::after{content:'⌃'}
+body.inner .ln-hidden summary{border:1px solid var(--line);border-radius:var(--r-m);padding:11px 14px;margin-top:8px;background:var(--surface)}
