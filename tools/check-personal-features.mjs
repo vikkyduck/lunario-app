@@ -788,7 +788,6 @@ try {
       await page.goto(base + '/', { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('#v-home.on');
       await page.waitForFunction(() => document.querySelector('#h-acct img')?.naturalWidth > 0);
-      assert.equal(await page.locator('#h-acct .news-dot').count(), 1);
       /* «Аккаунт» больше не вкладка внизу: после перестройки навигации туда ведёт кружок с фото в шапке,
          а нижние вкладки — «Сегодня», «Свериться с собой», «Дневник», «Обо мне». */
       await page.locator('#h-acct').click();
@@ -876,15 +875,12 @@ try {
         }
       }
       // Every surviving feature card opens the actual widget pane.
-      for(const [view,key] of [['home','card'],['history','mood'],['ask','worry'],['home','day'],['home','tone'],['history','askesis'],['history','wishes'],['history','habits'],['history','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','compat'],['about','tests'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['ask','hentries'],['history','journal'],['history','week'],['account','edit'],['account','mail'],['account','remind'],['account','support']]) {
+      for(const [view,key] of [['home','card'],['history','mood'],['ask','worry'],['home','day'],['home','tone'],['history','askesis'],['history','wishes'],['history','habits'],['history','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','compat'],['about','tests'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['ask','hentries'],['history','journal'],['history','week'],['account','edit'],['account','remind'],['account','support']]) {
         await page.evaluate(v=>go(v),view);
         await page.locator(`#v-${view} [data-feature="${key}"]`).click();
         await page.waitForFunction(k=>document.querySelector(':is(#wg-body,#practice-body) #w-'+k)!==null,key);
         await close();
       }
-      // «Скоро» рисуется из строк «скоро | …» в content/новое.txt: раздел виден только когда такие строки есть.
-      await page.evaluate(()=>go('news'));await page.locator('#news-box .wid').first().waitFor();   /* paintNews асинхронный: ждём плитки */
-      assert.equal(await page.locator('#news-soon').isHidden(), !(await page.evaluate(()=>(CAT?.news||[]).some(n=>n.soon))));
       await page.evaluate(()=>go('ask'));
       assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Ответить себе на вопрос','Да / Нет','Руны','Таро']);
       console.log('PASS: all four main sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');

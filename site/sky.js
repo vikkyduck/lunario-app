@@ -1,13 +1,13 @@
-import {CONSTELLATIONS} from './constellations.js?v=103';
-import {MOSCOW, observer, visibleSky} from './sky-model.js?v=103';
+import {CONSTELLATIONS} from './constellations.js?v=104';
+import {MOSCOW, observer, visibleSky} from './sky-model.js?v=104';
 
 const canvas=document.getElementById('sky');
 const ctx=canvas?.getContext('2d');
 const motion=matchMedia('(prefers-reduced-motion: reduce)');
 let place=MOSCOW, timer, busy=false, measuredAt=0, permission, width=0, height=0, generation=0, profile=null;
-/* Откуда берем место — по убыванию приоритета: город, который человек указал сам (хранится только в этом браузере) →
-   местоположение устройства, если человек сам нажал «Определить» или доступ уже был дан раньше → город из анкеты →
-   грубая точка по часовому поясу → Москва. Диалог геолокации на загрузке не показываем: только по нажатию. */
+/* Откуда берем место — по убыванию приоритета: местоположение устройства, если доступ к геолокации уже дан → город из анкеты →
+   грубая точка по часовому поясу → Москва. Диалог геолокации сами не показываем; панели «Геолокация» в аккаунте нет
+   (решение владелицы 20.09) — место настраивается само. Координаты живут только в памяти страницы. */
 const TZ_PLACES={'Europe/Kaliningrad':[54.71,20.51,'Калининград'],'Europe/Moscow':[55.76,37.62,'Москва'],'Europe/Kirov':[58.6,49.66,'Киров'],
   'Europe/Volgograd':[48.71,44.51,'Волгоград'],'Europe/Astrakhan':[46.35,48.04,'Астрахань'],'Europe/Saratov':[51.53,46.03,'Саратов'],
   'Europe/Ulyanovsk':[54.31,48.4,'Ульяновск'],'Europe/Samara':[53.2,50.15,'Самара'],'Asia/Yekaterinburg':[56.84,60.6,'Екатеринбург'],
@@ -21,17 +21,12 @@ const TZ_PLACES={'Europe/Kaliningrad':[54.71,20.51,'Калининград'],'Eu
   'Europe/Chisinau':[47.01,28.86,'Кишинев'],'Asia/Dushanbe':[38.56,68.77,'Душанбе'],'Asia/Ashgabat':[37.96,58.33,'Ашхабад'],'Europe/Riga':[56.95,24.11,'Рига'],
   'Europe/Vilnius':[54.69,25.28,'Вильнюс'],'Europe/Tallinn':[59.44,24.75,'Таллин'],'Asia/Jerusalem':[31.77,35.22,'Иерусалим'],'Europe/Istanbul':[41.01,28.98,'Стамбул'],
   'Asia/Dubai':[25.2,55.27,'Дубай'],'Europe/Belgrade':[44.79,20.46,'Белград'],'Europe/Berlin':[52.52,13.4,'Берлин'],'Europe/Stockholm':[59.33,18.07,'Стокгольм']};
-function savedCity(){ try{ const c=JSON.parse(localStorage.getItem('lun_sky_place')||'null'); return c&&Number.isFinite(c.lat)&&Number.isFinite(c.lon)?{lat:c.lat,lon:c.lon,name:c.name||'',source:'city'}:null; }catch{ return null; } }
 function tzPlace(){ try{ const tz=Intl.DateTimeFormat().resolvedOptions().timeZone, p=TZ_PLACES[tz]; return p?{lat:p[0],lon:p[1],name:p[2],source:'tz'}:null; }catch{ return null; } }
-function fallbackPlace(){ return savedCity() || (profile&&Number.isFinite(profile.lat)&&Number.isFinite(profile.lon)?{lat:profile.lat,lon:profile.lon,name:profile.name||'',source:'profile'}:null) || tzPlace() || MOSCOW; }
+function fallbackPlace(){ return (profile&&Number.isFinite(profile.lat)&&Number.isFinite(profile.lon)?{lat:profile.lat,lon:profile.lon,name:profile.name||'',source:'profile'}:null) || tzPlace() || MOSCOW; }
 
-function status(text) {
-  document.querySelectorAll('[data-sky-place]').forEach(el=>el.textContent=text);
-  document.querySelectorAll('.sky-location-control').forEach(el=>{el.disabled=busy;el.setAttribute('aria-busy',String(busy));});
-}
+function status(text) { document.querySelectorAll('[data-sky-place]').forEach(el=>el.textContent=text); }   /* подписи в разметке сейчас нет — остается для проверок */
 function placeLabel() {
   if(place.source==='device') return 'По вашему местоположению';
-  if(place.source==='city') return `${place.name} · вы указали`;
   if(place.source==='profile') return `${place.name||'Город из анкеты'} · по анкете`;
   if(place.source==='tz') return `${place.name} · по часовому поясу`;
   return 'Москва · место не определено';
@@ -88,7 +83,6 @@ async function locate(manual=false) {
     const done=(coords,error)=>{
       if(request!==generation){resolve();return;}
       const got=observer(coords); place=got.source==='device'?got:fallbackPlace(); busy=false;measuredAt=Date.now();
-      if(got.source==='device'){ try{ localStorage.removeItem('lun_sky_place'); }catch{} }
       status(error && manual ? 'Нет доступа к месту · '+placeLabel() : placeLabel());
       resume();resolve();
     };
@@ -98,14 +92,8 @@ async function locate(manual=false) {
   });
 }
 // Координаты устройства живут только в памяти страницы: ни API, ни аналитика, ни хранилище их не получают.
-// Город, выбранный вручную, — в localStorage этого браузера (название и координаты города, не человека).
-function setCity(c){ if(!c||!Number.isFinite(c.lat)||!Number.isFinite(c.lon))return; generation++;busy=false;
-  try{ localStorage.setItem('lun_sky_place',JSON.stringify({name:c.name||'',lat:c.lat,lon:c.lon})); }catch{}
-  place={lat:c.lat,lon:c.lon,name:c.name||'',source:'city'}; status(placeLabel()); resume(); }
-function useProfile(){ generation++;busy=false; try{ localStorage.removeItem('lun_sky_place'); }catch{} place=fallbackPlace(); status(placeLabel()); resume(); }
-function setProfile(p){ profile=p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon)?{lat:p.lat,lon:p.lon,name:p.name||''}:null; if(place.source!=='device'&&place.source!=='city'){ place=fallbackPlace(); status(placeLabel()); resume(); } }
-function describe(){ return {source:place.source,name:place.name||'',label:placeLabel(),hasProfile:!!profile,geolocation:!!navigator.geolocation}; }
-window.LunarioSky={locate,refresh:resume,setCity,useProfile,setProfile,describe};
+function setProfile(p){ profile=p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon)?{lat:p.lat,lon:p.lon,name:p.name||''}:null; if(place.source!=='device'){ place=fallbackPlace(); status(placeLabel()); resume(); } }
+window.LunarioSky={locate,refresh:resume,setProfile};
 place=fallbackPlace();status(placeLabel());resume();
 window.addEventListener('resize',draw);
 motion.addEventListener('change',resume);
@@ -122,5 +110,5 @@ try {
     else {generation++;busy=false;place=fallbackPlace();status(placeLabel());resume();}
   });
   /* без нажатия человека диалог не показываем: уточняем по устройству, только если доступ уже был дан раньше */
-  if(permission?.state==='granted' && !savedCity()) locate();
+  if(permission?.state==='granted') locate();
 } catch {}

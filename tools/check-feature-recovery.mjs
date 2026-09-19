@@ -59,14 +59,7 @@ export async function checkFeatureRecovery({browser,base,owner}){
     await page.locator('#as-box').getByRole('button',{name:'Взять аскезу',exact:true}).click();
     await page.locator('.practice-question').filter({hasText:'Мой вариант аскезы'}).waitFor();
     assert.equal((await owner.json('/askesis')).active[0].until,custom);await close();
-    for(const [key,target] of [['ask','ask'],['history','history'],['about','about'],['account','account'],['today','home']]){
-      await page.evaluate(()=>go('news'));await page.locator(`[data-news-target=${key}]`).waitFor();
-      await page.locator(`[data-news-target=${key}]`).click();await page.locator('#v-'+target+'.on').waitFor();
-    }
-    // Names and actions stay connected to the canonical controls after an edit.
-    await page.evaluate(()=>{const n=document.querySelector('.app-nav [data-nav=ask]');n.lastChild.textContent='Свериться · проверка';go('news');});
-    await page.locator('[data-news-target=ask]').waitFor();assert.match(await page.locator('[data-news-target=ask]').innerText(),/Свериться · проверка/);
-    await page.locator('[data-news-target=card]').click();await page.locator('#wg-body #w-card').waitFor();await close();
+    /* экран «Новое в приложении» снят (решение владелицы 20.09) — переходов по плиткам новостей больше нет */
     for(const theme of ['light','dark'])for(const [width,height] of [[320,568],[390,844],[844,390],[1440,900]]){
       await page.setViewportSize({width,height});await page.evaluate(t=>applyTheme(t),theme);
       for(const key of ['day','habits','askesis']){
@@ -81,9 +74,6 @@ export async function checkFeatureRecovery({browser,base,owner}){
         if(key==='day')assert.equal(await page.locator('#f-bars [role=meter]').count(),4);
         await close();
       }
-      await page.evaluate(()=>go('news'));await page.locator('[data-news-target=ask]').waitFor();
-      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'News fits');
-      if(width===390)await shot('news-'+theme);
     }
     assert.deepEqual(errors,[]);
     console.log('PASS: all 7 audited omissions restored; forecast values, catalogue suggestions, editable askesis shortcuts/inclusive dates, non-daily progress, calendar due state, canonical News navigation; 4 widths in both themes.');

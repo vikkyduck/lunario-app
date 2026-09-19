@@ -58,7 +58,7 @@ export async function checkBrand({browser,base,owner}) {
       coverage.push({width,height,...geometry});await shot('home-'+width);
     }
     await page.setViewportSize({width:390,height:844});
-    for(const view of ['ask','history','about','account','news']) {
+    for(const view of ['ask','history','about','account']) {
       await page.evaluate(v=>go(v),view);await ready();
       assert.ok(await page.locator('.section-brand').isVisible());
       const logo=await page.locator('.section-brand').evaluate(e=>({font:getComputedStyle(e).fontFamily,weight:getComputedStyle(e).fontWeight}));

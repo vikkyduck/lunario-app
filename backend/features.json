@@ -153,11 +153,6 @@
   "view": "account",
   "group": "Аккаунт"
  },
- "mail": {
-  "sec": "Аккаунт",
-  "title": "Вход по почте",
-  "view": "account"
- },
  "edit": {
   "sec": "Аккаунт",
   "title": "Изменить мои данные",
@@ -173,21 +168,6 @@
   "title": "Позвать подругу",
   "view": "account",
   "group": "Аккаунт"
- },
- "appearance": {
-  "sec": "Аккаунт",
-  "title": "Оформление",
-  "view": "account"
- },
- "topics": {
-  "sec": "Аккаунт",
-  "title": "Настройка контента",
-  "view": "account"
- },
- "skyplace": {
-  "sec": "Аккаунт",
-  "title": "Геолокация",
-  "view": "account"
  },
  "appinfo": {
   "sec": "Аккаунт",

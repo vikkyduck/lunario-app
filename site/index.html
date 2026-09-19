@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=103"></script>
+<script src="/app/boot.js?v=104"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=103">
-<link rel="stylesheet" href="/app/app.css?v=103">
-<link rel="stylesheet" href="/app/frame.css?v=103">
+<link rel="stylesheet" href="/app/theme.css?v=104">
+<link rel="stylesheet" href="/app/app.css?v=104">
+<link rel="stylesheet" href="/app/frame.css?v=104">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -234,23 +234,22 @@
       <div class="days-list" id="days-list"></div></section>
   </section>
   <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button" data-ui="back">← Назад</button><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div><div class="wg-foot"><button data-on="click:practiceBack" class="btn ghost wg-return" type="button" data-ui="return">← Вернуться</button></div></section>
-  <section class="view" id="v-news"><button data-on="click:go-account" class="back" type="button">← Аккаунт</button>
-    <span class="eyebrow" id="news-sub">За этот месяц</span><h1>Новое в приложении</h1><div class="wids" id="news-box"></div>
-    <section class="feature-group upcoming" id="news-soon" hidden><h2>Скоро</h2><p class="hint">Эти материалы еще готовятся</p><div class="list" id="news-soon-box"></div></section>
-  </section>
   <!-- ОБО МНЕ: вкладка внизу — разборы по дате рождения; анкета и настройки живут в аккаунте (кружок с фото на главной) -->
   <section class="view" id="v-about"><h1 data-ui="about.title">Обо мне</h1><p class="section-caption" id="ab-sub">Мой профиль</p>
     <!-- экран начинается с человека, а не с меню (по разбору референсов 19.09): имя, натальная Луна, лунный день рождения; тап — в натальную карту -->
     <button data-on="click:openWidget-natal" class="me-card" id="me-card" type="button" hidden></button>
     <div class="wids about-links list-rows"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты, дома, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнера</span></button><button data-on="click:openWidget-tests" class="wid" data-feature="tests" type="button" aria-label="Тесты"><i class="ico list"></i><b>Тесты</b><span id="tests-sub">Узнать себя через вопросы</span></button></div>
   </section>
-  <!-- АККАУНТ: открывается по кружку с фото в правом верхнем углу главной — фото, анкета, приложение, приватность, помощь, выход -->
+  <!-- АККАУНТ: открывается по кружку с фото в правом верхнем углу главной — фото, анкета, приложение, приватность, помощь, выход.
+       Чистка 20.09 (решение владелицы): сняты «Вход по почте», «Новое в приложении», «Геолокация», «Настройка контента», «Подсказки по приложению»
+       и «Оформление» — тема переключается значком рядом с фото в профиле (themeToggle), почта видна под датой рождения, привязать ее можно тут же -->
   <section class="view" id="v-account"><h1 class="sr-only">Аккаунт</h1>
     <div class="account-layout"><div class="account-col account-personal">
     <section class="account-group profile-block" id="ag-profile"><h2>Профиль</h2>
     <section class="profile-summary card">
-      <div class="profile-head"><div id="ac-photo"></div><div class="profile-id"><h2 id="ac-name"></h2><p id="profile-summary"></p></div></div>
-      <div class="profile-actions"><button data-on="click:openWidget-edit" class="btn ghost sm" data-feature="edit" type="button">Изменить мои данные</button><span id="ac-photo-actions"></span></div>
+      <div class="profile-head"><div id="ac-photo"></div><div class="profile-id"><h2 id="ac-name"></h2><p id="profile-summary"></p><p id="profile-email" hidden></p></div><button data-on="click:themeToggle" class="acct theme-toggle" id="theme-toggle" type="button" aria-label="Переключить тему"></button></div>
+      <div class="profile-actions"><button data-on="click:openWidget-edit" class="btn ghost sm" data-feature="edit" type="button">Изменить мои данные</button><span id="ac-photo-actions"></span><button data-on="click:accountMailOpen" class="btn ghost sm" id="ac-mail-btn" type="button" hidden>Привязать почту</button></div>
+      <div class="card ac-auth" id="ac-auth" hidden></div>
       <p class="profile-note" id="ac-photo-note">Фото появится в кружке справа вверху</p>
     </section></section>
     <section class="account-group danger-zone" id="ag-manage"><h2>Управление аккаунтом</h2><div class="rows">
@@ -260,11 +259,7 @@
       <button data-on="click:wipe-data" class="rowbtn" type="button"><i class="ico list"></i>Очистить историю</button>
       <button data-on="click:wipe-account" class="rowbtn warn" type="button"><i class="ico exit"></i>Удалить аккаунт</button></div></section>
     </div><div class="account-col account-settings">
-    <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids compact-links"><a data-on="click:openCabinet-return-false" class="wid" id="ac-cabs" href="/app/cabinet" hidden><i class="ico users"></i><b>Кабинет сотрудника</b><span>Задачи, тексты, поддержка</span></a><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Утро, вечер и неделя — время свое</span></button><button data-on="click:openWidget-mail" class="wid" data-feature="mail" type="button" aria-label="Вход по почте"><i class="ico mail"></i><b>Вход по почте</b><span id="ac-mail-sub">Сохраненные записи доступны на других устройствах</span></button><button data-on="click:go-news" class="wid" type="button" aria-label="Новое в приложении" data-feature="news"><i class="ico star"></i><b>Новое в приложении</b><span>Обновления и будущие возможности</span></button>
-      <button data-on="click:openWidget-skyplace" class="wid sky-location-control" type="button"><i class="ico orbit"></i><b>Геолокация</b><span data-sky-place>Москва · место не определено</span></button>
-      <button data-on="click:openWidget-appearance" class="wid" type="button"><i class="ico moon"></i><b>Оформление</b><span>Светлая и темная темы</span></button>
-      <button data-on="click:openWidget-topics" class="wid" data-feature="topics" type="button"><i class="ico list"></i><b>Настройка контента</b><span>Какие сферы жизни подсвечивать в сообщениях</span></button>
-      <button data-on="click:tourRestart" class="wid" type="button"><i class="ico question"></i><b>Подсказки по приложению</b><span>Как устроено приложение — за полминуты</span></button>
+    <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids compact-links"><a data-on="click:openCabinet-return-false" class="wid" id="ac-cabs" href="/app/cabinet" hidden><i class="ico users"></i><b>Кабинет сотрудника</b><span>Задачи, тексты, поддержка</span></a><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Утро, вечер и неделя — время свое</span></button>
       <button data-on="click:openWidget-appinfo" class="wid" type="button"><i class="ico moon"></i><b>О приложении</b></button>
       <a data-on="click:installApp-event" class="wid" id="t-install" href="/app/install"><i class="ico star"></i><b>Установить на телефон</b><span>Иконка на экране «Домой», уведомления, полный экран</span></a></div></section>
     <section class="account-group" id="ag-help"><h2>Помощь</h2><div class="wids compact-links"><button data-on="click:openWidget-support" class="wid" data-feature="support" type="button" aria-label="Чат поддержки"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button data-on="click:openWidget-invite" class="wid" type="button" aria-label="Позвать подругу" data-feature="invite"><i class="ico person"></i><b>Позвать подругу</b></button></div></section>
@@ -281,9 +276,6 @@
 
 <!-- панели виджетов: openWidget() переносит нужную в обертку и возвращает обратно -->
 <div id="wg-store" style="display:none">
-  <div class="wpane" id="w-appearance"><div id="appearance-box"></div></div>
-  <div class="wpane" id="w-topics"><div id="topics-box"></div></div>
-  <div class="wpane" id="w-skyplace"><div id="skyplace-box"></div></div>
   <div class="wpane" id="w-askDate"><div class="field"><label for="ask-date">До какого дня</label><input id="ask-date" type="date" aria-describedby="ask-date-msg"></div><button data-on="click:saveAskDate" class="btn" id="ask-date-save" type="button">Сохранить дату</button><p class="msg" id="ask-date-msg" role="status"></p></div>
   <div class="wpane" id="w-dayview"><div id="dayview-box"></div></div>
   <div class="wpane" id="w-days"><div id="days-box"></div></div>
@@ -349,7 +341,6 @@
       <p class="msg" id="e-msg"></p>
     </div>
   </div>
-  <div class="wpane" id="w-mail"><div class="card" id="m-auth"></div></div>
   <div class="wpane" id="w-natal"><div id="natal-box"><p class="hint">Считаем…</p></div></div>
   <div class="wpane" id="w-tests"><div class="list" id="tests-box"><p class="hint">Тесты готовятся и появятся здесь.</p></div></div>
   <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
@@ -375,15 +366,15 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=103"></script>
+<script src="/app/moon-logo.js?v=104"></script>
 
-<script type="module" src="/app/sky.js?v=103"></script>
+<script type="module" src="/app/sky.js?v=104"></script>
 
-<script src="/app/common.js?v=103"></script>
-<script src="/app/experience.js?v=103"></script>
-<script src="/app/app.js?v=103"></script>
-<script src="/app/tour.js?v=103"></script>
-<script src="/app/handlers.js?v=103"></script>
-<script src="/app/on.js?v=103"></script>
+<script src="/app/common.js?v=104"></script>
+<script src="/app/experience.js?v=104"></script>
+<script src="/app/app.js?v=104"></script>
+<script src="/app/tour.js?v=104"></script>
+<script src="/app/handlers.js?v=104"></script>
+<script src="/app/on.js?v=104"></script>
 </body>
 </html>

@@ -54,15 +54,14 @@ function hap(kind = 'tap'){
   try{ if(navigator.vibrate) navigator.vibrate(HAP[kind] || HAP.tap); }catch(e){}
 }
 
-/* ── навигация: четыре вкладки внизу (home, ask, history, about); account и news открываются с главной по кружку с фото
-   и вкладку не подсвечивают ── */
-const INNER_VIEWS=['home','ask','history','about','account','news'];   /* rhythm, onb, login, hello — без нижней навигации */
+/* ── навигация: четыре вкладки внизу (home, ask, history, about); account открывается с главной по кружку с фото
+   и вкладку не подсвечивает ── */
+const INNER_VIEWS=['home','ask','history','about','account'];   /* rhythm, onb, login, hello — без нижней навигации */
 const VIEW_ALIASES={today:'home',around:'home',me:'about'};
 function go(v){
   v=VIEW_ALIASES[v]||v;
   rememberScroll();closeWidget();leavePractice();
   history.replaceState({lunView:v},'',cleanPracticeUrl());
-  if(v==='news') markNewsSeen();
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
   document.body.classList.toggle('hello', v==='hello');                // большая луна в фоне — только на приветствии
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
@@ -77,7 +76,6 @@ function go(v){
   if(v==='history') loadHistory();
   if(v==='about')loadAbout();
   if(v==='account')loadAccount();
-  if(v==='news') paintNews();
 }
 function onboarded(){ return !!(S.user && S.user.onboarded); }
 /* Фразы интерфейса из кабинета (интерфейс.txt): ui('ключ', 'как в коде'). Статичная разметка — data-ui, applyUi() после загрузки */
@@ -108,7 +106,6 @@ function openLogin(){
 let FEATURES = {};   /* backend/features.json — приходит с /api/me; одно место на клиент и сервер */
 /* Цель из ?open= в уведомлении: ключ функции или ключ ее напоминания (moodreport → История настроений) */
 function openTarget(key){
-  if(key==='news')return ['news',''];
   if(key==='today'||key==='morning')return ['home',''];          /* утренний пуш — на «Сегодня» */
   if(key==='diary'||key==='evening')return ['history',''];       /* вечерний — в Дневник, к карточке дня */
   return FEATURES[key]?[FEATURES[key].view||'home',key]:null;   /* week и прочие виджеты — по реестру */
@@ -130,13 +127,12 @@ function openWidget(k, title){
 }
 /* Что подгрузить при открытии панели; у виджетов без записи содержимое статично (карта дня рисуется с главной) */
 const WIDGET_LOADERS = {
-  appearance: () => paintAppearance(), topics: () => paintTopics(), skyplace: () => paintSkyPlace(),
   wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(''), hmood: () => loadMoodReport(),
   mood: () => { moodUI.precision=false; moodUI.mode='families'; renderMoods(); paintMoodExtra(); },
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
   askesis: () => loadAskesis(), days: () => loadAllDays(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => loadTone(),
   day: () => { showForecastNote(); track('forecast_view'); }, worry: () => renderHub(), invite: () => loadInvite(), remind: () => paintAllReminders(), edit: () => fillEdit(),
-  support: () => supOpen(), dayrune: () => loadDayRune(), card: () => paintCardPick(), natal: () => loadNatal(), mail: () => renderAuth(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
+  support: () => supOpen(), dayrune: () => loadDayRune(), card: () => paintCardPick(), natal: () => loadNatal(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
 };
 function loadWidgetContent(k){ WIDGET_LOADERS[k]?.(); }
 /* Картинка к функции из кабинета «Контент» (dayPack.art): наверху панели; ask — общая для Таро, рун и «Да / Нет» */
@@ -430,10 +426,6 @@ function paintHome(){
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
   moonSetPhase(d.moonPhase);
 }
-/* Точка у аватара: «Новое в приложении» этого месяца еще не открывали */
-const newsSeen=()=>{ try{ return localStorage.getItem('lun_news_seen')===S.day.date.slice(0,7); }catch(e){ return true; } };
-function paintNewsDot(){ const seen=newsSeen(); document.querySelectorAll('.news-dot').forEach(dot=>{dot.hidden=seen;}); }
-function markNewsSeen(){ try{ localStorage.setItem('lun_news_seen',S.day.date.slice(0,7)); }catch(e){} paintNewsDot(); }
 /* плашки практик в Дневнике — одной строкой, без подписей о состоянии (решение владелицы 20.09); состояние остается в S для вечернего пуша и подсказок */
 function habitsHomeStatus(items){
   const due=items.filter(h=>h.due), done=due.filter(h=>h.today).length;S.habitsPending=due.length-done;S.habitsReady=true;S.habitsCount=items.length;
@@ -614,20 +606,14 @@ async function authCheck(){
     auth.onDone(r);
   } catch (e) { showMsg(msg, authErrorText(e, 'verify'), true); }
 }
-/* Виджет «Вход по почте» в «Аккаунте» */
-function renderAuth(){
-  const u = S.user;
-  const idle = () => u.email
-    ? `<p class="t2">Вы вошли как <b>${esc(u.email)}</b></p>
-      ${isStaff(u) ? `<button data-on="click:openCabinet" class="btn sm full mt-3">Кабинет сотрудника</button>` : ''}
-      <button data-on="click:logout" class="btn ghost sm full mt-3">Выйти на этом устройстве</button>`
-    : S.localPreview
-    ? '<p>Вход по почте доступен на сайте Лунарио.</p><p class="mt-3">Это локальный просмотр: письма с кодом здесь не отправляются. Записи демо остаются здесь и не переносятся в аккаунт на сайте.</p><a class="btn auth-submit" href="https://lunario.online/app/" target="_blank" rel="noopener">Открыть сайт для входа ↗</a>'
-    : `<p class="t2">Вход по почте скоро появится</p>
-      <p class="hint">Пока записи хранятся на этом устройстве. Не удаляйте приложение — иначе история потеряется.</p>`;
-  authMount('m-auth', { step: u.email || !S.mailReady ? 'idle' : 'email', idle, onDone: (r) => {
+/* Почта в «Аккаунте» — строкой под датой рождения (решение владелицы 20.09, панель «Вход по почте» снята). У аккаунта без почты —
+   кнопка «Привязать почту»: тот же поток кода, что на анкете, разворачивается прямо в карточке профиля */
+function accountMailOpen(){
+  const box=$('ac-auth'); if(!box)return;
+  box.hidden=false; $('ac-mail-btn').hidden=true;
+  authMount('ac-auth', { step:'email', onDone:(r)=>{
     if (r.merged) { location.reload(); return; }   /* чужой аккаунт найден — перезагрузка подтянет его целиком */
-    S.user = r.user; toast('Почта сохранена — доступ не потеряется'); renderAuth(); loadAccount();
+    S.user=r.user; toast('Почта сохранена — доступ не потеряется'); box.hidden=true; box.innerHTML=''; loadAccount();
   } });
 }
 /* До анкеты — «Уже пользовались?» на анкете и экран входа: профиль нашелся — перезагрузка открывает приложение;
@@ -1289,10 +1275,11 @@ async function paintMeCard(){
   if(!natalCache){ try{ natalCache=await api('/natal?quiet=1'); paint(natalCache); }catch(e){ /* карточка остается с датой и городом */ } }
 }
 function loadAccount(){
-  const u=S.user; paintAvatar();
+  const u=S.user; paintAvatar(); paintThemeToggle();
   $('ac-name').textContent=u.name||'Мой профиль';
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
-  $('ac-mail-sub').textContent=u.email||'Сохраненные записи доступны на других устройствах';   /* почта, по которой вошли, — прямо в ряду «Вход по почте» */
+  const mail=$('profile-email'); mail.textContent=u.email||''; mail.hidden=!u.email;   /* почта, по которой вошли, — под датой рождения */
+  const btn=$('ac-mail-btn'), box=$('ac-auth'); if(btn)btn.hidden=!!u.email||!S.mailReady||S.localPreview||!box.hidden;   /* привязать можно, пока почты нет и письма настроены */
 }
 let editReady = false;
 function fillEdit(){
@@ -1357,7 +1344,7 @@ function installApp(event){
 /* Последний удачный каталог остается в браузере: без сети настроения, награды и вопросы берутся из него,
    а не из копий справочников в коде — источник у контента один, content.mjs. */
 const catalogFrom = (c) => ({ cards: Object.fromEntries(c.cards.map(x => [x.slug, x])), runes: Object.fromEntries(c.runes.map(x => [x.slug, x])), layouts: c.layouts, habitIdeas: c.habitIdeas || [], askesisIdeas: c.askesisIdeas || [], lunarDays: c.lunarDays || [],
-  news: c.news || [], quickMoods: c.quickMoods || [], moods: c.moods || [], moodFamilies: c.moodFamilies || {}, legacyMoods: c.legacyMoods || {},
+  quickMoods: c.quickMoods || [], moods: c.moods || [], moodFamilies: c.moodFamilies || {}, legacyMoods: c.legacyMoods || {},
   tools: c.tools || [], reminderTexts: c.reminderTexts || {} });
 let CAT = null, catPromise = null;
 try { const cached = localStorage.getItem('lun_catalog'); if (cached) CAT = catalogFrom(JSON.parse(cached)); } catch (e) {}
@@ -2184,12 +2171,12 @@ async function toggleTopic(key){
   const topics=topicList().map(t=>t.key).filter(k=>cur.has(k));
   try{await savePreferences({...XP.prefs,topics});track('topics_set',topics.join(','));hap();}
   catch{toast(ERR_SAVE);return;}
-  paintLunarArticle();if($('topics-box'))paintTopics();
+  paintLunarArticle();
 }
 async function setTopicsAll(on){
   try{await savePreferences({...XP.prefs,topicsAll:!!on});track('topics_all',on?'on':'off');}
   catch{toast(ERR_SAVE);return;}
-  XP.topicsShown=true;paintLunarArticle();if($('topics-box'))paintTopics();
+  XP.topicsShown=true;paintLunarArticle();
 }
 function paintLunarArticle(){
   const l=S.day&&S.day.lunar,d=LUN&&LUN.days.find(x=>x.n===l.n);if(!l||!$('ln-art'))return;
@@ -2212,31 +2199,11 @@ function registerWebMcp(){
     mc.provideContext({tools:[
       {name:'lunario_today',description:'Сегодня в Лунарио: дата, фаза Луны, лунный день и его рекомендация, установка дня. Без личных записей.',inputSchema:{type:'object',properties:{}},
         execute:async()=>{const d=S.day||{};const l=d.lunar||{};return {date:d.date,moon:d.moon,lunarDay:l.n?{n:l.n,title:l.title,advice:l.advice,period:l.period}:null,setting:d.set?d.set.statement||'':'' };}},
-      {name:'lunario_open',description:'Открыть раздел или инструмент Лунарио: home, ask, history, about, account, news; или виджет card, mood, lunar, sky, natal, year, compat, topics.',
+      {name:'lunario_open',description:'Открыть раздел или инструмент Лунарио: home, ask, history, about, account; или виджет card, mood, lunar, sky, natal, year, compat.',
         inputSchema:{type:'object',properties:{target:{type:'string'}},required:['target']},
-        execute:async({target})=>{const t=String(target||'');if(['home','ask','history','about','account','news'].includes(t)){go(t);return {ok:true,view:t};}if(FEATURES[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
+        execute:async({target})=>{const t=String(target||'');if(['home','ask','history','about','account'].includes(t)){go(t);return {ok:true,view:t};}if(FEATURES[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
     ]});
   }catch(e){}
-}
-/* Виджет «Геолокация»: место для созвездий — по устройству (только по нажатию), свой город или как в анкете */
-function paintSkyPlace(){
-  const box=$('skyplace-box'),sky=window.LunarioSky;if(!box)return;
-  const d=sky?sky.describe():{label:'Москва',source:'moscow',hasProfile:false,geolocation:false};
-  box.innerHTML=`<p class="hint">Координаты никуда не отправляются</p>
-    <div class="card mt-3"><span class="eyebrow">Сейчас</span><p class="mt-1" id="sp-now">${esc(d.label)}</p></div>
-    <div class="field sug mt-3"><label for="sp-city">Указать город</label><input id="sp-city" placeholder="Начните вводить: Влад…" maxlength="60" autocomplete="off"><div class="sug-list" id="sp-city-list"></div><p class="hint mt-2" id="sp-geo">Выберите город из подсказки — небо перестроится сразу.</p></div>
-    <div class="rows mt-3">
-      ${d.geolocation?`<button data-on="click:window-LunarioSky-locate-true-setTimeout-paintSkyPlace-1" class="rowbtn" type="button"><span>Определить по устройству</span><small>Телефон спросит разрешение один раз</small></button>`:''}
-      ${d.hasProfile?`<button data-on="click:window-LunarioSky-useProfile-paintSkyPlace" class="rowbtn" type="button"><span>Как в анкете</span><small>Город рождения из профиля</small></button>`:''}
-    </div>`;
-  const pick=attachCity('sp-city','sp-city-list','sp-geo');
-  $('sp-city-list').addEventListener('click',()=>setTimeout(()=>{const c=pick.picked;if(c&&sky){sky.setCity({name:c.name,lat:c.lat,lon:c.lon});$('sp-now').textContent=sky.describe().label;toast('Небо перестроено ✦');}},0));
-}
-/* Виджет «Настройка контента» (темы чтения) в «Аккаунте» */
-function paintTopics(){
-  const box=$('topics-box');if(!box)return;
-  if(!LUN){box.innerHTML='<p class="hint">Загружаем темы…</p>';loadLunarDays().then(paintTopics).catch(()=>{box.innerHTML='<p class="hint">Не получилось загрузить темы</p>';});return;}
-  box.innerHTML=`${topicsRowHtml()}`;
 }
 /* Глава дня: иллюстрация, номер и тема, вступление сразу, разделы с подзаголовками — под «Читать полностью». */
 function lunarDayHtml(d, today, primary=false){
@@ -2819,7 +2786,7 @@ async function removeWishPhoto(id){ try { const r = await api('/wishes/photo?id=
 const photoUrl = (u) => u && u.photo ? `/app/api/photo?t=${encodeURIComponent(u.photoTs || '')}` : '';
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
-  document.querySelectorAll('.acct').forEach(el=>{el.innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span><i class="news-dot" hidden aria-hidden="true"></i>`;}); paintNewsDot();
+  document.querySelectorAll('.acct:not(.theme-toggle)').forEach(el=>{el.innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span>`;});
   const box = $('ac-photo'); if (box) box.innerHTML = `<div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>`;
   const actions = $('ac-photo-actions'); if (actions) actions.innerHTML = `<button data-on="click:setPhoto" class="btn ghost sm" type="button">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? '<button data-on="click:removePhoto" class="btn ghost sm" type="button">Убрать фото</button>' : ''}`;
   const note = $('ac-photo-note'); if (note) note.hidden = !!u.photo;
@@ -2830,42 +2797,6 @@ async function setPhoto(){
   catch (e) { toast(e.status === 413 ? 'Фото слишком большое — попробуйте другое' : 'Не получилось загрузить фото'); }
 }
 async function removePhoto(){ try { const r = await api('/photo', { method: 'DELETE' }); S.user = Object.assign(S.user, r.user); paintAvatar(); } catch (e) { toast('Не получилось'); } }
-
-/* ══════════ Новое в приложении: плитки ведут в сами разделы, дублировать нечего. Список — content/новое.txt ══════════ */
-function featureRoot(key){
-  if(!/^[a-z][a-z0-9-]*$/.test(key||''))return null;
-  return document.querySelector('[data-feature="'+key+'"]')
-    ||document.querySelector('.app-nav [data-nav="'+(Object.hasOwn(VIEW_ALIASES,key)?VIEW_ALIASES[key]:key)+'"]')
-    ||document.querySelector('button[data-on="click:openWidget-'+key+'"]');
-}
-async function paintNews(){
-  const box = $('news-box'); box.innerHTML = LOADING;
-  try { await loadCatalog(); } catch(e) {}
-  const month = S.day.date.slice(0,7);
-  $('news-sub').textContent = monthName(month).replace(/^./,c=>c.toUpperCase());
-  const news = CAT?.news || [], keys = new Set(news.filter(n=>n.month===month).map(n=>n.widget || n.view));
-  const soon = news.filter(n=>n.soon);
-  $('news-soon').hidden = !soon.length;
-  $('news-soon-box').innerHTML = soon.map(n=>`<div class="item"><b>${esc(n.title)}</b><small>${esc(n.text)}</small></div>`).join('');
-  box.replaceChildren();
-  for(const key of keys){
-    const root = featureRoot(key); if(!root) continue;
-    const tile = key==='around'?document.querySelector('[data-feature="lunar"]').cloneNode(true):root.cloneNode(true); tile.className='wid'; tile.hidden=false; tile.removeAttribute('id'); tile.removeAttribute('data-on'); tile.removeAttribute('style');   /* обработчик клона — свой, ниже */
-    const section=root.dataset.nav||(root.dataset.feature==='account'?'account':'');   /* раздел: вкладка внизу или «Аккаунт» по кружку с фото */
-    if(section){
-      tile.replaceChildren();const icon=root.querySelector('.ico');const i=document.createElement('i');i.className=icon?icon.className:'ico person';tile.appendChild(i);
-      const title=document.createElement('b');title.textContent=root.dataset.nav?root.textContent.trim():$('v-'+section).querySelector('h1').textContent.trim();tile.appendChild(title);
-      const caption=$('v-'+section)?.querySelector('.eyebrow');if(caption){const sub=document.createElement('span');sub.textContent=caption.textContent;tile.appendChild(sub);}
-    }
-    tile.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
-    tile.querySelectorAll('canvas').forEach(el=>{const icon=document.createElement('i');icon.className='ico moon';el.replaceWith(icon);});
-    tile.removeAttribute('data-feature');tile.removeAttribute('data-nav');tile.removeAttribute('aria-current');tile.dataset.newsTarget=key;
-    tile.onclick=()=>{const current=featureRoot(key);if(!current)return;if(current.dataset.nav){current.click();return;}go(current.closest('.view')?.id.slice(2)||'home');if(key==='around')current.scrollIntoView({behavior:'smooth',block:'start'});else current.click();};
-    box.appendChild(tile);
-  }
-  if(!box.children.length) box.innerHTML='<p class="hint">В этом месяце новинок еще не было</p>';
-  markNewsSeen(); track('news_view');
-}
 
 /* снимок последнего удачного /me — только для аккаунта, который уже прошел анкету, и не старше суток */
 function offlineSnapshot(){

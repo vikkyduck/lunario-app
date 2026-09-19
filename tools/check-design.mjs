@@ -49,23 +49,19 @@ export async function checkDesign({browser,base,owner}){
     await page.evaluate(id=>supThread(id),ticket.id);assert.equal(await page.locator('#sup-reply').inputValue(),'Несохранённый ответ');await page.unroute('**/api/support/ticket?*');
     await close();await page.evaluate(()=>openWidget('support'));await page.locator('#sup-text').waitFor();await page.evaluate(id=>supThread(id),ticket.id);await page.locator('#sup-reply').waitFor();assert.equal(await page.locator('#sup-reply').inputValue(),'Несохранённый ответ');await close();
 
-    const panes=['card','dayrune','mood','worry','day','tone','gratitude','journal','habits','askesis','wishes','sky','lunar','hmood','hentries','week','year','birthnum','compat','natal','edit','remind','mail','support','invite','appinfo','terms','tools','appearance'];
+    const panes=['card','dayrune','mood','worry','day','tone','gratitude','journal','habits','askesis','wishes','sky','lunar','hmood','hentries','week','year','birthnum','compat','natal','edit','remind','support','invite','appinfo','terms','tools'];
     for(const theme of ['light','dark'])for(const [width,height] of [[320,568],[390,844],[1440,900]]){
       await page.setViewportSize({width,height});await page.evaluate(t=>applyTheme(t),theme);
-      for(const view of ['home','ask','history','about','account','news']){
+      for(const view of ['home','ask','history','about','account']){
         await page.evaluate(v=>{XP.scroll[v]=0;go(v);},view);await ready();await fit(theme+' '+width+' '+view);
-        assert.equal(await page.locator('.app-nav [aria-current=page]').count(),['account','news'].includes(view)?0:1);   /* аккаунт и новости — не вкладки */
+        assert.equal(await page.locator('.app-nav [aria-current=page]').count(),view==='account'?0:1);   /* аккаунт и новости — не вкладки */
         if(width!==320)await shot(theme+'-'+width+'-'+view);
       }
       for(const key of panes){
         await page.evaluate(k=>openWidget(k),key);await ready();await fit(theme+' '+width+' '+key);
-        if(key==='appearance'){
-          assert.ok(await page.locator('#theme-state').isHidden(),'No empty saved-state frame');
-          assert.equal(await page.locator('.theme-option.dark>span').evaluate(e=>getComputedStyle(e).color),'rgb(245, 242, 234)');
-        }
         if(key==='remind')assert.ok(await page.locator('.rem-head .sw').first().evaluate(e=>e.getBoundingClientRect().height>=44),'Switch has a usable touch target');
-        if(width===390&&['mood','habits','askesis','journal','tone','remind','edit','appearance','wishes'].includes(key))await shot(theme+'-'+key);
-        if(['appearance','tools'].includes(key)&&width<760){const rect=await page.locator('.wg').boundingBox();assert.ok(rect.y>=0&&rect.y+rect.height<=height+1,'short sheet fits '+key);}
+        if(width===390&&['mood','habits','askesis','journal','tone','remind','edit','wishes'].includes(key))await shot(theme+'-'+key);
+        if(key==='tools'&&width<760){const rect=await page.locator('.wg').boundingBox();assert.ok(rect.y>=0&&rect.y+rect.height<=height+1,'short sheet fits '+key);}
         await close();
       }
       for(const mode of ['yesno','rune','spread']){await page.evaluate(m=>openAsk(m),mode);await page.locator('#a-q').waitFor();await ready();await fit(theme+' '+width+' '+mode);await close();}
