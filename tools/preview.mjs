@@ -100,9 +100,13 @@ const server=createServer(async(req,res)=>{
       res.writeHead(r.status,{'Content-Type':'application/json'});res.end(JSON.stringify(body));return;
     }
     if(url.pathname.startsWith('/app/content/') && req.method==='GET') {
+      /* картинки контента — с сервера, с кэшем на диске: скриншоты и проверки не должны зависеть от сети */
+      const cacheDir=join(work,'content-cache'), key=url.pathname.replace(/[^\w.-]+/g,'_'); const cached=join(cacheDir,key);
+      if(existsSync(cached)){ const [type,...rest]=readFileSync(cached,'utf8').split('\n'); res.writeHead(200,{'Content-Type':type}); res.end(Buffer.from(rest.join('\n'),'base64')); return; }
       const upstream=await fetch('https://lunario.online'+url.pathname+url.search,{signal:AbortSignal.timeout(15000)});
-      res.writeHead(upstream.status,{'Content-Type':upstream.headers.get('content-type')||'application/octet-stream'});
-      res.end(Buffer.from(await upstream.arrayBuffer()));return;
+      const type=upstream.headers.get('content-type')||'application/octet-stream', body=Buffer.from(await upstream.arrayBuffer());
+      if(upstream.ok){ mkdirSync(cacheDir,{recursive:true}); writeFileSync(cached,type+'\n'+body.toString('base64')); }
+      res.writeHead(upstream.status,{'Content-Type':type}); res.end(body);return;
     }
     if(url.pathname.startsWith('/app/api/')) {proxy(req,res);return;}
     if(url.pathname==='/sw.js'){res.writeHead(404);res.end();return;}
