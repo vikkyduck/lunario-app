@@ -1452,7 +1452,14 @@ function paintCard(){
   $('t-after').innerHTML = c ? cardDayHtml(c, S.day.date, false) : '';
   paintCardTile();
 }
-function paintCardTile(){ const e = $('t-cardsub'); if (e && S.day) e.textContent = S.day.card ? S.day.card.name : 'Одна карта на день: смысл и что сделать сегодня'; }
+function paintCardTile(){
+  const e = $('t-cardsub'); if (e && S.day) e.textContent = S.day.card ? S.day.card.name : 'Одна карта на день: смысл и что сделать сегодня';
+  /* миниатюра в строке: рубашка, пока карту не открыли; после — ее лицо */
+  const th = $('t-cardthumb'); if (!th || !S.day) return;
+  const face = S.day.card && (S.flipped || S.day.cardOpened) ? (cardBy(S.day.card.slug) || S.day.card).image : '';
+  const want = face ? face + '?v=1' : '/app/assets/brand/card-back.svg?v=1';
+  if (th.getAttribute('src') !== want) th.src = want;
+}
 function showFlipped(){
   S.flipped = true;
   $('t-card').classList.add('flip'); $('t-card').classList.remove('glow');

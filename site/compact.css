@@ -196,3 +196,9 @@ html[data-skin=compact] body.inner :is(.title-gold,.ln-title){font-family:var(--
 html[data-skin=compact] body.inner .practice-header h1{font-family:var(--serif);font-size:28px;font-weight:600;letter-spacing:0}
 html[data-skin=compact] #v-hello .hello-claim{font-family:var(--serif);font-size:34px;line-height:1.1;font-weight:500;letter-spacing:0}
 html[data-skin=compact] :is(#v-onb,#v-login,#v-rhythm) h1:not(.wordmark){font-family:var(--serif);font-size:32px;line-height:1.1;font-weight:600;letter-spacing:0}
+
+/* ── карта дня в строке — предмет: миниатюра рубашки (после открытия — лица) вместо иконки в кружке ── */
+html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb::before{content:none}
+/* специфичность выше общей строки «>span:not(.dot):not(.destination-arrow)» — иначе миниатюра уезжает во вторую колонку */
+html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb>span.card-thumb.card-thumb:not(.dot){grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;display:block;width:34px;height:56px;overflow:hidden;font-size:0}
+html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb{min-height:72px}

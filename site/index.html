@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=84"></script>
+<script src="/app/boot.js?v=85"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -112,11 +112,14 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .rise{animation:in var(--t-slow) var(--sp) both;animation-delay:calc(var(--i,0)*40ms)}
 /* карта дня */
 .daycard{width:180px;height:286px;margin:14px auto 0;perspective:1000px;cursor:pointer}
-.dc-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .75s var(--sp)}
+.dc-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s var(--sp)}
+/* карта — предмет: до открытия лежит чуть наклонно и дышит светом, открывается — выравнивается */
+.daycard{transition:transform .6s var(--sp)}.daycard:not(.flip){transform:rotate(-3deg)}
+.dc-back-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;filter:none}
 .daycard.flip .dc-in{transform:rotateY(180deg)}
 .dc-f{position:absolute;inset:0;backface-visibility:hidden;border-radius:var(--r-xl);display:grid;place-items:center;padding:18px;text-align:center}
 .dc-back img{filter:drop-shadow(0 6px 22px rgba(217,184,104,.35))}
-.dc-back{background:linear-gradient(150deg,#2a2150,#0b0a14);border:1px solid rgba(255,255,255,.16);box-shadow:0 30px 70px rgba(11,10,20,.7)}
+.dc-back{background:#141126;border:1px solid rgba(240,215,154,.35);box-shadow:0 30px 70px rgba(11,10,20,.7),0 0 40px -10px rgba(240,215,154,.35);overflow:hidden;padding:0}
 .dc-front{transform:rotateY(180deg);background:linear-gradient(160deg,#1d1738,#0b0a14);border:1px solid rgba(217,184,104,.45);box-shadow:0 30px 70px rgba(11,10,20,.65)}
 .glow{animation:breathe 5s ease-in-out infinite}
 @keyframes breathe{0%,100%{filter:drop-shadow(0 14px 34px rgba(217,184,104,.24))}50%{filter:drop-shadow(0 18px 52px rgba(240,215,154,.38))}}
@@ -374,6 +377,7 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .moonline p{font-size:16px;color:var(--text)}
 .moonline small{display:block;color:var(--faint);font-size:13px;margin-top:3px}
 .zsym{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.18em;fill:none;stroke:var(--gold-2);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px rgba(240,215,154,.35))}
+.card-thumb{display:block;width:34px;height:56px;border-radius:5px;overflow:hidden;flex:0 0 auto;box-shadow:0 6px 14px -6px rgba(0,0,0,.8),0 0 16px -6px rgba(240,215,154,.5);transform:rotate(-4deg)}.card-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 .ico{display:inline-block;width:30px;height:30px;flex:0 0 auto;background:var(--gold);-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .ico.yes-no{--m:url(/app/assets/brand/icons/yes-no.svg)}.ico.rune{--m:url(/app/assets/brand/icons/rune.svg)}.ico.tarot{--m:url(/app/assets/brand/icons/tarot.svg)}.ico.card-day{--m:url(/app/assets/brand/icons/card-day.svg)}.ico.spark{--m:url(/app/assets/brand/icons/spark.svg)}.ico.moon{--m:url(/app/assets/brand/icons/moon.svg?v=2)}.ico.journal{--m:url(/app/assets/brand/icons/journal.svg)}.ico.compatibility{--m:url(/app/assets/brand/icons/compatibility.svg)}.ico.numerology{--m:url(/app/assets/brand/icons/numerology.svg)}.ico.person{--m:url(/app/assets/brand/icons/person.svg)}.ico.orbit{--m:url(/app/assets/brand/icons/orbit.svg)}.ico.users{--m:url(/app/assets/brand/icons/users.svg)}.ico.calendar{--m:url(/app/assets/brand/icons/calendar.svg)}.ico.heart{--m:url(/app/assets/brand/icons/heart.svg)}.ico.flag{--m:url(/app/assets/brand/icons/flag.svg)}.ico.question{--m:url(/app/assets/brand/icons/question.svg)}.ico.chat{--m:url(/app/assets/brand/icons/chat.svg)}.ico.share{--m:url(/app/assets/brand/icons/share.svg)}.ico.pen{--m:url(/app/assets/brand/icons/pen.svg)}.ico.mail{--m:url(/app/assets/brand/icons/mail.svg)}.ico.bell{--m:url(/app/assets/brand/icons/bell.svg)}.ico.smile{--m:url(/app/assets/brand/icons/smile.svg)}.ico.check{--m:url(/app/assets/brand/icons/check.svg)}.ico.list{--m:url(/app/assets/brand/icons/list.svg)}.ico.exit{--m:url(/app/assets/brand/icons/exit.svg)}
 .ico.star{--m:url(/app/assets/brand/icons/spark.svg)}
@@ -785,11 +789,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=84">
-<link rel="stylesheet" href="/app/experience.css?v=84">
-<link rel="stylesheet" href="/app/moon-glass.css?v=84">
-<link rel="stylesheet" href="/app/compact.css?v=84">
-<link rel="stylesheet" href="/app/frame.css?v=84">
+<link rel="stylesheet" href="/app/theme.css?v=85">
+<link rel="stylesheet" href="/app/experience.css?v=85">
+<link rel="stylesheet" href="/app/moon-glass.css?v=85">
+<link rel="stylesheet" href="/app/compact.css?v=85">
+<link rel="stylesheet" href="/app/frame.css?v=85">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -969,7 +973,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <!-- после выбора вопрос сворачивается в строку: экран — для чтения, не для настроек -->
     <button data-on="click:morningEdit" class="morning-summary" id="morning-summary" type="button" hidden><span class="eyebrow">Утром показываем</span><b id="morning-summary-list"></b><span class="text-action" aria-hidden="true">Изменить</span></button>
     <section class="feature-group" id="home-sky" data-feature="around"><h2>Мое утро</h2><div class="wids compact-links" id="morning-feed"></div></section>
-    <section class="feature-group" id="morning-rest"><h2>Еще про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid" data-feature="card" data-chip="Карта дня" type="button"><i class="ico card-day"></i><b>Карта дня</b><span id="t-cardsub">Одна карта на день: смысл и что сделать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" data-chip="Руна дня" type="button"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" data-chip="Планеты" type="button"><i class="ico star"></i><b>Влияние планет</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" data-chip="Прогноз дня" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" data-chip="Луна" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b class="moon-title">Луна</b><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" data-chip="Вопрос дня" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос по теме дня — ответ вечером в дневнике</span></button></div></section>
+    <section class="feature-group" id="morning-rest"><h2>Еще про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid has-thumb" data-feature="card" data-chip="Карта дня" type="button"><span class="card-thumb" aria-hidden="true"><img id="t-cardthumb" src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt=""></span><b>Карта дня</b><span id="t-cardsub">Одна карта на день: смысл и что сделать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" data-chip="Руна дня" type="button"><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день: образ и совет</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" data-chip="Планеты" type="button"><i class="ico star"></i><b>Влияние планет</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" data-chip="Прогноз дня" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" data-chip="Луна" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b class="moon-title">Луна</b><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" data-chip="Вопрос дня" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос по теме дня — ответ вечером в дневнике</span></button></div></section>
     <!-- вечером и по воскресеньям страница знает, что дальше: записать день, посмотреть неделю -->
     <div class="home-later" id="home-later" hidden></div>
   </section>
@@ -1051,7 +1055,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <div class="wpane" id="w-card">
     <div data-on="click:flipCard" class="daycard glow" id="t-card">
       <div class="dc-in">
-        <div class="dc-f dc-back"><img src="/app/assets/brand/logo-mark.svg" width="88" height="88" alt=""></div>
+        <div class="dc-f dc-back"><img class="dc-back-art" src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt=""></div>
         <div class="dc-f dc-front" id="c-face"></div>
       </div>
     </div>
@@ -1144,14 +1148,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=84"></script>
+<script src="/app/moon-logo.js?v=85"></script>
 
-<script type="module" src="/app/sky.js?v=84"></script>
+<script type="module" src="/app/sky.js?v=85"></script>
 
-<script src="/app/experience.js?v=84"></script>
-<script src="/app/app.js?v=84"></script>
-<script src="/app/tour.js?v=84"></script>
-<script src="/app/handlers.js?v=84"></script>
-<script src="/app/on.js?v=84"></script>
+<script src="/app/experience.js?v=85"></script>
+<script src="/app/app.js?v=85"></script>
+<script src="/app/tour.js?v=85"></script>
+<script src="/app/handlers.js?v=85"></script>
+<script src="/app/on.js?v=85"></script>
 </body>
 </html>
