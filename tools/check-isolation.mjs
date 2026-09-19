@@ -130,7 +130,10 @@ try {
     }
     return createHash('sha256').update(parts.join('\n')).digest('hex');
   }
-  const before = snapshot(bobId);
+  function snapshotRaw(id){ const parts=[]; for (const t of TABLES) { const cols = db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name); const where = cols.includes('user_id') ? 'WHERE user_id = ?' : t === 'users' ? 'WHERE id = ?' : t === 'habit_marks' ? 'WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)' : t === 'askesis_days' ? 'WHERE askesis_id IN (SELECT id FROM askesis WHERE user_id = ?)' : t === 'messages' ? 'WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = ?)' : null; parts.push(t + ':' + JSON.stringify(db.prepare(`SELECT * FROM ${t} ${where}`).all(id))); } return parts.join('\n'); }
+  /* полки Б досчитываются после ответа сервера (createShelves) — ждём, пока снимок перестанет меняться, иначе гонка со снимком */
+  { let last = snapshot(bobId), stable = 0; for (let i = 0; i < 40 && stable < 3; i++) { await new Promise((r) => setTimeout(r, 150)); const cur = snapshot(bobId); stable = cur === last ? stable + 1 : 0; last = cur; } }
+  const before = snapshot(bobId); const beforeRaw = process.env.ISO_DEBUG ? snapshotRaw(bobId) : '';
 
   /* ── А пробует дотянуться до всего, что есть у Б ── */
   const alice = account(); const aliceId = (await alice.json('/me')).user.id;
@@ -209,6 +212,7 @@ try {
   console.log(`PASS: ${seen.length} запросов А к чужим данным — ни одной метки Б ни в одном ответе.`);
 
   /* ── данные Б не изменились ── */
+  if (process.env.ISO_DEBUG && snapshot(bobId) !== before) { const a=beforeRaw.split('\n'), b=snapshotRaw(bobId).split('\n'); for (let i=0;i<a.length;i++) if (a[i]!==b[i]) { console.log('DIFF', a[i].slice(0,600)); console.log('NOW ', b[i].slice(0,600)); } }
   assert.equal(snapshot(bobId), before, 'после попыток А личные данные Б изменились');
   console.log('PASS: после всех попыток личные данные Б в базе не изменились ни на байт.');
 
