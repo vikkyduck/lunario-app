@@ -123,7 +123,7 @@ try {
   assert.equal((await other.json('/preferences')).preferences.theme,'dark');
   for(const ritual of [[],['tone'],['tone','tone'],['tone','unknown'],['card','mood','tone','journal']])assert.equal((await owner.raw('/preferences','POST',{theme:'dark',ritual})).status,400);
   /* Инструменты: каталог отдаёт список со стартовым набором; выбор хранится в настройках, чужие ключи отбрасываются, не-массив — ошибка */
-  const catTools=(await (await fetch(base+'/api/catalog')).json()).tools;assert.ok(Array.isArray(catTools)&&catTools.some(t=>t.key==='gratitude'&&!t.start)&&catTools.some(t=>t.key==='askesis'&&!t.start)&&catTools.every(t=>t.section==='history'),'tools catalog: diary only; evening steps are off for a new person and offered one by one');
+  const catTools=(await (await fetch(base+'/api/catalog')).json()).tools;assert.ok(Array.isArray(catTools)&&catTools.some(t=>t.key==='journal'&&!t.start)&&catTools.some(t=>t.key==='gratitude'&&!t.start)&&catTools.every(t=>t.section==='history'),'tools catalog: diary only; every practice is off for a new person — the evening starts with mood only');
   assert.equal((await owner.json('/preferences')).preferences.tools,undefined,'no choice yet — client shows the start set');
   await owner.json('/preferences','POST',{...prefs,tools:['askesis','nope','askesis','wishes']});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','wishes']);
   await owner.json('/preferences','POST',{...prefs,topics:[]});assert.deepEqual((await owner.json('/preferences')).preferences.tools,['askesis','wishes'],'saving other preferences keeps the tools');

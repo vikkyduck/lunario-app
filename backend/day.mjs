@@ -139,8 +139,8 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
       }
     });
     for (const [t, x] of events) track(u, t, x);
-    /* деталь события: что заполнено, для прошлого дня — пометка past, для сегодняшнего — вариант порядка шагов (A/B: текст или настроение первым) */
-    if (filled.length) { if (today) touchStreak(u); track(u, 'day_save', [filled.join('|'), today ? clean(b.variant, 12) : 'past'].filter(Boolean).join(' @')); }
+    /* деталь события: что заполнено; для прошлого дня — пометка past */
+    if (filled.length) { if (today) touchStreak(u); track(u, 'day_save', [filled.join('|'), today ? '' : 'past'].filter(Boolean).join(' @')); }
     return { ok: true, saved: filled, ...state(u, d, { today }) };
   }
   /* Убрать из дня: запись / благодарность / ответ (все строки этого вида за день) или настроение; фото — своим маршрутом */
