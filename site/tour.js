@@ -20,7 +20,7 @@ function tourSeen(){ try { return Number(localStorage.getItem(tourKey())) >= TOU
 /* Строка «Где что» на «Сегодня» — пока короткий тур не смотрели; сам по себе тур не запускается */
 function paintTourRow(){
   const box = $('home-tour'); if (!box) return;
-  const due = !!S.user && !tourSeen(); box.hidden = !due;
+  const due = !!S.user && !tourSeen() && !(S.daysTotal >= 3); box.hidden = !due;   /* три записанных дня — человек и так знает, где что */
   box.innerHTML = due ? `<button data-on="click:tourShort" class="later-row" id="tour-row" type="button"><span class="eyebrow">Где что</span><b>Дневник · Свериться с собой · Обо мне</b><span class="later-go">Показать за 20 секунд →</span></button>` : '';
 }
 function tourMaybe(){ clearTimeout(Tour.timer); Tour.timer = setTimeout(paintTourRow, 300); }

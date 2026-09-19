@@ -338,7 +338,7 @@ function hidePushNote(){ if (S.pushLast) { try { localStorage.setItem('lun_push_
 /* «Вчера вечером: „…“» — строка на «Сегодня» с первой фразой вчерашней записи; тап открывает день. Дневник возвращает слова утром */
 async function paintYesterday(){
   const box=$('home-yesterday'); if(!box||!S.user?.onboarded)return;
-  if(S.yesterday===undefined){ try{ S.yesterday=((await api('/days?calendar=1')).items||[])[0]||null; }catch(e){ S.yesterday=null; } }
+  if(S.yesterday===undefined){ try{ const r=await api('/days?calendar=1'); S.yesterday=(r.items||[])[0]||null; S.daysTotal=r.total||0; window.tourMaybe?.(); }catch(e){ S.yesterday=null; } }
   const y=S.yesterday; if(!y||y.empty){ box.hidden=true; box.innerHTML=''; return; }
   const moods=y.moods.map(m=>(MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase());
   const line=y.text?`«${esc(y.text.length>80?y.text.slice(0,80).replace(/\s+\S*$/,'')+'…':y.text)}»`:moods.length?esc(moods.join(', ')):'фото дня';
@@ -942,7 +942,7 @@ function paintDayCard(){
   }
   const filled=dcFilled(step.key);
   const primary=last?`<button data-on="click:saveDayCard" class="btn" id="dc-next" type="button">Запомнить этот день</button>`:`<button data-on="click:dcNext" class="btn" id="dc-next" type="button">Дальше</button>`;
-  const actions=`<div class="answer-actions dc-actions">${primary}${filled||last?'':`<button data-on="click:dcNext" class="text-action dc-skip" type="button">Пропустить</button>`}</div><p class="hint" id="dc-state" role="status"></p>`;
+  const actions=`<div class="answer-actions dc-actions">${primary}${filled||last?'':`<button data-on="click:dcNext" class="text-action dc-skip" type="button">Пропустить</button>`}</div><p class="hint" id="dc-state" role="status">${last&&!filled?'Можно и без этого — запомним то, что уже есть':''}</p>`;
   box.innerHTML=head+body+actions;
   if(step.key==='mood'&&DC.ownOpen&&!DC.own)$('dc-own')?.focus({preventScroll:true});
   box.querySelectorAll('textarea').forEach(growTextarea);
@@ -1049,7 +1049,7 @@ function paintDayParty(){
 /* День записан — читается, а не заполняется: настроение, утро, записи прозой, тихая строка практик, «мост» из прошлого */
 function paintDayDone(){
   const s=DC.state, box=$('day-card');
-  const hour=new Date().getHours(), night=hour>=18||hour<4;
+  const hour=new Date().getHours(), night=hour>=17||hour<4;
   const moods=s.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
   const warm=`Записали${moods.length?` — ${moods.map(m=>`«${esc(m.toLowerCase())}»`).join(', ')}`:''}. ${night?'Спокойной ночи ✦':'Хорошего дня ✦'}`;
   box.innerHTML=`<span class="eyebrow">День записан ✦ · ${fmtDayWords(s.day)}</span>
@@ -1093,7 +1093,8 @@ function paintEveningSet(){
   const box=$('evening-set'); if(!box||!S.user?.onboarded)return;
   const on=eveningStepsOn();
   const extras=EVENING_EXTRAS.filter(stepOn);
-  if(!eveningSetOpen){ box.innerHTML=`<span class="es-label">Вечером записываю:</span> <b>${[...on,...extras].map(k=>STEP_NAME[k].toLowerCase()).join(' · ')}</b> <button data-on="click:eveningSetToggle" class="text-action" type="button">Изменить</button>`; return; }
+  if(!eveningSetOpen){ box.innerHTML=`<span class="es-label">Вечером записываю:</span> <b>${on.map(k=>STEP_NAME[k].toLowerCase()).join(' · ')}${extras.length?` <span class="es-extra">· ${extras.map(k=>STEP_NAME[k].toLowerCase()).join(' · ')} к записи</span>`:''}</b> <button data-on="click:eveningSetToggle" class="text-action" type="button">Изменить</button>`; return; }
+  $('dc-offer')?.remove();   /* чипы уже здесь — второй набор в карточке ни к чему */
   box.innerHTML=`<span class="es-label">Из чего собран мой вечер</span><div class="chips flow mt-2">${[...STEP_ORDER,...EVENING_EXTRAS].map(k=>{const base=k==='text'||k==='mood', isOn=stepOn(k);return `<button data-on="click:eveningStepToggle-a0" data-a0="${k}" type="button" class="chip${isOn?' on':''}${base?' fixed':''}" aria-pressed="${isOn}"${base?' disabled':''}>${STEP_NAME[k].toLowerCase()}${base?' ✓':''}</button>`;}).join('')}</div>
     <p class="hint mt-2">Запись и настроение — всегда; остальное — по вашему выбору. Порядок шагов — от легкого к трудному. Убрать — не значит потерять: записи остаются.</p>
     <button data-on="click:eveningSetToggle" class="text-action secondary mt-1" type="button">Готово</button>`;
@@ -1112,19 +1113,20 @@ async function toggleEveningStep(key,forceOn){
 function eveningStepToggle(key){ toggleEveningStep(key); }
 
 /* утро дня одной врезкой; вопрос — только если на него нет ответа (ответ показывает его сам) */
-const morningHtml=(s)=>s.set?`<div class="dc-morning">Утром${s.theme?` · ${esc(s.theme)}`:''}<b>«${esc(s.set)}»</b>${s.question&&!s.answer?esc(s.question):''}</div>`:'';
+const lunarLine=(s)=>s.lunar&&s.lunar.n?`${s.lunar.n}-й лунный день${s.lunar.title?` · ${esc(s.lunar.title)}`:''}`:'';
+const morningHtml=(s)=>s.set||s.lunar?`<div class="dc-morning">${s.set?`Утром${s.theme?` · ${esc(s.theme)}`:''}<b>«${esc(s.set)}»</b>${s.question&&!s.answer?esc(s.question):''}`:''}${lunarLine(s)?`<span class="dc-lunar">☾ ${lunarLine(s)}</span>`:''}</div>`:'';
 const dayProseHtml=(s)=>[s.text?['Вечером',s.text.text,'']:null,s.gratitude?['Благодарность',s.gratitude.text,'']:null,s.answer?['Ответ на вопрос дня',s.answer.text,s.answer.title||s.question||'']:null]
   .filter(Boolean).map(([label,text,q])=>`<p class="dc-read"><small>${label}</small>${q?`<span class="q">${esc(q)}</span>`:''}${esc(text)}</p>`).join('');
 const dayQuietHtml=({habits=[],askesis=[],echo=''})=>{ const parts=[]; if(habits.length)parts.push(`Привычки: ${habits.map(esc).join(', ')} ✓`); for(const a of askesis)parts.push(`${esc(a.title)}: ${a.kept?'держусь':'сорвалась'}`); if(echo)parts.push(`Настрой: ${(ECHO_LABEL[echo]||echo).toLowerCase()}`); return parts.length?`<p class="dc-quiet">${parts.join(' · ')}</p>`:''; };
 /* «Мост» — одна строка из прошлого, дословно */
-const daysAgo=(d)=>{const n=Math.round((Date.parse(S.day.date+'T12:00:00Z')-Date.parse(d+'T12:00:00Z'))/864e5);return n===1?'Вчера':n===7?'Неделю назад':n<7?`${n} ${plural(n,'день','дня','дней')} назад`:n<31?`${n} ${plural(n,'день','дня','дней')} назад`:`${fmtDayWords(d)}`;};
+const daysAgo=(d,base=S.day.date)=>{const n=Math.round((Date.parse(base+'T12:00:00Z')-Date.parse(d+'T12:00:00Z'))/864e5);return n===1?'Накануне':n===7?'Неделей раньше':n<31?`${n} ${plural(n,'днем','днями','днями')} раньше`:`${fmtDayWords(d)}`;};
+const bridgeHtml=(b,base)=>{ const when=daysAgo(b.day,base); return b.kind==='answer'?`${when} на этот же вопрос вы ответили: <b>«${esc(b.text)}»</b>`:b.kind==='yesterday'?`${when} — <b>${b.moods.map(m=>esc((MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase())).join(', ')}</b>. А в этот день иначе?`:`${when} вы писали: <b>«${esc(b.text)}»</b>`; };
 async function loadBridge(){
   const box=$('dc-bridge'); if(!box)return;
   if(DC.bridge===undefined){ try{ DC.bridge=(await api('/day/bridge')).item||null; }catch(e){ DC.bridge=null; } }
   const b=DC.bridge; if(!$('dc-bridge'))return;
   if(!b){ if(!(S.daysTotal>0)){ $('dc-bridge').textContent='Завтра вечером этот день будет рядом с новым — так дневник начнет возвращать вам ваши же слова'; $('dc-bridge').hidden=false; } return; }   /* первый вечер: обещание вместо «моста» */
-  const when=daysAgo(b.day);
-  $('dc-bridge').innerHTML=b.kind==='answer'?`${when} на этот же вопрос вы ответили: <b>«${esc(b.text)}»</b>`:b.kind==='yesterday'?`${when} — <b>${b.moods.map(m=>esc((MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase())).join(', ')}</b>. Сегодня иначе?`:`${when} вы писали: <b>«${esc(b.text)}»</b>`;
+  $('dc-bridge').innerHTML=bridgeHtml(b,S.day.date).replace('Накануне','Вчера').replace('Неделей раньше','Неделю назад').replace(/(\d+) дн(ем|ями) раньше/,'$1 дней назад').replace('А в этот день иначе?','Сегодня иначе?');
   $('dc-bridge').hidden=false; track('bridge_view',b.kind);
 }
 
@@ -1134,9 +1136,9 @@ const dayRowHtml=(x)=>{
   const dt=new Date(x.day+'T12:00:00'), wd=dt.toLocaleDateString('ru-RU',{weekday:'short'}).replace('.','');
   const moods=x.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,'')).map(m=>m.toLowerCase());
   const kinds=x.kinds.map(k=>({gratitude:'благодарность',answer:'вопрос дня',habits:'привычки',askesis:'аскеза'})[k]).filter(Boolean);
-  const meta=[moods.length?`<em>${esc(moods.join(' · '))}</em>`:'',...kinds.map(esc)].filter(Boolean).join(' · ');
+  const meta=[moods.length?`<em>${esc(moods.join(' · '))}</em>`:'',...kinds.map(esc),x.lunar?`☾ ${x.lunar}`:''].filter(Boolean).join(' · ');
   const tail=x.photo?`<img class="ph" src="${API}/day/photo?day=${x.day}&size=thumb&t=${encodeURIComponent(x.photo)}" alt="" loading="lazy" decoding="async">`:`<span class="a" aria-hidden="true">›</span>`;
-  return `<button data-on="click:openDay-a0" data-a0="${x.day}" class="day-row${x.empty?' empty':''}${x.photo?' has-photo':''}" type="button" aria-label="${fmtDayWords(x.day,true)}"><span class="n"><b>${dt.getDate()}</b><small>${wd}</small></span><span class="t"><p>${x.text?esc(x.text):x.empty?'Без записей':(moods.length?esc(moods.join(', ')):x.photo?'Фото дня':'Записано')}</p><small>${x.empty?esc(x.theme||''):meta}</small></span>${tail}</button>`;
+  return `<button data-on="click:openDay-a0" data-a0="${x.day}" class="day-row${x.empty?' empty':''}${x.photo?' has-photo':''}" type="button" aria-label="${fmtDayWords(x.day,true)}"><span class="n"><b>${dt.getDate()}</b><small>${wd}</small></span><span class="t"><p class="${x.text?'':'quiet'}">${x.text?esc(x.text):x.empty?'Без записей':x.photo?'Фото дня':'Без слов'}</p><small>${x.empty?[esc(x.theme||''),x.lunar?`☾ ${x.lunar}`:''].filter(Boolean).join(' · '):meta}</small></span>${tail}</button>`;
 };
 async function loadDays(){
   const list=$('days-list'), strip=$('days-strip'); if(!list)return;
@@ -1145,7 +1147,7 @@ async function loadDays(){
     const today=DC.state?{day:DC.state.day,moods:DC.state.moods}:{day:S.day.date,moods:S.mood?[S.mood]:[]};
     strip.innerHTML=[...items].reverse().concat([today]).map((x,k,arr)=>`<i class="t-${moodTone(x.moods[0])}${k===arr.length-1?' today':''}" title="${fmtDayWords(x.day,true)}"></i>`).join('');
     const rows=items.slice(0,6); const any=items.some(x=>!x.empty);
-    list.innerHTML=any?rows.map(dayRowHtml).join(''):'<p class="hint">Здесь появятся ваши дни: настроение, пара строк и то, что запомнилось.</p>';
+    list.innerHTML=any?rows.map(dayRowHtml).join(''):`<p class="hint">${DC.state&&dcWritten(DC.state)?'Сегодняшний день — первый. Завтра он появится здесь, а под ним соберутся остальные.':'Здесь появятся ваши дни: настроение, пара строк и то, что запомнилось.'}</p>`;
     $('days-all').hidden=!any;
   }catch(e){ list.innerHTML='<p class="hint">Прошлые дни не загрузились.</p>'; }
 }
@@ -1173,7 +1175,8 @@ async function openDay(day){
     box.innerHTML=`<div class="dayview">${moods.length?`<div class="dc-moods">${moods.map(m=>`<i>${esc(m)}</i>`).join('')}</div>`:''}
       ${photoFullHtml(v)}${morningHtml(v)}
       ${dayProseHtml(v)}${dayQuietHtml({habits:v.habits,askesis:v.askesis,echo:v.echo})}
-      ${empty?'<p class="hint mt-3">В этот день записей не было.</p>':''}</div>`;
+      ${empty?'<p class="hint mt-3">В этот день записей не было.</p>':''}<div class="dc-bridge" id="dv-bridge" hidden></div></div>`;
+    api('/day/bridge?day='+day).then(r=>{ const b=r.item, el=$('dv-bridge'); if(!b||!el)return; el.innerHTML=bridgeHtml(b,day); el.hidden=false; }).catch(()=>{});
   }catch(e){ box.innerHTML='<p class="hint">Не получилось загрузить этот день.</p>'; }
 }
 const loadWishes=()=>api('/wishes').then(renderWishes).catch(()=>{});

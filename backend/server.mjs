@@ -501,7 +501,10 @@ const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanTe
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
 const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question,
   morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
-  themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '', dailyWrites: DAILY_WRITES });
+  themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '',
+  /* лунный день на вечер этой даты — по месту из анкеты; в записи дня и в строке прошлых дней */
+  lunarOf: (u, d) => { try { const ld = lunarDay(Date.parse(d + 'T18:00:00Z'), u?.lat ?? MOSCOW.lat, u?.lon ?? MOSCOW.lon); return ld ? { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] } : null; } catch { return null; } },
+  dailyWrites: DAILY_WRITES });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day });
 const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });

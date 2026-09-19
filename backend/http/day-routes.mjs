@@ -35,7 +35,7 @@ export function createDayRoutes({ json, readBody, day }) {
       /* прошлые дни: список одной строкой (calendar — последние n дней, иначе страницей по дням с записями), открытый день, «мост» из прошлого */
       if (p === '/api/days') { const q = url.searchParams; return json(res, 200, day.days(u, d, { calendar: Math.min(31, Number(q.get('calendar')) || 0), before: q.get('before') || '', limit: Math.min(60, Number(q.get('limit')) || 30) })); }
       if (p === '/api/day/view') { const x = url.searchParams.get('day') || ''; if (!ISO.test(x) || x > d) return json(res, 400, { ok: false, error: 'bad_day' }); return json(res, 200, day.view(u, x)); }
-      if (p === '/api/day/bridge') return json(res, 200, { item: day.bridge(u, d) });
+      if (p === '/api/day/bridge') { const x = url.searchParams.get('day') || ''; return json(res, 200, { item: day.bridge(u, ISO.test(x) && x <= d ? x : d) }); }   /* «мост» и для открытого прошлого дня */
     }
     if (p !== '/api/day') return false;
     if (req.method === 'GET') return json(res, 200, day.state(u, d));

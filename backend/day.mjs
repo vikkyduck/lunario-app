@@ -6,7 +6,7 @@
    Пустая ячейка при сохранении = «не менять»: случайно стереть запись нельзя. Зависимости — явным объектом, как у createShelves. */
 import { transaction } from './sync.mjs';
 
-export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf, morningOf = () => null, themeTitle = (k) => k, dailyWrites = 100 }) {
+export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf, morningOf = () => null, themeTitle = (k) => k, lunarOf = () => null, dailyWrites = 100 }) {
   const KINDS = { text: '', gratitude: 'gratitude', answer: 'answer' };
   const latest = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(uid, d, kind);
   const cell = (row) => row ? { id: row.id, text: open(row.text), title: open(row.title || '') } : null;
@@ -27,7 +27,7 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     const kept = new Map(db.prepare('SELECT askesis_id, kept, note FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ?').all(u.id, d).map((n) => [n.askesis_id, n]));
     const m = morningOf(u, d);   /* сегодняшнее утро — то же, что на «Сегодня»: вечер продолжает его, а не начинает заново */
     return {
-      day: d, question: questionOf(u, d), set: m ? m.set : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d),
+      day: d, question: questionOf(u, d), set: m ? m.set : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d), lunar: lunarOf(u, d),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')),
       moods: moodsOf(u.id, d),
       habits: habitList(u.id, d).map((h) => ({ id: h.id, title: h.title, due: h.due, today: h.today, rule: h.rule })),
@@ -39,7 +39,7 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
   function view(u, d) {
     const m = morningStored(u.id, d);
     return {
-      day: d, set: m ? m.set : '', question: m ? m.question : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d),
+      day: d, set: m ? m.set : '', question: m ? m.question : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d), lunar: lunarOf(u, d),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')),
       moods: moodsOf(u.id, d),
       habits: db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(u.id, d).map((r) => r.title),
@@ -48,7 +48,8 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
   }
 
   /* Сводка дня одной строкой — для списка «Прошлые дни»: первая запись, настроение, что еще записано, тема утра */
-  function summary(uid, d) {
+  function summary(u, d) {
+    const uid = u.id;
     const rows = db.prepare("SELECT kind, text FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' ORDER BY id DESC").all(uid, d);
     const first = rows.find((r) => r.kind === '') || rows.find((r) => r.kind === 'gratitude') || rows.find((r) => r.kind === 'answer');
     const kinds = [];
@@ -58,12 +59,13 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     if (db.prepare('SELECT 1 FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ? LIMIT 1').get(uid, d)) kinds.push('askesis');
     const moods = moodsOf(uid, d), m = morningStored(uid, d), ph = photoMeta(uid, d);
     const text = first ? open(first.text).replace(/\s+/g, ' ').trim().slice(0, 140) : '';
-    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', empty: !text && !moods.length && !kinds.length && !ph };
+    const ld = lunarOf(u, d);
+    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, empty: !text && !moods.length && !kinds.length && !ph };
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
   function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {
     const total = db.prepare(`SELECT COUNT(*) c FROM (SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' AND day < ? UNION SELECT day FROM moods WHERE user_id = ? AND day < ?)`).get(u.id, d, u.id, d).c;   /* записанных дней до сегодня — по нему предлагаются шаги вечера */
-    if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u.id, addDays(d, -i))); return { items: out, next: null, total }; }
+    if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u, addDays(d, -i))); return { items: out, next: null, total }; }
     const cut = before && /^\d{4}-\d{2}-\d{2}$/.test(before) ? before : d;
     const found = db.prepare(`SELECT day FROM (
       SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' UNION SELECT day FROM moods WHERE user_id = ? UNION SELECT day FROM mood_marks WHERE user_id = ?
@@ -71,7 +73,7 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
       UNION SELECT day FROM day_photos WHERE user_id = ?)
       WHERE day < ? ORDER BY day DESC LIMIT ?`).all(u.id, u.id, u.id, u.id, u.id, u.id, cut, limit + 1).map((r) => r.day);
     const page = found.slice(0, limit);
-    return { items: page.map((x) => summary(u.id, x)), next: found.length > limit ? page[page.length - 1] : null, total };
+    return { items: page.map((x) => summary(u, x)), next: found.length > limit ? page[page.length - 1] : null, total };
   }
 
   /* «Мост» — одна строка из прошлого, дословно, без ИИ: ответ на тот же вопрос дня, запись неделю назад или вчерашнее настроение */
