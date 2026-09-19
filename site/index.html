@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=89"></script>
+<script src="/app/boot.js?v=90"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -171,6 +171,8 @@ body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:
 .day-row.has-photo{grid-template-columns:40px minmax(0,1fr) 44px}.day-row img.ph{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block}
 .dc-skip{display:block;width:100%;text-align:center;margin-top:2px;color:var(--muted)}
 .dc-secondary{display:flex;justify-content:center;gap:22px;margin-top:2px}.dc-secondary .text-action{min-height:36px}
+.wg-art{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:var(--r-l);margin:0 0 16px;box-shadow:0 14px 34px -18px rgba(0,0,0,.8)}
+.home-art{display:block;width:100%;max-height:200px;object-fit:cover;border-radius:14px;margin:0 0 10px}.home-art[hidden]{display:none}
 .wg-foot{padding:18px 0 8px;display:flex;justify-content:center}.wg-return{min-height:48px;padding:0 26px;border-radius:999px;color:var(--text);font-weight:600}
 .wg-return:active{transform:scale(.98)}
 .dc-echo-q{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line)}
@@ -813,11 +815,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=89">
-<link rel="stylesheet" href="/app/experience.css?v=89">
-<link rel="stylesheet" href="/app/moon-glass.css?v=89">
-<link rel="stylesheet" href="/app/compact.css?v=89">
-<link rel="stylesheet" href="/app/frame.css?v=89">
+<link rel="stylesheet" href="/app/theme.css?v=90">
+<link rel="stylesheet" href="/app/experience.css?v=90">
+<link rel="stylesheet" href="/app/moon-glass.css?v=90">
+<link rel="stylesheet" href="/app/compact.css?v=90">
+<link rel="stylesheet" href="/app/frame.css?v=90">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -982,6 +984,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     </button>
     <div class="week-strip" id="week-strip" aria-hidden="true"></div>
     <div class="home-intro">
+      <img class="home-art" id="h-art" src="" alt="" hidden decoding="async">   <!-- картинка к настрою дня из кабинета «Контент» -->
       <div class="daily-statement"><span class="eyebrow" id="h-theme" hidden></span><h2 id="h-wish"></h2><div class="utility-actions hero-actions" id="h-wish-actions"></div></div>
     </div>
     <!-- Утро: человек отвечает, на что хочет обращать внимание; выбранное — сверху, остальное — маленькими квадратами ниже -->
@@ -1175,14 +1178,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=89"></script>
+<script src="/app/moon-logo.js?v=90"></script>
 
-<script type="module" src="/app/sky.js?v=89"></script>
+<script type="module" src="/app/sky.js?v=90"></script>
 
-<script src="/app/experience.js?v=89"></script>
-<script src="/app/app.js?v=89"></script>
-<script src="/app/tour.js?v=89"></script>
-<script src="/app/handlers.js?v=89"></script>
-<script src="/app/on.js?v=89"></script>
+<script src="/app/experience.js?v=90"></script>
+<script src="/app/app.js?v=90"></script>
+<script src="/app/tour.js?v=90"></script>
+<script src="/app/handlers.js?v=90"></script>
+<script src="/app/on.js?v=90"></script>
 </body>
 </html>

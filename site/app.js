@@ -157,6 +157,7 @@ function openWidget(k, title){
   const trigger=document.activeElement;closeWidget();wgFocus=trigger;
   $('wg-eb').textContent = f.sec;$('wg-eb').hidden=f.sec===(title||f.title); $('wg-title').textContent = title || f.title;
   $('wg-body').appendChild(pane); wgOpen = k;
+  paintWidgetArt(k);
   $('wg-tools').innerHTML='';   /* напоминаний по функциям нет — три пуша настраиваются в Аккаунте */
   $('wg').dataset.kind=k;$('wg').classList.add('on'); document.body.classList.add('wg-open');
   requestAnimationFrame(()=>{revealCommands(pane);document.querySelector('.wg-x')?.focus({preventScroll:true});});
@@ -175,6 +176,20 @@ const WIDGET_LOADERS = {
   support: () => supOpen(), dayrune: () => loadDayRune(), card: () => paintCardPick(), natal: () => loadNatal(), mail: () => renderAuth(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
 };
 function loadWidgetContent(k){ WIDGET_LOADERS[k]?.(); }
+/* Картинка к функции из кабинета «Контент» (dayPack.art): наверху панели; ask — общая для Таро, рун и «Да / Нет» */
+function artFor(k){ const a=S.day?.art||{}; return a[k]||(k==='spread'||k==='rune'||k==='yesno'?a.ask:'')||''; }
+function paintWidgetArt(k){
+  const body=$('wg-body'); if(!body)return;
+  body.querySelector('.wg-art')?.remove();
+  const src=artFor(k); if(!src)return;
+  const img=document.createElement('img'); img.className='wg-art'; img.src=src; img.alt=''; img.loading='lazy'; img.decoding='async';
+  body.prepend(img);
+}
+function paintHomeArt(){
+  const el=$('h-art'); if(!el)return;
+  const src=(S.day?.art||{}).home||'';
+  el.hidden=!src; if(src&&el.getAttribute('src')!==src)el.src=src;
+}
 function closeWidget(e){
   if (e && e.target !== $('wg')) return;
   if (!wgOpen) return;
@@ -220,7 +235,7 @@ function paintRuneTile(){
   const d=S.day, sub=$('t-runesub'), th=$('t-runethumb'), ico=document.querySelector('[data-feature="dayrune"] .ico'); if(!d)return;
   const opened=!!(d.rune&&d.runeOpened);
   if(sub)sub.textContent=opened?`${d.rune.name}${d.rune.keyword?' · '+d.rune.keyword:''}`:'Одна руна на день';
-  if(th){ th.hidden=!(opened&&d.rune.image); if(opened&&d.rune.image){ const img=th.querySelector('img'); const want=d.rune.image+'?v=1'; if(img.getAttribute('src')!==want)img.src=want; } }
+  if(th){ th.hidden=!(opened&&d.rune.image); if(opened&&d.rune.image){ const img=th.querySelector('img'); const want=d.rune.image; if(img.getAttribute('src')!==want)img.src=want; } }
   if(ico)ico.hidden=opened&&!!d.rune.image;
 }
 /* знак зодиака тонкой линией из спрайта в index.html — эмодзи ♈…♓ на телефонах цветные и не из палитры */
@@ -435,7 +450,7 @@ function paintHome(){
   const dt=new Date(d.date+'T12:00:00');
   $('h-date').textContent=dt.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
   $('h-wish').textContent = d.set?.text || '';
-  paintHero(d); paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d); paintNatalRow();
+  paintHero(d); paintHomeArt(); paintMorningPostcard(d); paintHomeTheme(d); paintHomeLater(d); paintNatalRow();
   if (!S.rem) loadReminders().then(paintPushNudge).catch(() => {});   /* строка «не подключены» — когда расписание известно */
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
@@ -555,7 +570,7 @@ const yearPeriod = (y) => y.from ? span(y.from, y.to) + (y.next && y.next.to ? `
 function yearHtml(y){
   const i = y.info, id = y.res || (y.res = regRes({ type: 'year', year: y, stamp: String(y.year) }));
   return `<div class="item rise">
-    <img class="yr-img" src="${i.image}?v=1" width="1080" height="1080" alt="Личный год ${y.n} · ${esc(i.energy)}">
+    <img class="yr-img" src="${i.image}" width="1080" height="1080" alt="Личный год ${y.n} · ${esc(i.energy)}">
     <div class="row top mt-3">
       <span class="num-mark">${y.n}</span>
       <div class="grow"><b>Год ${y.n} · ${esc(i.planet)} · ${esc(i.energy)}</b>${i.message ? `<p class="mt-2 strong italic">${esc(i.message)}</p>` : `<p class="mt-2">${esc(y.text || '')}</p>`}</div>
@@ -1493,7 +1508,7 @@ async function paintCardPick(){
 function paintCard(){
   const pub = S.day && S.day.card;
   const c = pub ? (cardBy(pub.slug) || pub) : null;
-  $('c-face').innerHTML = c ? `<img src="${esc(c.image)}?v=1" alt="${esc(c.name)}">` : '';
+  $('c-face').innerHTML = c ? `<img src="${esc(c.image)}" alt="${esc(c.name)}">` : '';
   $('t-after').innerHTML = c ? cardDayHtml(c, S.day.date, false) : '';
   paintCardTile();
 }
@@ -1503,7 +1518,7 @@ function paintCardTile(){
   /* миниатюра в строке: рубашка, пока карту не открыли; после — ее лицо */
   const th = $('t-cardthumb'); if (!th || !S.day) return;
   const face = S.day.card && (S.flipped || S.day.cardOpened) ? (cardBy(S.day.card.slug) || S.day.card).image : '';
-  const want = face ? face + '?v=1' : '/app/assets/brand/card-back.svg?v=1';
+  const want = face ? face : '/app/assets/brand/card-back.svg?v=1';
   if (th.getAttribute('src') !== want) th.src = want;
 }
 function showFlipped(){
@@ -1521,7 +1536,7 @@ async function openCard(){
   try{
     const [r] = await Promise.all([api('/card', { method: 'POST' }), loadCatalog().catch(() => null)]);
     S.day.card = r.card;
-    if (r.card && r.card.image) await preload(r.card.image + '?v=1');
+    if (r.card && r.card.image) await preload(r.card.image);
     paintCard(); hap('ok');
     showFlipped();
     setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
@@ -1538,7 +1553,7 @@ const CELLS = {
 function diagramHtml(kind, layout, items, rid){
   const cells = CELLS[layout] || items.map((_, i) => [i + 1, 1]);
   const cols = Math.max(...cells.map(c => c[0]));
-  const inner = (it) => kind === 'tarot' ? `<img class="thumb" src="${esc(it.image)}?v=1" alt="">` : `<span class="glyph">${glyphSvg(it.path)}</span>`;
+  const inner = (it) => kind === 'tarot' ? `<img class="thumb" src="${esc(it.image)}" alt="">` : `<span class="glyph">${glyphSvg(it.path)}</span>`;
   return `<div class="lay" style="grid-template-columns:repeat(${cols},58px)">${items.map((it, i) => {
     const [c, r] = cells[i] || [i + 1, 1];
     const col = layout === 'fork' && i === 0 ? '1 / span 2' : c;
@@ -1556,7 +1571,7 @@ function runesHtml(p){
   if (runes.length === 1) {
     const r = runes[0];
     return `<div class="card rise center">${qLine(p.q)}
-        ${r.image ? `<img class="stone" src="${esc(r.image)}?v=1" alt="">` : `<div class="glyph lg">${glyphSvg(r.path)}</div>`}
+        ${r.image ? `<img class="stone" src="${esc(r.image)}" alt="">` : `<div class="glyph lg">${glyphSvg(r.path)}</div>`}
         <div class="title-gold">${esc(r.name)}</div>
         ${r.keyword ? `<div class="kw">${esc(r.keyword)}</div>` : ''}
         ${r.motto ? `<p class="mt-2 italic">${esc(r.motto)}</p>` : ''}
@@ -1583,7 +1598,7 @@ function spreadHtml(p){
   return `<div class="card rise">${qLine(p.q)}<div class="center"><span class="eyebrow">${esc(L.title)}</span></div>
       ${diagramHtml('tarot', p.layout, cards, id)}
       <div class="list">${cards.map((c, i) => { const P = L.pos[i] || { name: 'Позиция ' + (i + 1), hint: '' }; const sp = (c.sections && c.sections.spread) || [];
-        return `<div class="card pos" id="${id}-p${i}">${c.image ? `<img class="thumb" src="${esc(c.image)}?v=1" alt="">` : ''}<div class="grow">${posHead(i, P)}
+        return `<div class="card pos" id="${id}-p${i}">${c.image ? `<img class="thumb" src="${esc(c.image)}" alt="">` : ''}<div class="grow">${posHead(i, P)}
           <b>${esc(c.name)}</b>${c.keys ? `<div class="kw mt-1">${esc(keysLine(c.keys))}</div>` : ''}
           ${sp[0] ? `<p class="mt-2">${esc(sp[0])}</p>` : ''}
           ${moreBlock((sp.length > 1 ? paras(sp.slice(1)) : '') + sectionsHtml(c, ['advice'], CARD_SEC), 'Подробнее')}
@@ -1762,7 +1777,7 @@ async function drawPostcard(p){
   await fontsReady(); pcBase(ctx);
   if (p.type === 'card') {
     const c = p.card;
-    await pcImage(ctx, c.image + '?v=1', 180, 130, 720, 1350, 30);
+    await pcImage(ctx, c.image, 180, 130, 720, 1350, 30);
     const y = drawText(ctx, keysLine(c.keys) || c.name, 540, 1585, { size: 38, color: '#ded8ee', maxW: 900 });
     if (c.question && y < 1660) drawText(ctx, c.question, 540, y + 10, { size: 26, italic: true, color: '#b9b2cf', maxW: 900, lh: 1.3 });
   } else if (p.type === 'rune') {
@@ -1779,7 +1794,7 @@ async function drawPostcard(p){
     if (p.q) drawText(ctx, '«' + p.q + '»', 540, Math.max(y + 54, 1440), { size: 28, italic: true, color: '#8f87ad', maxW: 860, lh: 1.35 });
   } else if (p.type === 'year') {
     const y = p.year, i = y.info;
-    await pcCover(ctx, i.image + '?v=1', 70);
+    await pcCover(ctx, i.image, 70);
     /* «Год 3 · Юпитер · Проявление сути»: год и планета — строкой сверху, суть года — крупно, ниже — послание */
     let yy = drawText(ctx, `ГОД ${y.n} · ${(i.planet || '').toUpperCase()}`, 540, 1230, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
     yy = drawText(ctx, i.energy || '', 540, yy + 26, { size: (i.energy || '').length > 32 ? 44 : 58, weight: 600, color: '#f5f2ea', maxW: 940, lh: 1.15 });
@@ -1806,8 +1821,8 @@ async function drawPostcard(p){
       if (p.layout === 'fork' && i === 0) x = x0 + (totalW - cw) / 2;
       const across = p.layout === 'celtic' && i === 1;
       if (kind === 'tarot') {
-        if (across) { ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.rotate(Math.PI / 2); ctx.globalAlpha = .96; await pcImage(ctx, it.image + '?v=1', -cw / 2, -ch / 2, cw, ch, 12); ctx.restore(); }
-        else await pcImage(ctx, it.image + '?v=1', x, y, cw, ch, 14);
+        if (across) { ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.rotate(Math.PI / 2); ctx.globalAlpha = .96; await pcImage(ctx, it.image, -cw / 2, -ch / 2, cw, ch, 12); ctx.restore(); }
+        else await pcImage(ctx, it.image, x, y, cw, ch, 14);
       } else {
         ctx.save(); rrect(ctx, x, y, cw, ch, 36); ctx.fillStyle = 'rgba(245,242,234,.06)'; ctx.fill(); ctx.strokeStyle = 'rgba(217,184,104,.4)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
         pcGlyph(ctx, it.path, x + cw / 2, y + ch / 2, 150, 12);
@@ -2254,7 +2269,7 @@ function lunarDayHtml(d, today, primary=false){
   const secHtml = (s) => (s.title ? `<h3 class="ln-sec">${esc(s.title)}</h3>` : '') + blocksHtml(s.blocks);
   const hiddenHtml = hidden.length ? `<div class="ln-hidden">${hidden.map(s => `<details data-on="toggle:trackExpand-this-a0" data-a0="${s.key}"><summary>${esc(s.title || 'Символ и тема')}</summary>${blocksHtml(s.blocks)}</details>`).join('')}</div>` : '';
   return `<div class="item rise yr-art">
-    <img class="yr-img" src="${d.image}?v=1" width="1080" height="1080" alt="${d.n} лунный день · ${esc(d.symbol || d.theme)}">
+    <img class="yr-img" src="${d.image}" width="1080" height="1080" alt="${d.n} лунный день · ${esc(d.symbol || d.theme)}">
     ${primary?'':`<p class="ln-eb">${d.n} лунный день${d.n===today?' · сегодня':''}</p>`}
     ${primary && d.theme===S.day.lunar.title?'':`<p class="ln-title">${esc(d.theme)}</p>`}
     ${shown.map(secHtml).join('')}${hiddenHtml}
@@ -2418,7 +2433,7 @@ async function drawPostcardExtra(ctx, p){
   }
   if (p.type === 'lunar') {
     const l = p.l;
-    if (l.image && await pcCover(ctx, l.image + '?v=1', 70)) {   /* иллюстрация дня — как у личного года; под ней номер, название, тема и рекомендация */
+    if (l.image && await pcCover(ctx, l.image, 70)) {   /* иллюстрация дня — как у личного года; под ней номер, название, тема и рекомендация */
       let y = drawText(ctx, `${l.n}-Й ЛУННЫЙ ДЕНЬ`, 540, 1225, { size: 28, weight: 700, color: '#d9b868', spacing: 6 });
       if (l.title) y = drawText(ctx, l.title, 540, y + 22, { size: 50, weight: 600, color: '#e9c77e', maxW: 940, lh: 1.2 });
       if (l.theme) y = drawText(ctx, l.theme, 540, y + 6, { size: 28, italic: true, color: '#ded8ee', maxW: 900, lh: 1.3 });

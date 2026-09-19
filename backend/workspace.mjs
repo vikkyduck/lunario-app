@@ -94,13 +94,32 @@ export function campaignUsers(c) {
 }
 
 /* ── материалы контент-редактора ── */
-export const MATERIAL_KINDS = { question: 'Вопрос дня', affirmation: 'Аффирмация дня', note: 'Заметка / статья' };
+export const MATERIAL_KINDS = { question: 'Вопрос дня', affirmation: 'Аффирмация дня', image: 'Картинка к функции', note: 'Заметка / статья' };
+/* К какой функции можно прикрепить картинку (материал kind=image, section=ключ): она появляется наверху панели этой функции,
+   для «home» — рядом с настроем дня на «Сегодня». Дата показа пустая — каждый день, иначе — только в этот день. */
+export const FEATURE_ART = [
+  ['home', 'Сегодня · настрой дня'], ['card', 'Карта дня'], ['dayrune', 'Руна дня'], ['lunar', 'Лунный день'], ['sky', 'Влияние планет'], ['day', 'Прогноз дня'], ['tone', 'Вопрос дня'],
+  ['history', 'Дневник · карточка дня'], ['week', 'Моя неделя'], ['mood', 'Настроение'], ['gratitude', 'Благодарность'], ['habits', 'Привычки'], ['askesis', 'Аскезы'], ['wishes', 'Желания'], ['hmood', 'История настроений'],
+  ['ask', 'Свериться с собой · вопрос'], ['worry', 'Ответить себе на вопрос'], ['natal', 'Натальная карта'], ['year', 'Личный год'], ['birthnum', 'Нумерология'], ['compat', 'Совместимость'], ['tests', 'Тесты'],
+];
+/* картинки на день по функциям: опубликованные материалы kind=image (на эту дату — приоритетнее, чем «каждый день»);
+   картинка аффирмации дня, если есть, — к настрою на «Сегодня» */
+export function artForDay(day) {
+  const out = {};
+  for (const r of all(`SELECT section, image, show_day FROM materials WHERE kind = 'image' AND status = 'published' AND image <> '' AND (show_day = ? OR show_day = '') ORDER BY show_day DESC, updated_at DESC`, day)) {
+    if (r.section && !out[r.section]) out[r.section] = r.image;
+  }
+  if (!out.home) { const a = materialForDay('affirmation', day); if (a && a.image) out.home = a.image; }
+  return out;
+}
 export const MATERIAL_STATUS = { draft: 'Черновик', review: 'На проверке', scheduled: 'Запланирован', published: 'Опубликован' };
 export function materialList() { return all(`SELECT * FROM materials ORDER BY CASE status WHEN 'published' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'review' THEN 2 ELSE 3 END, show_day DESC, updated_at DESC`); }
 export function materialSave(b, by) {
   const kind = b.kind in MATERIAL_KINDS ? b.kind : 'note', status = b.status in MATERIAL_STATUS ? b.status : 'draft';
   const text = clean(b.text, 4000), title = clean(b.title, 120);
-  if (!text && !title) return { ok: false, error: 'empty' };
+  if (!text && !title && kind !== 'image') return { ok: false, error: 'empty' };
+  if (kind === 'image' && !FEATURE_ART.some(([k]) => k === b.section)) return { ok: false, error: 'no_feature' };
+  if (kind === 'image' && !clean(b.image, 300)) return { ok: false, error: 'no_image' };
   const f = [kind, clean(b.section, 40) || 'Мой день', title, text, clean(b.image, 300), isDay(b.show_day) ? b.show_day : '', status];
   if (Number(b.id)) db.prepare('UPDATE materials SET kind=?, section=?, title=?, text=?, image=?, show_day=?, status=?, updated_at=? WHERE id=?').run(...f, now(), Number(b.id));
   else db.prepare('INSERT INTO materials (kind, section, title, text, image, show_day, status, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(...f, by || '', now(), now());

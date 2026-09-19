@@ -6,7 +6,7 @@
    владелец продукта без программиста. Здесь остаются запасные значения:
    если файла нет или строка испорчена, приложение возьмет их и продолжит
    работать, а в журнал напишет, что именно не прочиталось. */
-import { readFileSync, existsSync, watch } from 'node:fs';
+import { readFileSync, existsSync, statSync, watch } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +14,13 @@ export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath
 /* Картинки лежат рядом с текстами, в папке картинки/: по-русски для владельца, по-английски в адресе.
    Приложение отдает их по /app/content/<вид>/<файл> — см. маршрут в server.mjs. */
 export const IMAGE_DIRS = { tarot: 'таро', runes: 'руны', year: 'личный-год', lunar: 'лунные-дни' };
-const img = (kind, file) => (file ? `/app/content/${kind}/${file}` : '');
+/* адрес картинки с версией по времени файла: заменили картинку в кабинете — у людей обновится сразу, а неизменная кэшируется навсегда */
+const img = (kind, file) => {
+  if (!file) return '';
+  let v = '1';
+  try { v = Math.floor(statSync(join(CONTENT_DIR, 'картинки', IMAGE_DIRS[kind] || kind, file)).mtimeMs / 1000).toString(36); } catch { /* файла нет — адрес все равно отдадим */ }
+  return `/app/content/${kind}/${file}?v=${v}`;
+};
 
 /* Читает файл как таблицу: строка = запись, поля разделены «|».
    Пустые строки и строки с # пропускаются — там заметки для человека. */

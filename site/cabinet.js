@@ -180,7 +180,7 @@ const EXTRAS = {
   async materials() {
     const r = await api('/cabinet/materials'); S.materials = r; const st = (k) => `<span class="pill" style="${k === 'published' ? 'border-color:rgba(168,236,198,.6);color:var(--ok)' : k === 'draft' ? 'opacity:.7' : ''}">${esc(r.statuses[k] || k)}</span>`;
     $('extra').innerHTML = `<div class="row" style="justify-content:flex-end;margin-top:14px"><button data-on="click:materialForm-0" class="btn gold sm fixed">+ Новый материал</button></div>
-      <div class="tbl"><div class="scroll"><table><thead><tr><th>Материал</th><th>Тип · раздел</th><th>Дата показа</th><th>Статус</th><th>Изменен</th><th></th></tr></thead><tbody>${r.items.map((m) => `<tr><td><b>${esc(m.title || m.text.slice(0, 60))}</b>${m.image ? `<small><a href="${esc(m.image)}" target="_blank">картинка</a></small>` : ''}</td><td>${esc(r.kinds[m.kind] || m.kind)}<small>${esc(m.section)}</small></td><td>${m.show_day || 'каждый день'}</td><td>${st(m.status)}</td><td>${fmtTs(m.updated_at)}<small>${esc((m.created_by || '').split('@')[0])}</small></td><td class="num"><button data-on="click:materialForm-a0" data-a0="${m.id}" class="btn sm">Открыть</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Материалов пока нет.</td></tr>'}</tbody></table></div></div>`;
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>Материал</th><th>Тип · раздел</th><th>Дата показа</th><th>Статус</th><th>Изменен</th><th></th></tr></thead><tbody>${r.items.map((m) => `<tr><td><b>${esc(m.title || m.text.slice(0, 60) || (m.kind === 'image' ? 'Картинка · ' + (((r.features || []).find(([k]) => k === m.section) || [])[1] || m.section) : ''))}</b>${m.image ? `<small><a href="${esc(m.image)}" target="_blank">картинка</a></small>` : ''}</td><td>${esc(r.kinds[m.kind] || m.kind)}<small>${esc(m.section)}</small></td><td>${m.show_day || 'каждый день'}</td><td>${st(m.status)}</td><td>${fmtTs(m.updated_at)}<small>${esc((m.created_by || '').split('@')[0])}</small></td><td class="num"><button data-on="click:materialForm-a0" data-a0="${m.id}" class="btn sm">Открыть</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Материалов пока нет.</td></tr>'}</tbody></table></div></div>`;
   },
   async media() {
     const r = await api('/cabinet/media'); const mb = (b) => (b / 1048576).toFixed(1) + ' МБ';
@@ -239,17 +239,31 @@ async function campaignDel(id) { if (!confirm('Удалить кампанию? 
 function materialForm(id) {
   const r = S.materials, m = (r.items || []).find((x) => x.id === id) || {};
   openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${id ? 'Изменить' : 'Новый материал'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
-    <div style="display:grid;gap:10px;margin-top:12px"><div class="row">${field('Тип', `<select id="mt-kind">${Object.entries(r.kinds).map(([k, v]) => `<option value="${k}" ${m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}${field('Раздел', `<select id="mt-section">${['Мой день', 'Обо мне', 'Свериться', 'Что вокруг', 'История'].map((x) => `<option ${m.section === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</div>
+    <div style="display:grid;gap:10px;margin-top:12px"><div class="row">${field('Тип', `<select data-on="change:materialKind" id="mt-kind">${Object.entries(r.kinds).map(([k, v]) => `<option value="${k}" ${m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}<span id="mt-section-wrap" ${m.kind === 'image' ? 'hidden' : ''}>${field('Раздел', `<select id="mt-section">${['Мой день', 'Обо мне', 'Свериться', 'Что вокруг', 'История'].map((x) => `<option ${m.section === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</span><span id="mt-feature-wrap" ${m.kind === 'image' ? '' : 'hidden'}>${field('Функция', `<select id="mt-feature">${(r.features || []).map(([k, v]) => `<option value="${k}" ${m.section === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`)}</span></div>
     ${field('Заголовок (для заметок)', `<input id="mt-title" value="${esc(m.title || '')}" maxlength="120">`)}
     ${field('Текст', `<textarea id="mt-text" style="min-height:160px;font-family:inherit">${esc(m.text || '')}</textarea>`)}
-    ${field('Картинка (ссылка из «Картинки и файлы»)', `<input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/…">`)}
+    ${field('Картинка', `<div class="row" style="gap:8px"><input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/… или загрузите файл" style="flex:1"><input type="file" id="mt-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:220px;padding:6px"><button data-on="click:materialUpload" class="btn sm" type="button">Загрузить</button></div><img id="mt-preview" src="${esc(m.image || '')}" alt="" style="margin-top:8px;max-height:140px;border-radius:10px;${m.image ? '' : 'display:none'}">`)}
     <div class="row">${field('Дата показа (пусто — каждый день)', `<input id="mt-day" type="date" value="${m.show_day || ''}">`)}${field('Статус', `<select id="mt-status">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${(m.status || 'draft') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}</div>
-    <p class="hint">«Вопрос дня» и «Аффирмация» в статусе «Опубликован» подменяют текст в «Моем дне» у всех — в указанный день или каждый день, если дата пуста.</p>
+    <p class="hint">«Опубликован» — видно всем: вопрос и аффирмация подменяют текст дня, картинка появляется наверху выбранной функции (для «Сегодня» — рядом с настроем дня). Дата пустая — каждый день.</p>
     <div class="row"><button data-on="click:materialSave-a0" data-a0="${id}" class="btn gold fixed">Сохранить</button>${id ? `<button data-on="click:materialDel-a0" data-a0="${id}" class="btn sm warn fixed">Удалить</button>` : ''}<span class="hint" id="mt-msg"></span></div></div>`);
 }
 async function materialSave(id) {
-  const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ id, kind: $('mt-kind').value, section: $('mt-section').value, title: $('mt-title').value, text: $('mt-text').value, image: $('mt-image').value, show_day: $('mt-day').value, status: $('mt-status').value }) });
-  if (!r.ok) { $('mt-msg').textContent = 'Нужен текст или заголовок.'; return; } toast('Сохранено'); closeModal(); EXTRAS.materials();
+  const kind = $('mt-kind').value, section = kind === 'image' ? $('mt-feature').value : $('mt-section').value;
+  const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ id, kind, section, title: $('mt-title').value, text: $('mt-text').value, image: $('mt-image').value, show_day: $('mt-day').value, status: $('mt-status').value }) });
+  if (!r.ok) { $('mt-msg').textContent = r.error === 'no_image' ? 'Загрузите картинку.' : r.error === 'no_feature' ? 'Выберите функцию.' : 'Нужен текст или заголовок.'; return; } toast('Сохранено'); closeModal(); EXTRAS.materials();
+}
+function materialKind() { const img = $('mt-kind').value === 'image'; $('mt-section-wrap').hidden = img; $('mt-feature-wrap').hidden = !img; }
+/* картинка к материалу — прямо из формы: файл уходит в «Картинки и файлы», ссылка подставляется сама */
+function materialUpload() {
+  const f = $('mt-file').files[0], msg = $('mt-msg'); if (!f) { msg.textContent = 'Выберите файл.'; return; }
+  if (f.size > 5 * 1024 * 1024) { msg.textContent = 'До 5 МБ.'; return; }
+  msg.textContent = 'Загружаем…';
+  const rd = new FileReader(); rd.onload = async () => {
+    try { const r = await api('/cabinet/media', { method: 'POST', body: JSON.stringify({ name: f.name, type: f.type, data: rd.result }) });
+      if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Такой тип не принимаем.' : 'Не загрузилось.'; return; }
+      $('mt-image').value = r.url; const pv = $('mt-preview'); pv.src = r.url; pv.style.display = ''; msg.textContent = 'Картинка загружена'; }
+    catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); }
+  }; rd.readAsDataURL(f);
 }
 async function materialDel(id) { if (!confirm('Удалить материал?')) return; await api('/cabinet/materials?id=' + id, { method: 'DELETE' }); toast('Удалено'); closeModal(); EXTRAS.materials(); }
 function mediaUpload() {
@@ -454,6 +468,7 @@ async function costDel(id) { if (!confirm('Убрать строку расхо�
 /* ── контент: файлы и правка ── */
 function contentFiles(r) {
   const files = r.files || [];
+  setTimeout(contentImages, 0);   /* картинки функций подгружаются отдельным запросом под списком файлов */
   return `<div class="notice">Тексты приложения — обычные файлы: одна строка — одна запись, поля через «|». Строки с решеткой # — заметки, приложение их не читает. Сохранение публикует сразу: статусов «черновик / на проверке / запланирован» пока нет.</div>
     <div class="files">${files.map((f) => `<button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="file"><span>${esc(f.name)}<br><small>${f.lines} записей · изменен ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
 }
@@ -464,6 +479,32 @@ async function editFile(name) {
     openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${esc(name)}</h2></div><div class="row"><button data-on="click:saveFile-a0" data-a0="${esc(name)}" class="btn gold fixed">Сохранить и опубликовать</button><button data-on="click:closeModal" class="btn sm fixed">Закрыть</button></div></div>
       <textarea id="f-text" style="margin-top:12px" spellcheck="true">${esc(f.text)}</textarea><p class="note" id="f-msg">Формат описан в «ПРОЧТИ-МЕНЯ.txt». После сохранения приложение перечитает файл само.</p>`);
   } catch (e) { openModal(`<p class="msg err">Не получилось открыть: ${esc(e.code || e.message)}</p>`); }
+}
+/* картинки функций: у карт, рун, лунных дней и личного года — заменить файл на месте */
+async function contentImages() {
+  const host = $('extra'); if (!host) return;
+  let box = $('content-images'); if (!box) { box = document.createElement('div'); box.id = 'content-images'; host.appendChild(box); }
+  box.innerHTML = '<p class="empty">Загружаем картинки…</p>';
+  try {
+    const r = await api('/cabinet/content-images');
+    box.innerHTML = r.sets.map((s) => `<div class="viz" style="margin-top:14px"><h3>${esc(s.title)} · ${s.items.length}</h3>
+      <div class="files" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:10px">${s.items.map((it) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default;gap:6px">
+        ${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px">` : '<div style="aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--muted);font-size:12px">нет картинки</div>'}
+        <small>${esc(it.name)}</small>
+        <label class="btn sm" style="text-align:center;cursor:pointer">Заменить<input data-on="change:contentImagePick-a0-a1-this" data-a0="${esc(s.kind)}" data-a1="${esc(it.key)}" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+      </div>`).join('')}</div></div>`).join('') + '<p class="note" style="margin-top:8px">Новая картинка появляется у людей сразу: адрес меняется вместе с файлом.</p>';
+  } catch (e) { box.innerHTML = `<p class="msg err">Картинки не загрузились: ${esc(e.code || e.message)}</p>`; }
+}
+function contentImagePick(kind, key, input) {
+  const f = input.files[0]; if (!f) return;
+  if (f.size > 6 * 1024 * 1024) { toast('До 6 МБ'); return; }
+  toast('Загружаем…');
+  const rd = new FileReader(); rd.onload = async () => {
+    try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind, key, type: f.type, data: rd.result }) });
+      if (!r.ok) { toast(r.error === 'bad_type' ? 'Только JPG, PNG или WebP' : 'Не загрузилось'); return; }
+      toast(r.note || 'Картинка заменена'); setTimeout(contentImages, 1500); }   /* тексты перечитываются через секунду — потом обновим сетку */
+    catch (e) { toast('Не загрузилось: ' + (e.code || e.message)); }
+  }; rd.readAsDataURL(f);
 }
 async function saveFile(name) {
   const msg = $('f-msg');

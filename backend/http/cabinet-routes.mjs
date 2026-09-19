@@ -14,7 +14,7 @@ import { basename } from 'node:path';
 
 export function createCabinetRoutes(deps) {
   const { json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, REPORT_META, OVERVIEW_BLOCKS,
-    Reports, userCard, contentFiles, readContent, writeContent, Backup, W,
+    Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, Backup, W,
     staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive } = deps;
 
   return async function cabinetRoutes({ p, req, res, url, u }) {
@@ -79,6 +79,17 @@ export function createCabinetRoutes(deps) {
         return json(res, 200, { ok: true });
       }
     }
+    /* картинки функций: список по наборам и замена файла */
+    if (p === '/api/cabinet/content-images') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      if (req.method === 'GET') return json(res, 200, { sets: contentImageList() });
+      if (req.method === 'POST') {
+        const b = await readBody(req, 8 * 1024 * 1024);
+        const r = contentImagePut(b);
+        if (r.ok) console.log(`[контент] ${u.email} заменил картинку ${b.kind}/${b.key} → ${r.name}`);
+        return json(res, r.ok ? 200 : 400, r);
+      }
+    }
     if (p === '/api/cabinet/campaigns') {
       if (!allowed('campaigns')) return json(res, 403, { ok: false, error: 'no_access' });
       if (req.method === 'GET') return json(res, 200, { items: W.campaignList() });
@@ -87,7 +98,7 @@ export function createCabinetRoutes(deps) {
     }
     if (p === '/api/cabinet/materials') {
       if (!allowed('materials')) return json(res, 403, { ok: false, error: 'no_access' });
-      if (req.method === 'GET') return json(res, 200, { items: W.materialList(), kinds: W.MATERIAL_KINDS, statuses: W.MATERIAL_STATUS });
+      if (req.method === 'GET') return json(res, 200, { items: W.materialList(), kinds: W.MATERIAL_KINDS, statuses: W.MATERIAL_STATUS, features: W.FEATURE_ART });
       if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.materialSave(b, u.email)); }
       if (req.method === 'DELETE') return json(res, 200, W.materialRemove(url.searchParams.get('id')));
     }

@@ -24,6 +24,7 @@ function openPractice(key,fromHistory=false){
   document.body.classList.add('inner','practice-open');
   $('practice-title').textContent=FEATURES[key].title;$('practice-body').appendChild($('w-'+key));
   $('practice-tools').replaceChildren();   /* напоминаний по функциям нет — три пуша живут в Аккаунте */
+  { const src=typeof artFor==='function'?artFor(key):''; if(src){ const img=document.createElement('img'); img.className='wg-art'; img.src=src; img.alt=''; img.decoding='async'; $('practice-tools').appendChild(img); } }   /* картинка к практике из кабинета */
   window.refreshMoonLogos?.();loadWidgetContent(key);restoreScroll('practice:'+key);$('practice-back').focus({preventScroll:true});
 }
 function practiceBack(){if(!XP.page)return;if(history.state?.lunPractice)history.back();else{const v=XP.returnView;go(v);XP.returnFocus?.focus({preventScroll:true});}}

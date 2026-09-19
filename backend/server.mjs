@@ -2,7 +2,7 @@
    Слушает 127.0.0.1, за nginx. Своя папка и свой порт — не пересекается с лендингом.
    Аккаунт анонимный: httpOnly-cookie с токеном, e-mail можно привязать позже. */
 import { createServer } from 'node:http';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join, extname, normalize, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt, createHash } from 'node:crypto';
@@ -341,8 +341,12 @@ function dayPack(u, day) {
     sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */
     question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     lunar: lunarPack(u),
+    art: artOf(day),                                   /* картинки к функциям из кабинета «Контент» на этот день */
   };
 }
+/* картинки функций считаются один раз в минуту — материалы меняются редко */
+const artCache = { day: '', at: 0, v: {} };
+function artOf(day) { const t = Date.now(); if (artCache.day !== day || t - artCache.at > 6e4) { try { artCache.v = W.artForDay(day); } catch { artCache.v = {}; } artCache.day = day; artCache.at = t; } return artCache.v; }
 /* Лунный день считается по месту рождения из анкеты (там же часовой пояс);
    без координат — Москва, как и все остальное время в приложении. */
 function lunarPack(u) {
@@ -523,8 +527,38 @@ setTimeout(() => {
 
 /* Кабинеты сотрудников — отдельный HTTP-слой со своими зависимостями (backend/http/cabinet-routes.mjs).
    Собирается здесь, где все перечисленное уже определено. */
+/* Картинки функций для кабинета «Контент»: что нарисовано у карт, рун, лунных дней и личного года, и замена файла на месте.
+   Файл пишется в папку контента (картинки/<папка>/<имя>); если расширение новое — имя в текстовом файле переписывается,
+   а адреса у людей обновляются сами: версия в адресе — время файла. */
+const CONTENT_IMAGE_SETS = {
+  tarot: { title: 'Карты Таро', file: 'карты-таро.txt', items: () => [...C.ARCANA].map((c) => ({ key: c.slug, name: c.name, image: c.image })) },
+  runes: { title: 'Руны', file: 'руны.txt', items: () => [...C.RUNES].map((r) => ({ key: r.slug, name: r.name, image: r.image })) },
+  lunar: { title: 'Лунные дни', file: 'лунные-дни.txt', items: () => [...C.LUNAR_INFO].map((d) => ({ key: String(d.n), name: `${d.n} · ${d.theme || d.symbol || ''}`, image: d.image })) },
+  year: { title: 'Личный год', file: 'личный-год.txt', items: () => [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22, 33].map((n) => C.YEARS[n]).filter(Boolean).map((y) => ({ key: String(y.n), name: `${y.n} · ${y.title || y.energy || ''}`, image: y.image })) },   /* YEARS — прокси без списка ключей */
+};
+const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+function contentImageList() { return Object.entries(CONTENT_IMAGE_SETS).map(([kind, s]) => ({ kind, title: s.title, items: s.items() })); }
+function contentImagePut({ kind, key, type, data }) {
+  const set = CONTENT_IMAGE_SETS[kind]; if (!set) return { ok: false, error: 'bad_kind' };
+  const item = set.items().find((i) => i.key === String(key)); if (!item) return { ok: false, error: 'not_found' };
+  const ext = IMAGE_EXT[type]; if (!ext) return { ok: false, error: 'bad_type' };
+  const buf = Buffer.from(String(data || '').replace(/^data:[^,]*,/, ''), 'base64');
+  if (!buf.length || buf.length > 6 * 1024 * 1024) return { ok: false, error: 'too_big' };
+  const dir = join(CONTENT_DIR, 'картинки', IMAGE_DIRS[kind]); if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const oldName = item.image ? decodeURIComponent(item.image.split('/').pop().split('?')[0]) : '';
+  const base = oldName ? oldName.replace(/\.[^.]+$/, '') : String(key).replace(/[^\w.-]/g, '') || 'img';
+  const name = `${base}.${ext}`;
+  writeFileSync(join(dir, name), buf);
+  if (oldName && oldName !== name) {   /* новое расширение — переписываем имя в текстовом файле, старый файл убираем */
+    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name)); } catch { /* текст не тронули — картинка все равно на месте */ }
+    try { unlinkSync(join(dir, oldName)); } catch {}
+  } else if (!oldName) {
+    return { ok: true, name, note: 'В текстовом файле у записи нет поля «картинка» — впишите имя файла: ' + name };
+  }
+  return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
+}
 const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig,
-  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, Backup, W,
+  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, Backup, W,
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
