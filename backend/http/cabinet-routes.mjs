@@ -14,7 +14,7 @@ import { basename } from 'node:path';
 
 export function createCabinetRoutes(deps) {
   const { json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, REPORT_META, OVERVIEW_BLOCKS,
-    Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, Backup, W,
+    Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, Backup, W,
     staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive } = deps;
 
   return async function cabinetRoutes({ p, req, res, url, u }) {
@@ -24,7 +24,9 @@ export function createCabinetRoutes(deps) {
     if (!roles.length) return json(res, 403, { ok: false, error: 'no_access' });
     const admin = roles.includes('admin');
     // роль проверяется на каждом запросе: скрытая кнопка — не защита
-    const allowed = (kind) => admin || roles.some((r) => (cfg.menus[r] || []).includes(kind));
+    /* страница «Контент» одна — под ней материалы, картинки, файлы и записи; «Проверка текстов» — пять отчетов о текстах */
+    const UNDER = { content: ['materials', 'media', 'content', 'records', 'table'], check: ['quality', 'concerns', 'topics', 'rituals', 'feedback', 'faq'] };
+    const allowed = (kind) => admin || roles.some((r) => { const m = cfg.menus[r] || []; return m.includes(kind) || Object.entries(UNDER).some(([page, kinds]) => kinds.includes(kind) && m.includes(page)); });
     if (p === '/api/cabinet/config') {
       if (req.method === 'GET') return json(res, 200, { ...cfg, defaults: { reports: REPORT_META, blocks: OVERVIEW_BLOCKS } });
       if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
@@ -79,12 +81,38 @@ export function createCabinetRoutes(deps) {
         return json(res, 200, { ok: true });
       }
     }
+    /* тексты записями и строками (content-edit.mjs): книги — карты, руны, лунные дни, личный год; таблицы — настрой, пуши, темы… */
+    if (p === '/api/cabinet/content-map') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      const files = contentFiles();
+      return json(res, 200, { books: Object.entries(CE.BOOKS).map(([file, b]) => ({ file, ...b, lines: (files.find((f) => f.name === file) || {}).lines || 0 })),
+        tables: Object.entries(CE.TABLES).map(([file, t]) => ({ file, title: t.title, cols: t.cols, lines: (files.find((f) => f.name === file) || {}).lines || 0 })),
+        other: files.filter((f) => !CE.BOOKS[f.name] && !CE.TABLES[f.name]).map((f) => f.name), features: W.FEATURE_GROUPS });
+    }
+    if (p === '/api/cabinet/records') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      const file = String(url.searchParams.get('file') || '');
+      if (!CE.BOOKS[file]) return json(res, 404, { ok: false, error: 'not_found' });
+      try { return json(res, 200, { file, ...CE.BOOKS[file], records: CE.bookRecords(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); }
+    }
+    if (p === '/api/cabinet/record') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add) : CE.bookRecordSave(String(b.file || ''), b); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : 400, r); }
+      if (req.method === 'DELETE') { const r = CE.bookRecordRemove(String(url.searchParams.get('file') || ''), url.searchParams.get('index')); return json(res, r.ok ? 200 : 400, r); }
+    }
+    if (p === '/api/cabinet/table') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      const file = String(req.method === 'GET' ? url.searchParams.get('file') || '' : '');
+      if (req.method === 'GET') { if (!CE.TABLES[file]) return json(res, 404, { ok: false, error: 'not_found' }); try { return json(res, 200, { file, title: CE.TABLES[file].title, ...CE.tableRows(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
+      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = CE.tableSave(String(b.file || ''), b.rows); if (r.ok) console.log(`[контент] ${u.email} сохранил таблицу ${b.file} (${r.rows} строк)`); return json(res, r.ok ? 200 : 400, r); }
+    }
     /* картинки функций: список по наборам и замена файла */
     if (p === '/api/cabinet/content-images') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       if (req.method === 'GET') return json(res, 200, { sets: contentImageList() });
       if (req.method === 'POST') {
         const b = await readBody(req, 8 * 1024 * 1024);
+        if (b.mediaId) { const f = W.mediaFile(b.mediaId); if (!f) return json(res, 404, { ok: false, error: 'not_found' }); b.type = f.type; b.data = readFileSync(f.path).toString('base64'); }   /* картинка из библиотеки — на карту, руну, день */
         const r = contentImagePut(b);
         if (r.ok) console.log(`[контент] ${u.email} заменил картинку ${b.kind}/${b.key} → ${r.name}`);
         return json(res, r.ok ? 200 : 400, r);
@@ -98,7 +126,7 @@ export function createCabinetRoutes(deps) {
     }
     if (p === '/api/cabinet/materials') {
       if (!allowed('materials')) return json(res, 403, { ok: false, error: 'no_access' });
-      if (req.method === 'GET') return json(res, 200, { items: W.materialList(), kinds: W.MATERIAL_KINDS, statuses: W.MATERIAL_STATUS, features: W.FEATURE_ART });
+      if (req.method === 'GET') return json(res, 200, { items: W.materialList(), kinds: W.MATERIAL_KINDS, statuses: W.MATERIAL_STATUS, features: W.FEATURE_ART, groups: W.FEATURE_GROUPS });
       if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.materialSave(b, u.email)); }
       if (req.method === 'DELETE') return json(res, 200, W.materialRemove(url.searchParams.get('id')));
     }

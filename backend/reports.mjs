@@ -52,7 +52,7 @@ export const ROLE_MENUS = {
   admin:     ['overview', 'users', 'lifecycle', 'economy', 'ai', 'backlog', 'system', 'data', 'events', 'access', 'saved'],
   marketing: ['acquisition', 'campaigns', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'topics', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
   product:   ['activity', 'retention', 'activation', 'features', 'topics', 'rituals', 'cohorts', 'notifications', 'ai', 'backlog', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
-  content:   ['materials', 'media', 'content', 'backlog', 'quality', 'concerns', 'rituals', 'feedback', 'faq', 'saved'],
+  content:   ['content', 'check', 'backlog', 'saved'],   /* «Контент» — одна страница с вкладками; «Проверка текстов» — пять отчетов вместе */
   support:   ['tickets', 'supportmetrics', 'backlog', 'faq', 'users', 'delivery', 'saved'],
 };
 export const REPORT_META = {
@@ -84,7 +84,8 @@ export const REPORT_META = {
   events:        ['Журнал событий', 'Что фиксирует продукт по типам'],
   system:        ['Здоровье системы', 'Ошибки, ночные задачи, размер базы'],
   data:          ['Качество данных', 'Можно ли верить цифрам на дашбордах'],
-  content:       ['Материалы', 'Тексты приложения: что есть и как правится'],
+  content:       ['Контент', 'Тексты, картинки, пуши, темы дня и публикации — все в одном месте'],
+  check:         ['Проверка текстов', 'Качество, темы, ритуалы, отзывы и подсказки — на одной странице'],
   quality:       ['Качество контента', 'Категории замечаний к текстам'],
   tickets:       ['Обращения', 'Очередь поддержки'],
   supportmetrics:['Работа поддержки', 'Скорость и качество ответов'],

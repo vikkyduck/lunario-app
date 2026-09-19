@@ -46,6 +46,7 @@ import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs'
 import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
 import { createReportRunner } from './report-runner.mjs';
 import { createCabinetRoutes } from './http/cabinet-routes.mjs';
+import * as CE from './content-edit.mjs';
 import { HTML_HEADERS } from './http/headers.mjs';
 import { createIdentity } from './identity.mjs';
 import { AppError, publicError, saveJournalOperation, sweepReceipts } from './sync.mjs';
@@ -558,7 +559,7 @@ function contentImagePut({ kind, key, type, data }) {
   return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
 }
 const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig,
-  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, Backup, W,
+  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, Backup, W,
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,

@@ -108,6 +108,9 @@ async function openPage(p) {
   try {
     if (p === 'saved') return renderSaved();
     if (p === 'access') return renderAccess();
+    if (p === 'content') return renderContent();
+    if (p === 'check') return renderCheck();
+    if (p === 'materials' || p === 'media') { CT.tab = p; return renderContent(); }   /* прежние разделы — вкладки одной страницы */
     const qs = new URLSearchParams({ period: S.period, ...S.filters });
     const r = p === 'overview' ? await api('/cabinet/dashboard?' + qs) : await api(`/cabinet/report?kind=${p}&` + qs);
     S.data = r;
@@ -152,6 +155,7 @@ function renderReport(r) {
   const ex = EXTRAS[r.key]; if (ex) ex(r).catch((e) => { $('extra').innerHTML = `<p class="msg err">Не загрузилось: ${esc(e.code || e.message)}</p>`; });
 }
 const fmtTs = (t) => (t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
+const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 const field = (label, inner) => `<label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--faint)">${label}${inner}</label>`;
 const utmLink = (c) => { const u = new URL('https://lunario.online/app/'); for (const k of ['source', 'medium', 'campaign', 'content', 'term']) if (c[k]) u.searchParams.set('utm_' + k, c[k]); return u.toString(); };
 const copy = (t) => navigator.clipboard.writeText(t).then(() => toast('Ссылка скопирована')).catch(() => prompt('Скопируйте ссылку', t));
@@ -183,9 +187,9 @@ const EXTRAS = {
       <div class="tbl"><div class="scroll"><table><thead><tr><th>Материал</th><th>Тип · раздел</th><th>Дата показа</th><th>Статус</th><th>Изменен</th><th></th></tr></thead><tbody>${r.items.map((m) => `<tr><td><b>${esc(m.title || m.text.slice(0, 60) || (m.kind === 'image' ? 'Картинка · ' + (((r.features || []).find(([k]) => k === m.section) || [])[1] || m.section) : ''))}</b>${m.image ? `<small><a href="${esc(m.image)}" target="_blank">картинка</a></small>` : ''}</td><td>${esc(r.kinds[m.kind] || m.kind)}<small>${esc(m.section)}</small></td><td>${m.show_day || 'каждый день'}</td><td>${st(m.status)}</td><td>${fmtTs(m.updated_at)}<small>${esc((m.created_by || '').split('@')[0])}</small></td><td class="num"><button data-on="click:materialForm-a0" data-a0="${m.id}" class="btn sm">Открыть</button></td></tr>`).join('') || '<tr><td colspan="6" class="empty">Материалов пока нет.</td></tr>'}</tbody></table></div></div>`;
   },
   async media() {
-    const r = await api('/cabinet/media'); const mb = (b) => (b / 1048576).toFixed(1) + ' МБ';
+    const r = await api('/cabinet/media'); S.mediaItems = r.items; const mb = (b) => (b / 1048576).toFixed(1) + ' МБ';
     const card = (m) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default${m.archived ? ';opacity:.7' : ''}">${!m.archived && m.type.startsWith('image/') && m.type !== 'image/svg+xml' ? `<img src="/app/uploads/${esc(m.file)}" alt="" loading="lazy" style="width:100%;height:120px;object-fit:cover;border-radius:10px">` : `<div style="height:60px;display:grid;place-items:center;color:var(--faint)">${m.archived ? 'в архиве' : esc(m.type)}</div>`}<span style="margin-top:8px">${esc(m.name)}<br><small>${Math.round(m.size / 1024)} КБ · ${fmtTs(m.created_at)}${m.archived ? ' · сгружен ' + fmtTs(m.archived_at) : ''}</small></span>
-      <div class="row" style="margin-top:8px;gap:6px">${m.archived ? `<button data-on="click:mediaArchive-a0-false" data-a0="${m.id}" class="btn sm">Вернуть</button>` : `<button data-on="click:copy-link" class="btn sm" data-link="${location.origin}/app/uploads/${esc(m.file)}">Ссылка</button><button data-on="click:mediaArchive-a0-true" data-a0="${m.id}" class="btn sm" title="убрать с сервера в архив: ссылка перестанет работать, файл и запись сохранятся">Сгрузить</button>`}<a class="btn sm" href="/app/api/cabinet/media/download?id=${m.id}">Скачать</a><button data-on="click:mediaDel-a0" data-a0="${m.id}" class="btn sm warn fixed">✕</button></div></div>`;
+      <div class="row" style="margin-top:8px;gap:6px">${m.archived ? `<button data-on="click:mediaArchive-a0-false" data-a0="${m.id}" class="btn sm">Вернуть</button>` : `${m.type.startsWith('image/') ? `<button data-on="click:mediaAttach-a0" data-a0="${m.id}" class="btn gold sm">Прикрепить…</button>` : ''}<button data-on="click:copy-link" class="btn sm" data-link="${location.origin}/app/uploads/${esc(m.file)}">Ссылка</button><button data-on="click:mediaArchive-a0-true" data-a0="${m.id}" class="btn sm" title="убрать с сервера в архив: ссылка перестанет работать, файл и запись сохранятся">Сгрузить</button>`}<a class="btn sm" href="/app/api/cabinet/media/download?id=${m.id}">Скачать</a><button data-on="click:mediaDel-a0" data-a0="${m.id}" class="btn sm warn fixed">✕</button></div></div>`;
     const live = r.items.filter((m) => !m.archived), arch = r.items.filter((m) => m.archived);
     $('extra').innerHTML = `<div class="kpis" style="margin-top:14px">${kpiCard({ title: 'Отдается пользователям', value: +mb(r.totals.live).replace(',', '.').split(' ')[0], unit: 'МБ', sub: `${live.length} файлов · в приложение попадает только то, что вставлено в опубликованный материал`, state: 'ok' })}${kpiCard({ title: 'В архиве на сервере', value: +mb(r.totals.archived).split(' ')[0], unit: 'МБ', sub: `${arch.length} файлов · не отдаются, можно вернуть или скачать`, state: 'ok' })}</div>
       <div class="notice">Приложение у пользователей хранит только оболочку (шрифты, иконки, ~1 МБ); картинки материалов грузятся по сети при показе и на телефоне не оседают. Чтобы облегчить сервер, сгружайте файлы, которые больше не нужны в приложении: запись и доступ к скачиванию останутся.</div>
@@ -239,7 +243,7 @@ async function campaignDel(id) { if (!confirm('Удалить кампанию? 
 function materialForm(id) {
   const r = S.materials, m = (r.items || []).find((x) => x.id === id) || {};
   openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${id ? 'Изменить' : 'Новый материал'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
-    <div style="display:grid;gap:10px;margin-top:12px"><div class="row">${field('Тип', `<select data-on="change:materialKind" id="mt-kind">${Object.entries(r.kinds).map(([k, v]) => `<option value="${k}" ${m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}<span id="mt-section-wrap" ${m.kind === 'image' ? 'hidden' : ''}>${field('Раздел', `<select id="mt-section">${['Мой день', 'Обо мне', 'Свериться', 'Что вокруг', 'История'].map((x) => `<option ${m.section === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</span><span id="mt-feature-wrap" ${m.kind === 'image' ? '' : 'hidden'}>${field('Функция', `<select id="mt-feature">${(r.features || []).map(([k, v]) => `<option value="${k}" ${m.section === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select>`)}</span></div>
+    <div style="display:grid;gap:10px;margin-top:12px"><div class="row">${field('Тип', `<select data-on="change:materialKind" id="mt-kind">${Object.entries(r.kinds).map(([k, v]) => `<option value="${k}" ${m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}<span id="mt-section-wrap" ${m.kind === 'image' ? 'hidden' : ''}>${field('Раздел', `<select id="mt-section">${['Мой день', 'Обо мне', 'Свериться', 'Что вокруг', 'История'].map((x) => `<option ${m.section === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</span><span id="mt-feature-wrap" ${m.kind === 'image' ? '' : 'hidden'}>${field('Функция', `<select id="mt-feature">${(r.groups || [['', r.features || []]]).map(([g, items]) => `<optgroup label="${esc(g)}">${items.map(([k, v]) => `<option value="${k}" ${m.section === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</optgroup>`).join('')}</select>`)}</span></div>
     ${field('Заголовок (для заметок)', `<input id="mt-title" value="${esc(m.title || '')}" maxlength="120">`)}
     ${field('Текст', `<textarea id="mt-text" style="min-height:160px;font-family:inherit">${esc(m.text || '')}</textarea>`)}
     ${field('Картинка', `<div class="row" style="gap:8px"><input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/… или загрузите файл" style="flex:1"><input type="file" id="mt-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:220px;padding:6px"><button data-on="click:materialUpload" class="btn sm" type="button">Загрузить</button></div><img id="mt-preview" src="${esc(m.image || '')}" alt="" style="margin-top:8px;max-height:140px;border-radius:10px;${m.image ? '' : 'display:none'}">`)}
@@ -468,7 +472,6 @@ async function costDel(id) { if (!confirm('Убрать строку расхо�
 /* ── контент: файлы и правка ── */
 function contentFiles(r) {
   const files = r.files || [];
-  setTimeout(contentImages, 0);   /* картинки функций подгружаются отдельным запросом под списком файлов */
   return `<div class="notice">Тексты приложения — обычные файлы: одна строка — одна запись, поля через «|». Строки с решеткой # — заметки, приложение их не читает. Сохранение публикует сразу: статусов «черновик / на проверке / запланирован» пока нет.</div>
     <div class="files">${files.map((f) => `<button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="file"><span>${esc(f.name)}<br><small>${f.lines} записей · изменен ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
 }
@@ -510,6 +513,186 @@ async function saveFile(name) {
   const msg = $('f-msg');
   try { await api('/cabinet/content?file=' + encodeURIComponent(name), { method: 'POST', body: JSON.stringify({ text: $('f-text').value }) }); toast('Сохранено — уже в приложении'); closeModal(); openPage('content'); }
   catch (e) { msg.className = 'msg err'; msg.textContent = 'Не сохранилось: ' + (e.code || e.message); }
+}
+
+
+/* ══════════ «Контент» — одна страница (решение владелицы 19.09): Каталоги · Темы дня · Пуши · Публикации · Картинки · Тексты.
+   Раньше это были три раздела меню и сырые файлы; теперь — записи, строки, картинки к записям и к функциям, пакетная загрузка. ══════════ */
+const CT = { tab: 'catalog', book: '', map: null, records: null, tables: {}, media: null, materials: null };
+const CT_TABS = [['catalog', 'Каталоги'], ['themes', 'Темы дня'], ['push', 'Пуши'], ['materials', 'Публикации'], ['media', 'Картинки'], ['files', 'Тексты']];
+async function renderContent() {
+  const box = $('report');
+  box.innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">Контент</h1></div></div>
+    <div class="tabs ct-tabs" id="ct-tabs">${CT_TABS.map(([k, t]) => `<button data-on="click:ctTab-a0" data-a0="${k}" class="${CT.tab === k ? 'on' : ''}" type="button">${t}</button>`).join('')}</div>
+    <div id="extra"><p class="empty">Загружаем…</p></div>`;
+  window.scrollTo(0, 0);
+  if (!CT.map) CT.map = await api('/cabinet/content-map');
+  await ctPaint();
+}
+async function ctTab(k) { CT.tab = k; document.querySelectorAll('#ct-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.a0 === k)); $('extra').innerHTML = '<p class="empty">Загружаем…</p>'; await ctPaint(); }
+async function ctPaint() {
+  try {
+    if (CT.tab === 'catalog') return ctCatalog();
+    if (CT.tab === 'themes') return ctThemes();
+    if (CT.tab === 'push') return ctPush();
+    if (CT.tab === 'materials') return EXTRAS.materials();
+    if (CT.tab === 'media') return EXTRAS.media();
+    if (CT.tab === 'files') return ctFiles();
+  } catch (e) { $('extra').innerHTML = `<p class="msg err">Не загрузилось: ${esc(e.code || e.message)}</p>`; }
+}
+
+/* ── Каталоги: карты, руны, лунные дни, личный год — записи с картинками ── */
+async function ctCatalog() {
+  const books = CT.map.books.filter((b) => b.images);
+  if (!CT.book) CT.book = books[0].file;
+  const r = await api('/cabinet/records?file=' + encodeURIComponent(CT.book)); CT.records = r;
+  const img = (rec) => rec.image ? `/app/content/${r.images}/${encodeURIComponent(rec.image)}?v=${Date.now().toString(36)}` : '';
+  $('extra').innerHTML = `<div class="tabs sub" style="margin-top:14px">${books.map((b) => `<button data-on="click:ctBook-a0" data-a0="${esc(b.file)}" class="${CT.book === b.file ? 'on' : ''}" type="button">${esc(b.title)} · ${b.lines}</button>`).join('')}</div>
+    <div class="row" style="justify-content:space-between;margin-top:12px;gap:10px;flex-wrap:wrap">
+      <label class="btn sm" style="cursor:pointer">Загрузить картинки пакетом<input data-on="change:ctBulkPick-this" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden></label>
+      <span class="hint">Файлы называются как «картинка» у записи (${r.key === 'число' ? '1.jpg … 30.jpg' : 'fool.jpg, magician.jpg …'}) — сопоставятся сами; остальные попросят выбрать запись</span>
+      <button data-on="click:ctRecordAdd" class="btn sm" type="button">+ Запись</button></div>
+    <div id="ct-bulk"></div>
+    <div class="files" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-top:12px">${r.records.map((rec) => `<button data-on="click:ctRecord-a0" data-a0="${rec.index}" class="file rec" type="button" style="flex-direction:column;align-items:stretch;gap:6px;text-align:left">
+      ${rec.image ? `<img src="${img(rec)}" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px">` : '<div style="aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--muted);font-size:12px">нет картинки</div>'}
+      <b>${esc(rec.title)}</b><small>${esc((rec.fields.find(([k]) => !['код', 'картинка', 'число', 'знак', 'англ'].includes(k)) || ['', ''])[1]).slice(0, 70)}</small></button>`).join('')}</div>`;
+}
+function ctBook(file) { CT.book = file; ctCatalog(); }
+function ctRecord(index) {
+  const r = CT.records, rec = r.records.find((x) => x.index === Number(index)); if (!rec) return;
+  const locked = (k) => ['код', 'картинка', 'знак', 'число'].includes(k);
+  const src = rec.image ? `/app/content/${r.images}/${encodeURIComponent(rec.image)}?v=${Date.now().toString(36)}` : '';
+  openModal(`<div class="head"><div><span class="eyebrow">${esc(r.title)}</span><h2 style="margin-top:6px">${esc(rec.title)}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
+    <div class="rec-edit" style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:16px;margin-top:12px;align-items:start">
+      <div><div id="rec-img-box">${src ? `<img id="rec-img" src="${src}" alt="" style="width:100%;border-radius:10px">` : '<div style="aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--muted);font-size:12px">нет картинки</div>'}</div>
+        <label class="btn sm" style="display:block;text-align:center;margin-top:8px;cursor:pointer">Заменить картинку<input data-on="change:ctRecordImage-a0-this" data-a0="${rec.key}" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+        <p class="hint" id="rec-img-msg" style="margin-top:6px"></p></div>
+      <div style="display:grid;gap:10px">
+        ${field('Название', `<input id="rec-title" value="${esc(rec.title)}" maxlength="120">`)}
+        ${rec.fields.map(([k, v], i) => field(esc(k) + (locked(k) ? ' · служебное' : ''), `<input data-rec-field="${i}" data-rec-key="${esc(k)}" value="${esc(v)}" ${locked(k) ? 'readonly style="opacity:.6"' : ''}>`)).join('')}
+        ${field('Текст (разделы в [квадратных скобках], абзацы через пустую строку)', `<textarea id="rec-body" style="min-height:320px;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.5">${esc(rec.body)}</textarea>`)}
+        <div class="row"><button data-on="click:ctRecordSave-a0" data-a0="${rec.index}" class="btn gold fixed" type="button">Сохранить</button><button data-on="click:ctRecordDel-a0" data-a0="${rec.index}" class="btn sm warn fixed" type="button">Удалить запись</button><span class="hint" id="rec-msg"></span></div>
+      </div></div>`);
+}
+async function ctRecordSave(index) {
+  const fields = [...document.querySelectorAll('[data-rec-field]')].map((el) => [el.dataset.recKey, el.value]);
+  const msg = $('rec-msg'); msg.textContent = 'Сохраняем…';
+  try { const r = await api('/cabinet/record', { method: 'POST', body: JSON.stringify({ file: CT.book, index: Number(index), title: $('rec-title').value, fields, body: $('rec-body').value }) });
+    if (!r.ok) { msg.textContent = 'Не сохранилось: ' + r.error; return; } toast('Сохранено — уже в приложении'); closeModal(); ctCatalog(); }
+  catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); }
+}
+async function ctRecordDel(index) { if (!confirm('Удалить запись из файла? Вернуть можно будет только вручную.')) return; await api('/cabinet/record?file=' + encodeURIComponent(CT.book) + '&index=' + index, { method: 'DELETE' }); toast('Удалено'); closeModal(); ctCatalog(); }
+async function ctRecordAdd() { const r = await api('/cabinet/record', { method: 'POST', body: JSON.stringify({ file: CT.book, add: (CT.records?.records.length || 1) - 1 }) }); if (r.ok) { await ctCatalog(); ctRecord(r.index); } }
+const readAsDataUrl = (f) => new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(f); });
+async function ctRecordImage(key, input) {
+  const f = input.files[0], msg = $('rec-img-msg'); if (!f) return; if (f.size > 6 * 1024 * 1024) { msg.textContent = 'До 6 МБ'; return; }
+  msg.textContent = 'Загружаем…';
+  try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.records.images, key, type: f.type, data: await readAsDataUrl(f) }) });
+    if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Только JPG, PNG или WebP' : 'Не загрузилось'; return; }
+    msg.textContent = r.note || 'Картинка заменена'; const im = $('rec-img'); if (im && r.url) im.src = r.url; }
+  catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); }
+}
+/* пакетная загрузка: имя файла без расширения = «картинка» записи или ее ключ; что не совпало — выбрать запись руками */
+let ctBulk = [];
+function ctBulkPick(input) {
+  const recs = CT.records.records;
+  ctBulk = [...input.files].map((f) => { const base = f.name.replace(/\.[^.]+$/, '').toLowerCase(); const hit = recs.find((r) => (r.image || '').replace(/\.[^.]+$/, '').toLowerCase() === base || String(r.key).toLowerCase() === base); return { file: f, key: hit ? hit.key : '', title: hit ? hit.title : '' }; });
+  $('ct-bulk').innerHTML = `<div class="viz" style="margin-top:12px"><h3>Пакет: ${ctBulk.length} ${plural(ctBulk.length, 'файл', 'файла', 'файлов')}</h3>
+    <div class="tbl"><div class="scroll"><table><thead><tr><th>Файл</th><th>Запись</th></tr></thead><tbody>${ctBulk.map((b, i) => `<tr><td>${esc(b.file.name)}</td><td><select data-on="change:ctBulkAssign-a0-value" data-a0="${i}"><option value="">— выбрать —</option>${recs.map((r) => `<option value="${esc(r.key)}" ${r.key === b.key ? 'selected' : ''}>${esc(r.title)}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div></div>
+    <div class="row" style="margin-top:10px"><button data-on="click:ctBulkGo" class="btn gold fixed" type="button">Загрузить ${ctBulk.filter((b) => b.key).length} из ${ctBulk.length}</button><span class="hint" id="ct-bulk-msg"></span></div></div>`;
+}
+function ctBulkAssign(i, key) { ctBulk[i].key = key; }
+async function ctBulkGo() {
+  const msg = $('ct-bulk-msg'); let ok = 0, fail = 0;
+  for (const b of ctBulk.filter((x) => x.key)) {
+    msg.textContent = `Загружаем ${ok + fail + 1}…`;
+    try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.records.images, key: b.key, type: b.file.type, data: await readAsDataUrl(b.file) }) }); if (r.ok) ok++; else fail++; } catch { fail++; }
+  }
+  toast(`Загружено ${ok}${fail ? `, не получилось ${fail}` : ''}`); ctBulk = []; setTimeout(ctCatalog, 1500);
+}
+
+/* ── Темы дня: цепочка «источник → тема → настрой → вопрос дня» и правка настроев и вопросов ── */
+async function ctThemes() {
+  const [themes, sources, sets, cards, runes] = await Promise.all([...['темы-дня.txt', 'темы-источников.txt', 'настрой.txt'].map((f) => api('/cabinet/table?file=' + encodeURIComponent(f))), api('/cabinet/records?file=' + encodeURIComponent('карты-таро.txt')), api('/cabinet/records?file=' + encodeURIComponent('руны.txt'))]);
+  CT.tables['настрой.txt'] = sets;
+  const KIND = { тон: 'Прогноз дня', карта: 'Карты', руна: 'Руны', небо: 'Небо' };
+  const nameOf = (kind, key) => { const list = kind === 'карта' ? cards.records : kind === 'руна' ? runes.records : null; const hit = list && list.find((r) => r.key === key); return hit ? hit.title : key; };
+  $('extra').innerHTML = `<div class="notice" style="margin-top:14px">Как это связано: утро выбирает <b>источник</b> (карта дня, руна, небо или прогноз) → у источника есть <b>тема дня</b> → из строк темы выпадает <b>настрой</b> (главная фраза на «Сегодня») и его <b>вопрос дня</b>, на который человек отвечает вечером. Ниже — все темы с их источниками; настрой и вопросы правятся прямо здесь.</div>
+    ${themes.rows.map(([key, name, about]) => { const src = sources.rows.filter((r) => r[2] === key); const mine = sets.rows.map((r, i) => [r, i]).filter(([r]) => r[0] === key);
+      return `<div class="viz" style="margin-top:14px"><h3>${esc(name)} <small style="font-weight:400;color:var(--muted)">· ${esc(key)}</small></h3><p class="hint" style="margin-top:4px">${esc(about || '')}</p>
+        <p style="margin-top:8px;font-size:13px;color:var(--muted)">Источники: ${src.length ? Object.entries(src.reduce((a, r) => ((a[r[0]] = a[r[0]] || []).push(r[1]), a), {})).map(([k, v]) => `<b>${esc(KIND[k] || k)}</b>: ${v.map((x) => esc(nameOf(k, x))).join(', ')}`).join(' · ') : '<i>ни один источник не ведет к этой теме</i>'}</p>
+        <div class="tbl" style="margin-top:8px"><div class="scroll"><table><thead><tr><th style="width:45%">Настрой</th><th>Вопрос дня</th><th></th></tr></thead><tbody>${mine.map(([r, i]) => `<tr><td><input data-on="input:ctSetCell-a0-a1-value" data-a0="${i}" data-a1="1" value="${esc(r[1] || '')}"></td><td><input data-on="input:ctSetCell-a0-a1-value" data-a0="${i}" data-a1="2" value="${esc(r[2] || '')}"></td><td><button data-on="click:ctSetDel-a0" data-a0="${i}" class="btn sm" type="button">×</button></td></tr>`).join('')}</tbody></table></div></div>
+        <button data-on="click:ctSetAdd-a0" data-a0="${esc(key)}" class="btn sm" type="button" style="margin-top:8px">+ Настрой и вопрос</button></div>`; }).join('')}
+    <div class="row" style="margin-top:14px;position:sticky;bottom:12px"><button data-on="click:ctSetSave" class="btn gold fixed" type="button">Сохранить настрой и вопросы</button><span class="hint" id="ct-set-msg">${sets.rows.length} строк</span></div>`;
+}
+function ctSetCell(i, j, v) { CT.tables['настрой.txt'].rows[i][j] = v; }
+function ctSetDel(i) { CT.tables['настрой.txt'].rows.splice(i, 1); ctThemes(); }
+function ctSetAdd(key) { CT.tables['настрой.txt'].rows.push([key, '', '']); ctThemes(); }
+async function ctSetSave() { const msg = $('ct-set-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'настрой.txt', rows: CT.tables['настрой.txt'].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+
+/* ── Пуши: утро, вечер (варианты по дням), неделя, пробное — тексты напоминаний ── */
+async function ctPush() {
+  const t = await api('/cabinet/table?file=' + encodeURIComponent('напоминания.txt')); CT.tables['напоминания.txt'] = t;
+  const G = [['Утро', (k) => k.startsWith('morning'), 'Заголовок утреннего пуша — настрой дня, тело собирается из выбранных плиток; здесь — только «утро еще не собралось»'], ['Вечер', (k) => k.startsWith('evening'), 'Приглашение открыть приложение — не вопрос. Варианты чередуются по дням; номера подряд'], ['Неделя', (k) => k.startsWith('week'), 'week — обычная, week-мало — когда моментов меньше трех ({n}, {момента})'], ['Остальное', (k) => !/^(morning|evening|week)/.test(k), '']];
+  $('extra').innerHTML = G.map(([title, test, hint]) => { const rows = t.rows.map((r, i) => [r, i]).filter(([r]) => test(r[0])); return `<div class="viz" style="margin-top:14px"><h3>${title} · ${rows.length}</h3>${hint ? `<p class="hint" style="margin-top:4px">${esc(hint)}</p>` : ''}
+    <div class="tbl" style="margin-top:8px"><div class="scroll"><table><thead><tr><th style="width:120px">Ключ</th><th style="width:38%">Заголовок</th><th>Текст</th><th></th></tr></thead><tbody>${rows.map(([r, i]) => `<tr><td><input data-on="input:ctPushCell-a0-a1-value" data-a0="${i}" data-a1="0" value="${esc(r[0])}" style="font-family:ui-monospace,monospace;font-size:12px"></td><td><input data-on="input:ctPushCell-a0-a1-value" data-a0="${i}" data-a1="1" value="${esc(r[1] || '')}"></td><td><input data-on="input:ctPushCell-a0-a1-value" data-a0="${i}" data-a1="2" value="${esc(r[2] || '')}"></td><td><button data-on="click:ctPushDel-a0" data-a0="${i}" class="btn sm" type="button">×</button></td></tr>`).join('')}</tbody></table></div></div>
+    ${title === 'Вечер' ? `<button data-on="click:ctPushAddEvening" class="btn sm" type="button" style="margin-top:8px">+ Вечерний вариант</button>` : ''}</div>`; }).join('')
+    + `<div class="row" style="margin-top:14px;position:sticky;bottom:12px"><button data-on="click:ctPushSave" class="btn gold fixed" type="button">Сохранить пуши</button><span class="hint" id="ct-push-msg">${t.rows.length} строк · после сохранения тексты сразу уходят в очередь на следующую отправку</span></div>`;
+}
+function ctPushCell(i, j, v) { CT.tables['напоминания.txt'].rows[i][j] = v; }
+function ctPushDel(i) { CT.tables['напоминания.txt'].rows.splice(i, 1); ctPush(); }
+function ctPushAddEvening() { const rows = CT.tables['напоминания.txt'].rows; const n = rows.filter((r) => /^evening(-\d+)?$/.test(r[0])).length; rows.push([n ? `evening-${n + 1}` : 'evening', '', '']); ctPush(); }
+async function ctPushSave() { const msg = $('ct-push-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'напоминания.txt', rows: CT.tables['напоминания.txt'].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+
+/* ── Тексты: остальные таблицы строками и файлы целиком ── */
+async function ctFiles() {
+  const r = await api('/cabinet/report?kind=content&period=' + S.period); const files = r.files || [];
+  const tables = CT.map.tables.filter((t) => !['настрой.txt', 'напоминания.txt'].includes(t.file));
+  $('extra').innerHTML = `<div class="viz" style="margin-top:14px"><h3>Таблицы — строками</h3><p class="hint" style="margin-top:4px">Одна строка — одна запись; правится по ячейкам</p>
+      <div class="files" style="margin-top:10px">${tables.map((t) => `<button data-on="click:ctTable-a0" data-a0="${esc(t.file)}" class="file" type="button"><span>${esc(t.title)}<br><small>${esc(t.file)} · ${t.lines} строк</small></span><span class="btn sm">Править</span></button>`).join('')}</div></div>
+    <div class="viz" style="margin-top:14px"><h3>Файлы целиком</h3><p class="hint" style="margin-top:4px">Для всего остального и для правок в структуре. Формат — в «ПРОЧТИ-МЕНЯ.txt»</p>
+      <div class="files" style="margin-top:10px">${files.map((f) => `<button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="file" type="button"><span>${esc(f.name)}<br><small>${f.lines} записей · изменен ${esc(f.mtime)}</small></span><span class="btn sm">Открыть</span></button>`).join('')}</div></div>
+    ${(r.kpis || []).length ? `<div class="kpis" style="margin-top:14px">${r.kpis.map(kpiCard).join('')}</div>` : ''}${(r.tables || []).map((t) => tableCard(t, 'content')).join('')}`;
+}
+async function ctTable(file) {
+  const t = await api('/cabinet/table?file=' + encodeURIComponent(file)); CT.tables[file] = t;
+  const paint = () => openModal(`<div class="head"><div><span class="eyebrow">${esc(file)}</span><h2 style="margin-top:6px">${esc(t.title)}</h2></div><div class="row"><button data-on="click:ctTableSave-a0" data-a0="${esc(file)}" class="btn gold fixed" type="button">Сохранить</button><button data-on="click:closeModal" class="btn sm">Закрыть</button></div></div>
+    ${t.notes ? `<pre class="hint" style="white-space:pre-wrap;margin-top:10px;font-family:inherit">${esc(t.notes.replace(/^#\\s?/gm, ''))}</pre>` : ''}
+    <div class="tbl" style="margin-top:10px"><div class="scroll"><table><thead><tr>${t.cols.map((c) => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${t.rows.map((r, i) => `<tr>${t.cols.map((c, j) => `<td><input data-on="input:ctTableCell-a0-a1-a2-value" data-a0="${esc(file)}" data-a1="${i}" data-a2="${j}" value="${esc(r[j] || '')}"></td>`).join('')}<td><button data-on="click:ctTableDel-a0-a1" data-a0="${esc(file)}" data-a1="${i}" class="btn sm" type="button">×</button></td></tr>`).join('')}</tbody></table></div></div>
+    <div class="row" style="margin-top:10px"><button data-on="click:ctTableAdd-a0" data-a0="${esc(file)}" class="btn sm" type="button">+ Строка</button><span class="hint" id="ct-table-msg">${t.rows.length} строк</span></div>`);
+  CT.tablePaint = paint; paint();
+}
+function ctTableCell(file, i, j, v) { CT.tables[file].rows[i][j] = v; }
+function ctTableDel(file, i) { CT.tables[file].rows.splice(i, 1); CT.tablePaint(); }
+function ctTableAdd(file) { CT.tables[file].rows.push(CT.tables[file].cols.map(() => '')); CT.tablePaint(); }
+async function ctTableSave(file) { const msg = $('ct-table-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file, rows: CT.tables[file].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено — уже в приложении'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+
+/* ── Картинка из библиотеки — к функции или на карту/руну/день ── */
+async function mediaAttach(id) {
+  if (!CT.map) CT.map = await api('/cabinet/content-map');
+  const m = (S.mediaItems || []).find((x) => x.id === Number(id)); if (!m) return;
+  const books = CT.map.books.filter((b) => b.images);
+  openModal(`<div class="head"><div><span class="eyebrow">Картинка</span><h2 style="margin-top:6px">${esc(m.name)}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
+    <div style="display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;margin-top:12px;align-items:start"><img src="/app/uploads/${esc(m.file)}" alt="" style="width:100%;border-radius:10px">
+    <div style="display:grid;gap:14px">
+      <div class="viz"><h3>К функции</h3><p class="hint" style="margin-top:4px">Появится наверху выбранной функции у всех, для «Настрой дня» — рядом с фразой на «Сегодня»</p>
+        <div class="row" style="margin-top:8px">${field('Функция', `<select id="ma-feature">${CT.map.features.map(([g, items]) => `<optgroup label="${esc(g)}">${items.map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</optgroup>`).join('')}</select>`)}${field('Дата (пусто — каждый день)', `<input id="ma-day" type="date">`)}<button data-on="click:mediaAttachFeature-a0" data-a0="${m.id}" class="btn gold sm fixed" type="button" style="align-self:end">Опубликовать</button></div></div>
+      <div class="viz"><h3>На карту, руну, лунный день или год</h3>
+        <div class="row" style="margin-top:8px">${field('Каталог', `<select data-on="change:mediaAttachBook-value" id="ma-book">${books.map((b) => `<option value="${esc(b.file)}">${esc(b.title)}</option>`).join('')}</select>`)}${field('Запись', `<select id="ma-record"><option>…</option></select>`)}<button data-on="click:mediaAttachRecord-a0" data-a0="${m.id}" class="btn gold sm fixed" type="button" style="align-self:end">Поставить</button></div></div>
+      <p class="hint" id="ma-msg"></p></div></div>`);
+  mediaAttachBook(books[0].file);
+}
+async function mediaAttachBook(file) { const r = await api('/cabinet/records?file=' + encodeURIComponent(file)); CT.attachBook = r; $('ma-record').innerHTML = r.records.map((x) => `<option value="${esc(x.key)}">${esc(x.title)}</option>`).join(''); }
+async function mediaAttachFeature(id) { const m = (S.mediaItems || []).find((x) => x.id === Number(id)); const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ kind: 'image', section: $('ma-feature').value, image: '/app/uploads/' + m.file, show_day: $('ma-day').value, status: 'published' }) }); $('ma-msg').textContent = r.ok ? 'Опубликовано — уже в приложении' : 'Не получилось: ' + r.error; if (r.ok) toast('Опубликовано'); }
+async function mediaAttachRecord(id) { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.attachBook.images, key: $('ma-record').value, mediaId: Number(id) }) }); $('ma-msg').textContent = r.ok ? (r.note || 'Поставлено — уже в приложении') : 'Не получилось: ' + r.error; if (r.ok) toast('Поставлено'); }
+
+/* ── «Проверка текстов»: пять отчетов о текстах на одной странице ── */
+async function renderCheck() {
+  const box = $('report'); const kinds = ['quality', 'concerns', 'topics', 'rituals', 'feedback', 'faq'];
+  box.innerHTML += `<div class="tools"><div class="periods">${periodKeys().map((k) => `<button data-on="click:setPeriod-a0" data-a0="${k}" class="${S.period === k ? 'on' : ''}">${daysWord(parseInt(k))}</button>`).join('')}</div></div><div id="check-body"><p class="empty">Загружаем…</p></div>`;
+  const parts = [];
+  for (const k of kinds) { try { const r = await api(`/cabinet/report?kind=${k}&period=${S.period}`); parts.push(`<section class="check-part" style="margin-top:22px"><h2>${esc(r.title || k)}</h2>${r.sub ? `<p class="hint">${esc(r.sub)}</p>` : ''}${(r.notes || []).map((n) => `<div class="notice">${esc(n)}</div>`).join('')}${(r.kpis || []).length ? `<div class="kpis">${r.kpis.map(kpiCard).join('')}</div>` : ''}${(r.charts || []).length ? `<div class="charts">${r.charts.map(vizCard).join('')}</div>` : ''}${(r.tables || []).map((t) => tableCard(t, k)).join('')}${r.how ? `<div class="how"><b>Как считается.</b> ${esc(r.how)}</div>` : ''}</section>`); } catch (e) { parts.push(`<p class="msg err">${esc(k)}: ${esc(e.code || e.message)}</p>`); } }
+  $('check-body').innerHTML = parts.join('');
 }
 
 /* ── конструктор кабинетов (админ): состав дашбордов, названия, периоды, блоки сводки ── */
