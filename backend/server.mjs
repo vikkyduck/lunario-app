@@ -549,6 +549,8 @@ function contentImageList() { return Object.entries(CONTENT_IMAGE_SETS).map(([ki
 function contentImagePut({ kind, key, type, data, by }) {
   const set = CONTENT_IMAGE_SETS[kind]; if (!set) return { ok: false, error: 'bad_kind' };
   const item = set.items().find((i) => i.key === String(key)); if (!item) return { ok: false, error: 'not_found' };
+  /* имя текущего файла — из текстового файла на диске, а не из памяти: тексты перечитываются с задержкой, и две замены подряд иначе расходятся */
+  try { const fresh = CE.bookRecords(set.file).find((r) => r.key === String(key)); if (fresh) item.image = fresh.image ? `/app/content/${kind}/${fresh.image}` : ''; } catch { /* оставим как в памяти */ }
   const ext = IMAGE_EXT[type]; if (!ext) return { ok: false, error: 'bad_type' };
   const buf = Buffer.from(String(data || '').replace(/^data:[^,]*,/, ''), 'base64');
   if (!buf.length || buf.length > 6 * 1024 * 1024) return { ok: false, error: 'too_big' };
