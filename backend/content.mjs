@@ -14,6 +14,24 @@ export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath
 /* Картинки лежат рядом с текстами, в папке картинки/: по-русски для владельца, по-английски в адресе.
    Приложение отдает их по /app/content/<вид>/<файл> — см. маршрут в server.mjs. */
 export const IMAGE_DIRS = { tarot: 'таро', runes: 'руны', year: 'личный-год', lunar: 'лунные-дни' };
+/* Фразы интерфейса, которые владелица правит сама (интерфейс.txt). Ключ — где фраза живет; значение — как в коде по умолчанию */
+export const UI_DEFAULT = {
+  'hello.claim': 'Пространство, где можно услышать себя', 'hello.ritual': 'Три минуты в день',
+  'hello.morning': 'Утром', 'hello.morning_sub': 'настрой дня, пока варится кофе', 'hello.evening': 'Вечером', 'hello.evening_sub': 'пара фраз о том, что запомнилось',
+  'hello.week': 'К воскресенью', 'hello.week_sub': 'Лунарио само соберет историю вашей недели', 'hello.cta': 'Открыть мой день',
+  'hello.free': 'Карта дня, лунный день и дневник — бесплатно', 'hello.trust': 'Записи хранятся в России и видны только вам.',
+  'onb.lead': 'Несколько слов о себе', 'onb.name': 'Как вас зовут?', 'onb.birth': 'Когда вы родились?', 'onb.time': 'Во сколько?', 'onb.city': 'Где вы родились?', 'onb.done': 'Почти готово',
+  'onb.next': 'Дальше', 'onb.skip_time': 'Не знаю', 'onb.go': 'Открыть мой день',
+  'home.evening_q': 'Что хочется сохранить из сегодняшнего дня?', 'home.evening_btn': 'Запомнить этот день', 'home.answer_btn': 'Ответить себе', 'home.answer_more': 'Продолжить',
+  'home.natal_row': 'Натальная карта готова', 'home.tips_row': 'Как устроено приложение', 'home.morning_group': 'Мое утро', 'home.more_group': 'Еще про этот день',
+  'diary.mood': 'Как вы сегодня?', 'diary.text': 'Что хочется оставить от этого дня?', 'diary.gratitude': 'Кому и за что вы сегодня благодарны?', 'diary.habits': 'Привычки сегодня', 'diary.askesis': 'Аскеза',
+  'diary.save': 'Запомнить этот день', 'diary.done': 'День записан ✦', 'diary.night': 'Спокойной ночи ✦', 'diary.day': 'Хорошего дня ✦', 'diary.practices': 'Практики', 'diary.past': 'Прошлые дни', 'diary.archive': 'Архив →',
+  'thought.q': 'Что в этом относится к моей ситуации?', 'thought.save': 'Сохранить мысль', 'thought.mine': 'Моя мысль',
+  'nav.today': 'Сегодня', 'nav.diary': 'Дневник', 'nav.ask': 'Свериться с собой', 'nav.about': 'Обо мне',
+  'ask.title': 'Свериться с собой', 'ask.caption': 'Карты, руны, вопросы', 'about.title': 'Обо мне',
+  'card.pick': 'Выберите карту', 'rune.pick': 'Выберите руну', 'card.question': 'Вопрос себе', 'card.today': 'Сегодня',
+  'return': '← Вернуться', 'back': '← Назад',
+};
 /* адрес картинки с версией по времени файла: заменили картинку в кабинете — у людей обновится сразу, а неизменная кэшируется навсегда */
 const img = (kind, file) => {
   if (!file) return '';
@@ -627,6 +645,9 @@ function build() {
   const rt = rows('напоминания.txt', 2);   /* текст может быть одной фразой — только заголовок, без тела */
   r.REMINDER_TEXTS = Object.assign({}, REMINDER_TEXTS_FALLBACK, rt ? Object.fromEntries(rt.map((c) => [c[0], [c[1], c[2] || '']])) : {});
   /* Тексты «Моей недели»: ключ | текст; ключ может повторяться — это варианты, файл целиком заменяет запасной список по ключу */
+  /* фразы интерфейса — интерфейс.txt (ключ | текст); чего нет в файле — как в коде (UI_DEFAULT). Правится в кабинете, вкладка «Тексты» */
+  r.UI = { ...UI_DEFAULT };
+  for (const [k, v] of rows('интерфейс.txt', 2) || []) if (k && v) r.UI[k] = v;
   const wt = rows('неделя.txt', 2) || [];
   r.WEEK_TEXTS = { ...WEEK_TEXTS_FALLBACK };
   for (const key of new Set(wt.map((c) => c[0]))) r.WEEK_TEXTS[key] = wt.filter((c) => c[0] === key).map((c) => c[1]);
@@ -668,6 +689,7 @@ export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) }
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
 export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
+export const UI = new Proxy({}, { get: (_, k) => Reflect.get(data.UI, k), ownKeys: () => Reflect.ownKeys(data.UI), getOwnPropertyDescriptor: (_, k) => ({ value: data.UI[k], enumerable: true, configurable: true }) });
 export const lunarRef = () => data.LUNAR_REF;
 export const READING_TOPICS = new Proxy([], { get: (_, k) => Reflect.get(data.READING_TOPICS, k) });
 /* Темы-«обертки» (вступление, рекомендация, «как прожить») — не содержательные разделы; напоминание и досье их не считают */

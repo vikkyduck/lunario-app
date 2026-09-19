@@ -249,7 +249,7 @@ function materialForm(id) {
     ${field('Картинка', `<div class="row" style="gap:8px"><input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/… или загрузите файл" style="flex:1"><input type="file" id="mt-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:220px;padding:6px"><button data-on="click:materialUpload" class="btn sm" type="button">Загрузить</button></div><img id="mt-preview" src="${esc(m.image || '')}" alt="" style="margin-top:8px;max-height:140px;border-radius:10px;${m.image ? '' : 'display:none'}">`)}
     <div class="row">${field('Дата показа (пусто — каждый день)', `<input id="mt-day" type="date" value="${m.show_day || ''}">`)}${field('Статус', `<select id="mt-status">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${(m.status || 'draft') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}</div>
     <p class="hint">«Опубликован» — видно всем: вопрос и аффирмация подменяют текст дня, картинка появляется наверху выбранной функции (для «Сегодня» — рядом с настроем дня). Дата пустая — каждый день.</p>
-    <div class="row"><button data-on="click:materialSave-a0" data-a0="${id}" class="btn gold fixed">Сохранить</button>${id ? `<button data-on="click:materialDel-a0" data-a0="${id}" class="btn sm warn fixed">Удалить</button>` : ''}<span class="hint" id="mt-msg"></span></div></div>`);
+    <div class="row"><button data-on="click:materialSave-a0" data-a0="${id}" class="btn gold fixed">Сохранить</button>${id ? `<button data-on="click:materialDel-a0" data-a0="${id}" class="btn sm warn fixed">Удалить</button><button data-on="click:materialHistory-a0" data-a0="${id}" class="btn sm" type="button">История</button>` : ''}<span class="hint" id="mt-msg"></span></div><div id="mt-hist"></div></div>`);
 }
 async function materialSave(id) {
   const kind = $('mt-kind').value, section = kind === 'image' ? $('mt-feature').value : $('mt-section').value;
@@ -524,6 +524,8 @@ async function renderContent() {
   const box = $('report');
   box.innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 style="margin-top:6px">Контент</h1></div></div>
     <div class="tabs ct-tabs" id="ct-tabs">${CT_TABS.map(([k, t]) => `<button data-on="click:ctTab-a0" data-a0="${k}" class="${CT.tab === k ? 'on' : ''}" type="button">${t}</button>`).join('')}</div>
+    <div class="row" style="margin-top:12px"><input data-on="keydown:if-event-key-Enter-ctSearch-value" id="ct-q" placeholder="Найти во всех текстах — слово или фразу, Enter" style="flex:1;min-height:40px"><button data-on="click:ctSearchGo" class="btn sm" type="button">Найти</button></div>
+    <div id="ct-search"></div>
     <div id="extra"><p class="empty">Загружаем…</p></div>`;
   window.scrollTo(0, 0);
   if (!CT.map) CT.map = await api('/cabinet/content-map');
@@ -551,7 +553,7 @@ async function ctCatalog() {
     <div class="row" style="justify-content:space-between;margin-top:12px;gap:10px;flex-wrap:wrap">
       <label class="btn sm" style="cursor:pointer">Загрузить картинки пакетом<input data-on="change:ctBulkPick-this" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden></label>
       <span class="hint">Файлы называются как «картинка» у записи (${r.key === 'число' ? '1.jpg … 30.jpg' : 'fool.jpg, magician.jpg …'}) — сопоставятся сами; остальные попросят выбрать запись</span>
-      <button data-on="click:ctRecordAdd" class="btn sm" type="button">+ Запись</button></div>
+      <button data-on="click:ctRecordAdd" class="btn sm" type="button">+ Запись</button><button data-on="click:ctHistory-a0" data-a0="${esc(CT.book)}" class="btn sm" type="button">Архив правок</button></div>
     <div id="ct-bulk"></div>
     <div class="files" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-top:12px">${r.records.map((rec) => `<button data-on="click:ctRecord-a0" data-a0="${rec.index}" class="file rec" type="button" style="flex-direction:column;align-items:stretch;gap:6px;text-align:left">
       ${rec.image ? `<img src="${img(rec)}" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px">` : '<div style="aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--muted);font-size:12px">нет картинки</div>'}
@@ -566,7 +568,9 @@ function ctRecord(index) {
     <div class="rec-edit" style="display:grid;grid-template-columns:160px minmax(0,1fr);gap:16px;margin-top:12px;align-items:start">
       <div><div id="rec-img-box">${src ? `<img id="rec-img" src="${src}" alt="" style="width:100%;border-radius:10px">` : '<div style="aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--muted);font-size:12px">нет картинки</div>'}</div>
         <label class="btn sm" style="display:block;text-align:center;margin-top:8px;cursor:pointer">Заменить картинку<input data-on="change:ctRecordImage-a0-this" data-a0="${rec.key}" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
-        <p class="hint" id="rec-img-msg" style="margin-top:6px"></p></div>
+        <p class="hint" id="rec-img-msg" style="margin-top:6px"></p>
+        ${rec.image ? `<button data-on="click:ctImageHistory-a0-a1-a2" data-a0="${esc(r.images)}" data-a1="${esc(rec.image.replace(/\.[^.]+$/, ''))}" data-a2="${esc(rec.key)}" class="btn sm" type="button" style="width:100%;margin-top:6px">Прежние картинки</button><div id="rec-img-hist"></div>` : ''}
+        <a class="btn sm" style="display:block;text-align:center;margin-top:10px" href="/app/?preview=${esc(r.images)}:${encodeURIComponent(rec.key)}" target="_blank" rel="noopener">Посмотреть в приложении ↗</a></div>
       <div style="display:grid;gap:10px">
         ${field('Название', `<input id="rec-title" value="${esc(rec.title)}" maxlength="120">`)}
         ${rec.fields.map(([k, v], i) => field(esc(k) + (locked(k) ? ' · служебное' : ''), `<input data-rec-field="${i}" data-rec-key="${esc(k)}" value="${esc(v)}" ${locked(k) ? 'readonly style="opacity:.6"' : ''}>`)).join('')}
@@ -614,44 +618,61 @@ async function ctBulkGo() {
 /* ── Темы дня: цепочка «источник → тема → настрой → вопрос дня» и правка настроев и вопросов ── */
 async function ctThemes() {
   const [themes, sources, sets, cards, runes] = await Promise.all([...['темы-дня.txt', 'темы-источников.txt', 'настрой.txt'].map((f) => api('/cabinet/table?file=' + encodeURIComponent(f))), api('/cabinet/records?file=' + encodeURIComponent('карты-таро.txt')), api('/cabinet/records?file=' + encodeURIComponent('руны.txt'))]);
-  CT.tables['настрой.txt'] = sets;
+  CT.tables['настрой.txt'] = sets; CT.themes = { themes, sources, cards, runes };
+  ctThemesRepaint();
+}
+/* перерисовка из уже загруженного — правки в ячейках не теряются */
+function ctThemesRepaint() {
+  const { themes, sources, cards, runes } = CT.themes, sets = CT.tables['настрой.txt'];
   const KIND = { тон: 'Прогноз дня', карта: 'Карты', руна: 'Руны', небо: 'Небо' };
   const nameOf = (kind, key) => { const list = kind === 'карта' ? cards.records : kind === 'руна' ? runes.records : null; const hit = list && list.find((r) => r.key === key); return hit ? hit.title : key; };
   $('extra').innerHTML = `<div class="notice" style="margin-top:14px">Как это связано: утро выбирает <b>источник</b> (карта дня, руна, небо или прогноз) → у источника есть <b>тема дня</b> → из строк темы выпадает <b>настрой</b> (главная фраза на «Сегодня») и его <b>вопрос дня</b>, на который человек отвечает вечером. Ниже — все темы с их источниками; настрой и вопросы правятся прямо здесь.</div>
     ${themes.rows.map(([key, name, about]) => { const src = sources.rows.filter((r) => r[2] === key); const mine = sets.rows.map((r, i) => [r, i]).filter(([r]) => r[0] === key);
       return `<div class="viz" style="margin-top:14px"><h3>${esc(name)} <small style="font-weight:400;color:var(--muted)">· ${esc(key)}</small></h3><p class="hint" style="margin-top:4px">${esc(about || '')}</p>
         <p style="margin-top:8px;font-size:13px;color:var(--muted)">Источники: ${src.length ? Object.entries(src.reduce((a, r) => ((a[r[0]] = a[r[0]] || []).push(r[1]), a), {})).map(([k, v]) => `<b>${esc(KIND[k] || k)}</b>: ${v.map((x) => esc(nameOf(k, x))).join(', ')}`).join(' · ') : '<i>ни один источник не ведет к этой теме</i>'}</p>
-        <div class="tbl" style="margin-top:8px"><div class="scroll"><table><thead><tr><th style="width:45%">Настрой</th><th>Вопрос дня</th><th></th></tr></thead><tbody>${mine.map(([r, i]) => `<tr><td><input data-on="input:ctSetCell-a0-a1-value" data-a0="${i}" data-a1="1" value="${esc(r[1] || '')}"></td><td><input data-on="input:ctSetCell-a0-a1-value" data-a0="${i}" data-a1="2" value="${esc(r[2] || '')}"></td><td><button data-on="click:ctSetDel-a0" data-a0="${i}" class="btn sm" type="button">×</button></td></tr>`).join('')}</tbody></table></div></div>
+        <div class="tbl" style="margin-top:8px"><div class="scroll"><table><thead><tr><th style="width:40%">Настрой</th><th>Вопрос дня</th><th style="width:96px">Картинка</th><th></th></tr></thead><tbody>${mine.map(([r, i]) => `<tr><td><input data-on="input:ctSetCell-a0-a1-value" data-a0="${i}" data-a1="1" value="${esc(r[1] || '')}"></td><td><input data-on="input:ctSetCell-a0-a1-value" data-a0="${i}" data-a1="2" value="${esc(r[2] || '')}"></td><td>${r[3] ? `<img src="${esc(r[3])}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;vertical-align:middle"> <button data-on="click:ctSetImgClear-a0" data-a0="${i}" class="btn sm" type="button" title="Убрать картинку">×</button>` : `<label class="btn sm" style="cursor:pointer">+ фото<input data-on="change:ctSetImg-a0-this" data-a0="${i}" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>`}</td><td><button data-on="click:ctSetDel-a0" data-a0="${i}" class="btn sm" type="button">×</button></td></tr>`).join('')}</tbody></table></div></div>
         <button data-on="click:ctSetAdd-a0" data-a0="${esc(key)}" class="btn sm" type="button" style="margin-top:8px">+ Настрой и вопрос</button></div>`; }).join('')}
-    <div class="row" style="margin-top:14px;position:sticky;bottom:12px"><button data-on="click:ctSetSave" class="btn gold fixed" type="button">Сохранить настрой и вопросы</button><span class="hint" id="ct-set-msg">${sets.rows.length} строк</span></div>`;
+    <div class="row" style="margin-top:14px;position:sticky;bottom:12px"><button data-on="click:ctSetSave" class="btn gold fixed" type="button">Сохранить настрой и вопросы</button><button data-on="click:ctHistory-a0" data-a0="настрой.txt" class="btn sm" type="button">Архив правок</button><span class="hint" id="ct-set-msg">${sets.rows.length} строк</span></div>`;
 }
 function ctSetCell(i, j, v) { CT.tables['настрой.txt'].rows[i][j] = v; }
-function ctSetDel(i) { CT.tables['настрой.txt'].rows.splice(i, 1); ctThemes(); }
-function ctSetAdd(key) { CT.tables['настрой.txt'].rows.push([key, '', '']); ctThemes(); }
+/* картинка к строке настроя: файл — в библиотеку, ссылка — в 4-ю колонку; на «Сегодня» встает к этой фразе */
+async function ctSetImg(i, input) {
+  const f = input.files[0]; if (!f) return; if (f.size > 5 * 1024 * 1024) { toast('До 5 МБ'); return; }
+  try { const r = await api('/cabinet/media', { method: 'POST', body: JSON.stringify({ name: f.name, type: f.type, data: await readAsDataUrl(f) }) }); if (!r.ok) { toast('Не загрузилось'); return; }
+    const row = CT.tables['настрой.txt'].rows[i]; while (row.length < 4) row.push(''); row[3] = r.url; toast('Картинка у строки — не забудьте «Сохранить»'); ctThemesRepaint(); }
+  catch (e) { toast('Не загрузилось: ' + (e.code || e.message)); }
+}
+function ctSetImgClear(i) { const row = CT.tables['настрой.txt'].rows[i]; if (row) row[3] = ''; ctThemesRepaint(); }
+function ctSetDel(i) { CT.tables['настрой.txt'].rows.splice(i, 1); ctThemesRepaint(); }
+function ctSetAdd(key) { CT.tables['настрой.txt'].rows.push([key, '', '', '']); ctThemesRepaint(); }
 async function ctSetSave() { const msg = $('ct-set-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'настрой.txt', rows: CT.tables['настрой.txt'].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
 
 /* ── Пуши: утро, вечер (варианты по дням), неделя, пробное — тексты напоминаний ── */
 async function ctPush() {
   const t = await api('/cabinet/table?file=' + encodeURIComponent('напоминания.txt')); CT.tables['напоминания.txt'] = t;
+  ctPushRepaint();
+}
+function ctPushRepaint() {
+  const t = CT.tables['напоминания.txt'];
   const G = [['Утро', (k) => k.startsWith('morning'), 'Заголовок утреннего пуша — настрой дня, тело собирается из выбранных плиток; здесь — только «утро еще не собралось»'], ['Вечер', (k) => k.startsWith('evening'), 'Приглашение открыть приложение — не вопрос. Варианты чередуются по дням; номера подряд'], ['Неделя', (k) => k.startsWith('week'), 'week — обычная, week-мало — когда моментов меньше трех ({n}, {момента})'], ['Остальное', (k) => !/^(morning|evening|week)/.test(k), '']];
   $('extra').innerHTML = G.map(([title, test, hint]) => { const rows = t.rows.map((r, i) => [r, i]).filter(([r]) => test(r[0])); return `<div class="viz" style="margin-top:14px"><h3>${title} · ${rows.length}</h3>${hint ? `<p class="hint" style="margin-top:4px">${esc(hint)}</p>` : ''}
     <div class="tbl" style="margin-top:8px"><div class="scroll"><table><thead><tr><th style="width:120px">Ключ</th><th style="width:38%">Заголовок</th><th>Текст</th><th></th></tr></thead><tbody>${rows.map(([r, i]) => `<tr><td><input data-on="input:ctPushCell-a0-a1-value" data-a0="${i}" data-a1="0" value="${esc(r[0])}" style="font-family:ui-monospace,monospace;font-size:12px"></td><td><input data-on="input:ctPushCell-a0-a1-value" data-a0="${i}" data-a1="1" value="${esc(r[1] || '')}"></td><td><input data-on="input:ctPushCell-a0-a1-value" data-a0="${i}" data-a1="2" value="${esc(r[2] || '')}"></td><td><button data-on="click:ctPushDel-a0" data-a0="${i}" class="btn sm" type="button">×</button></td></tr>`).join('')}</tbody></table></div></div>
     ${title === 'Вечер' ? `<button data-on="click:ctPushAddEvening" class="btn sm" type="button" style="margin-top:8px">+ Вечерний вариант</button>` : ''}</div>`; }).join('')
-    + `<div class="row" style="margin-top:14px;position:sticky;bottom:12px"><button data-on="click:ctPushSave" class="btn gold fixed" type="button">Сохранить пуши</button><span class="hint" id="ct-push-msg">${t.rows.length} строк · после сохранения тексты сразу уходят в очередь на следующую отправку</span></div>`;
+    + `<div class="row" style="margin-top:14px;position:sticky;bottom:12px"><button data-on="click:ctPushSave" class="btn gold fixed" type="button">Сохранить пуши</button><button data-on="click:ctHistory-a0" data-a0="напоминания.txt" class="btn sm" type="button">Архив правок</button><span class="hint" id="ct-push-msg">${t.rows.length} строк · после сохранения тексты сразу уходят в очередь на следующую отправку</span></div>`;
 }
 function ctPushCell(i, j, v) { CT.tables['напоминания.txt'].rows[i][j] = v; }
-function ctPushDel(i) { CT.tables['напоминания.txt'].rows.splice(i, 1); ctPush(); }
-function ctPushAddEvening() { const rows = CT.tables['напоминания.txt'].rows; const n = rows.filter((r) => /^evening(-\d+)?$/.test(r[0])).length; rows.push([n ? `evening-${n + 1}` : 'evening', '', '']); ctPush(); }
+function ctPushDel(i) { CT.tables['напоминания.txt'].rows.splice(i, 1); ctPushRepaint(); }
+function ctPushAddEvening() { const rows = CT.tables['напоминания.txt'].rows; const n = rows.filter((r) => /^evening(-\d+)?$/.test(r[0])).length; rows.push([n ? `evening-${n + 1}` : 'evening', '', '']); ctPushRepaint(); }
 async function ctPushSave() { const msg = $('ct-push-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'напоминания.txt', rows: CT.tables['напоминания.txt'].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
 
 /* ── Тексты: остальные таблицы строками и файлы целиком ── */
 async function ctFiles() {
   const r = await api('/cabinet/report?kind=content&period=' + S.period); const files = r.files || [];
-  const tables = CT.map.tables.filter((t) => !['настрой.txt', 'напоминания.txt'].includes(t.file));
+  const tables = CT.map.tables.filter((t) => !['настрой.txt', 'напоминания.txt'].includes(t.file)).sort((a, b) => (a.file === 'интерфейс.txt' ? -1 : b.file === 'интерфейс.txt' ? 1 : 0));   /* фразы интерфейса — первыми */
   $('extra').innerHTML = `<div class="viz" style="margin-top:14px"><h3>Таблицы — строками</h3><p class="hint" style="margin-top:4px">Одна строка — одна запись; правится по ячейкам</p>
       <div class="files" style="margin-top:10px">${tables.map((t) => `<button data-on="click:ctTable-a0" data-a0="${esc(t.file)}" class="file" type="button"><span>${esc(t.title)}<br><small>${esc(t.file)} · ${t.lines} строк</small></span><span class="btn sm">Править</span></button>`).join('')}</div></div>
     <div class="viz" style="margin-top:14px"><h3>Файлы целиком</h3><p class="hint" style="margin-top:4px">Для всего остального и для правок в структуре. Формат — в «ПРОЧТИ-МЕНЯ.txt»</p>
-      <div class="files" style="margin-top:10px">${files.map((f) => `<button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="file" type="button"><span>${esc(f.name)}<br><small>${f.lines} записей · изменен ${esc(f.mtime)}</small></span><span class="btn sm">Открыть</span></button>`).join('')}</div></div>
+      <div class="files" style="margin-top:10px">${files.map((f) => `<div class="file" style="cursor:default"><span>${esc(f.name)}<br><small>${f.lines} записей · изменен ${esc(f.mtime)}</small></span><span class="row" style="gap:6px"><button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="btn sm" type="button">Открыть</button><button data-on="click:ctHistory-a0" data-a0="${esc(f.name)}" class="btn sm" type="button">Архив</button></span></div>`).join('')}</div></div>
     ${(r.kpis || []).length ? `<div class="kpis" style="margin-top:14px">${r.kpis.map(kpiCard).join('')}</div>` : ''}${(r.tables || []).map((t) => tableCard(t, 'content')).join('')}`;
 }
 async function ctTable(file) {
@@ -685,6 +706,46 @@ async function mediaAttach(id) {
 async function mediaAttachBook(file) { const r = await api('/cabinet/records?file=' + encodeURIComponent(file)); CT.attachBook = r; $('ma-record').innerHTML = r.records.map((x) => `<option value="${esc(x.key)}">${esc(x.title)}</option>`).join(''); }
 async function mediaAttachFeature(id) { const m = (S.mediaItems || []).find((x) => x.id === Number(id)); const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ kind: 'image', section: $('ma-feature').value, image: '/app/uploads/' + m.file, show_day: $('ma-day').value, status: 'published' }) }); $('ma-msg').textContent = r.ok ? 'Опубликовано — уже в приложении' : 'Не получилось: ' + r.error; if (r.ok) toast('Опубликовано'); }
 async function mediaAttachRecord(id) { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.attachBook.images, key: $('ma-record').value, mediaId: Number(id) }) }); $('ma-msg').textContent = r.ok ? (r.note || 'Поставлено — уже в приложении') : 'Не получилось: ' + r.error; if (r.ok) toast('Поставлено'); }
+
+/* ── поиск по всем текстам ── */
+function ctSearchGo() { ctSearch($('ct-q').value); }
+async function ctSearch(q) {
+  const box = $('ct-search'); q = String(q || '').trim(); if (q.length < 2) { box.innerHTML = ''; return; }
+  box.innerHTML = '<p class="empty">Ищем…</p>';
+  const r = await api('/cabinet/search?q=' + encodeURIComponent(q));
+  box.innerHTML = `<div class="viz" style="margin-top:10px"><h3>Найдено: ${r.total}${r.total > r.items.length ? ` (показаны ${r.items.length})` : ''} <button data-on="click:ctSearchClear" class="btn sm" type="button" style="margin-left:8px">Закрыть</button></h3>
+    <div class="files" style="margin-top:8px">${r.items.map((it) => `<button data-on="click:ctOpenHit-a0-a1-a2" data-a0="${esc(it.file)}" data-a1="${esc(it.kind)}" data-a2="${it.index}" class="file" type="button" style="text-align:left"><span><b>${esc(it.title)}</b> <small>· ${esc(it.file)}</small><br><small>…${esc(it.snippet)}…</small></span><span class="btn sm">Открыть</span></button>`).join('') || '<p class="empty">Ничего не нашлось</p>'}</div></div>`;
+}
+function ctSearchClear() { $('ct-search').innerHTML = ''; $('ct-q').value = ''; }
+async function ctOpenHit(file, kind, index) {
+  if (kind === 'book') { CT.book = file; CT.records = await api('/cabinet/records?file=' + encodeURIComponent(file)); ctRecord(index); }
+  else ctTable(file);
+}
+
+/* ── история версий файла: список с датой и автором, посмотреть, откатить ── */
+async function ctHistory(file) {
+  const r = await api('/cabinet/versions?file=' + encodeURIComponent(file));
+  openModal(`<div class="head"><div><span class="eyebrow">Архив правок</span><h2 style="margin-top:6px">${esc(file)}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
+    <p class="hint" style="margin-top:8px">Перед каждым сохранением прежний файл уходит в архив. «Вернуть» ставит выбранную версию на место — текущая тоже сохранится в архиве.</p>
+    <div class="tbl" style="margin-top:10px"><div class="scroll"><table><thead><tr><th>Когда</th><th>Кто</th><th>Размер</th><th></th></tr></thead><tbody>${r.items.map((v) => `<tr><td>${fmtTs(v.ts)}</td><td>${esc(v.by)}</td><td>${(v.size / 1024).toFixed(1)} КБ</td><td class="row" style="gap:6px"><button data-on="click:ctVersionView-a0-a1" data-a0="${esc(file)}" data-a1="${esc(v.id)}" class="btn sm" type="button">Посмотреть</button><button data-on="click:ctVersionRestore-a0-a1" data-a0="${esc(file)}" data-a1="${esc(v.id)}" class="btn gold sm" type="button">Вернуть</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Правок из кабинета еще не было</td></tr>'}</tbody></table></div></div>
+    <pre id="ct-version-text" class="hint" style="white-space:pre-wrap;max-height:320px;overflow:auto;margin-top:10px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></pre>`);
+}
+async function ctVersionView(file, id) { const r = await api('/cabinet/versions?file=' + encodeURIComponent(file) + '&id=' + encodeURIComponent(id)); $('ct-version-text').textContent = r.text || ''; }
+async function ctVersionRestore(file, id) { if (!confirm('Вернуть эту версию файла? Текущая уйдет в архив.')) return; const r = await api('/cabinet/versions', { method: 'POST', body: JSON.stringify({ file, id }) }); if (r.ok) { toast('Версия возвращена — уже в приложении'); closeModal(); ctPaint(); } else toast('Не получилось: ' + r.error); }
+/* история картинки записи */
+async function ctImageHistory(kind, base, key) {
+  const r = await api('/cabinet/image-versions?kind=' + encodeURIComponent(kind) + '&base=' + encodeURIComponent(base));
+  const box = $('rec-img-hist'); if (!box) return;
+  box.innerHTML = r.items.length ? `<div style="display:grid;gap:6px;margin-top:8px">${r.items.map((v) => `<div class="row" style="gap:8px;font-size:12px"><span>${fmtTs(v.ts)}</span><button data-on="click:ctImageRestore-a0-a1-a2" data-a0="${esc(kind)}" data-a1="${esc(v.id)}" data-a2="${esc(key)}" class="btn sm" type="button">Вернуть</button></div>`).join('')}</div>` : '<p class="hint" style="margin-top:6px">Прежних картинок нет</p>';
+}
+async function ctImageRestore(kind, id, key) { const r = await api('/cabinet/image-versions?kind=' + encodeURIComponent(kind), { method: 'POST', body: JSON.stringify({ id, key }) }); if (r.ok) { toast('Картинка возвращена'); const im = $('rec-img'); if (im && r.url) im.src = r.url; } else toast('Не получилось: ' + r.error); }
+/* материалы: история и возврат */
+async function materialHistory(id) {
+  const r = await api('/cabinet/materials/versions?id=' + id);
+  const box = $('mt-hist'); if (!box) return;
+  box.innerHTML = r.items.length ? `<div class="tbl" style="margin-top:8px"><div class="scroll"><table><thead><tr><th>Когда</th><th>Кто</th><th>Что было</th><th></th></tr></thead><tbody>${r.items.map((v) => `<tr><td>${fmtTs(v.ts)}</td><td>${esc(v.by)}</td><td><small>${esc((v.title || v.text || v.image || '').slice(0, 80))} · ${esc(v.status)}</small></td><td><button data-on="click:materialRestore-a0" data-a0="${v.id}" class="btn sm" type="button">Вернуть</button></td></tr>`).join('')}</tbody></table></div></div>` : '<p class="hint" style="margin-top:6px">Правок еще не было</p>';
+}
+async function materialRestore(versionId) { const r = await api('/cabinet/materials/versions', { method: 'POST', body: JSON.stringify({ versionId }) }); if (r.ok) { toast('Версия возвращена'); closeModal(); EXTRAS.materials(); } else toast('Не получилось'); }
 
 /* ── «Проверка текстов»: пять отчетов о текстах на одной странице ── */
 async function renderCheck() {

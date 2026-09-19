@@ -24,6 +24,9 @@ export function initWorkspace(database, dataDir, sealFn, openFn) {
       text TEXT DEFAULT '', image TEXT DEFAULT '', show_day TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'draft',
       created_by TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS materials_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, material_id INTEGER NOT NULL, json TEXT NOT NULL, by TEXT DEFAULT '', ts TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS media (
       id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, file TEXT NOT NULL, type TEXT DEFAULT '', size INTEGER DEFAULT 0,
       uploaded_by TEXT DEFAULT '', created_at TEXT NOT NULL
@@ -125,11 +128,21 @@ export function materialSave(b, by) {
   if (kind === 'image' && !FEATURE_ART.some(([k]) => k === b.section)) return { ok: false, error: 'no_feature' };
   if (kind === 'image' && !clean(b.image, 300)) return { ok: false, error: 'no_image' };
   const f = [kind, clean(b.section, 40) || 'Мой день', title, text, clean(b.image, 300), isDay(b.show_day) ? b.show_day : '', status];
-  if (Number(b.id)) db.prepare('UPDATE materials SET kind=?, section=?, title=?, text=?, image=?, show_day=?, status=?, updated_at=? WHERE id=?').run(...f, now(), Number(b.id));
+  if (Number(b.id)) { materialArchive(Number(b.id), by); db.prepare('UPDATE materials SET kind=?, section=?, title=?, text=?, image=?, show_day=?, status=?, updated_at=? WHERE id=?').run(...f, now(), Number(b.id)); }
   else db.prepare('INSERT INTO materials (kind, section, title, text, image, show_day, status, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)').run(...f, by || '', now(), now());
   return { ok: true };
 }
-export function materialRemove(id) { db.prepare('DELETE FROM materials WHERE id = ?').run(Number(id)); return { ok: true }; }
+export function materialRemove(id, by) { materialArchive(Number(id), by); db.prepare('DELETE FROM materials WHERE id = ?').run(Number(id)); return { ok: true }; }
+/* прежняя версия материала — в materials_versions; вернуть можно любую (и удаленный материал целиком) */
+function materialArchive(id, by) { const m = one('SELECT * FROM materials WHERE id = ?', id); if (m) db.prepare('INSERT INTO materials_versions (material_id, json, by, ts) VALUES (?,?,?,?)').run(id, JSON.stringify(m), by || '', now()); }
+export function materialVersions(id) { return all('SELECT id, by, ts, json FROM materials_versions WHERE material_id = ? ORDER BY id DESC LIMIT 100', Number(id)).map((v) => { const m = JSON.parse(v.json); return { id: v.id, by: v.by, ts: v.ts, kind: m.kind, section: m.section, title: m.title, text: m.text, image: m.image, status: m.status, show_day: m.show_day }; }); }
+export function materialRestore(versionId, by) {
+  const v = one('SELECT * FROM materials_versions WHERE id = ?', Number(versionId)); if (!v) return { ok: false, error: 'not_found' };
+  const m = JSON.parse(v.json);
+  if (one('SELECT id FROM materials WHERE id = ?', m.id)) { materialArchive(m.id, by); db.prepare('UPDATE materials SET kind=?, section=?, title=?, text=?, image=?, show_day=?, status=?, updated_at=? WHERE id=?').run(m.kind, m.section, m.title, m.text, m.image, m.show_day, m.status, now(), m.id); }
+  else db.prepare('INSERT INTO materials (id, kind, section, title, text, image, show_day, status, created_by, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(m.id, m.kind, m.section, m.title, m.text, m.image, m.show_day, m.status, m.created_by || '', m.created_at || now(), now());
+  return { ok: true, id: m.id };
+}
 /* опубликованный материал на сегодня — подставляется в «Мой день» вместо текста из файла */
 export function materialForDay(kind, day) {
   const m = one(`SELECT title, text, image FROM materials WHERE kind = ? AND status = 'published' AND (show_day = ? OR show_day = '') ORDER BY show_day DESC, updated_at DESC LIMIT 1`, kind, day);

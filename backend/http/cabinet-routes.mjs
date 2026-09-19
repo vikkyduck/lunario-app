@@ -10,11 +10,11 @@
 
    Возвращает true: запрос обработан, ответ отправлен. */
 import { readFileSync } from 'node:fs';
-import { basename } from 'node:path';
+import { basename, extname } from 'node:path';
 
 export function createCabinetRoutes(deps) {
   const { json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, REPORT_META, OVERVIEW_BLOCKS,
-    Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, Backup, W,
+    Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, IMAGE_DIRS, Backup, W,
     staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive } = deps;
 
   return async function cabinetRoutes({ p, req, res, url, u }) {
@@ -76,7 +76,7 @@ export function createCabinetRoutes(deps) {
         const b = await readBody(req);
         const text = String(b.text || '');
         if (text.length > 200000) return json(res, 400, { ok: false, error: 'too_long' });
-        writeContent(name, text);   // папка под наблюдением — тексты перечитаются сами
+        writeContent(name, text, u.email);   // папка под наблюдением — тексты перечитаются сами; прежняя версия — в архив
         console.log(`[контент] ${u.email} сохранил ${name} (${text.length} симв.)`);
         return json(res, 200, { ok: true });
       }
@@ -97,14 +97,37 @@ export function createCabinetRoutes(deps) {
     }
     if (p === '/api/cabinet/record') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
-      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add) : CE.bookRecordSave(String(b.file || ''), b); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : 400, r); }
-      if (req.method === 'DELETE') { const r = CE.bookRecordRemove(String(url.searchParams.get('file') || ''), url.searchParams.get('index')); return json(res, r.ok ? 200 : 400, r); }
+      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add, u.email) : CE.bookRecordSave(String(b.file || ''), b, u.email); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : 400, r); }
+      if (req.method === 'DELETE') { const r = CE.bookRecordRemove(String(url.searchParams.get('file') || ''), url.searchParams.get('index'), u.email); return json(res, r.ok ? 200 : 400, r); }
     }
     if (p === '/api/cabinet/table') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(req.method === 'GET' ? url.searchParams.get('file') || '' : '');
       if (req.method === 'GET') { if (!CE.TABLES[file]) return json(res, 404, { ok: false, error: 'not_found' }); try { return json(res, 200, { file, title: CE.TABLES[file].title, ...CE.tableRows(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
-      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = CE.tableSave(String(b.file || ''), b.rows); if (r.ok) console.log(`[контент] ${u.email} сохранил таблицу ${b.file} (${r.rows} строк)`); return json(res, r.ok ? 200 : 400, r); }
+      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = CE.tableSave(String(b.file || ''), b.rows, u.email); if (r.ok) console.log(`[контент] ${u.email} сохранил таблицу ${b.file} (${r.rows} строк)`); return json(res, r.ok ? 200 : 400, r); }
+    }
+    /* поиск по всем текстам: записи книг и строки таблиц */
+    if (p === '/api/cabinet/search') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      const q = String(url.searchParams.get('q') || '').trim().toLowerCase(); if (q.length < 2) return json(res, 200, { items: [] });
+      const items = [];
+      for (const file of Object.keys(CE.BOOKS)) { try { for (const r of CE.bookRecords(file)) { const hay = [r.title, ...r.fields.map((f) => f[1]), r.body].join('\n'); const i = hay.toLowerCase().indexOf(q); if (i >= 0) items.push({ file, kind: 'book', index: r.index, title: r.title, snippet: hay.slice(Math.max(0, i - 60), i + 80).replace(/\s+/g, ' ') }); } } catch {} }
+      for (const file of Object.keys(CE.TABLES)) { try { const t = CE.tableRows(file); t.rows.forEach((r, i) => { const hay = r.join(' | '); const k = hay.toLowerCase().indexOf(q); if (k >= 0) items.push({ file, kind: 'table', index: i, title: CE.TABLES[file].title, snippet: hay.slice(Math.max(0, k - 60), k + 80) }); }); } catch {} }
+      return json(res, 200, { items: items.slice(0, 200), total: items.length });
+    }
+    /* архив версий: список, текст версии, откат; картинки — по записи */
+    if (p === '/api/cabinet/versions') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      const file = String(url.searchParams.get('file') || '');
+      if (req.method === 'GET') { const id = url.searchParams.get('id'); if (id) { const t = CE.versionText(file, id); return t === null ? json(res, 404, { ok: false }) : json(res, 200, { ok: true, text: t }); } try { return json(res, 200, { file, items: CE.versions(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
+      if (req.method === 'POST') { const b = await readBody(req); const r = CE.restore(String(b.file || ''), String(b.id || ''), u.email); if (r.ok) console.log(`[контент] ${u.email} откатил ${b.file} к ${b.id}`); return json(res, r.ok ? 200 : 400, r); }
+    }
+    if (p === '/api/cabinet/image-versions') {
+      if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
+      const kind = String(url.searchParams.get('kind') || ''), dir = IMAGE_DIRS[kind]; if (!dir) return json(res, 404, { ok: false });
+      if (req.method === 'GET') return json(res, 200, { items: CE.imageVersions(dir, String(url.searchParams.get('base') || '')) });
+      if (req.method === 'POST') { const b = await readBody(req); const f = CE.imageArchivePath(dir, String(b.id || '')); if (!f) return json(res, 404, { ok: false, error: 'not_found' });
+        const ext = extname(f).slice(1); const type = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext]; const r = contentImagePut({ kind, key: b.key, type, data: readFileSync(f).toString('base64'), by: u.email }); return json(res, r.ok ? 200 : 400, r); }
     }
     /* картинки функций: список по наборам и замена файла */
     if (p === '/api/cabinet/content-images') {
@@ -113,7 +136,7 @@ export function createCabinetRoutes(deps) {
       if (req.method === 'POST') {
         const b = await readBody(req, 8 * 1024 * 1024);
         if (b.mediaId) { const f = W.mediaFile(b.mediaId); if (!f) return json(res, 404, { ok: false, error: 'not_found' }); b.type = f.type; b.data = readFileSync(f.path).toString('base64'); }   /* картинка из библиотеки — на карту, руну, день */
-        const r = contentImagePut(b);
+        b.by = u.email; const r = contentImagePut(b);
         if (r.ok) console.log(`[контент] ${u.email} заменил картинку ${b.kind}/${b.key} → ${r.name}`);
         return json(res, r.ok ? 200 : 400, r);
       }
@@ -128,7 +151,12 @@ export function createCabinetRoutes(deps) {
       if (!allowed('materials')) return json(res, 403, { ok: false, error: 'no_access' });
       if (req.method === 'GET') return json(res, 200, { items: W.materialList(), kinds: W.MATERIAL_KINDS, statuses: W.MATERIAL_STATUS, features: W.FEATURE_ART, groups: W.FEATURE_GROUPS });
       if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.materialSave(b, u.email)); }
-      if (req.method === 'DELETE') return json(res, 200, W.materialRemove(url.searchParams.get('id')));
+      if (req.method === 'DELETE') return json(res, 200, W.materialRemove(url.searchParams.get('id'), u.email));
+    }
+    if (p === '/api/cabinet/materials/versions') {
+      if (!allowed('materials')) return json(res, 403, { ok: false, error: 'no_access' });
+      if (req.method === 'GET') return json(res, 200, { items: W.materialVersions(url.searchParams.get('id')) });
+      if (req.method === 'POST') { const b = await readBody(req); return json(res, 200, W.materialRestore(b.versionId, u.email)); }
     }
     if (p === '/api/cabinet/media/archive' && req.method === 'POST') {
       if (!allowed('media')) return json(res, 403, { ok: false, error: 'no_access' });

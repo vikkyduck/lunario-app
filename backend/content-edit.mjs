@@ -3,8 +3,8 @@
    короткие поля «поле: значение», затем разделы «[Раздел]» и текст. Таблицы (настрой, вопросы, темы, напоминания…):
    строка = запись, поля через «|», строки с # — заметки, они сохраняются как есть.
    Читаем и пишем только сам файл в папке контента; приложение перечитывает его само (watch в content.mjs). */
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, renameSync } from 'node:fs';
+import { join, extname, basename } from 'node:path';
 import { CONTENT_DIR, noYo } from './content.mjs';
 
 /* какие файлы — «книга/статья», какие — таблица и как называются колонки (по ПРОЧТИ-МЕНЯ.txt) */
@@ -16,8 +16,9 @@ export const BOOKS = {
   'лунные-дни-справочник.txt': { title: 'Справочник лунных дней', key: '', images: '' },
 };
 export const TABLES = {
+  'интерфейс.txt': { title: 'Фразы интерфейса', cols: ['ключ', 'текст'] },
   'напоминания.txt': { title: 'Пуши', cols: ['ключ', 'заголовок', 'текст'] },
-  'настрой.txt': { title: 'Настрой дня и вопрос', cols: ['тема', 'настрой', 'вопрос'] },
+  'настрой.txt': { title: 'Настрой дня и вопрос', cols: ['тема', 'настрой', 'вопрос', 'картинка'] },
   'вопросы-дня.txt': { title: 'Вопросы дня', cols: ['вопрос'] },
   'аффирмации.txt': { title: 'Аффирмации (открытка)', cols: ['фраза'] },
   'темы-дня.txt': { title: 'Темы дня', cols: ['ключ', 'название', 'о чем'] },
@@ -39,7 +40,40 @@ export const TABLES = {
 };
 const path = (name) => { if (!/^[\wа-яА-Я.-]+\.txt$/u.test(name) || name.includes('/')) throw new Error('bad_file'); return join(CONTENT_DIR, name); };
 const read = (name) => readFileSync(path(name), 'utf8');
-const write = (name, text) => writeFileSync(path(name), noYo(text), 'utf8');
+
+/* ── архив версий (решение владелицы 19.09): перед каждой записью прежний файл уезжает в архив/<файл>/<время>__<кто>.txt,
+   любую версию можно вернуть — текущая при этом тоже уходит в архив. Картинки — в архив/картинки/<папка>/ ── */
+const ARCHIVE = () => join(CONTENT_DIR, 'архив');
+const stamp = (d = new Date()) => d.toISOString().replace(/\.\d+Z$/, '').replace(/:/g, '-');
+const who = (by) => String(by || '').replace(/[^\w.@-]/g, '').slice(0, 60) || 'кабинет';
+function archive(name, by) {
+  const src = path(name); if (!existsSync(src)) return '';
+  const dir = join(ARCHIVE(), name); if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const id = `${stamp()}__${who(by)}.txt`; copyFileSync(src, join(dir, id)); return id;
+}
+export function writeFile(name, text, by) { archive(name, by); writeFileSync(path(name), noYo(text), 'utf8'); }
+const write = writeFile;
+export function versions(name) {
+  const dir = join(ARCHIVE(), name); if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((f) => f.endsWith('.txt')).sort().reverse().map((f) => { const m = f.match(/^(.+?)__(.+)\.txt$/); const st = statSync(join(dir, f));
+    return { id: f, ts: m ? m[1].replace(/T(\d\d)-(\d\d)-(\d\d)$/, 'T$1:$2:$3') + 'Z' : '', by: m ? m[2] : '', size: st.size }; });
+}
+export function versionText(name, id) { const f = join(ARCHIVE(), name, basename(String(id))); return existsSync(f) ? readFileSync(f, 'utf8') : null; }
+export function restore(name, id, by) {
+  const text = versionText(name, id); if (text === null) return { ok: false, error: 'not_found' };
+  writeFile(name, text, by); return { ok: true };
+}
+/* картинка: старый файл — в архив с меткой времени, список и возврат — по записи */
+export function archiveImage(dir, file, by) {
+  const src = join(CONTENT_DIR, 'картинки', dir, file); if (!existsSync(src)) return '';
+  const adir = join(ARCHIVE(), 'картинки', dir); if (!existsSync(adir)) mkdirSync(adir, { recursive: true });
+  const id = `${file.replace(/\.[^.]+$/, '')}__${stamp()}__${who(by)}${extname(file)}`; copyFileSync(src, join(adir, id)); return id;
+}
+export function imageVersions(dir, base) {
+  const adir = join(ARCHIVE(), 'картинки', dir); if (!existsSync(adir)) return [];
+  return readdirSync(adir).filter((f) => f.startsWith(base + '__')).sort().reverse().map((f) => { const m = f.match(/__(.+?)__(.+)\.[^.]+$/); return { id: f, ts: m ? m[1].replace(/T(\d\d)-(\d\d)-(\d\d)$/, 'T$1:$2:$3') + 'Z' : '', by: m ? m[2] : '' }; });
+}
+export function imageArchivePath(dir, id) { const f = join(ARCHIVE(), 'картинки', dir, basename(String(id))); return existsSync(f) ? f : null; }
 
 /* ── книга / статья ── */
 export function parseBook(text) {
@@ -72,7 +106,7 @@ export function bookRecords(name) {
   return records.map((r, i) => ({ index: i, key: keyOf(name, r), title: r.title, fields: r.fields, body: r.body,
     image: (r.fields.find(([n]) => n === 'картинка') || [])[1] || '' }));
 }
-export function bookRecordSave(name, { index, title, fields, body }) {
+export function bookRecordSave(name, { index, title, fields, body }, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
   const book = parseBook(read(name));
   const i = Number(index);
@@ -80,23 +114,23 @@ export function bookRecordSave(name, { index, title, fields, body }) {
   const t = String(title || '').trim(); if (!t) return { ok: false, error: 'no_title' };
   const fl = (Array.isArray(fields) ? fields : []).map(([k, v]) => [String(k || '').trim().replace(/[:|]/g, ''), String(v || '').trim().replace(/\n/g, ' ')]).filter(([k]) => k);
   book.records[i] = { title: t, fields: fl, body: String(body || '').replace(/\r/g, '').trim() };
-  write(name, serializeBook(book));
+  write(name, serializeBook(book), by);
   return { ok: true };
 }
-export function bookRecordAdd(name, after) {
+export function bookRecordAdd(name, after, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
   const book = parseBook(read(name));
   const sample = book.records[Math.min(book.records.length - 1, Math.max(0, Number(after) || 0))];
   const rec = { title: 'Новая запись', fields: (sample ? sample.fields : []).map(([k]) => [k, '']), body: '' };
   book.records.splice(Math.min(book.records.length, (Number(after) || 0) + 1), 0, rec);
-  write(name, serializeBook(book));
+  write(name, serializeBook(book), by);
   return { ok: true, index: Math.min(book.records.length - 1, (Number(after) || 0) + 1) };
 }
-export function bookRecordRemove(name, index) {
+export function bookRecordRemove(name, index, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
   const book = parseBook(read(name)); const i = Number(index);
   if (!(i >= 0 && i < book.records.length)) return { ok: false, error: 'not_found' };
-  book.records.splice(i, 1); write(name, serializeBook(book)); return { ok: true };
+  book.records.splice(i, 1); write(name, serializeBook(book), by); return { ok: true };
 }
 
 /* ── таблица ── */
@@ -107,12 +141,12 @@ export function tableRows(name) {
   for (const l of lines) { if (!l.trim()) continue; if (l.trim().startsWith('#')) { notes.push(l); continue; } rows.push(l.split('|').map((c) => c.trim())); }
   return { cols: TABLES[name].cols, notes: notes.join('\n'), rows };
 }
-export function tableSave(name, rows) {
+export function tableSave(name, rows, by) {
   if (!TABLES[name]) return { ok: false, error: 'not_table' };
   if (!Array.isArray(rows)) return { ok: false, error: 'bad_rows' };
   const notes = read(name).split('\n').filter((l) => l.trim().startsWith('#'));
   const clean = rows.map((r) => (Array.isArray(r) ? r : []).map((c) => String(c ?? '').replace(/[|\n\r]/g, ' ').trim())).filter((r) => r.some(Boolean));
   const body = clean.map((r) => r.join(' | ')).join('\n');
-  write(name, (notes.length ? notes.join('\n') + '\n\n' : '') + body + '\n');
+  write(name, (notes.length ? notes.join('\n') + '\n\n' : '') + body + '\n', by);
   return { ok: true, rows: clean.length };
 }

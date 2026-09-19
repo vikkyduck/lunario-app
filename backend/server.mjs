@@ -24,7 +24,7 @@ import { MSK, MOSCOW, ISO_DAY, dayIn, addDays } from './util.mjs';
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 /* Тексты приложения читает и правит кабинет контента; папка под наблюдением — правки перечитываются сами */
 const readContent = (name) => readFileSync(join(CONTENT_DIR, name), 'utf8');
-const writeContent = (name, text) => writeFileSync(join(CONTENT_DIR, name), noYo(text), 'utf8');   /* из кабинета — тоже без «е с точками» */
+const writeContent = (name, text, by) => CE.writeFile(name, text, by);   /* прежняя версия — в архив, без «е с точками» */
 const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.txt')).sort().map((name) => {
   const text = readFileSync(join(CONTENT_DIR, name), 'utf8');
   const lines = text.split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length;
@@ -342,11 +342,18 @@ function dayPack(u, day) {
     sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */
     question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     lunar: lunarPack(u),
-    art: artOf(day),                                   /* картинки к функциям из кабинета «Контент» на этот день */
+    art: artWithSet(day, set),                         /* картинки к функциям из кабинета «Контент» на этот день; у настроя может быть своя */
   };
 }
 /* картинки функций считаются один раз в минуту — материалы меняются редко */
 const artCache = { day: '', at: 0, v: {} };
+/* картинка у самой строки настроя (4-я колонка настрой.txt) — к фразе дня, если для «Сегодня» не опубликована другая */
+function artWithSet(day, set) {
+  const art = artOf(day); if (art.home || !set) return art;
+  const norm = (t) => String(t || '').replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').replace(/[.]+\s*$/, '').trim();
+  const row = [...C.NASTROY].find((n) => norm(n[1]) === norm(set.statement || set.text)); const img = row && row[3];
+  return img ? { ...art, home: img } : art;
+}
 function artOf(day) { const t = Date.now(); if (artCache.day !== day || t - artCache.at > 6e4) { try { artCache.v = W.artForDay(day); } catch { artCache.v = {}; } artCache.day = day; artCache.at = t; } return artCache.v; }
 /* Лунный день считается по месту рождения из анкеты (там же часовой пояс);
    без координат — Москва, как и все остальное время в приложении. */
@@ -539,7 +546,7 @@ const CONTENT_IMAGE_SETS = {
 };
 const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 function contentImageList() { return Object.entries(CONTENT_IMAGE_SETS).map(([kind, s]) => ({ kind, title: s.title, items: s.items() })); }
-function contentImagePut({ kind, key, type, data }) {
+function contentImagePut({ kind, key, type, data, by }) {
   const set = CONTENT_IMAGE_SETS[kind]; if (!set) return { ok: false, error: 'bad_kind' };
   const item = set.items().find((i) => i.key === String(key)); if (!item) return { ok: false, error: 'not_found' };
   const ext = IMAGE_EXT[type]; if (!ext) return { ok: false, error: 'bad_type' };
@@ -549,9 +556,10 @@ function contentImagePut({ kind, key, type, data }) {
   const oldName = item.image ? decodeURIComponent(item.image.split('/').pop().split('?')[0]) : '';
   const base = oldName ? oldName.replace(/\.[^.]+$/, '') : String(key).replace(/[^\w.-]/g, '') || 'img';
   const name = `${base}.${ext}`;
+  if (oldName) CE.archiveImage(IMAGE_DIRS[kind], oldName, by);   /* прежняя картинка — в архив, вернуть можно из записи */
   writeFileSync(join(dir, name), buf);
   if (oldName && oldName !== name) {   /* новое расширение — переписываем имя в текстовом файле, старый файл убираем */
-    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name)); } catch { /* текст не тронули — картинка все равно на месте */ }
+    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name), by); } catch { /* текст не тронули — картинка все равно на месте */ }
     try { unlinkSync(join(dir, oldName)); } catch {}
   } else if (!oldName) {
     return { ok: true, name, note: 'В текстовом файле у записи нет поля «картинка» — впишите имя файла: ' + name };
@@ -559,7 +567,7 @@ function contentImagePut({ kind, key, type, data }) {
   return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
 }
 const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig,
-  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, Backup, W,
+  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, IMAGE_DIRS, Backup, W,
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
@@ -611,7 +619,7 @@ const server = createServer(async (req, res) => {
       try { const ld = lunarDay(Date.now(), MOSCOW.lat, MOSCOW.lon); if (ld) lunar = { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] }; } catch { /* без лунного дня строка короче */ }
       const m = moonState(Date.now());
       res.setHeader('Cache-Control', 'public, max-age=600');
-      return json(res, 200, { ok: true, moon: m.name, moonPhase: +m.cycle.toFixed(3), lunar });
+      return json(res, 200, { ok: true, moon: m.name, moonPhase: +m.cycle.toFixed(3), lunar, ui: { ...C.UI } });
     }
 
     /* Каталог карт и рун: тексты, картинки, расклады. Личного здесь нет, поэтому кэшируется на 10 минут —
@@ -793,7 +801,7 @@ const server = createServer(async (req, res) => {
 
       if (p === '/api/me' && req.method === 'GET') {
         return json(res, 200, {
-          user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(), preferences: preferences(u.preferences),
+          user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(), preferences: preferences(u.preferences), ui: { ...C.UI },
           mood: (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d) || {}).mood || null,
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
           mailReady: mailLive(),

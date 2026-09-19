@@ -21,7 +21,7 @@ function tourSeen(){ try { return Number(localStorage.getItem(tourKey())) >= TOU
 function paintTourRow(){
   const box = $('home-tour'); if (!box) return;
   const due = !!S.user && !tourSeen() && !(S.daysTotal >= 1); box.hidden = !due;   /* показывается до первого записанного дня — один раз, не постоянно (обзор 19.09) */
-  box.innerHTML = due ? `<button data-on="click:tourShort" class="later-row" id="tour-row" type="button"><span class="eyebrow">Подсказки</span><b>Как устроено приложение</b><span class="later-go">За 20 секунд →</span></button>` : '';
+  box.innerHTML = due ? `<button data-on="click:tourShort" class="later-row" id="tour-row" type="button"><span class="eyebrow">Подсказки</span><b>${typeof ui==="function"?ui("home.tips_row","Как устроено приложение"):"Как устроено приложение"}</b><span class="later-go">За 20 секунд →</span></button>` : '';
 }
 function tourMaybe(){ clearTimeout(Tour.timer); Tour.timer = setTimeout(paintTourRow, 300); }
 function tourStart(manual, mode){
