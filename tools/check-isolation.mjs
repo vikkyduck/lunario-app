@@ -76,7 +76,7 @@ const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcS
 try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true,
     filter: (p) => !p.endsWith('.db') && !p.endsWith('.db-wal') && !p.endsWith('.db-shm') });
-  await mkdir(join(fixture, 'content')); await mkdir(join(fixture, 'data'));
+  await cp(join(repo, 'content'), join(fixture, 'content'), { recursive: true, filter: (p) => p === join(repo, 'content') || (dirname(p) === join(repo, 'content') && p.endsWith('.txt')) });   /* тексты приложения, без картинок и архива: запасных копий в коде нет */ await mkdir(join(fixture, 'data'));
   const cities = new DatabaseSync(join(fixture, 'backend/cities.db'));
   cities.exec(`CREATE TABLE cities (name TEXT, region TEXT, country TEXT, lat REAL, lon REAL, tz TEXT, pop INTEGER, norm TEXT, w2 TEXT, alt TEXT);
     INSERT INTO cities VALUES ('Москва','Москва','Россия',55.7558,37.6173,'Europe/Moscow',13000000,'москва','','moscow');`);

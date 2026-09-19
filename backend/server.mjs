@@ -47,6 +47,7 @@ import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
 import { createReportRunner } from './report-runner.mjs';
 import { createCabinetRoutes } from './http/cabinet-routes.mjs';
 import * as CE from './content-edit.mjs';
+import { FEATURES } from './features.mjs';
 import { HTML_HEADERS } from './http/headers.mjs';
 import { createIdentity } from './identity.mjs';
 import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } from './transfer.mjs';
@@ -779,7 +780,7 @@ const server = createServer(async (req, res) => {
 
       if (p === '/api/me' && req.method === 'GET') {
         return json(res, 200, {
-          user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(), preferences: preferences(u.preferences), ui: { ...C.UI },
+          user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(), preferences: preferences(u.preferences), ui: { ...C.UI }, features: FEATURES,
           mood: (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d) || {}).mood || null,
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
           mailReady: mailLive(),

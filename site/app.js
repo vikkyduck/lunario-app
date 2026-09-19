@@ -105,22 +105,7 @@ function openLogin(){
 
 /* ── реестр функций: раздел и название панели, где живет (view), полноэкранная практика (page), ключ напоминания (reminder).
    Отсюда — заголовки, строка уведомлений под заголовком, полный экран и переход по ?open= из уведомления. ── */
-const FEATURES = {
-  card:{sec:'Сегодня',title:'Карта дня',view:'home'}, mood:{sec:'Дневник',title:'Настроение дня',view:'history'},
-  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, dayrune:{sec:'Сегодня',title:'Руна дня',view:'home'},
-  habits:{sec:'Дневник',title:'Дневник привычек',view:'history',page:true}, askesis:{sec:'Дневник',title:'Взять аскезу',view:'history',page:true},
-  lunar:{sec:'Сегодня',title:'Влияние Луны на сегодня',view:'home'}, sky:{sec:'Сегодня',title:'Влияние планет на сегодня',view:'home'},
-  worry:{sec:'Свериться с собой',title:'Ответить себе на вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
-  gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history'},
-  wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history'},
-  hentries:{sec:'Свериться с собой',title:'Мои вопросы и ответы',view:'ask'}, week:{sec:'Дневник',title:'Моя неделя',view:'history'}, dayview:{sec:'Дневник',title:'День',view:'history'}, days:{sec:'Дневник',title:'Все дни',view:'history'},
-  natal:{sec:'Обо мне',title:'Натальная карта',view:'about'}, year:{sec:'Обо мне',title:'Личный год',view:'about'}, birthnum:{sec:'Обо мне',title:'Нумерология',view:'about'}, compat:{sec:'Обо мне',title:'Совместимость',view:'about'},
-  tests:{sec:'Обо мне',title:'Тесты',view:'about'},
-  remind:{sec:'Аккаунт',title:'Уведомления',view:'account'}, mail:{sec:'Аккаунт',title:'Вход по почте',view:'account'}, edit:{sec:'Аккаунт',title:'Изменить мои данные',view:'account'},
-  support:{sec:'Аккаунт',title:'Чат поддержки',view:'account'}, invite:{sec:'Аккаунт',title:'Позвать подругу',view:'account'}, appearance:{sec:'Аккаунт',title:'Оформление',view:'account'}, topics:{sec:'Аккаунт',title:'Настройка контента',view:'account'},
-  skyplace:{sec:'Аккаунт',title:'Геолокация',view:'account'}, appinfo:{sec:'Аккаунт',title:'О приложении',view:'account'}, terms:{sec:'Аккаунт',title:'Условия использования',view:'account'},
-  askDate:{sec:'Взять аскезу',title:'Передвинуть дату'},
-};
+let FEATURES = {};   /* backend/features.json — приходит с /api/me; одно место на клиент и сервер */
 /* Цель из ?open= в уведомлении: ключ функции или ключ ее напоминания (moodreport → История настроений) */
 function openTarget(key){
   if(key==='news')return ['news',''];
@@ -2984,7 +2969,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('mess
       const snap = (!e.status && offlineSnapshot()) || null; if (!snap) throw e;
       r = snap.r; S.offlineAt = snap.at;
     }
-    S.user=r.user; S.day=r.day; S.mood=r.mood; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;S.ui=r.ui||{};applyUi();initExperience(r.preferences);
+    S.user=r.user; S.day=r.day; S.mood=r.mood; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;S.ui=r.ui||{};FEATURES=r.features||FEATURES;applyUi();initExperience(r.preferences);
     if (S.offlineAt) { const n = $('offline-note'); if (n) { n.hidden = false; n.textContent = `Без связи · показываем то, что было на ${new Date(S.offlineAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${r.day?.date !== new Date().toLocaleDateString('sv-SE') ? ', ' + fmtDay(r.day?.date) : ''}`; } }
     try{ if(r.user&&r.user.lat!=null) window.LunarioSky?.setProfile({lat:r.user.lat,lon:r.user.lon,name:r.user.city||''}); }catch(e){}
     registerWebMcp();

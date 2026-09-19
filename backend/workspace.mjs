@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { MSK, dayIn, cleanText as clean } from './util.mjs';   /* тексты материалов многострочные */
 import { noYo } from './content.mjs';
+import { FEATURE_GROUPS } from './features.mjs';
 
 let db, seal = (s) => s, open_ = (s) => s, UPLOADS = '';
 export function initWorkspace(database, dataDir, sealFn, openFn) {
@@ -100,13 +101,7 @@ export function campaignUsers(c) {
 export const MATERIAL_KINDS = { question: 'Вопрос дня', affirmation: 'Аффирмация дня', image: 'Картинка к функции' };
 /* К какой функции можно прикрепить картинку (материал kind=image, section=ключ): она появляется наверху панели этой функции,
    для «home» — рядом с настроем дня на «Сегодня». Дата показа пустая — каждый день, иначе — только в этот день. */
-export const FEATURE_GROUPS = [
-  ['Сегодня', [['home', 'Настрой дня'], ['card', 'Карта дня'], ['dayrune', 'Руна дня'], ['lunar', 'Лунный день'], ['sky', 'Влияние планет и транзиты'], ['day', 'Прогноз дня'], ['tone', 'Вопрос дня']]],
-  ['Дневник', [['week', 'Моя неделя'], ['mood', 'Настроение'], ['gratitude', 'Благодарность'], ['habits', 'Привычки'], ['askesis', 'Аскезы'], ['wishes', 'Желания'], ['hmood', 'История настроений'], ['days', 'Архив дней']]],
-  ['Свериться с собой', [['worry', 'Ответить себе на вопрос'], ['ask', 'Таро, руны, «Да / Нет»'], ['hentries', 'Мои вопросы и ответы']]],
-  ['Обо мне', [['natal', 'Натальная карта'], ['year', 'Личный год'], ['birthnum', 'Нумерология'], ['compat', 'Совместимость'], ['tests', 'Тесты']]],
-  ['Аккаунт', [['remind', 'Уведомления'], ['invite', 'Позвать подругу']]],
-];
+export { FEATURE_GROUPS };   /* из backend/features.mjs — реестр общий с клиентом */
 export const FEATURE_ART = FEATURE_GROUPS.flatMap(([, items]) => items);
 /* картинки на день по функциям: опубликованные материалы kind=image (на эту дату — приоритетнее, чем «каждый день»);
    картинка аффирмации дня, если есть, — к настрою на «Сегодня» */

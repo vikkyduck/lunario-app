@@ -1,0 +1,211 @@
+{
+ "card": {
+  "sec": "Сегодня",
+  "title": "Карта дня",
+  "view": "home",
+  "group": "Сегодня"
+ },
+ "dayrune": {
+  "sec": "Сегодня",
+  "title": "Руна дня",
+  "view": "home",
+  "group": "Сегодня"
+ },
+ "lunar": {
+  "sec": "Сегодня",
+  "title": "Влияние Луны на сегодня",
+  "view": "home",
+  "group": "Сегодня",
+  "art": "Лунный день"
+ },
+ "sky": {
+  "sec": "Сегодня",
+  "title": "Влияние планет на сегодня",
+  "view": "home",
+  "group": "Сегодня",
+  "art": "Влияние планет и транзиты"
+ },
+ "day": {
+  "sec": "Сегодня",
+  "title": "Прогноз дня",
+  "view": "home",
+  "group": "Сегодня"
+ },
+ "tone": {
+  "sec": "Сегодня",
+  "title": "Вопрос дня",
+  "view": "home",
+  "group": "Сегодня"
+ },
+ "mood": {
+  "sec": "Дневник",
+  "title": "Настроение дня",
+  "view": "history",
+  "group": "Дневник",
+  "art": "Настроение"
+ },
+ "habits": {
+  "sec": "Дневник",
+  "title": "Дневник привычек",
+  "view": "history",
+  "page": true,
+  "group": "Дневник",
+  "art": "Привычки"
+ },
+ "askesis": {
+  "sec": "Дневник",
+  "title": "Взять аскезу",
+  "view": "history",
+  "page": true,
+  "group": "Дневник",
+  "art": "Аскезы"
+ },
+ "gratitude": {
+  "sec": "Дневник",
+  "title": "Дневник благодарности",
+  "view": "history",
+  "group": "Дневник",
+  "art": "Благодарность"
+ },
+ "wishes": {
+  "sec": "Дневник",
+  "title": "Мои желания",
+  "view": "history",
+  "group": "Дневник",
+  "art": "Желания"
+ },
+ "hmood": {
+  "sec": "Дневник",
+  "title": "История настроений",
+  "view": "history",
+  "group": "Дневник"
+ },
+ "week": {
+  "sec": "Дневник",
+  "title": "Моя неделя",
+  "view": "history",
+  "group": "Дневник"
+ },
+ "dayview": {
+  "sec": "Дневник",
+  "title": "День",
+  "view": "history"
+ },
+ "days": {
+  "sec": "Дневник",
+  "title": "Все дни",
+  "view": "history",
+  "group": "Дневник",
+  "art": "Архив дней"
+ },
+ "worry": {
+  "sec": "Свериться с собой",
+  "title": "Ответить себе на вопрос",
+  "view": "ask",
+  "group": "Свериться с собой"
+ },
+ "ask": {
+  "sec": "Свериться с собой",
+  "title": "",
+  "view": "ask",
+  "group": "Свериться с собой",
+  "art": "Таро, руны, «Да / Нет»"
+ },
+ "hentries": {
+  "sec": "Свериться с собой",
+  "title": "Мои вопросы и ответы",
+  "view": "ask",
+  "group": "Свериться с собой"
+ },
+ "natal": {
+  "sec": "Обо мне",
+  "title": "Натальная карта",
+  "view": "about",
+  "group": "Обо мне"
+ },
+ "year": {
+  "sec": "Обо мне",
+  "title": "Личный год",
+  "view": "about",
+  "group": "Обо мне"
+ },
+ "birthnum": {
+  "sec": "Обо мне",
+  "title": "Нумерология",
+  "view": "about",
+  "group": "Обо мне"
+ },
+ "compat": {
+  "sec": "Обо мне",
+  "title": "Совместимость",
+  "view": "about",
+  "group": "Обо мне"
+ },
+ "tests": {
+  "sec": "Обо мне",
+  "title": "Тесты",
+  "view": "about",
+  "group": "Обо мне"
+ },
+ "remind": {
+  "sec": "Аккаунт",
+  "title": "Уведомления",
+  "view": "account",
+  "group": "Аккаунт"
+ },
+ "mail": {
+  "sec": "Аккаунт",
+  "title": "Вход по почте",
+  "view": "account"
+ },
+ "edit": {
+  "sec": "Аккаунт",
+  "title": "Изменить мои данные",
+  "view": "account"
+ },
+ "support": {
+  "sec": "Аккаунт",
+  "title": "Чат поддержки",
+  "view": "account"
+ },
+ "invite": {
+  "sec": "Аккаунт",
+  "title": "Позвать подругу",
+  "view": "account",
+  "group": "Аккаунт"
+ },
+ "appearance": {
+  "sec": "Аккаунт",
+  "title": "Оформление",
+  "view": "account"
+ },
+ "topics": {
+  "sec": "Аккаунт",
+  "title": "Настройка контента",
+  "view": "account"
+ },
+ "skyplace": {
+  "sec": "Аккаунт",
+  "title": "Геолокация",
+  "view": "account"
+ },
+ "appinfo": {
+  "sec": "Аккаунт",
+  "title": "О приложении",
+  "view": "account"
+ },
+ "terms": {
+  "sec": "Аккаунт",
+  "title": "Условия использования",
+  "view": "account"
+ },
+ "askDate": {
+  "sec": "Взять аскезу",
+  "title": "Передвинуть дату"
+ },
+ "home": {
+  "sec": "Сегодня",
+  "title": "Настрой дня",
+  "group": "Сегодня"
+ }
+}

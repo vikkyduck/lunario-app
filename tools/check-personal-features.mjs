@@ -76,7 +76,7 @@ const photo = `data:image/png;base64,${png}`;
 try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true,
     filter: path => !path.endsWith('.db') && !path.endsWith('.db-wal') && !path.endsWith('.db-shm') });
-  await mkdir(join(fixture, 'content'));
+  await cp(join(repo, 'content'), join(fixture, 'content'), { recursive: true, filter: (p) => p === join(repo, 'content') || (dirname(p) === join(repo, 'content') && p.endsWith('.txt')) });   /* тексты приложения, без картинок и архива: запасных копий в коде нет */
   /* «Новое в приложении» живёт только в content/новое.txt (запасного списка в коде нет): две новинки на текущий месяц,
      чтобы экран новостей было чем проверять — плитка ведёт в существующий раздел */
   const newsMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' }).slice(0, 7);
