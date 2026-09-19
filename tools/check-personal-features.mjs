@@ -496,6 +496,23 @@ try {
   assert.ok(!/undefined|NaN/.test(dossierText), 'No undefined in dossier text');
   console.log('PASS: dossier and context text use the same askesis contract as the practices model.');
 
+  // ── «Я помню» (memory.mjs): любимый способ ответа, строка на карточке дня из вчерашнего настроения, вечерний пуш про аскезу ──
+  { const d0 = (await askOwner.json('/me')).day.date, ago = (n) => new Date(Date.parse(d0 + 'T12:00:00Z') - n * 864e5).toISOString().slice(0, 10);
+    for (const q of ['Стоит ли мне сейчас менять работу?', 'Получится ли у меня новый проект на работе?', 'Поговорить ли с начальником о повышении?']) await askOwner.json('/ask', 'POST', { question: q, kind: 'rune', layout: 'one' });
+    assert.equal((await askOwner.json('/me')).memory.favorite, 'rune', 'Three rune asks make rune the favorite method');
+    await askOwner.json('/day', 'POST', { day: ago(1), moods: ['quick:anxious'] });
+    const line = (await askOwner.json('/day/bridge')).item;
+    assert.ok(line && line.kind === 'вчера' && /^Вчера было тревожно/.test(line.text), 'Day line remembers yesterday in the words of память.txt: ' + JSON.stringify(line));
+    assert.equal((await askOwner.json('/me')).memory.about, null, 'About line stays silent during the first week');
+    for (const n of [2, 3]) await askOwner.json('/day', 'POST', { day: ago(n), moods: ['quick:anxious'] });
+    const ev = (await askOwner.json('/reminders/preview?feature=evening')).item;
+    assert.ok(ev && /тревожный день/.test(ev.title), 'Evening push sees three anxious days: ' + JSON.stringify(ev));
+    qaDB.prepare("UPDATE askesis SET started = ? WHERE user_id = (SELECT id FROM users WHERE name = 'Аскеза')").run(ago(5));
+    for (const n of [1, 2, 3]) await askOwner.json('/day', 'POST', { day: ago(n), moods: ['quick:calm'] });
+    const ev2 = (await askOwner.json('/reminders/preview?feature=evening')).item;
+    assert.equal(ev2 && ev2.title, 'Без сладкого: день 6 из 35', 'Askesis comes first in the evening push (start moved back 5 days, end fixed): ' + JSON.stringify(ev2));
+    console.log('PASS: memory — favorite method, day line from yesterday, evening push sees askesis and anxious days.'); }
+
   // ── Прошлый день: дописать и поправить можно до года назад, серия не трогается; удалить блок; далекое прошлое — 400 ──
   { const me=await askOwner.json('/me'), y=new Date(Date.parse(me.day.date+'T12:00:00Z')-864e5).toISOString().slice(0,10), streak=me.user.streak;
     const st=await askOwner.json('/day?day='+y); assert.equal(st.today,false); assert.equal(st.day,y,'yesterday state is served as a past day');

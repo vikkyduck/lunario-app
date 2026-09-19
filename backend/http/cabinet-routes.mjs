@@ -15,9 +15,9 @@ import { basename, extname } from 'node:path';
 export function createCabinetRoutes(deps) {
   const { json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, REPORT_META, OVERVIEW_BLOCKS,
     Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, IMAGE_DIRS, Backup, W,
-    staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive } = deps;
+    staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive, memoryPreview } = deps;
 
-  return async function cabinetRoutes({ p, req, res, url, u }) {
+  return async function cabinetRoutes({ p, req, res, url, u, d }) {
     const roles = rolesFor(u.email);
     const cfg = getConfig();   // состав кабинетов задает админ; по умолчанию — из кода
     if (p === '/api/cabinet/me') return json(res, 200, { email: u.email || '', name: u.name || '', roles, isAdmin: isAdmin(u.email), mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom });
@@ -100,6 +100,8 @@ export function createCabinetRoutes(deps) {
       if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add, u.email) : CE.bookRecordSave(String(b.file || ''), b, u.email); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : 400, r); }
       if (req.method === 'DELETE') { const r = CE.bookRecordRemove(String(url.searchParams.get('file') || ''), url.searchParams.get('index'), u.email); return json(res, r.ok ? 200 : 400, r); }
     }
+    /* «Я помню» на себе: что сработало бы у этого сотрудника сегодня — строка дня, «Обо мне», любимый способ, вопрос по теме, вечерний пуш */
+    if (p === '/api/cabinet/memory-preview' && req.method === 'GET') { if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' }); return json(res, 200, memoryPreview(u, d)); }
     if (p === '/api/cabinet/table') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(req.method === 'GET' ? url.searchParams.get('file') || '' : '');

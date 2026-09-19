@@ -438,6 +438,10 @@ function build() {
   }
   r.SKY = sky;
 
+  /* «Я помню» — фразы памяти (ключ | текст; пустой текст выключает правило) и вопросы дня по теме (тема | вопрос).
+     Файлы не обязательны: без них приложение просто молчит */
+  r.MEMORY = Object.fromEntries((rows('память.txt', 1) || []).map((c) => [c[0], c[1] || '']));
+  r.TOPIC_QUESTIONS = (rows('вопросы-по-темам.txt', 2) || []).map((c) => [c[0], c[1]]);
   r.AFFIRMATIONS = must('аффирмации.txt', lines('аффирмации.txt'));
   r.DAY_QUESTIONS = must('вопросы-дня.txt', lines('вопросы-дня.txt'));
 
@@ -464,6 +468,8 @@ export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) }
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
 export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
+export const MEMORY = new Proxy({}, { get: (_, k) => Reflect.get(data.MEMORY, k), ownKeys: () => Reflect.ownKeys(data.MEMORY), getOwnPropertyDescriptor: (_, k) => ({ value: data.MEMORY[k], enumerable: true, configurable: true }) });
+export const TOPIC_QUESTIONS = new Proxy([], { get: (_, k) => Reflect.get(data.TOPIC_QUESTIONS, k) });
 export const UI = new Proxy({}, { get: (_, k) => Reflect.get(data.UI, k), ownKeys: () => Reflect.ownKeys(data.UI), getOwnPropertyDescriptor: (_, k) => ({ value: data.UI[k], enumerable: true, configurable: true }) });
 export const lunarRef = () => data.LUNAR_REF;
 export const READING_TOPICS = new Proxy([], { get: (_, k) => Reflect.get(data.READING_TOPICS, k) });

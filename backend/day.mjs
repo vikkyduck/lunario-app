@@ -96,23 +96,6 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     return { items: page.map((x) => summary(u, x)), next: found.length > limit ? page[page.length - 1] : null, total };
   }
 
-  /* «Мост» — одна строка из прошлого, дословно, без ИИ: ответ на тот же вопрос дня, запись неделю назад или вчерашнее настроение */
-  function bridge(u, d) {
-    const q = questionOf(u, d);
-    if (q) {
-      for (const r of db.prepare("SELECT day, text, title FROM journal WHERE user_id = ? AND kind = 'answer' AND day < ? ORDER BY id DESC LIMIT 80").all(u.id, d)) {
-        if (open(r.title || '') === q) return { kind: 'answer', day: r.day, text: open(r.text).slice(0, 280), question: q };
-      }
-    }
-    const week = db.prepare("SELECT day, text, kind FROM journal WHERE user_id = ? AND day = ? AND kind IN ('', 'gratitude') ORDER BY id DESC LIMIT 1").get(u.id, addDays(d, -7));
-    if (week) return { kind: 'week', day: week.day, text: open(week.text).slice(0, 280) };
-    const y = moodsOf(u.id, addDays(d, -1));
-    if (y.length) return { kind: 'yesterday', day: addDays(d, -1), moods: y };
-    const last = db.prepare("SELECT day, text FROM journal WHERE user_id = ? AND day < ? AND day >= ? AND kind = '' ORDER BY id DESC LIMIT 1").get(u.id, d, addDays(d, -30));
-    if (last) return { kind: 'earlier', day: last.day, text: open(last.text).slice(0, 280) };
-    return null;
-  }
-
   /* Сохранение: все в одной транзакции — либо весь день записан, либо ничего (повтор с телефона безопасен).
      События и серия — после COMMIT: аналитика не должна отменять сохраненный день. */
   function save(u, d, b, { today = true } = {}) {
@@ -194,5 +177,5 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     return bytes ? { bytes, ts: row.ts } : null;
   }
   function photoDelete(u, d) { const r = db.prepare('DELETE FROM day_photos WHERE user_id = ? AND day = ?').run(u.id, d); return { ok: true, removed: r.changes > 0 }; }
-  return { state, save, remove, view, days, bridge, photoPut, photoGet, photoDelete, thoughtsOf, thoughtSave };
+  return { state, save, remove, view, days, photoPut, photoGet, photoDelete, thoughtsOf, thoughtSave };
 }

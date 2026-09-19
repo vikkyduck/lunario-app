@@ -130,7 +130,8 @@ export function lunarTopicLine(u, n) {
 }
 const tpl = (key, vars) => {
   const [title, body] = C.REMINDER_TEXTS[key] || ['Лунарио', ''];
-  const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : '')).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
+  /* {n} — как есть, {Аскеза} — то же значение с большой буквы (подстановки в напоминания.txt пишут люди, не код) */
+  const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => { const lower = k[0].toLowerCase() + k.slice(1); const v = vars && (vars[k] ?? vars[lower]); if (v == null) return ''; const sv = String(v); return k[0] !== lower[0] ? sv[0].toUpperCase() + sv.slice(1) : sv; }).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
   return { title: fill(title), body: fill(body) };
 };
 /* День человека — тем же правилом, что сервер (userDay): пояс устройства из preferences.tz → пояс города из анкеты → Москва.
@@ -145,7 +146,8 @@ export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK)
   if (feature === 'morning') return morningNotification(u, d, atMs, tz);
   if (feature === 'evening') {
     if (dayWritten(u.id, d)) return null;   /* день уже записан словами или настроением — не напоминаем; отметка привычки днем вопрос не глушит */
-    return { ...tpl(eveningKey(d)), url };
+    const personal = hooks.eveningPersonal ? hooks.eveningPersonal(u, d) : null;   /* вечер, который видит день (memory.mjs): аскеза, серия, тревога, привычка */
+    return { ...(personal ? tpl(personal.key, personal.vars) : tpl(eveningKey(d))), url };
   }
   if (feature === 'week') {
     const n = weekMoments(u.id, d);

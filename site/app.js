@@ -1242,13 +1242,14 @@ async function dayRemove(day,what){
 const dayQuietHtml=({habits=[],askesis=[],echo=''})=>{ const parts=[]; if(habits.length)parts.push(`Привычки: ${habits.map(esc).join(', ')} ✓`); for(const a of askesis)parts.push(`${esc(a.title)}: ${a.kept?'держусь':'сорвалась'}`); if(echo)parts.push(`Настрой: ${(ECHO_LABEL[echo]||echo).toLowerCase()}`); return parts.length?`<p class="dc-quiet">${parts.join(' · ')}</p>`:''; };
 /* «Мост» — одна строка из прошлого, дословно */
 const daysAgo=(d,base=S.day.date)=>{const n=Math.round((Date.parse(base+'T12:00:00Z')-Date.parse(d+'T12:00:00Z'))/864e5);return n===1?'Накануне':n===7?'Неделей раньше':n<31?`${n} ${plural(n,'днем','днями','днями')} раньше`:`${fmtDayWords(d)}`;};
-const bridgeHtml=(b,base)=>{ const when=daysAgo(b.day,base); return b.kind==='answer'?`${when} на этот же вопрос вы ответили: <b>«${esc(b.text)}»</b>`:b.kind==='yesterday'?`${when} — <b>${b.moods.map(m=>esc((MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase())).join(', ')}</b>. А в этот день иначе?`:`${when} вы писали: <b>«${esc(b.text)}»</b>`; };
+/* «Я помню» — строка приходит с сервера готовой (memory.mjs, тексты — память.txt в кабинете); цитаты в «…» — жирным */
+const bridgeHtml=(b)=>esc(b.text).replace(/«([^»]+)»/g,'«<b>$1</b>»');
 async function loadBridge(){
   const box=$('dc-bridge'); if(!box)return;
   if(DC.bridge===undefined){ try{ DC.bridge=(await api(DC.forDay?'/day/bridge?day='+DC.forDay:'/day/bridge')).item||null; }catch(e){ DC.bridge=null; } }
   const b=DC.bridge; if(!$('dc-bridge'))return;
   if(!b)return;
-  $('dc-bridge').innerHTML=DC.forDay?bridgeHtml(b,DC.forDay):bridgeHtml(b,S.day.date).replace('Накануне','Вчера').replace('Неделей раньше','Неделю назад').replace(/(\d+) дн(ем|ями) раньше/,'$1 дней назад').replace('А в этот день иначе?','Сегодня иначе?');
+  $('dc-bridge').innerHTML=bridgeHtml(b);
   $('dc-bridge').hidden=false; track('bridge_view',b.kind);
 }
 
@@ -1319,7 +1320,8 @@ async function paintMeCard(){
   const paint=(c)=>{
     const moon=c?.planets?.find(p=>p.key==='moon'), lb=c?.lunarBirth;
     const line=[moon?`Натальная Луна ${esc(moon.signIn)}`:'', lb?`родились в <span class="nowrap">${ordinal(lb.n)} лунный</span> день`:''].filter(Boolean).join(' · ');
-    box.innerHTML=`<b class="me-name">${esc(name||'Обо мне')}</b>${line?`<span class="me-line">${line}</span>`:''}<span class="me-sub">${[fmtDay(u.birth),u.city].filter(Boolean).map(esc).join(' · ')}</span>`;
+    const memo=S.memory?.about?.text||'';   /* «В Лунарио с 3 марта. Первой картой была Луна» — memory.mjs, после первой недели */
+    box.innerHTML=`<b class="me-name">${esc(name||'Обо мне')}</b>${line?`<span class="me-line">${line}</span>`:''}<span class="me-sub">${[fmtDay(u.birth),u.city].filter(Boolean).map(esc).join(' · ')}</span>${memo?`<span class="me-memo">${esc(memo)}</span>`:''}`;
     box.hidden=false; const sub=$('ab-sub'); if(sub) sub.hidden=true;   /* имя и знак под заголовком — теперь в карточке */
   };
   paint(natalCache);
@@ -2553,10 +2555,11 @@ function pcSmiley(ctx, mood, cx, cy, size){
 /* ══════════ «Ответить себе на вопрос»: тема или свой вопрос своими словами, инструмент ответа выбирается тут же ══════════ */
 const HUB_TOPICS=[['Отношения','Что мне сейчас важно в отношениях?'],['Работа и деньги','Что мне важно понять о работе или деньгах?'],['Решение','Какое решение мне сейчас подходит?'],['Тревога','Что стоит за моей тревогой сейчас?'],['Отношение к себе','Что мне сейчас важно услышать о себе?'],['Другое','Что мне важно понять сейчас?']];
 const HUB_OPTS=[['rune','rune','Руна','one'],['runes3','rune','Три руны','three'],['spread','tarot','Три карты','three'],['fork','tarot','Выбор','fork']];
-const hubDraft={text:'',topic:null,kind:'rune'};
+const hubDraft={text:'',topic:null,kind:'rune',touched:false};
 const hubReady=(q)=>q.length>=10&&/\s/.test(q);   /* тот же порог, что на сервере: ответ приходит на конкретный вопрос, а не на слово */
 function renderHub(){
   const w=$('t-worry');if(!w)return;
+  if(!hubDraft.touched&&S.memory?.favorite)hubDraft.kind=S.memory.favorite;   /* любимый способ уже выбран — приложение знает, как человеку удобно (memory.mjs) */
   w.innerHTML=`<div class="card hubq"><p>Темы</p><div class="chips flow" id="hub-chips">${HUB_TOPICS.map(([label],i)=>`<button data-on="click:hubTopic-a0" data-a0="${i}" type="button" class="chip${hubDraft.topic===i?' on':''}" aria-pressed="${hubDraft.topic===i}">${label}</button>`).join('')}</div>
     <div class="field"><label for="hub-q">Что именно сейчас не дает покоя?</label><textarea data-on="input:hubDraft-text-value-hubCheck" id="hub-q" maxlength="300" placeholder="Опишите своими словами…">${esc(hubDraft.text)}</textarea><p class="hint" id="hub-hint" role="status"></p></div>
     <div id="hub-opts"><span class="eyebrow">Как получить ответ</span><div class="chips flow">${HUB_OPTS.map(([key,,label])=>`<button data-on="click:hubMethod-a0" data-a0="${key}" type="button" class="chip${hubDraft.kind===key?' on':''}" data-kind="${key}" aria-pressed="${hubDraft.kind===key}">${label}</button>`).join('')}</div>
@@ -2568,7 +2571,7 @@ function hubTopic(index){
   if(!hubReady(hubDraft.text.trim())||hubDraft.text===previous)hubDraft.text=HUB_TOPICS[index][1];   /* пустое или слишком короткое свое — заменяем вопросом темы */
   hubDraft.topic=index;renderHub();$('hub-q').focus();
 }
-function hubMethod(kind){hubDraft.kind=kind;document.querySelectorAll('#hub-opts .chip').forEach(b=>{const on=b.dataset.kind===kind;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
+function hubMethod(kind){hubDraft.kind=kind;hubDraft.touched=true;document.querySelectorAll('#hub-opts .chip').forEach(b=>{const on=b.dataset.kind===kind;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});}
 /* инструменты видны всегда; пока вопрос короче нескольких слов — кнопка ждет и подсказывает, что дописать */
 function hubCheck(){const v=$('hub-q').value.trim(),ok=hubReady(v);$('hub-go').disabled=!ok;$('hub-hint').textContent=ok||!v?'':'Напишите вопрос целиком, так вы потом вспомните, что вас волновало';}
 async function hubAsk(){
@@ -2973,7 +2976,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('mess
       const snap = (!e.status && offlineSnapshot()) || null; if (!snap) throw e;
       r = snap.r; S.offlineAt = snap.at;
     }
-    S.user=r.user; S.day=r.day; S.mood=r.mood; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;S.ui=r.ui||{};FEATURES=r.features||FEATURES;applyUi();initExperience(r.preferences);
+    S.user=r.user; S.day=r.day; S.mood=r.mood; S.memory=r.memory||{}; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;S.ui=r.ui||{};FEATURES=r.features||FEATURES;applyUi();initExperience(r.preferences);
     if (S.offlineAt) { const n = $('offline-note'); if (n) { n.hidden = false; n.textContent = `Без связи · показываем то, что было на ${new Date(S.offlineAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${r.day?.date !== new Date().toLocaleDateString('sv-SE') ? ', ' + fmtDay(r.day?.date) : ''}`; } }
     try{ if(r.user&&r.user.lat!=null) window.LunarioSky?.setProfile({lat:r.user.lat,lon:r.user.lon,name:r.user.city||''}); }catch(e){}
     registerWebMcp();

@@ -477,7 +477,7 @@ async function saveFile(name) {
 /* ══════════ «Контент» — одна страница (решение владелицы 19.09): Каталоги · Темы дня · Пуши · Публикации · Картинки · Тексты.
    Раньше это были три раздела меню и сырые файлы; теперь — записи, строки, картинки к записям и к функциям, пакетная загрузка. ══════════ */
 const CT = { tab: 'catalog', book: '', map: null, records: null, tables: {}, media: null, materials: null };
-const CT_TABS = [['catalog', 'Каталоги'], ['themes', 'Темы дня'], ['push', 'Пуши'], ['materials', 'Публикации'], ['media', 'Картинки'], ['files', 'Тексты']];
+const CT_TABS = [['catalog', 'Каталоги'], ['themes', 'Темы дня'], ['push', 'Пуши'], ['memory', 'Память'], ['materials', 'Публикации'], ['media', 'Картинки'], ['files', 'Тексты']];
 async function renderContent() {
   const box = $('report');
   box.innerHTML = `<div class="head"><div><span class="eyebrow">${esc(ROLE_META[S.role][0])} · рабочий кабинет</span><h1 class="mt-6">Контент</h1></div></div>
@@ -495,6 +495,7 @@ async function ctPaint() {
     if (CT.tab === 'catalog') return ctCatalog();
     if (CT.tab === 'themes') return ctThemes();
     if (CT.tab === 'push') return ctPush();
+    if (CT.tab === 'memory') return ctMemory();
     if (CT.tab === 'materials') return EXTRAS.materials();
     if (CT.tab === 'media') return EXTRAS.media();
     if (CT.tab === 'files') return ctFiles();
@@ -623,10 +624,73 @@ function ctPushDel(i) { CT.tables['напоминания.txt'].rows.splice(i, 1
 function ctPushAddEvening() { const rows = CT.tables['напоминания.txt'].rows; const n = rows.filter((r) => /^evening(-\d+)?$/.test(r[0])).length; rows.push([n ? `evening-${n + 1}` : 'evening', '', '']); ctPushRepaint(); }
 async function ctPushSave() { const msg = $('ct-push-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'напоминания.txt', rows: CT.tables['напоминания.txt'].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
 
+/* ── Память («Я помню»): приложение вспоминает человека одной фразой. Правила — в коде (memory.mjs), слова — здесь.
+      Пустой текст выключает правило. «Проверить на себе» показывает, что сработало бы у вас сегодня ── */
+const MEMORY_RULES = [
+  ['вопрос-тот-же', 'На этот же вопрос дня человек уже отвечал раньше', 'Когда · текст'],
+  ['тема-вопроса', 'Сегодня спросил про тему, о которой уже спрашивал «Да / Нет» (позавчера и раньше)', 'Когда · тема · ответ'],
+  ['тема-руны', 'То же, но раньше на эту тему отвечала руна', 'Когда · тема · руна'],
+  ['запись-о-теме', 'В сегодняшней записи — тема, о которой он спрашивал «Да / Нет»', 'Когда · тема · ответ'],
+  ['карта-год-назад', 'Карта дня ровно год назад', 'карта'],
+  ['карта-повтор', 'Сегодняшняя карта уже приходила — неделю назад и раньше', 'Карта · когда'],
+  ['руна-повтор', 'Сегодняшняя руна дня уже выпадала', 'руна · когда'],
+  ['неделю-назад', 'Запись ровно неделю назад', 'текст'],
+  ['вчера', 'Вчерашнее настроение', 'настроение'],
+  ['раньше', 'Последняя запись за месяц', 'Когда · текст'],
+  ['первая-карта', '«Обо мне», после первой недели: с какого дня здесь и какой была первая карта', 'дата · карта'],
+  ['с-нами', '«Обо мне», если карты еще не было', 'дата'],
+];
+const EVENING_RULES = [
+  ['evening-аскеза', 'Идет аскеза — со второго дня', 'Аскеза · n · всего · дней'],
+  ['evening-тревога', 'Три дня подряд отмечено тревожное настроение', 'имя'],
+  ['evening-серия', 'Серия записанных дней — от трех', 'n · дней'],
+  ['evening-привычка', 'Привычка держится три дня и больше, сегодня еще не отмечена', 'Привычка · n · дней'],
+];
+const TOPIC_RU = { work: 'работа', money: 'деньги', love: 'отношения', health: 'здоровье', move: 'дом и переезд', study: 'учеба' };
+async function ctMemory() {
+  for (const file of ['память.txt', 'вопросы-по-темам.txt', 'напоминания.txt']) CT.tables[file] = await api('/cabinet/table?file=' + encodeURIComponent(file));
+  ctMemoryRepaint();
+}
+function ctMemoryRepaint() {
+  const M = CT.tables['память.txt'], Q = CT.tables['вопросы-по-темам.txt'], P = CT.tables['напоминания.txt'];
+  const rowOf = (t, key) => { let i = t.rows.findIndex((r) => r[0] === key); if (i < 0) { t.rows.push([key, '']); i = t.rows.length - 1; } return i; };
+  const ruleRows = (t, rules, textCols) => rules.map(([key, when, vars]) => { const i = rowOf(t, key); const r = t.rows[i]; const on = textCols.some((j) => (r[j] || '').trim());
+    return `<tr class="${on ? '' : 'dim-55'}"><td><b>${esc(when)}</b><br><small class="hint">${esc(key)} · подстановки: ${esc(vars)}</small></td>${textCols.map((j) => `<td><input data-on="input:ctMemoryCell-a0-a1-a2-value" data-a0="${esc(t.file)}" data-a1="${i}" data-a2="${j}" value="${esc(r[j] || '')}" placeholder="${on ? '' : 'пусто — правило выключено'}"></td>`).join('')}</tr>`; }).join('');
+  $('extra').innerHTML = `<div class="viz mt-14"><h3>Как это работает</h3><p class="hint mt-4">Приложение не считает человека, а вспоминает его — одной фразой, как близкий. Правила живут в коде, слова — здесь: одна строка в день на карточке дня в Дневнике (первое совпавшее сверху вниз), одна — на «Обо мне». Нечего вспомнить — молчит. Пустой текст выключает правило. {Когда} с большой буквы — с большой буквы в тексте.</p></div>
+    <div class="viz mt-14"><h3>Строки памяти · карточка дня и «Обо мне»</h3>
+      <div class="tbl mt-8"><div class="scroll"><table><thead><tr><th class="w-40">Когда срабатывает</th><th>Фраза</th></tr></thead><tbody>${ruleRows(M, MEMORY_RULES, [1])}</tbody></table></div></div>
+      <div class="row mt-10"><button data-on="click:ctMemorySave-a0" data-a0="память.txt" class="btn gold fixed" type="button">Сохранить строки памяти</button><button data-on="click:ctHistory-a0" data-a0="память.txt" class="btn sm" type="button">Архив правок</button><span class="hint" id="ct-memory-msg-память.txt"></span></div></div>
+    <div class="viz mt-14"><h3>Вопрос дня по теме · ${Q.rows.length}</h3><p class="hint mt-4">Если за месяц человек спрашивал про одно и то же три раза и больше, через день вместо общего вопроса дня приходит вопрос по его теме. Темы: ${Object.entries(TOPIC_RU).map(([k, v]) => `<b>${k}</b> — ${v}`).join(' · ')}</p>
+      <div class="tbl mt-8"><div class="scroll"><table><thead><tr><th class="w-120">Тема</th><th>Вопрос</th><th></th></tr></thead><tbody>${Q.rows.map((r, i) => `<tr><td><select data-on="change:ctMemoryCell-a0-a1-a2-value" data-a0="вопросы-по-темам.txt" data-a1="${i}" data-a2="0" class="sel-sm">${Object.entries(TOPIC_RU).map(([k, v]) => `<option value="${k}" ${r[0] === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td><td><input data-on="input:ctMemoryCell-a0-a1-a2-value" data-a0="вопросы-по-темам.txt" data-a1="${i}" data-a2="1" value="${esc(r[1] || '')}"></td><td><button data-on="click:ctMemoryDel-a0-a1" data-a0="вопросы-по-темам.txt" data-a1="${i}" class="btn sm" type="button">×</button></td></tr>`).join('')}</tbody></table></div></div>
+      <div class="row mt-10"><button data-on="click:ctMemoryAddQ" class="btn sm" type="button">+ Вопрос</button><button data-on="click:ctMemorySave-a0" data-a0="вопросы-по-темам.txt" class="btn gold fixed" type="button">Сохранить вопросы</button><button data-on="click:ctHistory-a0" data-a0="вопросы-по-темам.txt" class="btn sm" type="button">Архив правок</button><span class="hint" id="ct-memory-msg-вопросы-по-темам.txt"></span></div></div>
+    <div class="viz mt-14"><h3>Вечер, который видит день</h3><p class="hint mt-4">Вместо обычного вечернего пуша — строка про его аскезу, серию, тревожные дни или привычку. Правила по порядку сверху вниз; молчит, если день уже записан. Остальные вечерние варианты — во вкладке «Пуши»</p>
+      <div class="tbl mt-8"><div class="scroll"><table><thead><tr><th class="w-36">Когда срабатывает</th><th>Заголовок</th><th>Текст</th></tr></thead><tbody>${ruleRows(P, EVENING_RULES, [1, 2])}</tbody></table></div></div>
+      <div class="row mt-10"><button data-on="click:ctMemorySave-a0" data-a0="напоминания.txt" class="btn gold fixed" type="button">Сохранить вечер</button><span class="hint" id="ct-memory-msg-напоминания.txt"></span></div></div>
+    <div class="viz mt-14"><h3>Проверить на себе</h3><p class="hint mt-4">Что сработало бы у вас сегодня — по вашим записям, картам и вопросам в приложении</p>
+      <div class="row mt-8"><button data-on="click:ctMemoryPreview" class="btn sm" type="button">Показать</button></div><div id="ct-memory-preview" class="mt-10"></div></div>`;
+}
+function ctMemoryCell(file, i, j, v) { CT.tables[file].rows[i][j] = v; }
+function ctMemoryDel(file, i) { CT.tables[file].rows.splice(i, 1); ctMemoryRepaint(); }
+function ctMemoryAddQ() { CT.tables['вопросы-по-темам.txt'].rows.push(['work', '']); ctMemoryRepaint(); }
+async function ctMemorySave(file) { const msg = document.getElementById('ct-memory-msg-' + file); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file, rows: CT.tables[file].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+async function ctMemoryPreview() {
+  const box = $('ct-memory-preview'); box.innerHTML = '<p class="hint">Смотрим…</p>';
+  try {
+    const r = await api('/cabinet/memory-preview');
+    const FAV = { rune: 'Руна', runes3: 'Три руны', spread: 'Три карты', fork: 'Выбор' };
+    const rows = [['Карточка дня', r.day ? `${esc(r.day.text)} <small class="hint">· ${esc(r.day.kind)}</small>` : '<span class="hint">нечего вспомнить — молчим</span>'],
+      ['«Обо мне»', r.about ? esc(r.about.text) : '<span class="hint">первая неделя — молчим</span>'],
+      ['Любимый способ в «Ответить себе»', r.favorite ? FAV[r.favorite] || r.favorite : '<span class="hint">меньше трех обращений — по умолчанию руна</span>'],
+      ['Тема месяца', r.topic ? `${esc(TOPIC_RU[r.topic] || r.topic)}${r.topicQuestion ? ` · сегодня вопрос дня по теме: «${esc(r.topicQuestion)}»` : ' · сегодня общий вопрос дня (по теме — через день)'}` : '<span class="hint">меньше трех вопросов про одно за месяц</span>'],
+      ['Вечерний пуш', r.evening ? `${esc(r.evening.key)} · ${esc(JSON.stringify(r.evening.vars))}` : '<span class="hint">обычный вечер</span>']];
+    box.innerHTML = `<div class="tbl"><div class="scroll"><table><tbody>${rows.map(([k, v]) => `<tr><td class="faint w-44">${k}</td><td>${v}</td></tr>`).join('')}</tbody></table></div></div>${r.warnings.length ? `<p class="msg err mt-8">${r.warnings.map(esc).join('<br>')}</p>` : ''}`;
+  } catch (e) { box.innerHTML = `<p class="msg err">Не получилось: ${esc(e.code || e.message)}</p>`; }
+}
+
 /* ── Тексты: остальные таблицы строками и файлы целиком ── */
 async function ctFiles() {
   const r = await api('/cabinet/report?kind=content&period=' + S.period); const files = r.files || [];
-  const tables = CT.map.tables.filter((t) => !['настрой.txt', 'напоминания.txt'].includes(t.file)).sort((a, b) => (a.file === 'интерфейс.txt' ? -1 : b.file === 'интерфейс.txt' ? 1 : 0));   /* фразы интерфейса — первыми */
+  const tables = CT.map.tables.filter((t) => !['настрой.txt', 'напоминания.txt', 'память.txt', 'вопросы-по-темам.txt'].includes(t.file)).sort((a, b) => (a.file === 'интерфейс.txt' ? -1 : b.file === 'интерфейс.txt' ? 1 : 0));   /* фразы интерфейса — первыми */
   $('extra').innerHTML = `<div class="viz mt-14"><h3>Таблицы — строками</h3><p class="hint mt-4">Одна строка — одна запись; правится по ячейкам</p>
       <div class="files mt-10">${tables.map((t) => `<button data-on="click:ctTable-a0" data-a0="${esc(t.file)}" class="file" type="button"><span>${esc(t.title)}<br><small>${esc(t.file)} · ${t.lines} строк</small></span><span class="btn sm">Править</span></button>`).join('')}</div></div>
     <div class="viz mt-14"><h3>Файлы целиком</h3><p class="hint mt-4">Для всего остального и для правок в структуре. Формат — в «ПРОЧТИ-МЕНЯ.txt»</p>

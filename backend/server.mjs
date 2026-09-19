@@ -38,6 +38,7 @@ import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, 
 import * as W from './workspace.mjs';
 import { natalChart, skyAt, inSign } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
+import { createMemory } from './memory.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
 import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, nativePlan, previewNotification, dayWritten } from './reminders.mjs';
@@ -115,7 +116,7 @@ function sendDataUrl(res, dataUrl) {
 }
 
 const {habitList, askesisList} = createPractices(db, open_);
-initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d), morningPack: (u, d) => Morning.pack(u, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
+initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid, d) => askesisList(uid, d), morningPack: (u, d) => Morning.pack(u, d), eveningPersonal: (u, d) => Memory.eveningPersonal(u, d) });   /* напоминания по функциям; переносит прежнюю подписку на карту дня */
 initCabinet(db);   /* таблицы кабинетов; колонки users ведет schema.mjs */
 initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
@@ -341,7 +342,8 @@ function dayPack(u, day) {
     remembered: dayWritten(u.id, day),                /* день уже записан — вечерняя строка на «Сегодня» скажет об этом */
     rune: (() => { const r = runeOfDay(u, day); return r ? runePublic(r) : null; })(),
     sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */
-    question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
+    /* вопрос дня знает, чем человек живет (memory.mjs): через день — по теме, к которой он возвращается; иначе — вопрос к настрою */
+    question: Memory.topicQuestion(u, day) || (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     lunar: lunarPack(u),
     art: artWithSet(day, set),                         /* картинки к функциям из кабинета «Контент» на этот день; у настроя может быть своя */
   };
@@ -502,6 +504,8 @@ function natalFor(u) {
   return chart;
 }
 const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalFor, MOOD_RU, nowISO });
+/* «Я помню» — память о человеке одной фразой: строка на карточке дня, вопрос дня по теме, любимый способ ответа, вечерний пуш, «Обо мне» */
+const Memory = createMemory({ db, open: open_, C, questionOf: (u, d) => dayPack(u, d).question, topicOf, MOOD_RU, habitList, askesisList });
 /* после этих действий полки пересобираются — уже после того, как ответ ушел человеку; у каждого маршрута — только те полки,
    которых он касается: анкета меняет «Обо мне» (с натальной картой) и «Мой день», карта дня и вопросы — день и «Истории»,
    настроение, дневник, желания и практики — только «Мой день» */
@@ -569,7 +573,7 @@ function contentImagePut({ kind, key, type, data, by }) {
   }
   return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
 }
-const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig,
+const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, memoryPreview: (u, d) => Memory.preview(u, d),
   REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, contentFiles, readContent, writeContent, contentImageList, contentImagePut, CE, IMAGE_DIRS, Backup, W,
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
@@ -581,7 +585,7 @@ const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitLis
   /* лунный день на вечер этой даты — по месту из анкеты; в записи дня и в строке прошлых дней */
   lunarOf: (u, d) => { try { const ld = lunarDay(Date.parse(d + 'T18:00:00Z'), u?.lat ?? MOSCOW.lat, u?.lon ?? MOSCOW.lon); return ld ? { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] } : null; } catch { return null; } },
   dailyWrites: DAILY_WRITES });
-const dayRoutes = createDayRoutes({ json, readBody, day: Day });
+const dayRoutes = createDayRoutes({ json, readBody, day: Day, bridge: (u, d) => Memory.dayLine(u, d) });
 /* откуда настрой того дня — подпись для «Что отозвалось» в неделе: карта дня и ее имя, руна, планеты или прогноз дня */
 function setSourceLabel(uid, day) {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(uid); if (!u) return '';
@@ -667,7 +671,7 @@ const server = createServer(async (req, res) => {
       if (req.method !== 'GET' && SHELF_TOUCH[p]) { const uid = u.id; res.once('finish', () => scheduleShelves(uid, d, SHELF_TOUCH[p])); }
 
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы — backend/http/cabinet-routes.mjs ── */
-      if (p.startsWith('/api/cabinet/')) return cabinetRoutes({ p, req, res, url, u });
+      if (p.startsWith('/api/cabinet/')) return cabinetRoutes({ p, req, res, url, u, d });
 
       /* ── первый источник (UTM с лендинга или рекламы) — один раз ── */
       if (p === '/api/utm' && req.method === 'POST') { const b = await readBody(req); const r = W.setUtm(u.id, b); if (r.ok && !r.kept) track(u, 'utm_seen', clean(b.utm_source, 40)); return json(res, 200, r); }
@@ -705,6 +709,7 @@ const server = createServer(async (req, res) => {
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
           mailReady: mailLive(),
           supportUnread: W.userUnread(u.id),
+          memory: { favorite: Memory.favorite(u), about: Memory.aboutLine(u, d) },   /* «Я помню»: любимый способ ответа и строка на «Обо мне» */
         });
       }
 
