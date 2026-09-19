@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=79"></script>
+<script src="/app/boot.js?v=80"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -158,6 +158,13 @@ body.inner .dc-offer .hint{margin:0;font-size:13px;line-height:1.45;color:var(--
 .dc-mic svg{width:18px;height:18px;display:block}.dc-mic.on{background:var(--gold);color:#1d1738;animation:dcPulse 1.2s ease-in-out infinite}
 @keyframes dcPulse{50%{box-shadow:0 0 0 6px rgba(217,184,104,.25)}}
 .dc-hint{margin:8px 0 0;font-size:13px;color:var(--faint);line-height:1.45}
+/* фото дня: камера рядом с микрофоном, превью под полем, полное — в дне для чтения, миниатюра — в строке дня */
+.dc-wrap.with-cam textarea{padding-right:92px}.dc-cam{right:52px}
+.dc-photo{display:flex;align-items:center;gap:12px;margin-top:10px}.dc-photo:empty{display:none}
+.dc-photo img{width:72px;height:72px;border-radius:12px;object-fit:cover;display:block;box-shadow:0 6px 16px -8px rgba(0,0,0,.7)}
+.dc-photo .hint{flex:1;margin:0}.dc-photo .text-action{min-height:32px;padding:0}
+body.inner :is(.day-card,.wpane) .dc-photo-full{display:block;width:100%;height:auto;max-height:280px;object-fit:cover;border-radius:16px;margin:12px 0 0;box-shadow:0 10px 28px -14px rgba(0,0,0,.7)}
+.day-row.has-photo{grid-template-columns:40px minmax(0,1fr) 44px}.day-row img.ph{width:44px;height:44px;border-radius:10px;object-fit:cover;display:block}
 .dc-skip{display:block;width:100%;text-align:center;margin-top:2px;color:var(--muted)}
 .dc-echo-q{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:10px 12px;border-radius:14px;background:rgba(245,242,234,.05);border:1px solid var(--line)}
 .dc-echo-q>span{font-size:13px;color:var(--muted);flex:1 1 100%}
@@ -731,11 +738,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=79">
-<link rel="stylesheet" href="/app/experience.css?v=79">
-<link rel="stylesheet" href="/app/moon-glass.css?v=79">
-<link rel="stylesheet" href="/app/compact.css?v=79">
-<link rel="stylesheet" href="/app/frame.css?v=79">
+<link rel="stylesheet" href="/app/theme.css?v=80">
+<link rel="stylesheet" href="/app/experience.css?v=80">
+<link rel="stylesheet" href="/app/moon-glass.css?v=80">
+<link rel="stylesheet" href="/app/compact.css?v=80">
+<link rel="stylesheet" href="/app/frame.css?v=80">
 </head>
 <body>
 <!-- статус-бар корпуса телефона на компьютере (frame.css); часы ставит app.js -->
@@ -869,6 +876,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
     <!-- текст последнего уведомления целиком: на телефоне оно обрезается, а здесь его можно дочитать -->
     <section class="card push-note" id="push-note" hidden aria-label="Уведомление"></section>
     <div class="home-later home-push" id="home-push" hidden></div>
+    <div class="home-later home-push" id="home-yesterday" hidden></div>
     <div class="home-later home-push" id="home-tour" hidden></div>
     <section class="card morning-picker" id="morning-picker" aria-labelledby="morning-q"><h2 id="morning-q">На что хочу обращать внимание каждое утро?</h2><p class="hint" id="morning-hint">Выбранное — сверху и в утреннем уведомлении. Можно все</p><div class="chips flow" id="morning-chips" role="group" aria-labelledby="morning-q"></div><p class="hint" id="morning-empty" hidden>Ничего не выбрано — утром придет только настрой дня</p><div class="picker-actions"><button data-on="click:morningDone" class="text-action" id="morning-done" type="button" hidden>Готово</button></div></section>
     <!-- после выбора вопрос сворачивается в строку: экран — для чтения, не для настроек -->
@@ -1048,14 +1056,14 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=79"></script>
+<script src="/app/moon-logo.js?v=80"></script>
 
-<script type="module" src="/app/sky.js?v=79"></script>
+<script type="module" src="/app/sky.js?v=80"></script>
 
-<script src="/app/experience.js?v=79"></script>
-<script src="/app/app.js?v=79"></script>
-<script src="/app/tour.js?v=79"></script>
-<script src="/app/handlers.js?v=79"></script>
-<script src="/app/on.js?v=79"></script>
+<script src="/app/experience.js?v=80"></script>
+<script src="/app/app.js?v=80"></script>
+<script src="/app/tour.js?v=80"></script>
+<script src="/app/handlers.js?v=80"></script>
+<script src="/app/on.js?v=80"></script>
 </body>
 </html>

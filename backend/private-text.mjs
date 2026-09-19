@@ -34,5 +34,15 @@ function open_(text) {
     return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString('utf8');
   } catch { return ''; }
 }
-return {seal, open:open_};
+/* Байты (фото дня): тот же ключ и AES-256-GCM, без base64 — iv (12) + тег (16) + тело. Не открылось — null */
+function sealBytes(buf) {
+  const iv = randomBytes(12), c = createCipheriv('aes-256-gcm', KEY, iv);
+  const body = Buffer.concat([c.update(buf), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), body]);
+}
+function openBytes(buf) {
+  try { const d = createDecipheriv('aes-256-gcm', KEY, buf.subarray(0, 12)); d.setAuthTag(buf.subarray(12, 28)); return Buffer.concat([d.update(buf.subarray(28)), d.final()]); }
+  catch { return null; }
+}
+return {seal, open:open_, sealBytes, openBytes};
 }

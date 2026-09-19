@@ -12,6 +12,7 @@ export const PERSONAL_DATA = [
   { table: 'mood_marks', on: 'history', note: 'все отмеченные за день настроения' },
   { table: 'journal', on: 'history', note: 'записи, благодарности, ответы на вопрос дня, рефлексии недели' },
   { table: 'week_echoes', on: 'history', note: '«отозвалось» — связь утреннего настроя с вечером, отмеченная самим человеком' },
+  { table: 'day_photos', on: 'history', note: 'фото дня — миниатюра и полное, зашифрованы' },
   { table: 'wishes', on: 'history' },
   { table: 'usage', on: 'history', note: 'дневной счетчик раскладов' },
   { table: 'daily_sets', on: 'history', note: 'какие установки дня уже выпадали' },
@@ -62,7 +63,7 @@ export function sweepAbandoned(db, days = 90, limit = 500) {
     AND NOT EXISTS (SELECT 1 FROM entries WHERE user_id = users.id) AND NOT EXISTS (SELECT 1 FROM journal WHERE user_id = users.id)
     AND NOT EXISTS (SELECT 1 FROM moods WHERE user_id = users.id) AND NOT EXISTS (SELECT 1 FROM wishes WHERE user_id = users.id)
     AND NOT EXISTS (SELECT 1 FROM habits WHERE user_id = users.id) AND NOT EXISTS (SELECT 1 FROM askesis WHERE user_id = users.id)
-    AND NOT EXISTS (SELECT 1 FROM tickets WHERE user_id = users.id) LIMIT ${Math.max(1, Math.trunc(limit))}`).all(before).map((r) => r.id);
+    AND NOT EXISTS (SELECT 1 FROM tickets WHERE user_id = users.id) AND NOT EXISTS (SELECT 1 FROM day_photos WHERE user_id = users.id) LIMIT ${Math.max(1, Math.trunc(limit))}`).all(before).map((r) => r.id);
   for (const id of ids) deleteAccount(db, { id, email: '' });
   return ids.length;
 }

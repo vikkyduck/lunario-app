@@ -496,6 +496,22 @@ try {
   assert.ok(!/undefined|NaN/.test(dossierText), 'No undefined in dossier text');
   console.log('PASS: dossier and context text use the same askesis contract as the practices model.');
 
+  // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
+  { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);
+    const put = (who, thumb, full, q = '') => fetch(`${base}/api/day/photo?thumb=${thumb.length}&w=1280&h=960${q}`, { method: 'PUT', headers: { Cookie: who.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': who.ip }, body: Buffer.concat([thumb, full]) });
+    const r1 = await put(askOwner, jpeg(3000), jpeg(120000)); assert.equal(r1.status, 200); const j1 = await r1.json(); assert.ok(j1.ok && j1.photo.ts && j1.photo.w === 1280, 'day photo accepted');
+    const rowPh = qaDB.prepare('SELECT thumb, full FROM day_photos WHERE user_id = ?').get((await askOwner.json('/me')).user.id);
+    assert.ok(rowPh && !(rowPh.full[0] === 0xff && rowPh.full[1] === 0xd8) && !(rowPh.thumb[0] === 0xff && rowPh.thumb[1] === 0xd8), 'photo bytes are sealed at rest, not raw JPEG');
+    const today = (await askOwner.json('/me')).day.date;
+    const g = await askOwner.raw(`/day/photo?day=${today}&size=full`); assert.equal(g.status, 200); assert.equal(g.headers.get('content-type'), 'image/jpeg'); assert.equal((await g.arrayBuffer()).byteLength, 120004, 'full photo comes back byte for byte');
+    assert.ok((await askOwner.json('/day')).photo && (await askOwner.json(`/days?calendar=1`)).items.length === 1, 'day state carries the photo');
+    const stranger = account(); await stranger.json('/me'); await stranger.json('/profile', 'POST', { name: 'Чужая', birth: '1990-01-01', city: 'Москва', consent: true });
+    assert.equal((await stranger.raw(`/day/photo?day=${today}&size=full`)).status, 404, 'another account cannot read the photo');
+    assert.equal((await put(askOwner, jpeg(3000), Buffer.alloc(120000, 1))).status, 400, 'only JPEG is accepted');
+    assert.equal((await put(askOwner, jpeg(3000), jpeg(430 * 1024))).status, 413, 'oversized photo is refused before parsing');
+    assert.equal((await askOwner.json('/day/photo', 'DELETE')).removed, true); assert.equal((await askOwner.raw(`/day/photo?day=${today}&size=thumb`)).status, 404, 'photo is gone after delete');
+    console.log('PASS: day photo is stored sealed, served only to its owner as JPEG, validated by type and size, deleted on request.'); }
+
   // ── Раскладов в день — без лимита (решение владелицы 18.09); /api/me не сообщает о квоте, ошибки limit не бывает ──
   assert.ok(!('limits' in (await askOwner.json('/me'))), 'No spread quota is reported');
   for (let i = 0; i < 5; i++) {

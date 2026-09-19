@@ -6,7 +6,7 @@
    Пустая ячейка при сохранении = «не менять»: случайно стереть запись нельзя. Зависимости — явным объектом, как у createShelves. */
 import { transaction } from './sync.mjs';
 
-export function createDay({ db, seal, open, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf, morningOf = () => null, themeTitle = (k) => k, dailyWrites = 100 }) {
+export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf, morningOf = () => null, themeTitle = (k) => k, dailyWrites = 100 }) {
   const KINDS = { text: '', gratitude: 'gratitude', answer: 'answer' };
   const latest = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(uid, d, kind);
   const cell = (row) => row ? { id: row.id, text: open(row.text), title: open(row.title || '') } : null;
@@ -20,13 +20,14 @@ export function createDay({ db, seal, open, C, habitList, askesisList, track, to
   /* утро дня, как оно выпало: настрой, вопрос и тема — из daily_sets; для прошлых дней ничего не тянется заново */
   const morningStored = (uid, d) => { const r = db.prepare('SELECT text, question, theme FROM daily_sets WHERE user_id = ? AND day = ?').get(uid, d); return r && r.text ? { set: r.text, question: r.question || '', theme: themeTitle(r.theme || '') } : null; };
   const echoOf = (uid, d) => (db.prepare('SELECT verdict FROM week_echoes WHERE user_id = ? AND day = ?').get(uid, d) || {}).verdict || '';
+  const photoMeta = (uid, d) => db.prepare('SELECT ts, w, h FROM day_photos WHERE user_id = ? AND day = ?').get(uid, d) || null;
   const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 
   function state(u, d) {
     const kept = new Map(db.prepare('SELECT askesis_id, kept, note FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ?').all(u.id, d).map((n) => [n.askesis_id, n]));
     const m = morningOf(u, d);   /* сегодняшнее утро — то же, что на «Сегодня»: вечер продолжает его, а не начинает заново */
     return {
-      day: d, question: questionOf(u, d), set: m ? m.set : '', theme: m ? m.theme : '', echo: echoOf(u.id, d),
+      day: d, question: questionOf(u, d), set: m ? m.set : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')),
       moods: moodsOf(u.id, d),
       habits: habitList(u.id, d).map((h) => ({ id: h.id, title: h.title, due: h.due, today: h.today, rule: h.rule })),
@@ -38,7 +39,7 @@ export function createDay({ db, seal, open, C, habitList, askesisList, track, to
   function view(u, d) {
     const m = morningStored(u.id, d);
     return {
-      day: d, set: m ? m.set : '', question: m ? m.question : '', theme: m ? m.theme : '', echo: echoOf(u.id, d),
+      day: d, set: m ? m.set : '', question: m ? m.question : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')),
       moods: moodsOf(u.id, d),
       habits: db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(u.id, d).map((r) => r.title),
@@ -55,9 +56,9 @@ export function createDay({ db, seal, open, C, habitList, askesisList, track, to
     if (rows.some((r) => r.kind === 'answer')) kinds.push('answer');
     if (db.prepare('SELECT 1 FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? LIMIT 1').get(uid, d)) kinds.push('habits');
     if (db.prepare('SELECT 1 FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ? LIMIT 1').get(uid, d)) kinds.push('askesis');
-    const moods = moodsOf(uid, d), m = morningStored(uid, d);
+    const moods = moodsOf(uid, d), m = morningStored(uid, d), ph = photoMeta(uid, d);
     const text = first ? open(first.text).replace(/\s+/g, ' ').trim().slice(0, 140) : '';
-    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', empty: !text && !moods.length && !kinds.length };
+    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', empty: !text && !moods.length && !kinds.length && !ph };
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
   function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {
@@ -66,8 +67,9 @@ export function createDay({ db, seal, open, C, habitList, askesisList, track, to
     const cut = before && /^\d{4}-\d{2}-\d{2}$/.test(before) ? before : d;
     const found = db.prepare(`SELECT day FROM (
       SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' UNION SELECT day FROM moods WHERE user_id = ? UNION SELECT day FROM mood_marks WHERE user_id = ?
-      UNION SELECT m.day FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? UNION SELECT n.day FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ?)
-      WHERE day < ? ORDER BY day DESC LIMIT ?`).all(u.id, u.id, u.id, u.id, u.id, cut, limit + 1).map((r) => r.day);
+      UNION SELECT m.day FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? UNION SELECT n.day FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ?
+      UNION SELECT day FROM day_photos WHERE user_id = ?)
+      WHERE day < ? ORDER BY day DESC LIMIT ?`).all(u.id, u.id, u.id, u.id, u.id, u.id, cut, limit + 1).map((r) => r.day);
     const page = found.slice(0, limit);
     return { items: page.map((x) => summary(u.id, x)), next: found.length > limit ? page[page.length - 1] : null, total };
   }
@@ -137,5 +139,29 @@ export function createDay({ db, seal, open, C, habitList, askesisList, track, to
     if (filled.length) { touchStreak(u); track(u, 'day_save', filled.join('|')); }
     return { ok: true, saved: filled, ...state(u, d) };
   }
-  return { state, save, view, days, bridge };
+  /* ── фото дня: один снимок на сегодня; миниатюра и полное — зашифрованными байтами; лимиты — на человека и на сутки ── */
+  const PHOTO_MAX_FULL = 400 * 1024, PHOTO_MAX_THUMB = 40 * 1024, PHOTOS_PER_USER = 500, UPLOADS_PER_DAY = 30;
+  function photoPut(u, d, { thumb, full, w, h }) {
+    if (!sealBytes) return { ok: false, error: 'no_key' };
+    if (!Buffer.isBuffer(thumb) || !Buffer.isBuffer(full) || !thumb.length || !full.length) return { ok: false, error: 'bad_photo' };
+    if (full.length > PHOTO_MAX_FULL || thumb.length > PHOTO_MAX_THUMB) return { ok: false, error: 'too_big' };
+    if (full[0] !== 0xff || full[1] !== 0xd8 || thumb[0] !== 0xff || thumb[1] !== 0xd8) return { ok: false, error: 'bad_photo' };   /* только JPEG — его и делает телефон */
+    const have = db.prepare('SELECT 1 FROM day_photos WHERE user_id = ? AND day = ?').get(u.id, d);
+    if (!have && db.prepare('SELECT COUNT(*) c FROM day_photos WHERE user_id = ?').get(u.id).c >= PHOTOS_PER_USER) return { ok: false, error: 'too_many' };
+    if (db.prepare("SELECT COUNT(*) c FROM day_photos WHERE user_id = ? AND ts >= ?").get(u.id, new Date(Date.now() - 864e5).toISOString()).c >= UPLOADS_PER_DAY) return { ok: false, error: 'too_often' };
+    const ts = nowISO();
+    db.prepare('INSERT INTO day_photos (user_id, day, ts, w, h, thumb, full) VALUES (?,?,?,?,?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET ts = excluded.ts, w = excluded.w, h = excluded.h, thumb = excluded.thumb, full = excluded.full')
+      .run(u.id, d, ts, Math.max(0, Math.trunc(w) || 0), Math.max(0, Math.trunc(h) || 0), sealBytes(thumb), sealBytes(full));
+    track(u, 'day_photo', have ? 'replace' : 'add');
+    return { ok: true, photo: { ts, w, h } };
+  }
+  function photoGet(u, day, size) {
+    if (!openBytes) return null;
+    const row = db.prepare(`SELECT ${size === 'full' ? 'full' : 'thumb'} AS data, ts FROM day_photos WHERE user_id = ? AND day = ?`).get(u.id, day);
+    if (!row) return null;
+    const bytes = openBytes(Buffer.from(row.data));
+    return bytes ? { bytes, ts: row.ts } : null;
+  }
+  function photoDelete(u, d) { const r = db.prepare('DELETE FROM day_photos WHERE user_id = ? AND day = ?').run(u.id, d); return { ok: true, removed: r.changes > 0 }; }
+  return { state, save, view, days, bridge, photoPut, photoGet, photoDelete };
 }

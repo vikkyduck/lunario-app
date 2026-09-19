@@ -182,6 +182,11 @@ export const MIGRATIONS = [
   /* Когда устройство в последний раз откликнулось на сигнал (забрало тексты) — чтобы в «Уведомлениях» было видно,
      доходят ли напоминания именно сюда, а не только «отправлено» */
   { v: 16, name: 'отклик устройства на пуш', up: (db) => { addColumn(db, 'push_subs', 'last_sent', "TEXT DEFAULT ''"); addColumn(db, 'push_subs', 'last_wake', "TEXT DEFAULT ''"); } },
+  /* Фото дня: один снимок на день, миниатюра и полное — зашифрованными байтами (sealBytes) в базе; полное — до 350 КБ JPEG 1280 px,
+     миниатюра — 240×240 ~10 КБ. Отдельная таблица, а не колонка journal: у дня может не быть текста, а фото — быть */
+  { v: 17, name: 'фото дня', up: (db) => db.exec(`CREATE TABLE IF NOT EXISTS day_photos (
+    user_id INTEGER NOT NULL, day TEXT NOT NULL, ts TEXT NOT NULL, w INTEGER NOT NULL DEFAULT 0, h INTEGER NOT NULL DEFAULT 0,
+    thumb BLOB NOT NULL, full BLOB NOT NULL, PRIMARY KEY (user_id, day))`) },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 

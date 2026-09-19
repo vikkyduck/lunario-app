@@ -141,6 +141,8 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "dcDictate-a0": function (event) { dcDictate(this.dataset.a0) },
   "dcEdit": function (event) { dcEdit() },
   "dcAddHabit": function (event) { dcAddHabit() },
+  "dcPickPhoto": function (event) { dcPickPhoto() },
+  "dcRemovePhoto": function (event) { dcRemovePhoto() },
   "dcAddAskesis": function (event) { dcAddAskesis() },
   "offerAccept-a0": function (event) { offerAccept(this.dataset.a0) },
   "offerLater-a0": function (event) { offerLater(this.dataset.a0) },

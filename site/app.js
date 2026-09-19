@@ -96,7 +96,7 @@ function go(v){
   if(v==='account')XP.scroll.account=0;   /* открывается по кружку с любой вкладки — начинаем с шапки, а не с прошлой прокрутки */
   if(v==='home')window.tourMaybe?.();   /* подсказки по приложению — один раз, на «Сегодня» */
   restoreScroll(v);
-  if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();loadPushNote();}
+  if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();loadPushNote();paintYesterday();}
   if(v==='history') loadHistory();
   if(v==='about')loadAbout();
   if(v==='account')loadAccount();
@@ -335,6 +335,15 @@ async function loadPushNote(force=false){
   box.hidden = false; return box;
 }
 function hidePushNote(){ if (S.pushLast) { try { localStorage.setItem('lun_push_hidden', String(S.pushLast.id)); } catch(e) {} } const box = $('push-note'); if (box) { box.hidden = true; box.replaceChildren(); } hap(); }
+/* «Вчера вечером: „…“» — строка на «Сегодня» с первой фразой вчерашней записи; тап открывает день. Дневник возвращает слова утром */
+async function paintYesterday(){
+  const box=$('home-yesterday'); if(!box||!S.user?.onboarded)return;
+  if(S.yesterday===undefined){ try{ S.yesterday=((await api('/days?calendar=1')).items||[])[0]||null; }catch(e){ S.yesterday=null; } }
+  const y=S.yesterday; if(!y||y.empty){ box.hidden=true; box.innerHTML=''; return; }
+  const moods=y.moods.map(m=>(MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase());
+  const line=y.text?`«${esc(y.text.length>80?y.text.slice(0,80).replace(/\s+\S*$/,'')+'…':y.text)}»`:moods.length?esc(moods.join(', ')):'фото дня';
+  box.innerHTML=`<button data-on="click:openDay-a0" data-a0="${y.day}" class="later-row" type="button"><span class="eyebrow">Вчера вечером</span><b>${line}</b><span class="later-go">Открыть →</span></button>`; box.hidden=false;
+}
 /* Под настроем дня: расписание включено, а сюда уведомления не приходят — одна строка и одно нажатие */
 function paintPushNudge(){
   const box = $('home-push'); if (!box) return;
@@ -846,7 +855,10 @@ const DC={state:null,mode:'steps',step:0,text:'',gratitude:'',answer:'',moods:ne
    включаются в строке «Вечером записываю» (preferences.tools), вопрос дня следует за утренней плиткой «Вопрос дня» (один выбор —
    два места). Порядок фиксированный, от легкого к трудному; человек выбирает состав, не очередность. */
 const STEP_ORDER=['text','mood','gratitude','answer','habits','askesis'];
-const STEP_NAME={text:'Запись',mood:'Настроение',gratitude:'Благодарность',answer:'Вопрос дня',habits:'Привычки',askesis:'Аскеза'};
+const STEP_NAME={text:'Запись',mood:'Настроение',gratitude:'Благодарность',answer:'Вопрос дня',habits:'Привычки',askesis:'Аскеза',photo:'Фото'};
+/* «Фото дня» — не шаг, а вложение первого шага: кнопка камеры рядом с микрофоном; инструмент, выключен у нового человека */
+const EVENING_EXTRAS=['photo'];
+const CAM_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 const STEP_TOOLS=['gratitude','habits','askesis'];   /* шаги, которые живут в каталоге инструментов; answer — за утренней плиткой tone */
 const DC_Q={text:'Что хочется оставить от этого дня?',mood:'Как вы сегодня?',gratitude:'Кому и за что вы сегодня благодарны?',answer:'Вопрос дня',habits:'Привычки сегодня',askesis:'Аскеза'};
 const DC_PLACEHOLDER={text:'Пара строк — хватит. Что произошло, что почувствовали, что хочется помнить…',gratitude:'Человеку, случаю или себе — одной фразы достаточно',answer:'Как есть, своими словами'};
@@ -854,7 +866,7 @@ const ECHO_LABEL={yes:'Отозвалось',no:'Не связано',unsure:'Н
 const MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
 /* «пятница, 18 сентября» — как на «Сегодня»; cap — с заглавной для заголовков */
 const fmtDayWords=(d,cap=false)=>{const s=new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});return cap?s[0].toUpperCase()+s.slice(1):s;};
-const stepOn=(key)=>key==='text'||key==='mood'?true:key==='answer'?morningChosen().includes('tone'):toolsVisible().has(key);
+const stepOn=(key)=>key==='text'||key==='mood'?true:key==='answer'?morningChosen().includes('tone'):toolsVisible().has(key);   /* photo — тоже по инструменту */
 const eveningStepsOn=()=>STEP_ORDER.filter(stepOn);
 /* черновик — свой у каждого аккаунта на устройстве, шаг по имени (состав шагов может меняться) */
 const dcDraftKey=()=>'lun_dc_draft_'+(S.user?.id||0);
@@ -907,9 +919,9 @@ function paintDayCard(){
     <p class="dc-names" aria-label="Шаги вечера">${steps.map((st,k)=>`<span class="${k===i?'on':k<i?'done':''}">${STEP_NAME[st.key]}</span>`).join('<i>·</i>')}</p>`;
   const head=`<div class="dc-head"><span class="eyebrow">${fmtDayWords(s.day)}</span>${i?'<button data-on="click:dcBack" class="text-action secondary" type="button">← Назад</button>':''}</div>${dots}`;
   const echo=s.set?`<p class="dc-echo">Утром: <b>«${esc(s.set)}»</b></p>`:'';
-  const area=(id,val,ph)=>`<div class="dc-wrap"><textarea data-on="input:dcInput-a0" data-a0="${id}" id="dc-${id}" maxlength="2000" rows="3" placeholder="${esc(ph)}" aria-label="${esc(DC_Q[id])}">${esc(val)}</textarea><button data-on="click:dcDictate-a0" data-a0="dc-${id}" class="dc-mic" id="dc-mic" type="button" aria-label="Продиктовать" aria-pressed="false">${MIC_SVG}</button></div><p id="dc-speech-note" class="dc-hint" hidden></p>`;
+  const area=(id,val,ph)=>`<div class="dc-wrap${id==='text'&&stepOn('photo')?' with-cam':''}"><textarea data-on="input:dcInput-a0" data-a0="${id}" id="dc-${id}" maxlength="2000" rows="3" placeholder="${esc(ph)}" aria-label="${esc(DC_Q[id])}">${esc(val)}</textarea>${id==='text'&&stepOn('photo')?`<button data-on="click:dcPickPhoto" class="dc-mic dc-cam" id="dc-cam" type="button" aria-label="Добавить фото дня">${CAM_SVG}</button>`:''}<button data-on="click:dcDictate-a0" data-a0="dc-${id}" class="dc-mic" id="dc-mic" type="button" aria-label="Продиктовать" aria-pressed="false">${MIC_SVG}</button></div><p id="dc-speech-note" class="dc-hint" hidden></p>`;
   let body='';
-  if(step.key==='text') body=`${echo}<p class="dc-q">${DC_Q.text}</p>${area('text',DC.text,DC_PLACEHOLDER.text)}`;
+  if(step.key==='text') body=`${echo}<p class="dc-q">${DC_Q.text}</p>${area('text',DC.text,DC_PLACEHOLDER.text)}${stepOn('photo')?dcPhotoHtml():''}`;
   else if(step.key==='gratitude') body=`<p class="dc-q">${DC_Q.gratitude}</p>${area('gratitude',DC.gratitude,DC_PLACEHOLDER.gratitude)}`;
   else if(step.key==='answer') body=`<span class="eyebrow mb-2">Вопрос дня</span><p class="dc-q">${esc(s.question||'О чем был этот день?')}</p>${area('answer',DC.answer,DC_PLACEHOLDER.answer)}`;
   else if(step.key==='mood'){
@@ -984,6 +996,49 @@ async function saveDayCard(){
   catch(e){ const st=$('dc-state'); if(st)st.textContent='Не удалось сохранить. Все написанное осталось на месте — попробуйте еще раз'; }
   finally{ saveDayCard.busy=false; const b=$('dc-next'); if(b){b.disabled=false;b.textContent='Запомнить этот день';} }
 }
+/* ══════════ Фото дня: один снимок, сжимается на телефоне (полное 1280 px JPEG до ~250 КБ, миниатюра 240×240), уходит сразу при
+   выборе — отдельно от сохранения дня и не в черновик. Сервер хранит зашифрованным (day_photos), отдает по дню и размеру. ══════════ */
+const dayPhotoUrl=(day,size,ts)=>`${API}/day/photo?day=${day}&size=${size}&t=${encodeURIComponent(ts||'')}`;
+const photoFullHtml=(v)=>v.photo?`<img class="dc-photo-full" src="${dayPhotoUrl(v.day,'full',v.photo.ts)}" alt="Фото дня" loading="lazy" decoding="async"${v.photo.w&&v.photo.h?` width="${v.photo.w}" height="${v.photo.h}"`:''}>`:'';
+function dcPhotoHtml(){ const p=DC.state.photo; return `<div class="dc-photo" id="dc-photo">${p?`<img src="${dayPhotoUrl(DC.state.day,'thumb',p.ts)}" alt="Фото дня" width="72" height="72"><span class="hint">Фото дня добавлено</span><button data-on="click:dcRemovePhoto" class="text-action secondary" type="button">Убрать</button>`:''}</div>`; }
+function pickDayPhoto(){
+  return new Promise((resolve)=>{
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/jpeg,image/png,image/webp,image/heic,image/heif'; inp.style.cssText='position:fixed;left:-9999px;top:0;opacity:0'; document.body.appendChild(inp);
+    const done=(v)=>{ inp.remove(); resolve(v); };
+    inp.onchange=async()=>{
+      const f=inp.files&&inp.files[0]; if(!f)return done(null);
+      const toBlob=(cv,q)=>new Promise(r=>cv.toBlob(r,'image/jpeg',q));
+      const build=async(w,h,src)=>{
+        const k=Math.min(1,1280/Math.max(w,h)), cv=document.createElement('canvas'); cv.width=Math.round(w*k); cv.height=Math.round(h*k); cv.getContext('2d').drawImage(src,0,0,cv.width,cv.height);
+        let q=0.8, full=await toBlob(cv,q); while(full&&full.size>250*1024&&q>0.5){ q-=0.1; full=await toBlob(cv,q); }   /* потолок сервера 400 КБ, целимся в 250 */
+        const t=document.createElement('canvas'); t.width=t.height=240; const side=Math.min(cv.width,cv.height); t.getContext('2d').drawImage(cv,(cv.width-side)/2,(cv.height-side)/2,side,side,0,0,240,240);
+        const thumb=await toBlob(t,0.7); return full&&thumb?{full,thumb,w:cv.width,h:cv.height}:null;
+      };
+      try{ if(window.createImageBitmap){ const bm=await createImageBitmap(f); const out=await build(bm.width,bm.height,bm); bm.close&&bm.close(); return done(out); } }catch(e){ /* формат не читается — через Image */ }
+      const im=new Image(); const url=URL.createObjectURL(f);
+      im.onload=async()=>{ const out=await build(im.width,im.height,im); URL.revokeObjectURL(url); done(out); };
+      im.onerror=()=>{ URL.revokeObjectURL(url); toast('Не удалось прочитать файл — выберите JPG, PNG или скриншот'); done(null); };
+      im.src=url;
+    };
+    inp.click();
+  });
+}
+async function dcPickPhoto(){
+  if(dcPickPhoto.busy)return; const ph=await pickDayPhoto(); if(!ph)return; dcPickPhoto.busy=true;
+  const btn=$('dc-cam'); if(btn)btn.disabled=true;
+  try{
+    const r=await fetch(`${API}/day/photo?thumb=${ph.thumb.size}&w=${ph.w}&h=${ph.h}`,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/octet-stream'},body:new Blob([ph.thumb,ph.full])});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.ok)throw Object.assign(new Error(j.error||'err'),{status:r.status,code:j.error});
+    DC.state.photo=j.photo; XP.timeline.dirty=true; hap('done'); toast('Фото дня добавлено ✦');
+    const box=$('dc-photo'); if(box)box.outerHTML=dcPhotoHtml();
+  }catch(e){ toast(e.status===413||e.code==='too_big'?'Фото слишком большое — попробуйте другое':e.code==='too_often'?'Слишком много фото за сутки':'Не получилось загрузить фото'); }
+  finally{ dcPickPhoto.busy=false; const b=$('dc-cam'); if(b)b.disabled=false; }
+}
+async function dcRemovePhoto(){
+  try{ await api('/day/photo',{method:'DELETE'}); DC.state.photo=null; XP.timeline.dirty=true; hap(); const box=$('dc-photo'); if(box)box.outerHTML=dcPhotoHtml(); }
+  catch(e){ toast('Не получилось убрать фото'); }
+}
 /* Праздник: луна разгорается, искры разлетаются — и день показывается как текст */
 function paintDayParty(){
   const box=$('day-card'); const sparks=Array.from({length:22},(_,k)=>`<i class="spark${k%3?'':' s'}" style="--a:${Math.round(k*360/22+(k%2?9:-6))}deg;--d:${90+((k*41)%80)}px;--w:${(k%6)*80}ms"></i>`).join('');
@@ -999,6 +1054,7 @@ function paintDayDone(){
   const warm=`Записали${moods.length?` — ${moods.map(m=>`«${esc(m.toLowerCase())}»`).join(', ')}`:''}. ${night?'Спокойной ночи ✦':'Хорошего дня ✦'}`;
   box.innerHTML=`<span class="eyebrow">День записан ✦ · ${fmtDayWords(s.day)}</span>
     ${moods.length?`<div class="dc-moods">${moods.map(m=>`<i>${esc(m)}</i>`).join('')}</div>`:''}
+    ${photoFullHtml(s)}
     ${morningHtml(s)}
     ${dayProseHtml(s)}
     ${dayQuietHtml({habits:s.habits.filter(h=>h.today).map(h=>h.title),askesis:s.askesis.filter(a=>a.kept!==null).map(a=>({title:a.title,kept:a.kept})),echo:s.echo})}
@@ -1012,13 +1068,13 @@ function paintDayDone(){
    После первого записанного дня — «Чем дополнить вечера?» со всеми чипами сразу. Дальше — одно предложение в вечер, по порогам
    (благодарность со второго дня, привычки с пятого, аскеза со второй недели), «Не сейчас» дважды — больше не предлагаем.
    Память предложений — на устройстве, по аккаунту. */
-const OFFER_TEXT={gratitude:'Добавить в вечер благодарность? Один вопрос: кому и за что спасибо сегодня',answer:'Спрашивать вечером про вопрос дня? Утром он появится на «Сегодня», вечером — ответ',habits:'Вести привычки? Вечером — галочки по тому, что получилось',askesis:'Взять аскезу? Отказ до своей даты, вечером — держусь или нет'};
-const OFFER_AFTER={gratitude:1,answer:2,habits:4,askesis:10};   /* сколько записанных дней должно быть, чтобы предложить */
+const OFFER_TEXT={gratitude:'Добавить в вечер благодарность? Один вопрос: кому и за что спасибо сегодня',photo:'Оставлять от дня кадр? Одно фото рядом с записью — вечером и в строке дня',answer:'Спрашивать вечером про вопрос дня? Утром он появится на «Сегодня», вечером — ответ',habits:'Вести привычки? Вечером — галочки по тому, что получилось',askesis:'Взять аскезу? Отказ до своей даты, вечером — держусь или нет'};
+const OFFER_AFTER={gratitude:1,photo:2,answer:3,habits:4,askesis:10};   /* сколько записанных дней должно быть, чтобы предложить */
 const offerKey=()=>'lun_tool_offer_'+(S.user?.id||0);
 const offerMem=()=>{ try{ return JSON.parse(localStorage.getItem(offerKey())||'{}')||{}; }catch(e){ return {}; } };
 const offerSave=(m)=>{ try{ localStorage.setItem(offerKey(),JSON.stringify(m)); }catch(e){} };
 function toolOfferHtml(){
-  const off=['gratitude','answer','habits','askesis'].filter(k=>!stepOn(k)); if(!off.length)return '';
+  const off=['gratitude','photo','answer','habits','askesis'].filter(k=>!stepOn(k)); if(!off.length)return '';
   if(DC.firstSave) return `<div class="dc-offer" id="dc-offer"><span class="eyebrow">Чем дополнить вечера?</span><p class="hint">Шаги можно включать и выключать в любой момент — в строке под карточкой</p><div class="chips flow mt-2">${off.map(k=>`<button data-on="click:offerAccept-a0" data-a0="${k}" type="button" class="chip">+ ${STEP_NAME[k].toLowerCase()}</button>`).join('')}</div></div>`;
   const m=offerMem(), today=DC.state.day, total=S.daysTotal||0; if(m.day===today&&m.shown)return '';   /* одно предложение в вечер */
   const key=off.find(k=>total>=OFFER_AFTER[k]&&(m.no?.[k]||0)<2&&!(m.last?.[k]&&Math.round((Date.parse(today+'T12:00:00Z')-Date.parse(m.last[k]+'T12:00:00Z'))/864e5)<7));
@@ -1036,8 +1092,9 @@ let eveningSetOpen=false;
 function paintEveningSet(){
   const box=$('evening-set'); if(!box||!S.user?.onboarded)return;
   const on=eveningStepsOn();
-  if(!eveningSetOpen){ box.innerHTML=`<span class="es-label">Вечером записываю:</span> <b>${on.map(k=>STEP_NAME[k].toLowerCase()).join(' · ')}</b> <button data-on="click:eveningSetToggle" class="text-action" type="button">Изменить</button>`; return; }
-  box.innerHTML=`<span class="es-label">Из чего собран мой вечер</span><div class="chips flow mt-2">${STEP_ORDER.map(k=>{const base=k==='text'||k==='mood', isOn=stepOn(k);return `<button data-on="click:eveningStepToggle-a0" data-a0="${k}" type="button" class="chip${isOn?' on':''}${base?' fixed':''}" aria-pressed="${isOn}"${base?' disabled':''}>${STEP_NAME[k].toLowerCase()}${base?' ✓':''}</button>`;}).join('')}</div>
+  const extras=EVENING_EXTRAS.filter(stepOn);
+  if(!eveningSetOpen){ box.innerHTML=`<span class="es-label">Вечером записываю:</span> <b>${[...on,...extras].map(k=>STEP_NAME[k].toLowerCase()).join(' · ')}</b> <button data-on="click:eveningSetToggle" class="text-action" type="button">Изменить</button>`; return; }
+  box.innerHTML=`<span class="es-label">Из чего собран мой вечер</span><div class="chips flow mt-2">${[...STEP_ORDER,...EVENING_EXTRAS].map(k=>{const base=k==='text'||k==='mood', isOn=stepOn(k);return `<button data-on="click:eveningStepToggle-a0" data-a0="${k}" type="button" class="chip${isOn?' on':''}${base?' fixed':''}" aria-pressed="${isOn}"${base?' disabled':''}>${STEP_NAME[k].toLowerCase()}${base?' ✓':''}</button>`;}).join('')}</div>
     <p class="hint mt-2">Запись и настроение — всегда; остальное — по вашему выбору. Порядок шагов — от легкого к трудному. Убрать — не значит потерять: записи остаются.</p>
     <button data-on="click:eveningSetToggle" class="text-action secondary mt-1" type="button">Готово</button>`;
 }
@@ -1078,7 +1135,8 @@ const dayRowHtml=(x)=>{
   const moods=x.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,'')).map(m=>m.toLowerCase());
   const kinds=x.kinds.map(k=>({gratitude:'благодарность',answer:'вопрос дня',habits:'привычки',askesis:'аскеза'})[k]).filter(Boolean);
   const meta=[moods.length?`<em>${esc(moods.join(' · '))}</em>`:'',...kinds.map(esc)].filter(Boolean).join(' · ');
-  return `<button data-on="click:openDay-a0" data-a0="${x.day}" class="day-row${x.empty?' empty':''}" type="button" aria-label="${fmtDayWords(x.day,true)}"><span class="n"><b>${dt.getDate()}</b><small>${wd}</small></span><span class="t"><p>${x.text?esc(x.text):x.empty?'Без записей':(moods.length?esc(moods.join(', ')):'Записано')}</p><small>${x.empty?esc(x.theme||''):meta}</small></span><span class="a" aria-hidden="true">›</span></button>`;
+  const tail=x.photo?`<img class="ph" src="${API}/day/photo?day=${x.day}&size=thumb&t=${encodeURIComponent(x.photo)}" alt="" loading="lazy" decoding="async">`:`<span class="a" aria-hidden="true">›</span>`;
+  return `<button data-on="click:openDay-a0" data-a0="${x.day}" class="day-row${x.empty?' empty':''}${x.photo?' has-photo':''}" type="button" aria-label="${fmtDayWords(x.day,true)}"><span class="n"><b>${dt.getDate()}</b><small>${wd}</small></span><span class="t"><p>${x.text?esc(x.text):x.empty?'Без записей':(moods.length?esc(moods.join(', ')):x.photo?'Фото дня':'Записано')}</p><small>${x.empty?esc(x.theme||''):meta}</small></span>${tail}</button>`;
 };
 async function loadDays(){
   const list=$('days-list'), strip=$('days-strip'); if(!list)return;
@@ -1111,9 +1169,9 @@ async function openDay(day){
   openWidget('dayview',fmtDayWords(day,true)); const box=$('dayview-box'); box.innerHTML='<p class="hint">Загружаем…</p>'; track('day_open');
   try{
     const v=await api('/day/view?day='+day); const moods=v.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
-    const empty=!v.text&&!v.gratitude&&!v.answer&&!moods.length&&!v.habits.length&&!v.askesis.length;
+    const empty=!v.text&&!v.gratitude&&!v.answer&&!moods.length&&!v.habits.length&&!v.askesis.length&&!v.photo;
     box.innerHTML=`<div class="dayview">${moods.length?`<div class="dc-moods">${moods.map(m=>`<i>${esc(m)}</i>`).join('')}</div>`:''}
-      ${morningHtml(v)}
+      ${photoFullHtml(v)}${morningHtml(v)}
       ${dayProseHtml(v)}${dayQuietHtml({habits:v.habits,askesis:v.askesis,echo:v.echo})}
       ${empty?'<p class="hint mt-3">В этот день записей не было.</p>':''}</div>`;
   }catch(e){ box.innerHTML='<p class="hint">Не получилось загрузить этот день.</p>'; }

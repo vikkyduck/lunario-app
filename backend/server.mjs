@@ -71,7 +71,7 @@ const CONSENT_VERSION = '2026-08-23';
 const PUSH = vapidKeys(DATA_DIR);
 const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replace(/\/+$/, '');
 /* Какие события принимает /api/event и какие пишет сам обработчик — в реестре events.mjs */
-const {seal, open:open_} = privateText(DATA_DIR);
+const {seal, open:open_, sealBytes, openBytes} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
 /* Короткое ожидание, если база занята другим писателем (напоминания, отчеты, ночная копия). Без него редкая
@@ -499,7 +499,7 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
-const Day = createDay({ db, seal, open: open_, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question,
+const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question,
   morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
   themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '', dailyWrites: DAILY_WRITES });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day });
