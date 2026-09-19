@@ -10,7 +10,6 @@ html[data-skin=compact] body.inner .wrap{padding-top:calc(16px + env(safe-area-i
 @media(min-width:600px){html[data-skin=compact] body.inner .wrap{padding-inline:24px}}
 
 /* ── материал: плоская карточка, тонкая линия, без скоса, блика и тени ── */
-html[data-skin=compact] body.inner :is(.wid,.card,.morning-summary,.later-row,.week-top,.day-card,.morning-picker,.wids.list-rows,.day-entry,.timeline-entry,.profile-summary,.wish-card,.tool-card,.rem-summary,#v-account .compact-links,#v-account .rows,#home-sky .moonline,#morning-more .moonline){
   background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
 html[data-skin=compact] body.inner :is(.wid,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.profile-summary,.wish-card)::before,
 html[data-skin=compact] body.inner :is(.wid,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.profile-summary,.wish-card)::after{content:none}

@@ -19,7 +19,7 @@ import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak } from './practices.mjs';
 import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
-import { MSK, MOSCOW, ISO_DAY, dayIn, addDays } from './util.mjs';
+import { MSK, MOSCOW, ISO_DAY, dayIn, addDays, clean, cleanText } from './util.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 /* Тексты приложения читает и правит кабинет контента; папка под наблюдением — правки перечитываются сами */
@@ -40,7 +40,7 @@ import { natalChart, skyAt, inSign } from './astro.mjs';
 import { createShelves } from './shelves.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
-import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, nativePlan, previewNotification, dayRemembered } from './reminders.mjs';
+import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveReminder, pendingFor, sendNow, nativePlan, previewNotification, dayWritten } from './reminders.mjs';
 import { CLIENT_EVENTS } from './events.mjs';
 import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs';
 import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
@@ -49,7 +49,6 @@ import { createCabinetRoutes } from './http/cabinet-routes.mjs';
 import * as CE from './content-edit.mjs';
 import { HTML_HEADERS } from './http/headers.mjs';
 import { createIdentity } from './identity.mjs';
-import { AppError, publicError, saveJournalOperation, sweepReceipts } from './sync.mjs';
 import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } from './transfer.mjs';
 import { createPracticeRoutes } from './http/practice-routes.mjs';
 import { createDay } from './day.mjs';
@@ -121,9 +120,6 @@ const Reports = createReportRunner({ dataDir: DATA_DIR, inline: { overview, repo
 /* ── утилиты ── */
 const today = () => dayIn();                    // YYYY-MM-DD по Москве
 const nowISO = () => new Date().toISOString();
-const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().slice(0, max);
-/* Многострочные тексты (дневник, заметки, обращения): переносы строк — часть текста, убираем только прочие управляющие символы */
-const cleanText = (s, max) => String(s ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b-\x1f]/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 // сотруднику, которому только что назначили роль, шлем код входа сразу — не нужно самому запрашивать
 async function notifyStaffAccess(email, roleKeys) {
@@ -337,7 +333,7 @@ function dayPack(u, day) {
     morning: morningOf(preferences(u.preferences)),   /* выбранные плитки утра */
     cardOpened: Morning.openedOf(u, day, 'card'),     /* утро вытянуло карту само — в панели она ждет, пока ее откроют */
     runeOpened: Morning.openedOf(u, day, 'dayrune'),  /* то же для руны дня: до выбора человек не видит, какая выпала */
-    remembered: dayRemembered(u.id, day),             /* день уже записан — вечерняя строка на «Сегодня» скажет об этом */
+    remembered: dayWritten(u.id, day),                /* день уже записан — вечерняя строка на «Сегодня» скажет об этом */
     rune: (() => { const r = runeOfDay(u, day); return r ? runePublic(r) : null; })(),
     sky: (() => { const e = skyEventOf(day); return e ? { title: e.title } : null; })(),   /* главное событие неба — то же, что в пуше и в теме дня */
     question: (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
@@ -574,7 +570,7 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
-const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf: (u, d) => dayPack(u, d).question,
+const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten, questionOf: (u, d) => dayPack(u, d).question,
   morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
   themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '',
   /* лунный день на вечер этой даты — по месту из анкеты; в записи дня и в строке прошлых дней */
@@ -750,26 +746,6 @@ const server = createServer(async (req, res) => {
         if (!done.ok) return json(res, done.error === 'not_found' ? 404 : 409, { ok: false, error: done.error });
         flushShelves(u.id, d); scheduleShelves(u.id, d, ['about', 'day', 'history']);
         return json(res, 200, { ok: true, moved: done.moved, kept: done.kept, already: !!done.already });
-      }
-
-      /* Кто я сейчас. Очередь спрашивает это перед каждой отправкой: если за время лежания в очереди человек
-         сменился, чужой черновик отправлять нельзя. Гостя здесь не заводим — на то и 401. */
-      if (p === '/api/auth/session' && req.method === 'GET')
-        return json(res, 200, { ok: true, accountId: u.id, signedIn: !!u.email, email: u.email || '' });
-
-      /* Запись дневника по имени операции: повтор с тем же именем возвращает ту же квитанцию и не создает дубль.
-         Обычный POST /api/journal остается как был — старый клиент ничего не заметит. */
-      if (p === '/api/sync/journal' && req.method === 'POST') {
-        const b = await readBody(req);
-        try {
-          const receipt = saveJournalOperation(db, u, b, { seal, day: d, now: nowISO(), track, touchStreak, dailyLimit: DAILY_WRITES });
-          res.once('finish', () => scheduleShelves(u.id, d, ['day']));
-          return json(res, 200, receipt);
-        } catch (e) {
-          const pub = publicError(e);
-          if (pub.status >= 500) logError(p, e.message);
-          return json(res, pub.status, { ok: false, error: pub.code, retryable: pub.retryable });
-        }
       }
 
       if (p === '/api/auth/logout' && req.method === 'POST') {

@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { MSK, dayIn } from './util.mjs';
+import { MSK, dayIn, cleanText as clean } from './util.mjs';   /* тексты материалов многострочные */
 import { noYo } from './content.mjs';
 
 let db, seal = (s) => s, open_ = (s) => s, UPLOADS = '';
@@ -63,7 +63,6 @@ const now = () => new Date().toISOString();
 const dayMSK = (d = new Date()) => dayIn(MSK, d.getTime());
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
-const clean = (s, n) => String(s ?? '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '').trim().slice(0, n);
 const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 const mask = (e) => String(e || '').replace(/^(.).*(@.*)$/, '$1***$2');
 
@@ -98,15 +97,15 @@ export function campaignUsers(c) {
 }
 
 /* ── материалы контент-редактора ── */
-export const MATERIAL_KINDS = { question: 'Вопрос дня', affirmation: 'Аффирмация дня', image: 'Картинка к функции', note: 'Заметка / статья' };
+export const MATERIAL_KINDS = { question: 'Вопрос дня', affirmation: 'Аффирмация дня', image: 'Картинка к функции' };
 /* К какой функции можно прикрепить картинку (материал kind=image, section=ключ): она появляется наверху панели этой функции,
    для «home» — рядом с настроем дня на «Сегодня». Дата показа пустая — каждый день, иначе — только в этот день. */
 export const FEATURE_GROUPS = [
   ['Сегодня', [['home', 'Настрой дня'], ['card', 'Карта дня'], ['dayrune', 'Руна дня'], ['lunar', 'Лунный день'], ['sky', 'Влияние планет и транзиты'], ['day', 'Прогноз дня'], ['tone', 'Вопрос дня']]],
-  ['Дневник', [['history', 'Карточка дня'], ['week', 'Моя неделя'], ['mood', 'Настроение'], ['gratitude', 'Благодарность'], ['habits', 'Привычки'], ['askesis', 'Аскезы'], ['wishes', 'Желания'], ['hmood', 'История настроений'], ['days', 'Архив дней']]],
+  ['Дневник', [['week', 'Моя неделя'], ['mood', 'Настроение'], ['gratitude', 'Благодарность'], ['habits', 'Привычки'], ['askesis', 'Аскезы'], ['wishes', 'Желания'], ['hmood', 'История настроений'], ['days', 'Архив дней']]],
   ['Свериться с собой', [['worry', 'Ответить себе на вопрос'], ['ask', 'Таро, руны, «Да / Нет»'], ['hentries', 'Мои вопросы и ответы']]],
   ['Обо мне', [['natal', 'Натальная карта'], ['year', 'Личный год'], ['birthnum', 'Нумерология'], ['compat', 'Совместимость'], ['tests', 'Тесты']]],
-  ['Аккаунт и вход', [['remind', 'Уведомления'], ['invite', 'Позвать подругу'], ['hello', 'Приветствие']]],
+  ['Аккаунт', [['remind', 'Уведомления'], ['invite', 'Позвать подругу']]],
 ];
 export const FEATURE_ART = FEATURE_GROUPS.flatMap(([, items]) => items);
 /* картинки на день по функциям: опубликованные материалы kind=image (на эту дату — приоритетнее, чем «каждый день»);
@@ -122,7 +121,7 @@ export function artForDay(day) {
 export const MATERIAL_STATUS = { draft: 'Черновик', review: 'На проверке', scheduled: 'Запланирован', published: 'Опубликован' };
 export function materialList() { return all(`SELECT * FROM materials ORDER BY CASE status WHEN 'published' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'review' THEN 2 ELSE 3 END, show_day DESC, updated_at DESC`); }
 export function materialSave(b, by) {
-  const kind = b.kind in MATERIAL_KINDS ? b.kind : 'note', status = b.status in MATERIAL_STATUS ? b.status : 'draft';
+  const kind = b.kind in MATERIAL_KINDS ? b.kind : 'question', status = b.status in MATERIAL_STATUS ? b.status : 'draft';
   const text = noYo(clean(b.text, 4000)), title = noYo(clean(b.title, 120));   /* правило: без «е с точками» — и в хранимом тексте */
   if (!text && !title && kind !== 'image') return { ok: false, error: 'empty' };
   if (kind === 'image' && !FEATURE_ART.some(([k]) => k === b.section)) return { ok: false, error: 'no_feature' };

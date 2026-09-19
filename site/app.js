@@ -1,30 +1,8 @@
-const $ = (id) => document.getElementById(id);
-const API = '/app/api';
-let S = { user:null, day:null, mood:null, limits:null, mode:'yesno', flipped:false, num:null };
+let S = { user:null, day:null, mood:null, mode:'yesno', flipped:false, num:null };
 /* iOS-оболочка: класс выставлен скриптом в head. Сообщения к нативному слою идут
    через мост WebKit; try/catch закрывает и его отсутствие (обычный браузер). */
 const IOS_SHELL = document.documentElement.className.indexOf('ios-shell') !== -1;
 function nativePost(m){ try{ window.webkit.messageHandlers.lunario.postMessage(m); return true; }catch(e){ return false; } }
-const DEVICE_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) { return ''; } })();
-/* Сервер перезапускается при выкладке на пару секунд — чтение не падает, а пробует еще раз (502/503/504 или обрыв связи).
-   Только для GET: повтор записи мог бы продублировать ее. */
-const RETRY_STATUS = new Set([502, 503, 504]), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
-const api = async (path, opts) => {
-  const init = Object.assign({ headers:{'Content-Type':'application/json', 'X-Tz': DEVICE_TZ} }, opts);   /* «сегодня» считается по поясу устройства */
-  const canRetry = !init.method || init.method === 'GET';
-  let r;
-  for (let attempt = 0; ; attempt++) {
-    try { r = await fetch(API + path, init); }
-    catch (e) { if (canRetry && attempt < 2 && navigator.onLine !== false) { await wait(1200 * (attempt + 1)); continue; } throw e; }
-    if (canRetry && RETRY_STATUS.has(r.status) && attempt < 2) { await wait(1200 * (attempt + 1)); continue; }
-    break;
-  }
-  const j = await r.json().catch(()=>({}));
-  if (r.status===401 && path!=='/me'){ location.reload(); throw Object.assign(new Error('no_session'), { code:'no_session', status:401 }); }   /* сессия истекла на сервере */
-  if (!r.ok) throw Object.assign(new Error(j.error||'err'), { code:j.error, status:r.status });
-  if(opts?.method && opts.method!=='GET')XP.timeline.dirty=true;
-  return j;
-};
 function track(t, d){
   try{
     const body = JSON.stringify({ t, d: d || '' });
@@ -32,7 +10,6 @@ function track(t, d){
     else fetch(API + '/event', { method:'POST', headers:{'Content-Type':'application/json'}, body, keepalive:true });
   }catch(e){ /* аналитика никогда не ломает приложение */ }
 }
-function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),2600); }
 /* Строка состояния под формой: пустая, подсказка или ошибка — одно место вместо className/classList в каждой форме */
 const showMsg=(el,text='',err=false)=>{ if(!el)return; el.className='msg'+(err?' err':''); el.textContent=text; };
 const LOADING='<p class="hint">Загружаем…</p>', LOAD_ERR='<p class="msg err">Не получилось загрузить.</p>';
@@ -76,7 +53,6 @@ function hap(kind = 'tap'){
   if (IOS_SHELL && nativePost({ type:'haptic', kind: kind === 'tap' ? 'tap' : 'success' })) return;
   try{ if(navigator.vibrate) navigator.vibrate(HAP[kind] || HAP.tap); }catch(e){}
 }
-const esc = (s) => String(s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ── навигация: четыре вкладки внизу (home, ask, history, about); account и news открываются с главной по кружку с фото
    и вкладку не подсвечивают ── */
@@ -131,11 +107,11 @@ function openLogin(){
    Отсюда — заголовки, строка уведомлений под заголовком, полный экран и переход по ?open= из уведомления. ── */
 const FEATURES = {
   card:{sec:'Сегодня',title:'Карта дня',view:'home'}, mood:{sec:'Дневник',title:'Настроение дня',view:'history'},
-  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, dayrune:{sec:'Сегодня',title:'Руна дня',view:'home'}, tools:{sec:'Мои инструменты',title:'Все инструменты',view:'history'},
+  day:{sec:'Сегодня',title:'Прогноз дня',view:'home'}, tone:{sec:'Сегодня',title:'Вопрос дня',view:'home'}, dayrune:{sec:'Сегодня',title:'Руна дня',view:'home'},
   habits:{sec:'Дневник',title:'Дневник привычек',view:'history',page:true}, askesis:{sec:'Дневник',title:'Взять аскезу',view:'history',page:true},
   lunar:{sec:'Сегодня',title:'Влияние Луны на сегодня',view:'home'}, sky:{sec:'Сегодня',title:'Влияние планет на сегодня',view:'home'},
   worry:{sec:'Свериться с собой',title:'Ответить себе на вопрос',view:'ask'}, ask:{sec:'Свериться с собой',title:'',view:'ask'},
-  journal:{sec:'Дневник',title:'Дневник',view:'history',page:true}, gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history'},
+  gratitude:{sec:'Дневник',title:'Дневник благодарности',view:'history'},
   wishes:{sec:'Дневник',title:'Мои желания',view:'history'}, hmood:{sec:'Дневник',title:'История настроений',view:'history'},
   hentries:{sec:'Свериться с собой',title:'Мои вопросы и ответы',view:'ask'}, week:{sec:'Дневник',title:'Моя неделя',view:'history'}, dayview:{sec:'Дневник',title:'День',view:'history'}, days:{sec:'Дневник',title:'Все дни',view:'history'},
   natal:{sec:'Обо мне',title:'Натальная карта',view:'about'}, year:{sec:'Обо мне',title:'Личный год',view:'about'}, birthnum:{sec:'Обо мне',title:'Нумерология',view:'about'}, compat:{sec:'Обо мне',title:'Совместимость',view:'about'},
@@ -169,8 +145,7 @@ function openWidget(k, title){
 }
 /* Что подгрузить при открытии панели; у виджетов без записи содержимое статично (карта дня рисуется с главной) */
 const WIDGET_LOADERS = {
-  tools: () => paintTools(), appearance: () => paintAppearance(), topics: () => paintTopics(), skyplace: () => paintSkyPlace(),
-  journal: () => { loadJournal(); prepareDictation(); requestAnimationFrame(() => growTextarea($('j-text'))); },
+  appearance: () => paintAppearance(), topics: () => paintTopics(), skyplace: () => paintSkyPlace(),
   wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(''), hmood: () => loadMoodReport(),
   mood: () => { moodUI.precision=false; moodUI.mode='families'; renderMoods(); paintMoodExtra(); },
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
@@ -196,7 +171,6 @@ function paintHomeArt(){
 function closeWidget(e){
   if (e && e.target !== $('wg')) return;
   if (!wgOpen) return;
-  if(wgOpen==='journal'&&journalSpeech)stopJournalDictation();
   if(wgOpen==='support'){rememberSupportDraft();supStop();}
   if(wgOpen==='mood'&&$('v-history')?.classList.contains('on'))loadDayCard();   /* оттенки выбраны в круге — карточка дня показывает их сразу */
   $('wg-store').appendChild($('w-'+wgOpen)); wgOpen = null;
@@ -337,6 +311,12 @@ async function exportPersonalData(){
 
 /* ── главная ── */
 const ordinal = (n) => n + '-й';
+/* Строка-плитка: надзаголовок · текст · действие справа — одна разметка на «Вечер», «Вчера», «Обо мне», «Подсказки», «Напоминания».
+   on — 'click:имя' обработчика (кнопка) или { href } (ссылка); attrs — дополнительные атрибуты (data-a0, id, класс) */
+function row(eyebrow, text, go, on, attrs = '') {
+  const inner = `<span class="eyebrow">${eyebrow}</span><b>${text}</b>${go ? `<span class="later-go">${go}</span>` : ''}`;
+  return typeof on === 'object' ? `<a class="later-row" href="${on.href}" ${attrs}>${inner}</a>` : `<button data-on="${on}" class="later-row" type="button" ${attrs}>${inner}</button>`;
+}
 /* «Сохранить открытку»: настрой дня, тема и вопрос — открыткой на экран блокировки; собирается заранее, как остальные */
 /* строка над настроем: тема дня и откуда она — цепочка «источник → тема → настрой» видна, а не подразумевается */
 const THEME_SOURCE_LABEL = { card: 'по карте дня', dayrune: 'по руне дня', sky: 'по планетам', tone: 'по прогнозу дня' };
@@ -351,7 +331,7 @@ function paintHomeLater(d){
   const rows = [];
   const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
   /* вечерний шаг — в карточке действия под Луной (paintHomeAction), здесь не повторяется */
-  if (dow === 0 || dow === 1) rows.push(`<button data-on="click:goWeek" class="later-row" type="button"><span class="eyebrow">${dow === 0 ? 'Воскресенье' : 'Понедельник'}</span><b>Неделя собралась</b><span class="later-go">Моя неделя →</span></button>`);
+  if (dow === 0 || dow === 1) rows.push(row(dow === 0 ? 'Воскресенье' : 'Понедельник', 'Неделя собралась', 'Моя неделя →', 'click:goWeek'));
   box.hidden = !rows.length; box.innerHTML = rows.join('');
   paintPushNudge();
 }
@@ -376,10 +356,10 @@ async function paintYesterday(){
   const box=$('home-yesterday'); if(!box||!S.user?.onboarded)return;
   if(S.yesterday===undefined){ try{ const r=await api('/days?calendar=1'); S.yesterday=(r.items||[])[0]||null; S.daysTotal=r.total||0; window.tourMaybe?.(); }catch(e){ S.yesterday=null; } }
   const y=S.yesterday; if(!y){ box.hidden=true; box.innerHTML=''; return; }
-  if(y.empty){ if(new Date().getHours()<12){ box.innerHTML=`<button data-on="click:dcFor-a0" data-a0="${y.day}" class="later-row" type="button"><span class="eyebrow">Вчера</span><b>Не записали</b><span class="later-go">Дописать →</span></button>`; box.hidden=false; } else { box.hidden=true; box.innerHTML=''; } return; }
+  if(y.empty){ if(new Date().getHours()<12){ box.innerHTML=row('Вчера','Не записали','Дописать →','click:dcFor-a0',`data-a0="${y.day}"`); box.hidden=false; } else { box.hidden=true; box.innerHTML=''; } return; }
   const moods=y.moods.map(m=>(MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase());
   const line=y.text?`«${esc(y.text.length>80?y.text.slice(0,80).replace(/\s+\S*$/,'')+'…':y.text)}»`:moods.length?esc(moods.join(', ')):'фото дня';
-  box.innerHTML=`<button data-on="click:openDay-a0" data-a0="${y.day}" class="later-row" type="button"><span class="eyebrow">Вчера</span><b>${line}</b><span class="later-go">Открыть →</span></button>`; box.hidden=false;
+  box.innerHTML=row('Вчера',line,'Открыть →','click:openDay-a0',`data-a0="${y.day}"`); box.hidden=false;
 }
 /* Первые дни после анкеты: «Натальная карта готова» — мы спросили дату, время и город, и вот зачем; тап ведет прямо в карту,
    а не на вкладку. После открытия строка не возвращается */
@@ -388,49 +368,42 @@ function paintNatalRow(){
   const box=$('home-natal'); if(!box)return;
   let seen=false; try{ seen=localStorage.getItem(natalRowKey())==='1'; }catch(e){}
   const due=!!S.user?.birth&&!seen&&(S.freshOnboard||(S.daysTotal||0)<3);
-  box.hidden=!due; box.innerHTML=due?`<button data-on="click:openNatalFromHome" class="later-row" type="button"><span class="eyebrow">Обо мне</span><b>${ui('home.natal_row','Натальная карта готова')}</b><span class="later-go">Открыть →</span></button>`:'';
+  box.hidden=!due; box.innerHTML=due?row('Обо мне',ui('home.natal_row','Натальная карта готова'),'Открыть →','click:openNatalFromHome'):'';
 }
 function openNatalFromHome(){ try{ localStorage.setItem(natalRowKey(),'1'); }catch(e){} go('about'); openWidget('natal'); }
 /* ══════════ Карточка действия на «Сегодня» (по обзору 19.09): один шаг сразу под Луной. Днем — вопрос дня с полем и «Ответить себе»
    (ответ есть — виден, «Продолжить»); вечером — «Запомнить этот день» или «День записан ✓ · Дополнить». Ответ — тот же, что в
    панели «Вопрос дня» и в карточке дня (kind='answer', один на день) ══════════ */
-const HA={open:false};
+const EVENING_HOUR=17;   /* с этого часа «Сегодня» и дневник живут вечером: один порог на все */
+const isEvening=()=>new Date().getHours()>=EVENING_HOUR;
 async function paintHomeAction(){
   const box=$('home-action'), d=S.day; if(!box||!d)return;
-  if(new Date().getHours()>=17){
+  if(isEvening()){
     box.innerHTML=d.remembered
-      ?`<button data-on="click:goDayCard" class="later-row" type="button"><span class="eyebrow">Вечер</span><b>День записан ✓</b><span class="later-go">Дополнить →</span></button>`
+      ?row('Вечер','День записан ✓','Дополнить →','click:goDayCard')
       :`<div class="card ha"><span class="eyebrow">Вечер</span><p class="ha-q">${ui('home.evening_q','Что хочется сохранить из сегодняшнего дня?')}</p><button data-on="click:goDayCard" class="btn" type="button">${ui('home.evening_btn','Запомнить этот день')}</button></div>`;
     box.hidden=false; return;
   }
   if(!d.question){ box.hidden=true; box.innerHTML=''; return; }
-  if(toneLoadedFor!==d.date){ try{ const st=await api('/day'); toneLoadedFor=d.date; if(st.answer&&!toneDraft)toneSaved={id:st.answer.id,day:st.day,text:st.answer.text}; }catch(e){} }
-  if(toneSaved&&toneSaved.day!==d.date)toneSaved=null;
-  const saved=toneSaved, editing=!saved||HA.open;
+  await ensureAnswer();
+  const saved=ANS.saved&&ANS.saved.day===d.date?ANS.saved:null, editing=!saved||ANS.open;
   box.innerHTML=`<div class="card ha"><span class="eyebrow">Вопрос дня</span><p class="ha-q">${esc(d.question)}</p>${editing
-    ?`<div class="field"><textarea data-on="input:haInput-this" id="ha-a" maxlength="2000" rows="2" placeholder="Пара строк — как есть…">${esc(toneDraft||(saved?saved.text:''))}</textarea></div><div class="answer-actions"><button data-on="click:haSave" id="ha-save" class="btn" type="button" ${toneSaving?'disabled':''}>${toneSaving?'Сохраняем…':saved?'Обновить':ui('home.answer_btn','Ответить себе')}</button>${saved?`<button data-on="click:haCancel" class="text-action secondary" type="button">Отмена</button>`:''}</div>`
+    ?`<div class="field"><textarea data-on="input:answerInput-this" id="ha-a" maxlength="2000" rows="2" placeholder="Пара строк — как есть…">${esc(ANS.draft||(saved?saved.text:''))}</textarea></div><div class="answer-actions"><button data-on="click:haSave" id="ha-save" class="btn" type="button" ${ANS.saving?'disabled':''}>${ANS.saving?'Сохраняем…':saved?'Обновить':ui('home.answer_btn','Ответить себе')}</button>${saved?`<button data-on="click:haCancel" class="text-action secondary" type="button">Отмена</button>`:''}</div>`
     :`<p class="entry-text">${esc(saved.text)}</p><div class="answer-actions"><button data-on="click:haEdit" class="text-action" type="button">${ui('home.answer_more','Продолжить')}</button><span class="saved-state">В дневнике</span></div>`}</div>`;
   box.hidden=false; requestAnimationFrame(()=>{ const t=$('ha-a'); if(t)growTextarea(t); });
 }
-function haInput(el){ toneDraft=el.value; growTextarea(el); }
-function haEdit(){ HA.open=true; paintHomeAction().then(()=>$('ha-a')?.focus({preventScroll:true})); }
-function haCancel(){ HA.open=false; toneDraft=''; paintHomeAction(); }
-async function haSave(){
-  if(toneSaving)return; const t=($('ha-a')?.value||'').trim(); if(t.length<3){ toast('Напишите хотя бы пару слов'); return; }
-  toneSaving=true; await paintHomeAction();
-  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); toneDraft=''; toneSaved={id:r.item.id,day:r.item.day,text:r.item.text}; HA.open=false; toast(r.updated?'Ответ обновлен':'Записано в дневник'); hap('ok'); }
-  catch(e){ toast('Не получилось сохранить. Текст остался в поле'); toneDraft=t; HA.open=true; }
-  finally{ toneSaving=false; paintHomeAction(); if(wgOpen==='tone')paintTone(); }
-}
+function haEdit(){ ANS.open=true; paintHomeAction().then(()=>$('ha-a')?.focus({preventScroll:true})); }
+function haCancel(){ ANS.open=false; ANS.draft=''; paintHomeAction(); }
+function haSave(){ saveAnswerText($('ha-a')?.value); }
 /* Под настроем дня: расписание включено, а сюда уведомления не приходят — одна строка и одно нажатие */
 function paintPushNudge(){
   const box = $('home-push'); if (!box) return;
   const due = pushNudgeDue(); box.hidden = !due; if (!due) { box.innerHTML = ''; return; }
   box.innerHTML = !PUSH_OK
-    ? `<a class="later-row" id="push-nudge" href="/app/install"><span class="eyebrow">Напоминания</span><b>Придут с экрана «Домой»</b><span class="later-go">Как добавить →</span></a>`
+    ? row('Напоминания','Придут с экрана «Домой»','Как добавить →',{href:'/app/install'},'id="push-nudge"')
     : Notification.permission === 'denied'
-    ? `<button data-on="click:openWidget-remind" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>В этом браузере запрещены</b><span class="later-go">Как разрешить →</span></button>`
-    : `<button data-on="click:homePushConnect" class="later-row" id="push-nudge" type="button"><span class="eyebrow">Напоминания</span><b>На этом устройстве не подключены</b><span class="later-go">Включить →</span></button>`;
+    ? row('Напоминания','В этом браузере запрещены','Как разрешить →','click:openWidget-remind','id="push-nudge"')
+    : row('Напоминания','На этом устройстве не подключены','Включить →','click:homePushConnect','id="push-nudge"');
 }
 /* Расписание есть, а уведомления сюда не приходят: ячейка пропала после переустановки на экран «Домой» или это новый браузер.
    Показываем, когда настройки уже загружены и разрешение не запрещено; после подключения строка исчезает. */
@@ -516,7 +489,7 @@ function refreshHomeStatus(force=false){
   const uid=S.user.id;
   homeStatusRequest=api('/day-status').then(r=>{
     if(S.user.id!==uid)return;
-    S.journalDone=r.journal; S.answerDone=r.answer;
+    S.answerDone=r.answer;
     habitsHomeStatus(r.habits); askesisHomeStatus(r.askesis); gratitudeHomeStatus(r.gratitude);
     homeStatusAt=Date.now();
   }).catch(()=>{}).finally(()=>{homeStatusRequest=null;});
@@ -547,7 +520,6 @@ function paintToday(){
   if (wgOpen === 'tone') paintTone();
   renderMoods(); paintCardTile(); paintLunar(); loadNumerology();
 }
-const plural=(n,a,b,c)=>{const m=n%100;if(m>=11&&m<=14)return c;const l=n%10;return l===1?a:l>=2&&l<=4?b:c;};
 function pickOwnMood(){ const w = ($('mood-own').value || '').trim().split(/\s+/)[0] || ''; if (!w) { toast('Напишите одно слово'); return; } pickMood('own:' + w.slice(0, 24)); }
 async function pickMood(id){
   hap();
@@ -825,7 +797,7 @@ async function toggleWish(id){
   catch(e){ toast('Не удалось изменить отметку желания. Попробуйте еще раз.'); }
 }
 /* Подсказки и диктовка — в «Записать мысль» (j) и в первой ячейке карточки дня (dc): одна механика, разные поля */
-const DICT_SCOPES={j:{text:'j-text',btn:'j-dictate',note:'j-speech-note'},dc:{text:'dc-text',btn:'dc-mic',note:'dc-speech-note'}};   /* dc.text подставляет шаг карточки дня (dcDictate) */
+const DICT_SCOPES={dc:{text:'dc-text',btn:'dc-mic',note:'dc-speech-note'}};   /* dc.text подставляет шаг карточки дня (dcDictate) */
 /* подпись кнопки диктовки: у текстовой — текст, у микрофона-иконки в поле — aria-label и класс on */
 function dictLabel(btn,text,on){ if(!btn)return; if(btn.classList.contains('dc-mic')){btn.setAttribute('aria-label',text);btn.title=text;btn.classList.toggle('on',!!on);} else btn.textContent=text; btn.setAttribute('aria-pressed',on?'true':'false'); }
 function journalPrompt(text,scope='j'){
@@ -841,7 +813,7 @@ function prepareDictation(){
     if(note)note.textContent=supported?'Браузер может отправлять голос своему сервису распознавания. В Лунарио сохраняется текст.':'Нажмите микрофон на клавиатуре телефона или включите системную диктовку';}
 }
 function stopJournalDictation(){const rec=journalSpeech;journalSpeech=null;if(rec){rec.onresult=rec.onerror=rec.onend=null;try{rec.abort();}catch(e){}}prepareDictation();}
-function journalDictate(scope='j'){
+function journalDictate(scope='dc'){
   const c=DICT_SCOPES[scope]; if(!$(c.btn)) return;
   if(journalSpeech){journalSpeech.stop();return;}
   prepareDictation(); if($(c.note))$(c.note).hidden=false;
@@ -1009,6 +981,7 @@ async function loadDayCard(keepStep=false){
 function dcFromState(){
   const s=DC.state, draft=dcLoadDraft(s.day);
   DC.text=s.text?s.text.text:''; DC.gratitude=s.gratitude?s.gratitude.text:''; DC.answer=s.answer?s.answer.text:'';
+  if(!DC.forDay)answerFrom(s.answer,s.day);   /* панель и карточка на «Сегодня» знают тот же ответ */
   DC.moods=new Set(s.moods.filter(m=>!m.startsWith('own:'))); DC.own=s.moods.filter(m=>m.startsWith('own:')).map(m=>m.slice(4)).join(', '); DC.ownOpen=!!DC.own;
   DC.habits=new Map(s.habits.map(h=>[h.id,h.today])); DC.askesis=new Map(s.askesis.map(a=>[a.id,{kept:a.kept,note:a.note}])); DC.touched={habits:new Set(),askesis:new Set()}; DC.echo=s.echo||'';
   if(draft){
@@ -1119,6 +1092,7 @@ async function saveDayCard(){
     const r=await api('/day',{method:'POST',body:JSON.stringify(body)});
     if(DC.state.set&&DC.echo)api('/week/echo',{method:'POST',body:JSON.stringify({day:DC.state.day,verdict:DC.echo})}).catch(()=>{});   /* «отозвалось» — сразу вечером, не в воскресенье */
     DC.state={...r,echo:DC.echo||r.echo||''}; dcClearDraft(); DC.dirty=false; DC.bridge=undefined; DC.touched={habits:new Set(),askesis:new Set()}; hap('done');
+    if(!DC.forDay){ answerFrom(r.answer,r.day); ANS.draft=''; paintAnswerEverywhere(); if(S.day&&r.day===S.day.date)S.day.remembered=true; }
     if(!DC.forDay){ S.mood=DC.state.moods[0]||null; if(S.day&&r.saved.length){S.day.remembered=true;paintHomeLater(S.day);} }
     if(DC.forDay===yesterdayC()){ S.yesterday=undefined; }
     DC.firstSave=!DC.forDay&&!(S.daysTotal>0); loadDays();
@@ -1189,7 +1163,7 @@ function paintDayParty(){
 /* День записан — читается, а не заполняется: настроение, утро, записи прозой, тихая строка практик, «мост» из прошлого */
 function paintDayDone(){
   const s=DC.state, box=$('day-card');
-  const hour=new Date().getHours(), night=hour>=17||hour<4;
+  const hour=new Date().getHours(), night=hour>=EVENING_HOUR||hour<4;
   const moods=s.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
   const warm=DC.forDay?'':(night?ui('diary.night','Спокойной ночи ✦'):ui('diary.day','Хорошего дня ✦'));
   box.innerHTML=`<span class="eyebrow">${ui('diary.done','День записан ✦')} · ${DC.forDay===yesterdayC()?'вчера, ':''}${fmtDayWords(s.day)}</span>
@@ -1210,8 +1184,8 @@ function paintDayDone(){
 function nextStepHtml(){
   if(rhythmSeen()||(S.daysTotal||0)>3) return '';
   if(S.rem&&Object.values(S.rem).some(r=>r.enabled)) return '';
-  if(IS_IOS&&!PUSH_OK&&!IOS_SHELL) return `<a class="later-row dc-next" href="/app/install"><span class="eyebrow">Завтра</span><b>Чтобы напомнить вечером — добавьте Лунарио на экран «Домой»</b><span class="later-go">Как →</span></a>`;
-  return `<button data-on="click:openRhythm-history" class="later-row dc-next" type="button"><span class="eyebrow">Завтра</span><b>Напомнить вечером?</b><span class="later-go">Включить →</span></button>`;
+  if(IS_IOS&&!PUSH_OK&&!IOS_SHELL) return row('Завтра','Чтобы напомнить вечером — добавьте Лунарио на экран «Домой»','Как →',{href:'/app/install'});
+  return row('Завтра','Напомнить вечером?','Включить →','click:openRhythm-history');
 }
 /* ══════════ Как человек узнает про инструменты: не из каталога, а по одному, в нужный момент ══════════
    После первого записанного дня — «Чем дополнить вечера?» со всеми чипами сразу. Дальше — одно предложение в вечер, по порогам
@@ -1368,25 +1342,6 @@ function loadAccount(){
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   $('ac-mail-sub').textContent=u.email||'Сохраненные записи доступны на других устройствах';   /* почта, по которой вошли, — прямо в ряду «Вход по почте» */
 }
-function loadJournal(){
-  api('/journal').then(r=>{
-    const kindOf = (i) => i.kind === 'gratitude' ? ' · благодарность' : i.kind === 'answer' ? ' · ответ на вопрос дня' : '';
-    const html=r.items.map(i=>`<div class="item"><small>${fmtDay(i.day)}${kindOf(i)}</small>${i.kind === 'answer' && i.title ? `<p class="mt-1 italic">${esc(i.title)}</p>` : ''}<p class="mt-2">${esc(i.text)}</p></div>`).join('')||'<div class="item"><p>Пока пусто. Пара строк вечером — и здесь появится ваша лента.</p></div>';
-    $('m-journal').innerHTML=html;
-  }).catch(()=>{});
-}
-async function saveJournal(){
-  const t=$('j-text').value.trim(); if(t.length<3){ toast('Напишите хотя бы пару слов'); return; }
-  if(saveJournal.saving) return; saveJournal.saving=true;
-  try {
-    const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t})});
-    if($('j-text').value.trim()===t) $('j-text').value='';
-    hap('done');
-    const card=$('journal-card'); card.classList.remove('saved'); void card.offsetWidth; card.classList.add('saved');
-    $('journal-saved').hidden=false;$('journal-saved').textContent='Запись сохранена · '+fmtDay(r.item.day);toast('Запись сохранена');S.journalDone=true;growTextarea($('j-text'));loadJournal();
-  } catch(e){ toast('Не удалось сохранить запись. Текст остался в поле.'); }
-  finally { saveJournal.saving=false; }
-}
 let editReady = false;
 function fillEdit(){
   const u = S.user;
@@ -1468,7 +1423,6 @@ const cardBy = (s) => (CAT && CAT.cards[s]) || null;
 const runeBy = (s) => (CAT && CAT.runes[s]) || null;
 const layoutOf = (kind, key) => (CAT && CAT.layouts[kind] && CAT.layouts[kind][key]) || null;
 const keysLine = (k) => String(k || '').replace(/\.\s*$/, '').split(/\.\s+/).join(' · ');
-const fmtDay = (d) => String(d || '').split('-').reverse().join('.');
 /* «16 сентября, 21:05» — момент времени; месяц можно укоротить или добавить день недели */
 const fmtWhen = (at, o) => new Date(at).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', ...o });
 const paras = (arr) => (arr || []).map(t => `<p>${esc(t)}</p>`).join('');
@@ -1613,15 +1567,14 @@ function paintCardTile(){
 function showFlipped(){
   S.flipped = true;
   $('t-card').classList.add('flip'); $('t-card').classList.remove('glow');
-  $('t-open').style.display = 'none'; paintCardTile();
+  paintCardTile();
 }
 function flipCard(){ if (!S.flipped) openCard(); }
-$('t-open').onclick = openCard;
 const preload = (src) => new Promise((res) => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = src; setTimeout(res, 2500); });
 /* Карта тянется на сервере случайно — один раз в день — и сразу попадает в историю. */
 async function openCard(){
   if (S.flipped || S.opening) return;
-  S.opening = true; $('t-open').disabled = true;
+  S.opening = true;
   try{
     const [r] = await Promise.all([api('/card', { method: 'POST' }), loadCatalog().catch(() => null)]);
     S.day.card = r.card;
@@ -1629,7 +1582,7 @@ async function openCard(){
     paintCard(); hap('ok');
     showFlipped(); paintThoughts();
     setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
-  }catch(e){ toast('Не получилось открыть карту — попробуйте еще раз'); $('t-open').disabled = false; }
+  }catch(e){ toast('Не получилось открыть карту — попробуйте еще раз'); }
   S.opening = false;
 }
 
@@ -2002,7 +1955,6 @@ async function syncPushDevice(){
     }
   } catch(e) { /* the explicit enable button lets the user reconnect */ }
 }
-const invitationKey = () => 'lun_push_invite_' + S.user.id;
 /* ── Напоминания: не сразу после анкеты, а после первого записанного дня (решение 19.09): анкета → «Сегодня» с личным результатом,
    мастер — строкой в записанном дне и в Аккаунт → Уведомления. «Включить» — нажатие, на которое телефон спрашивает разрешение ── */
 function finishOnboarding(){ startApp(); S.freshOnboard=true; go('home'); }   /* onboard_done пишет сервер в POST /api/profile */
@@ -2047,7 +1999,6 @@ function loadReminders(force){
 }
 const remBox = (f, full=false) => `<div class="rem" data-rem="${f}" data-full="${full}"></div>`;
 /* Строка уведомлений под заголовком виджета: настройки подгружаются, если еще не были */
-const remRefresh = (f) => loadReminders().then(() => paintRem(f)).catch(() => {});
 const remText = (r) => r.freq === 'events' ? 'когда что-то происходит, в ' + r.time : r.time + ' · ' + (r.freq === 'weekly' ? WD_ON[r.weekday - 1] : FREQ_LABEL[r.freq].toLowerCase());
 function remDeviceReady(){
   return IOS_SHELL ? IOS_BRIDGE>=4 && S.nativePermission==='granted' : PUSH_OK && Notification.permission==='granted' && S.pushOn;
@@ -2641,34 +2592,38 @@ async function hubAsk(){
 }
 
 /* ══════════ Вопрос дня: к фразе на главной; ответ уходит в дневник ══════════ */
-/* Ответ на вопрос дня — один на день, где бы его ни писали: здесь или в карточке дня. Панель показывает уже записанный
-   ответ и правит его, а не добавляет второй */
-let toneDraft='',toneSaving=false,toneSaved=null,toneLoadedFor='';
+/* Ответ на вопрос дня — один на день и одно состояние ANS, где бы его ни писали: панель «Вопрос дня», карточка действия
+   на «Сегодня» или шаг дневника. Все три читают ANS и после сохранения обновляют друг друга через paintAnswerEverywhere() */
+const ANS={draft:'',saving:false,saved:null,loadedFor:'',open:false};
+async function ensureAnswer(){
+  if(!S.day)return; if(ANS.saved&&ANS.saved.day!==S.day.date){ANS.saved=null;ANS.loadedFor='';}
+  if(ANS.loadedFor===S.day.date)return;
+  try{ const st=await api('/day'); ANS.loadedFor=S.day.date; if(st.answer&&!ANS.draft)ANS.saved={id:st.answer.id,day:st.day,text:st.answer.text}; }catch(e){}
+}
+function answerFrom(a,day){ ANS.saved=a&&a.text?{id:a.id,day,text:a.text}:null; ANS.loadedFor=day; }   /* карточка дня уже знает ответ — панели не спрашивают заново */
+/* сохранить ответ из любого места; textarea остается с текстом при ошибке */
+async function saveAnswerText(t){
+  t=(t||'').trim(); if(t.length<3){toast('Напишите хотя бы пару слов');return false;}
+  if(ANS.saving)return false; ANS.saving=true; paintAnswerEverywhere();
+  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); ANS.draft=''; ANS.open=false; ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
+    toast(r.updated?'Ответ обновлен в дневнике':'Записано в дневник'); hap('ok'); if(DC.state&&DC.state.day===r.item.day){DC.state.answer={id:r.item.id,text:r.item.text}; if(DC.mode!=='steps')DC.answer=r.item.text;} XP.timeline.dirty=true; return true; }
+  catch(e){ toast('Не получилось сохранить. Текст остался в поле'); ANS.draft=t; ANS.open=true; return false; }
+  finally{ ANS.saving=false; paintAnswerEverywhere(); }
+}
+function paintAnswerEverywhere(){ if(wgOpen==='tone')paintTone(); paintHomeAction(); }
 function paintTone(){
   const d=S.day,st=d.set;if(!$('tone-box'))return;
-  if(toneSaved&&toneSaved.day!==d.date)toneSaved=null;
-  const text=toneDraft||(toneSaved?toneSaved.text:'');
+  const saved=ANS.saved&&ANS.saved.day===d.date?ANS.saved:null, text=ANS.draft||(saved?saved.text:'');
   $('tone-box').innerHTML=`${st?`<p class="hint mb-4">${esc(st.statement||st.text)}</p>`:''}
     <p class="practice-question">${esc(d.question)}</p>
-    ${toneSaved?`<div class="saved-state" role="status">В дневнике · ${fmtDay(toneSaved.day)} — можно дописать</div>`:''}
-    <div class="answer-form"><div class="field"><textarea data-on="input:toneDraft-value-growTextarea-this" id="tone-a" aria-label="Ответ на вопрос дня" maxlength="2000" placeholder="Пара строк — как есть…">${esc(text)}</textarea></div></div>
-    <div class="answer-actions"><button data-on="click:saveAnswer" id="tone-save" type="button" class="btn sm" ${toneSaving?'disabled':''}>${toneSaving?'Сохраняем…':toneSaved?'Обновить в дневнике':'Отправить в дневник'}</button></div>`;
+    ${saved?`<div class="saved-state" role="status">В дневнике · ${fmtDay(saved.day)} — можно дописать</div>`:''}
+    <div class="answer-form"><div class="field"><textarea data-on="input:answerInput-this" id="tone-a" aria-label="Ответ на вопрос дня" maxlength="2000" placeholder="Пара строк — как есть…">${esc(text)}</textarea></div></div>
+    <div class="answer-actions"><button data-on="click:saveAnswer" id="tone-save" type="button" class="btn sm" ${ANS.saving?'disabled':''}>${ANS.saving?'Сохраняем…':saved?'Обновить в дневнике':'Отправить в дневник'}</button></div>`;
   requestAnimationFrame(()=>growTextarea($('tone-a')));
 }
-/* при открытии — подтянуть ответ, если он уже есть (например, записан вечером в карточке дня) */
-async function loadTone(){
-  paintTone();
-  if(toneLoadedFor===S.day.date)return;
-  try{const st=await api('/day');toneLoadedFor=S.day.date;if(st.answer&&!toneDraft){toneSaved={id:st.answer.id,day:st.day,text:st.answer.text};paintTone();}}catch(e){}
-}
-async function saveAnswer(){
-  if(toneSaving)return;const t=($('tone-a').value||'').trim();
-  if(t.length<3){toast('Напишите хотя бы пару слов');return;}
-  toneSaving=true;$('tone-save').disabled=true;
-  try{const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})});toneDraft='';toneSaved={id:r.item.id,day:r.item.day,text:r.item.text};toast(r.updated?'Ответ обновлен в дневнике':'Записано в дневник');hap('ok');loadJournal();XP.timeline.dirty=true;}
-  catch(e){toast('Не получилось сохранить. Ваш текст остался в поле');}
-  finally{toneSaving=false;paintTone();}
-}
+async function loadTone(){ paintTone(); await ensureAnswer(); paintTone(); }
+function answerInput(el){ ANS.draft=el.value; growTextarea(el); }
+function saveAnswer(){ saveAnswerText($('tone-a')?.value); }
 
 /* ══════════ Дневник благодарности ══════════ */
 const gratQ = () => 'Кому и за что я благодарна сегодня?';
@@ -2977,7 +2932,7 @@ function startApp(){
   paintHome(); paintToday(); go(initialPractice==='journal'?'history':'home');
   if(FEATURES[initialPractice]?.page)openPractice(initialPractice); refreshNativeAskesis();
   if (S.day.card && S.day.cardOpened) { showFlipped(); $('t-after').style.display = 'block'; }   /* карту уже открывали — она в истории; вытянутую утром еще предстоит перевернуть */
-  loadCatalog().then(() => { renderMoods(); applyTools(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); if (wgOpen === 'tools') paintTools(); }).catch(() => {});
+  loadCatalog().then(() => { renderMoods(); applyTools(); if (S.flipped) { paintCard(); preparePending(); } if (wgOpen === 'ask') renderLayouts(); }).catch(() => {});
   openFromUrl(location.href);   /* из уведомления приходят сразу в нужный раздел */
   { const pv=new URLSearchParams(location.search).get('preview'); if(pv) openPreview(pv); }   /* из кабинета: посмотреть запись как на экране */
 }

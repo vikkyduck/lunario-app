@@ -182,15 +182,14 @@ export function eveningKey(d) {
 }
 /* День записан вечером — пара строк или настроение, то, о чем спрашивает вечер; утренний ответ на вопрос дня с «Сегодня»,
    благодарность, привычки и аскезы вечерний пуш не глушат */
+/* «День записан» — одно определение для всего: вечернего пуша (молчит), карточки на «Сегодня» («День записан ✓»),
+   списка прошлых дней (не пустой). Считаются слова человека и его состояние: запись, благодарность, ответ на вопрос дня,
+   мысль к карте, настроение, фото. Отметка привычки или аскезы сама по себе день не записывает (решение 18.09). */
 export function dayWritten(userId, d) {
-  return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = '' LIMIT 1").get(userId, d)
-    || db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d));
-}
-export function dayRemembered(userId, d) {
   return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' LIMIT 1").get(userId, d)
     || db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d)
-    || db.prepare('SELECT 1 FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? LIMIT 1').get(userId, d)
-    || db.prepare('SELECT 1 FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ? LIMIT 1').get(userId, d));
+    || db.prepare('SELECT 1 FROM mood_marks WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d)
+    || db.prepare('SELECT 1 FROM day_photos WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d));
 }
 /* Сколько моментов сохранено за неделю: записи всех видов и отмеченные настроения */
 export function weekMoments(userId, d) {

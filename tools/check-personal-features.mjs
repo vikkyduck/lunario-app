@@ -664,11 +664,20 @@ try {
   /* Имена из разметки. Пропускаем те, что собираются в коде (`'[data-on="click:openWidget-'+key+'"]'` — это селектор,
      а не разметка): имя там подставляется на ходу, а сами кнопки объявлены в разметке и так попадут в список. */
   const used = (files) => { const out = new Set(); for (const f of files) for (const [, spec] of src[f].matchAll(/data-on="([^"]+)"/g)) { if (/'\+|\+'|\$\{/.test(spec)) continue; for (const pair of spec.split(' ')) out.add(pair.slice(pair.indexOf(':') + 1)); } return out; };
-  const appUsed = used(['index.html', 'app.js', 'experience.js', 'tour.js']);
+  /* имена, которые собирает row() и другие помощники: строки вида 'click:имя' в скриптах */
+  const usedInStrings = (files, out) => { for (const f of files) for (const [, n] of src[f].matchAll(/['"](?:click|input|change|keydown|toggle):([A-Za-z_$][\w$-]*)['"]/g)) if (!n.endsWith('-') && n !== 'checked') out.add(n); return out; };   /* '…-'+key — селектор, не имя */
+  const appUsed = usedInStrings(['app.js', 'experience.js', 'tour.js'], used(['index.html', 'app.js', 'experience.js', 'tour.js']));
   for (const m of src['experience.js'].matchAll(/setAttribute\('data-on'\s*,\s*'([^']+)'/g)) appUsed.add(m[1].slice(m[1].indexOf(':') + 1));   // одна кнопка получает data-on из кода
-  for (const [reg, u] of [['handlers.js', appUsed], ['cabinet-handlers.js', used(['cabinet.html', 'cabinet.js'])]]) {
-    for (const n of u) assert.ok(named(reg).has(n), `${reg}: разметка ссылается на «${n}», а обработчика нет`);
+  /* Имя «функция-a0-this-value» on.js вызывает сам (auto): для него нужна не запись в реестре, а глобальная function-декларация.
+     Всё остальное (openWidget-tone, go-home, if-event-key-…) — только из реестра. */
+  const autoOk = (files, n) => { const parts = n.split('-'); if (!parts.slice(1).every((a) => ['this', 'value', 'event'].includes(a) || /^a\d$/.test(a))) return false;
+    return files.some((f) => new RegExp('^(?:async )?function ' + parts[0].replace(/[$]/g, '\\$&') + '\\(', 'm').test(src[f])); };
+  for (const [reg, u, files] of [['handlers.js', appUsed, ['app.js', 'experience.js', 'tour.js']], ['cabinet-handlers.js', usedInStrings(['cabinet.js'], used(['cabinet.html', 'cabinet.js'])), ['cabinet.js']]]) {
+    for (const n of u) assert.ok(named(reg).has(n) || autoOk(files, n), `${reg}: разметка ссылается на «${n}», а обработчика нет (ни в реестре, ни function-декларации)`);
     for (const n of named(reg)) assert.ok(u.has(n), `${reg}: «${n}» никем не используется — мёртвая запись после переноса`);
+    for (const n of named(reg)) { if (!autoOk(files, n)) continue; const parts = n.split('-'); const derived = parts[0] + '(' + parts.slice(1).map((a) => a === 'this' ? 'this' : a === 'value' ? 'this.value' : a === 'event' ? 'event' : 'this.dataset.' + a).join(', ') + ')';
+      const body = ((src[reg].split('\n').find((l) => l.startsWith(`  "${n}"`)) || '').match(/\{ (.*) \},$/) || [])[1] || '';
+      assert.ok(body.replace(/;$/, '') !== derived, `${reg}: «${n}» выводится из имени — запись в реестре лишняя`); }
   }
   console.log(`PASS: strict CSP (script-src self, no inline scripts or handlers in markup or templates), anti-clickjacking and nosniff headers; all ${shell.length} offline shell files are served; handler registry matches the markup with no leftover concatenation.`);
 

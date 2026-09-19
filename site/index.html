@@ -27,7 +27,7 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=96"></script>
+<script src="/app/boot.js?v=97"></script>
 <style>
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-cyrillic.woff2') format('woff2');unicode-range:U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116}
 @font-face{font-family:'Onest';font-style:normal;font-weight:100 900;font-display:swap;src:url('/app/assets/fonts/onest-400-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -375,8 +375,6 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .acct{position:absolute;right:0;top:0;width:44px;height:44px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--line);box-shadow:var(--glass-shadow);color:var(--gold);font:inherit;font-weight:700;font-size:15px;cursor:pointer;display:grid;place-items:center}
 .news-dot{position:absolute;right:1px;top:1px;width:9px;height:9px;border-radius:50%;background:var(--gold-2);box-shadow:0 0 0 3px var(--bg),0 0 12px rgba(240,215,154,.55)}
 .account-group{margin-top:24px}.account-group>.eyebrow{margin-bottom:10px}.account-group .wids{margin-top:0}
-.journal-card.saved{animation:journal-save .62s var(--sp)}
-@keyframes journal-save{0%{transform:none}45%{transform:translateY(8px) scale(.985);border-color:rgba(217,184,104,.5)}100%{transform:none}}
 /* сотрудникам и админам — обратный путь в кабинеты прямо с главной; кнопка не сдвигает статичный экран */
 .cabs{position:absolute;right:52px;top:0;height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 14px;border-radius:var(--r-pill);background:var(--glass-bg);border:1px solid rgba(217,184,104,.45);box-shadow:var(--glass-shadow);color:var(--gold-2);font-size:14px;font-weight:650;text-decoration:none;white-space:nowrap}
 .cabs[hidden]{display:none}
@@ -820,7 +818,6 @@ body.inner #home-sky .moonline{margin:12px 0 6px;padding:12px 2px;cursor:pointer
 .lunar-heading .practice-question{margin:6px 0;font-size:18px}
 .lunar-library,.lunar-period{margin-top:18px}
 #ln-preview{padding-top:8px}
-#journal-saved{margin-top:20px}
 body.inner .utility-actions .text-action{color:var(--muted)}
 @media(min-width:900px){.practice-links{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-summary{max-width:660px}.account-group .compact-links{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}}
 @media(max-width:370px){.quick-mood{padding:12px;font-size:14px}.practice-links{grid-template-columns:1fr}.app-nav button{font-size:11px}}
@@ -828,11 +825,11 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 </style>
 
-<link rel="stylesheet" href="/app/theme.css?v=96">
-<link rel="stylesheet" href="/app/experience.css?v=96">
-<link rel="stylesheet" href="/app/moon-glass.css?v=96">
-<link rel="stylesheet" href="/app/compact.css?v=96">
-<link rel="stylesheet" href="/app/frame.css?v=96">
+<link rel="stylesheet" href="/app/theme.css?v=97">
+<link rel="stylesheet" href="/app/experience.css?v=97">
+<link rel="stylesheet" href="/app/moon-glass.css?v=97">
+<link rel="stylesheet" href="/app/compact.css?v=97">
+<link rel="stylesheet" href="/app/frame.css?v=97">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -1071,7 +1068,7 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       <button data-on="click:openWidget-topics" class="wid" data-feature="topics" type="button"><i class="ico list"></i><b>Настройка контента</b><span>Какие сферы жизни подсвечивать в сообщениях</span></button>
       <button data-on="click:tourRestart" class="wid" type="button"><i class="ico question"></i><b>Подсказки по приложению</b><span>Как устроено приложение — за полминуты</span></button>
       <button data-on="click:openWidget-appinfo" class="wid" type="button"><i class="ico moon"></i><b>О приложении</b></button>
-      <a data-on="click:installApp" class="wid" id="t-install" href="/app/install"><i class="ico star"></i><b>Установить на телефон</b><span>Иконка на экране «Домой», уведомления, полный экран</span></a></div></section>
+      <a data-on="click:installApp-event" class="wid" id="t-install" href="/app/install"><i class="ico star"></i><b>Установить на телефон</b><span>Иконка на экране «Домой», уведомления, полный экран</span></a></div></section>
     <section class="account-group" id="ag-help"><h2>Помощь</h2><div class="wids compact-links"><button data-on="click:openWidget-support" class="wid" data-feature="support" type="button" aria-label="Чат поддержки"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button data-on="click:openWidget-invite" class="wid" type="button" aria-label="Позвать подругу" data-feature="invite"><i class="ico person"></i><b>Позвать подругу</b></button></div></section>
     </div></div>
   </section>
@@ -1086,7 +1083,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
 
 <!-- панели виджетов: openWidget() переносит нужную в обертку и возвращает обратно -->
 <div id="wg-store" style="display:none">
-  <div class="wpane" id="w-tools"><p class="hint">Инструменты можно добавлять и убирать в любой момент. Убрать — не значит потерять: записи остаются и вернутся вместе с инструментом. Напоминания настраиваются отдельно.</p><div id="tools-box"></div></div>
   <div class="wpane" id="w-appearance"><div id="appearance-box"></div></div>
   <div class="wpane" id="w-topics"><div id="topics-box"></div></div>
   <div class="wpane" id="w-skyplace"><div id="skyplace-box"></div></div>
@@ -1103,7 +1099,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
       </div>
     </div>
     <div id="t-after" class="mt-4" style="display:none"></div>
-    <button class="btn mt-4" id="t-open" hidden>Открыть карту дня</button>
   </div>
   <div class="wpane" id="w-mood"><div class="moodgrid" id="t-moods"></div><p class="hint mt-3 center" id="t-moodstat"></p><div id="mood-extra"></div></div>
   <div class="wpane" id="w-habits"><div id="hb-box"></div></div>
@@ -1113,17 +1108,6 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <div class="wpane" id="w-day"><h2 id="f-title"></h2><p class="mt-2" id="f-text"></p><div id="f-bars" class="forecast-bars" aria-label="Сферы прогноза дня"></div><div id="forecast-note" class="material-note"></div></div>
   <div class="wpane" id="w-tone"><div id="tone-box"></div></div>
   <div class="wpane" id="w-gratitude"><div id="gr-box"></div></div>
-  <div class="wpane" id="w-journal">
-    <span class="eyebrow mb-3">Дневник · видите только вы</span>
-    <div class="card journal-card" id="journal-card">
-      <textarea aria-label="Запись в дневник" id="j-text" placeholder="Что сегодня хочется оставить здесь?" maxlength="2000"></textarea>
-      <div class="chips flow mt-3"><button data-on="click:journalPrompt-Что-произошло" class="chip" type="button">Что произошло?</button><button data-on="click:journalPrompt-Что-я-почувствовала" class="chip" type="button">Что я почувствовала?</button><button data-on="click:journalPrompt-Что-хочу-помнить" class="chip" type="button">Что хочу помнить?</button></div>
-      <button data-on="click:journalDictate" class="btn ghost sm full mt-3" id="j-dictate" type="button" aria-pressed="false">Продиктовать</button><p id="j-speech-note" class="hint mt-2"></p>
-      <div class="answer-actions"><button data-on="click:saveJournal" class="btn sm">Сохранить запись</button></div>
-    </div>
-    <p id="journal-saved" class="saved-state" role="status" hidden></p>
-    <div class="list" id="m-journal"></div>
-  </div>
   <div class="wpane" id="w-wishes">
     <div class="wish-form"><label for="w-text">Мое желание</label><input id="w-text" placeholder="Например: поехать к морю" maxlength="200"><div id="wish-preview"></div><div class="wish-create-actions"><button data-on="click:chooseWishPhoto" id="wish-photo-pick" class="text-action" type="button">Добавить фото</button><button data-on="click:addWish" class="btn sm" id="wish-save" type="button">Сохранить желание</button></div></div>
     <div class="wish-grid" id="m-wishes"></div>
@@ -1193,14 +1177,15 @@ body.inner .utility-actions .text-action{color:var(--muted)}
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=96"></script>
+<script src="/app/moon-logo.js?v=97"></script>
 
-<script type="module" src="/app/sky.js?v=96"></script>
+<script type="module" src="/app/sky.js?v=97"></script>
 
-<script src="/app/experience.js?v=96"></script>
-<script src="/app/app.js?v=96"></script>
-<script src="/app/tour.js?v=96"></script>
-<script src="/app/handlers.js?v=96"></script>
-<script src="/app/on.js?v=96"></script>
+<script src="/app/common.js?v=97"></script>
+<script src="/app/experience.js?v=97"></script>
+<script src="/app/app.js?v=97"></script>
+<script src="/app/tour.js?v=97"></script>
+<script src="/app/handlers.js?v=97"></script>
+<script src="/app/on.js?v=97"></script>
 </body>
 </html>

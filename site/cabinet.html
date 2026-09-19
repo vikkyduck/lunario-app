@@ -191,6 +191,12 @@ td small{display:block;color:var(--faint);font-size:13px}
 .tabs.sub button{min-height:32px;font-size:13px;padding:0 12px}
 .file.rec{cursor:pointer}.file.rec b{font-size:14px}.file.rec small{color:var(--muted);line-height:1.35}
 .tbl input{width:100%;min-height:34px;padding:4px 8px;font-size:14px}
+/* формы в модальных окнах: сетка полей, широкая textarea, файл, превью — вместо inline-стилей в шаблонах */
+.form-grid{display:grid;gap:10px;margin-top:12px}
+.form-grid textarea.tall{min-height:160px;font-family:inherit}
+.form-grid .row{gap:8px}.form-grid .grow{flex:1}
+.file-input{max-width:220px;padding:6px}
+img.preview{margin-top:8px;max-height:140px;border-radius:10px}img.preview[hidden]{display:none}
 .check-part h2{font-size:22px;margin:0 0 6px}
 </style>
 </head>
@@ -225,8 +231,9 @@ td small{display:block;color:var(--faint);font-size:13px}
 <div data-on="click:if-event-target-this-closeModal" class="modal" id="modal"><div class="card" id="modal-body"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="/app/cabinet.js?v=96"></script>
-<script src="/app/cabinet-handlers.js?v=96"></script>
-<script src="/app/on.js?v=96"></script>
+<script src="/app/common.js?v=97"></script>
+<script src="/app/cabinet.js?v=97"></script>
+<script src="/app/cabinet-handlers.js?v=97"></script>
+<script src="/app/on.js?v=97"></script>
 </body>
 </html>

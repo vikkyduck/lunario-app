@@ -5,9 +5,9 @@
 import { skyAt, ASPECT_LIST, SIGNS, inSign, ofSign } from './astro.mjs';
 import { moonPhasesBetween, moonState } from './lunar.mjs';
 import * as C from './content.mjs';
-import { MSK, dayIn } from './util.mjs';
+import { MSK, dayIn, norm360 } from './util.mjs';
 
-const norm = (x) => ((x % 360) + 360) % 360;
+const norm = norm360;
 const DAY = 864e5;
 const signOf = (lon) => SIGNS[Math.floor(norm(lon) / 30)];
 

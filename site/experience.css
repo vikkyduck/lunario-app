@@ -33,15 +33,6 @@ body.inner .wpane small,.timeline-kind,.timeline-day{font-size:14px;line-height:
 #w-journal #m-journal{margin-top:40px}
 /* Каталог инструментов: карточки по разделам, у каждой «Посмотреть» и «Добавить/Убрать»; вход — обычная плитка внизу Дневника */
 .tools-link{margin-top:28px}
-.tools-group{margin-top:22px}.tools-group:first-child{margin-top:16px}
-.tools-group h3{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
-.tool-card{padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface);margin-top:8px}
-.tool-card.on{border-color:rgba(217,184,104,.55)}
-.tool-card b{display:block;font-size:16px;font-weight:600;line-height:1.35}
-.tool-card p{margin:4px 0 0;font-size:14px;line-height:1.5;color:var(--muted)}
-.tool-actions{display:flex;justify-content:space-between;gap:12px;margin-top:4px}
-.tool-actions .text-action{min-height:40px;padding:6px 0;font-size:15px}
-.tool-card.on .tool-actions .text-action:not(.secondary){color:var(--muted)}
 .diary-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:24px 0}
 .diary-actions .text-action{padding:8px}
 .diary-actions .btn{width:auto}

@@ -11,7 +11,7 @@ function rememberScroll(){XP.scroll[XP.page?'practice:'+XP.page:activeView()]=sc
 function restoreScroll(key){requestAnimationFrame(()=>requestAnimationFrame(()=>scrollToTop(XP.scroll[key]||0)));}
 function leavePractice(){
   if(!XP.page)return;
-  rememberScroll();if(XP.page==='journal'&&journalSpeech)stopJournalDictation();
+  rememberScroll();
   $('wg-store').appendChild($('w-'+XP.page));$('practice-tools').replaceChildren();XP.page=null;document.body.classList.remove('practice-open');
 }
 function cleanPracticeUrl(){const u=new URL(location.href);u.searchParams.delete('practice');return u.pathname+u.search+u.hash;}
@@ -70,22 +70,6 @@ function applyTools(){
   /* группа без единой видимой плитки прячется вместе с заголовком */
   document.querySelectorAll('#v-history .feature-group').forEach(g=>{const tiles=[...g.querySelectorAll('[data-feature]')];if(tiles.some(el=>keys.has(el.dataset.feature)))g.hidden=tiles.every(el=>el.hidden);});   /* «Итоги недели» и другие постоянные плитки держат группу открытой */
 }
-function paintTools(){
-  const box=$('tools-box');if(!box)return;
-  const vis=toolsVisible(),sections=[['history','Дневник']];
-  box.innerHTML=sections.map(([sec,name])=>{const items=toolCatalog().filter(t=>t.section===sec);if(!items.length)return '';
-    return `<section class="tools-group"><h3>${name}</h3>${items.map(t=>`<div class="tool-card${vis.has(t.key)?' on':''}"><b>${esc(t.title)}</b><p>${esc(t.text)}</p><div class="tool-actions"><button data-on="click:previewTool-a0" data-a0="${t.key}" class="text-action secondary" type="button">Посмотреть</button><button data-on="click:toggleTool-a0" data-a0="${t.key}" class="text-action" type="button" aria-pressed="${vis.has(t.key)}">${vis.has(t.key)?'Убрать':'Добавить'}</button></div></div>`).join('')}</section>`;}).join('');
-}
-async function toggleTool(key){
-  if(toggleTool.busy)return;toggleTool.busy=true;
-  const vis=toolsVisible(),add=!vis.has(key);if(add)vis.add(key);else vis.delete(key);
-  const tools=toolCatalog().map(t=>t.key).filter(k=>vis.has(k));
-  try{await savePreferences({...XP.prefs,tools});applyTools();paintTools();track(add?'tools_add':'tools_remove',key);
-    const t=toolCatalog().find(x=>x.key===key);toast(add?`${t?t.title:'Инструмент'} — в разделе «${t&&t.section==='history'?'Дневник':'Сегодня'}»`:'Убрано с экрана. Записи сохранены');}
-  catch{toast('Не удалось сохранить. Попробуйте еще раз');}
-  finally{toggleTool.busy=false;}
-}
-function previewTool(key){closeWidget();go(FEATURES[key]?.view||'home');openWidget(key);}
 
 /* ── Утро на «Сегодня»: ответ на «На что хочу обращать внимание каждое утро?». Выбранные плитки — в ленте «Ваше утро» и в утреннем пуше,
    остальные — маленькими квадратами ниже. Карта и руна, если выбраны, тянутся утром сами, и от них считается тема дня ── */

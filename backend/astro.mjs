@@ -7,9 +7,10 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { norm360 } from './util.mjs';
 
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
-const norm = (x) => ((x % 360) + 360) % 360;
+const norm = norm360;
 const sin = (d) => Math.sin(d * D2R), cos = (d) => Math.cos(d * D2R), tan = (d) => Math.tan(d * D2R);
 const asin = (x) => Math.asin(Math.max(-1, Math.min(1, x))) * R2D, atan2 = (y, x) => Math.atan2(y, x) * R2D;
 

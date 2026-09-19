@@ -5,8 +5,9 @@
    текст хранится целиком, предложением самого человека.
    Пустая ячейка при сохранении = «не менять»: случайно стереть запись нельзя. Зависимости — явным объектом, как у createShelves. */
 import { transaction } from './sync.mjs';
+import { addDays } from './util.mjs';
 
-export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, questionOf, morningOf = () => null, themeTitle = (k) => k, lunarOf = () => null, dailyWrites = 100 }) {
+export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten = null, questionOf, morningOf = () => null, themeTitle = (k) => k, lunarOf = () => null, dailyWrites = 100 }) {
   const KINDS = { text: '', gratitude: 'gratitude', answer: 'answer' };
   const latest = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(uid, d, kind);
   const cell = (row) => row ? { id: row.id, text: open(row.text), title: open(row.title || '') } : null;
@@ -39,7 +40,6 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     return { ok: true, item: { id: Number(r.lastInsertRowid), day: d, text, source, slug, name, question } };
   }
   const photoMeta = (uid, d) => db.prepare('SELECT ts, w, h FROM day_photos WHERE user_id = ? AND day = ?').get(uid, d) || null;
-  const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 
   function state(u, d, { today = true } = {}) {
     const kept = new Map(db.prepare('SELECT askesis_id, kept, note FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ?').all(u.id, d).map((n) => [n.askesis_id, n]));
@@ -80,7 +80,7 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     const moods = moodsOf(uid, d), m = morningStored(uid, d), ph = photoMeta(uid, d);
     const text = first ? open(first.text).replace(/\s+/g, ' ').trim().slice(0, 140) : '';
     const ld = lunarOf(u, d);
-    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, empty: !text && !moods.length && !kinds.length && !ph };
+    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, empty: dayWritten ? !dayWritten(uid, d) : !text && !moods.length && !ph };   /* пусто — по тому же правилу, что пуш и «Сегодня» */
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
   function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {

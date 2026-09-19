@@ -10,8 +10,8 @@ content/*
 # cities.db собирается сам: node tools/build-cities.mjs (данные GeoNames, CC BY)
 backend/cities.db
 
-# локальный тулчейн и артефакты сборки
-mobile/toolchain/
+# мобильная оболочка (Capacitor) — отдельный проект: в этом репозитории не версионируется, на диске остаётся
+mobile/
 lunario-mobile.zip
 *.jks
 *.keystore

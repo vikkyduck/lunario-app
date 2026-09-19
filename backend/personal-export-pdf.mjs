@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PdfDocument, wrap } from './pdf.mjs';
-import { LINK_RE, linkTarget, trimLink } from './util.mjs';
+import { LINK_RE, linkTarget, trimLink, countWord as plural } from './util.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 let fontsCache = null;
@@ -19,7 +19,6 @@ export const C = { bg: hex('#0f0d1c'), glow: hex('#d9b868'), text: hex('#f5f2ea'
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 const fmtDay = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : String(d || ''); };
 const fmtWhen = (iso) => { const t = new Date(iso); return isNaN(t) ? '' : `${fmtDay(iso.slice(0, 10))}, ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')} UTC`; };
-const plural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return n + ' ' + (a > 10 && a < 20 ? many : b > 1 && b < 5 ? few : b === 1 ? one : many); };
 const KIND = { yesno: '«Да / Нет»', rune: 'Руна', runes: 'Расклад рун', spread: 'Расклад Таро', card: 'Карта дня', dayrune: 'Руна дня' };
 const JOURNAL_KIND = { gratitude: 'благодарность', answer: 'ответ на вопрос дня', weekly: 'итог недели' };
 const ECHO = { yes: 'отозвалось', no: 'не связано', unsure: 'не уверена' };

@@ -1,23 +1,17 @@
-/* Надёжное сохранение и вход: настоящий сервер, временная база, синтетические аккаунты.
-   node tools/check-sync.mjs            — серверная часть
-   node tools/check-sync.mjs --ui       — плюс клиентский модуль в настоящем браузере (нужен Playwright)
-   Письма не отправляются, рабочая база и секреты не используются.
-
-   Проверяются ровно те свойства, ради которых всё затевалось: повтор одного действия не создаёт дубль;
-   чужой черновик не попадает в другой аккаунт; отказ посередине входа не оставляет человека без кода и без
-   входа; записи гостя переносятся только по согласию. */
+/* Вход по коду на почту: настоящий сервер, временная база, синтетические письма.
+   node tools/check-sync.mjs — ровно шесть цифр кода, счётчик попыток, «почта привязана» и «это уже мой аккаунт»,
+   перенос записей гостя только по согласию, повреждённая cookie не роняет запрос, POST /api/journal работает. */
 import assert from 'node:assert/strict';
 import { mkdtemp, cp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { pathToFileURL, fileURLToPath } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
-import { createRequire } from 'node:module';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = await mkdtemp(join(tmpdir(), 'lunario-sync-'));
@@ -78,42 +72,7 @@ try {
     VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0, purpose=excluded.purpose`)
     .run(email, createHash('sha256').update(code + email).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString(), purpose);
 
-  // ── Повтор одной операции не создаёт вторую запись ──
-  const me = account(); const myId = (await me.json('/me')).user.id;
-  const op = randomUUID();
-  const first = await me.json('/sync/journal', 'POST', { operationId: op, accountId: myId, text: 'Первая запись дня' });
-  assert.equal(first.ok, true); assert.equal(first.operationId, op); assert.equal(first.accountId, myId);
-  assert.ok(Number.isSafeInteger(first.itemId), 'в квитанции есть номер записи');
-  const again = await me.json('/sync/journal', 'POST', { operationId: op, accountId: myId, text: 'Первая запись дня' });
-  assert.equal(again.itemId, first.itemId, 'повтор вернул ту же квитанцию');
-  assert.equal(db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ?').get(myId).c, 1, 'запись одна, а не две');
-  assert.equal(db.prepare('SELECT COUNT(*) c FROM events WHERE user_id = ? AND type = ?').get(myId, 'journal_add').c, 1, 'и в аналитике действие одно');
-  /* тот же id с другим текстом — это не «сохранить заново», а подмена смысла уже принятого действия */
-  const conflict = await me.raw('/sync/journal', 'POST', { operationId: op, accountId: myId, text: 'Совсем другой текст' });
-  assert.equal(conflict.status, 409); assert.equal((await conflict.json()).error, 'operation_conflict');
-  assert.equal(db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ?').get(myId).c, 1, 'конфликт ничего не переписал');
-  console.log('PASS: повтор операции не создаёт дубль и возвращает ту же квитанцию; тот же id с другим текстом — конфликт.');
-
-  // ── Чужой аккаунт и негодные данные ──
-  const other = account(); const otherId = (await other.json('/me')).user.id;
-  assert.equal((await me.raw('/sync/journal', 'POST', { operationId: randomUUID(), accountId: otherId, text: 'Чужая запись' })).status, 409, 'запись в чужой аккаунт отклонена');
-  assert.equal(db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ?').get(otherId).c, 0);
-  for (const [body, status, error] of [
-    [{ operationId: 'не-uuid', text: 'Нормальный текст' }, 422, 'bad_operation_id'],
-    [{ operationId: randomUUID(), text: 'ок' }, 422, 'short'],
-    [{ operationId: randomUUID(), text: 'x'.repeat(2500) }, 413, 'too_long'],
-    [{ operationId: randomUUID(), text: 'Нормальный текст', kind: 'чужой' }, 422, 'bad_kind'],
-  ]) { const r = await me.raw('/sync/journal', 'POST', body); assert.equal(r.status, status, error); assert.equal((await r.json()).error, error); }
-  assert.equal((await fetch(base + '/api/sync/journal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operationId: randomUUID(), text: 'Без сессии' }) })).status, 401, 'без сессии писать нельзя');
-  console.log('PASS: запись в чужой аккаунт, кривой номер операции, пустой и слишком длинный текст отклоняются по имени причины.');
-
-  // ── Кто я сейчас: гостя не заводим ──
-  const before = db.prepare('SELECT COUNT(*) c FROM users').get().c;
-  assert.equal((await fetch(base + '/api/auth/session', { headers: { 'X-Forwarded-For': '198.51.100.240' } })).status, 401, 'без сессии — 401');
-  assert.equal(db.prepare('SELECT COUNT(*) c FROM users').get().c, before, 'и нового человека при этом не появилось');
-  const who = await me.json('/auth/session');
-  assert.equal(who.accountId, myId); assert.equal(who.signedIn, false);
-  console.log('PASS: /auth/session читает сессию, не создаёт гостя и отвечает 401, когда сессии нет.');
+  const me = account(); await me.json('/me');
 
   // ── Код входа: ровно шесть цифр ──
   const strict = account(); await strict.json('/me');
@@ -174,7 +133,7 @@ try {
 
   // ── Повреждённая cookie не роняет запрос ──
   assert.equal((await fetch(base + '/api/health', { headers: { Cookie: 'lunario_app=%E0%A4%A; other=1' } })).status, 200, 'битая cookie не даёт 500');
-  assert.equal((await fetch(base + '/api/auth/session', { headers: { Cookie: 'lunario_app=%', 'X-Forwarded-For': '198.51.100.241' } })).status, 401, 'для личного — честный 401, а не падение');
+  assert.equal((await fetch(base + '/api/day', { headers: { Cookie: 'lunario_app=%', 'X-Forwarded-For': '198.51.100.241' } })).status, 401, 'для личного — честный 401, а не падение');
   console.log('PASS: повреждённая cookie не роняет запрос: health отвечает, личное отдаёт 401.');
 
   // ── Прежний способ записи продолжает работать ──
@@ -182,73 +141,9 @@ try {
   assert.ok((await oldWay.json('/journal', 'POST', { text: 'Запись прежним способом' })).item.id, 'старый POST /api/journal отвечает как раньше');
   console.log('PASS: прежний POST /api/journal не изменился — старый клиент продолжает работать.');
 
-  // ── Классификация ошибок базы ──
-  const { publicError, AppError } = await import(pathToFileURL(join(fixture, 'backend/sync.mjs')).href);
-  assert.equal(publicError({ errcode: 5 }).status, 503); assert.equal(publicError({ errcode: 5 }).retryable, true, 'занятая база — временно, стоит повторить');
-  assert.equal(publicError({ errcode: 13 }).status, 503); assert.equal(publicError({ errcode: 13 }).retryable, false, 'нет места — повтор не поможет');
-  assert.equal(publicError(new Error('boom')).code, 'internal_error', 'внутренняя ошибка наружу без подробностей');
-  assert.equal(publicError(new AppError('short', 422)).code, 'short', 'понятные ошибки проходят как есть');
-  console.log('PASS: занятая база — 503 с предложением повторить, нехватка места — 503 без повтора, остальное — 500 без подробностей.');
-
-  // ── Клиентский модуль в настоящем браузере ──
-  if (process.argv.includes('--ui')) {
-    const { chromium } = createRequire(import.meta.url)('playwright');
-    const browser = await chromium.launch({ headless: true, ...(process.env.LUNARIO_CHROME_PATH ? { executablePath: process.env.LUNARIO_CHROME_PATH } : {}) });
-    try {
-      const client = account();
-      const clientId = (await client.json('/me')).user.id;
-      const [name, value] = client.cookie.split('=');
-      const ctx = await browser.newContext({ serviceWorkers: 'block' });
-      await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, secure: false, sameSite: 'Lax' }]);
-      const page = await ctx.newPage();
-      const errors = []; page.on('pageerror', (e) => errors.push(e.message));
-      await page.goto(base + '/');
-      /* грузим так же, как будет грузить приложение: внешним файлом с сервера — строгий CSP инлайн не пустит */
-      await page.addScriptTag({ url: '/app/sync.js' });
-      await page.evaluate(() => { window.__notes = []; LUN_SYNC.onNotice((m) => window.__notes.push(m)); });
-
-      const saved = await page.evaluate((id) => LUN_SYNC.saveJournal('Запись из браузера', id), clientId);
-      assert.equal(saved.state, 'synced', 'запись ушла в аккаунт');
-      assert.deepEqual(await page.evaluate(() => window.__notes), ['Черновик сохранён на устройстве.', 'Запись сохранена в аккаунте.'],
-        'сначала «сохранён на устройстве», и только после ответа — «сохранена в аккаунте»');
-      assert.equal(db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ?').get(clientId).c, 1);
-
-      /* в хранилище лежит шифротекст, а не читаемый текст */
-      const stored = await page.evaluate(() => new Promise((resolve) => {
-        const req = indexedDB.open('lunario-sync', 1);
-        req.onsuccess = () => { const all = req.result.transaction('ops', 'readonly').objectStore('ops').getAll();
-          all.onsuccess = () => resolve(all.result.map((r) => ({ hasText: 'text' in r, owner: r.owner, bytes: r.cipher.byteLength }))); };
-      }));
-      assert.ok(stored.length && !stored[0].hasText, 'открытого текста в хранилище нет');
-      assert.equal(stored[0].owner, clientId);
-
-      /* очередь переживает перезагрузку страницы: запись уже отправлена, но остаётся отмеченной и не шлётся заново */
-      await page.reload();
-      await page.addScriptTag({ url: '/app/sync.js' });
-      assert.equal(await page.evaluate((id) => LUN_SYNC.pending(id), clientId), 0, 'отправленное не висит в очереди после перезагрузки');
-      assert.equal(db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ?').get(clientId).c, 1, 'и не отправляется повторно');
-
-      /* сменился человек — чужой черновик не уходит */
-      await page.evaluate(() => { window.__notes = []; LUN_SYNC.onNotice((m) => window.__notes.push(m)); });
-      const alien = await page.evaluate((id) => LUN_SYNC.saveJournal('Черновик другого человека', id + 1000), clientId);
-      assert.equal(alien.state, 'conflict', 'операция чужого владельца не отправлена');
-      assert.equal(db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ?').get(clientId).c, 1, 'и ничего не записалось');
-      assert.ok((await page.evaluate(() => window.__notes)).some((m) => m.includes('на устройстве')), 'а текст при этом сохранён на устройстве');
-
-      /* HTTP 200 с HTML вместо JSON — это ошибка, а не успех */
-      await page.route('**/api/sync/journal', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<html>портал Wi-Fi</html>' }));
-      await page.evaluate(() => { window.__notes = []; LUN_SYNC.onNotice((m) => window.__notes.push(m)); });
-      const html = await page.evaluate((id) => LUN_SYNC.saveJournal('Ответ-заглушка', id), clientId);
-      assert.notEqual(html.state, 'synced', 'страница-заглушка не считается сохранением');
-      assert.ok((await page.evaluate(() => window.__notes)).some((m) => m.includes('на устройстве')), 'черновик остаётся на устройстве');
-      assert.deepEqual(errors, [], 'на странице нет ошибок');
-      await ctx.close();
-      console.log('PASS: браузер — черновик ложится на устройство до отправки, в хранилище шифротекст, переживает перезагрузку, чужое и заглушку не отправляет.');
-    } finally { await browser.close(); }
-  } else console.log('(клиентская часть пропущена — запустите с --ui и установленным Playwright)');
 
   db.close();
-  console.log('\nВсе проверки надёжного сохранения и входа пройдены.');
+  console.log('\nВсе проверки входа пройдены.');
 } finally {
   await stop();
   await rm(fixture, { recursive: true, force: true });

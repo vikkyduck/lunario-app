@@ -4,6 +4,16 @@
    и event = событие — ровно как раньше вызывался бы атрибут; вернул false — preventDefault, как «return false».
    Порядок как при всплытии: сначала сам элемент, потом родители. toggle не всплывает — ловим его на захвате. */
 (function () {
+  /* Имя вида «функция-a0-a1-this-value» вызывает window.функция(el.dataset.a0, el.dataset.a1, el, el.value) сама —
+     без строки в реестре. Другие хвосты (openWidget-tone, go-home) — по-прежнему из реестра. */
+  const ARGS = { this: (el) => el, value: (el) => el.value, event: (el, ev) => ev };
+  const autoCache = {};
+  function auto(name) {
+    if (name in autoCache) return autoCache[name];
+    const parts = name.split('-'), fnName = parts[0], fn = typeof window[fnName] === 'function' ? window[fnName] : null;
+    const ok = fn && parts.slice(1).every((a) => ARGS[a] || /^a\d$/.test(a));
+    return (autoCache[name] = ok ? function (event) { return fn.apply(this, parts.slice(1).map((a) => ARGS[a] ? ARGS[a](this, event) : this.dataset[a])); } : null);
+  }
   function run(event) {
     const H = window.LUN_HANDLERS || {};
     /* toggle не всплывает: у атрибута ontoggle срабатывал только свой <details>. Идем по предкам лишь для
@@ -12,7 +22,7 @@
       const spec = el.getAttribute('data-on'); if (!spec) continue;
       for (const pair of spec.split(' ')) {
         const i = pair.indexOf(':'); if (pair.slice(0, i) !== event.type) continue;
-        const fn = H[pair.slice(i + 1)];
+        const name = pair.slice(i + 1), fn = H[name] || auto(name);
         if (!fn) { console.warn('Нет обработчика', pair, el); continue; }
         if (fn.call(el, event) === false) event.preventDefault();
       }

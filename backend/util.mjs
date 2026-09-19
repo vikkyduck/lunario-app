@@ -12,3 +12,11 @@ export const plural = (n, one, few, many) => { const m = n % 100; if (m >= 11 &&
 export const LINK_RE = /https?:\/\/[^\s«»"()]+|[\w.+-]+@lunario\.online|lunario\.online(?:\/[\w./-]*)?/g;
 export const trimLink = (m) => m.replace(/[.,;:!?]+$/, '');
 export const linkTarget = (t) => t.includes('@') ? 'mailto:' + t : t.startsWith('http') ? t : 'https://' + t;
+
+/* Угол в градусах в [0, 360) — астрономия (astro, lunar, sky) */
+export const norm360 = (x) => ((x % 360) + 360) % 360;
+/* Строка от человека: однострочная (управляющие символы — в пробел) и многострочная (абзацы остаются) — с ограничением длины */
+export const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().slice(0, max);
+export const cleanText = (s, max) => String(s ?? '').replace(/\r\n?/g, '\n').replace(/[\x00-\x09\x0b-\x1f]/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
+/* «3 дня»: число и слово вместе */
+export const countWord = (n, one, few, many) => `${n} ${plural(Math.abs(n), one, few, many)}`;

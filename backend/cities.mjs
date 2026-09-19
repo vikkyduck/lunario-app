@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const db = new DatabaseSync(process.env.CITIES_DB || join(__dirname, 'cities.db'), { readOnly: true });
 
-const norm = (s) => String(s).toLowerCase().replace(/е/g, 'е').replace(/[^0-9a-zа-я\s-]/gi, '').trim();
+const norm = (s) => String(s).toLowerCase().replace(/\u0451/g, '\u0435').replace(/[^0-9a-zа-я\s-]/gi, '').trim();   /* «е с точками» → е, чтобы «Орел» и с точками находились одинаково */
 const HI = '￿';
 const row = (r) => ({ name: r.name, region: r.region, country: r.country, lat: r.lat, lon: r.lon, tz: r.tz, pop: r.pop });
 

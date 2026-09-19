@@ -1,5 +1,4 @@
-const $ = (id) => document.getElementById(id);
-const API = '/app/api', ICON = '/app/assets/brand/icons/';
+const ICON = '/app/assets/brand/icons/';
 const ROLE_META = {
   admin:     ['Админ', 'person', 'сводка, система, доступы'],
   marketing: ['Маркетолог', 'users', 'источники и аудитория'],
@@ -9,18 +8,9 @@ const ROLE_META = {
   user:      ['Пользователь', 'moon', 'открыть приложение'],
 };
 const S = { me: null, role: null, page: null, period: '30d', filters: {}, data: null };
-const api = async (path, opts) => {
-  const r = await fetch(API + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(j.error || 'err'), { code: j.error, status: r.status });
-  return j;
-};
-const esc = (s) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const fmt = (n) => (n === null || n === undefined ? '—' : typeof n === 'number' ? n.toLocaleString('ru-RU') : String(n));
-const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-const daysWord = (n) => { const a = n % 10, b = n % 100; return n + ' ' + (b >= 11 && b <= 14 ? 'дней' : a === 1 ? 'день' : a >= 2 && a <= 4 ? 'дня' : 'дней'); };
+const daysWord = (n) => n + ' ' + plural(n, 'день', 'дня', 'дней');
 const periodKeys = () => (S.me && S.me.periods && S.me.periods.length ? S.me.periods : [7, 30, 90]).map((d) => d + 'd');
-function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2800); }
 function show(v) { document.querySelectorAll('.view').forEach((s) => s.classList.toggle('on', s.id === 'v-' + v)); window.scrollTo(0, 0); }
 function openModal(html) { $('modal-body').innerHTML = html; $('modal').classList.add('on'); }
 function closeModal() { $('modal').classList.remove('on'); }
@@ -118,7 +108,7 @@ async function openPage(p) {
     renderReport(r);
   } catch (e) { box.innerHTML += `<p class="msg err">Не получилось загрузить: ${esc(e.code || e.message)}</p>`; }
 }
-const periodLabel = (P) => `${fmtDay(P.from)} — ${fmtDay(P.to)} · сравнение с ${fmtDay(P.prevFrom)} — ${fmtDay(P.prevTo)}`;
+const periodLabel = (P) => `${fmtDayShort(P.from)} — ${fmtDayShort(P.to)} · сравнение с ${fmtDayShort(P.prevFrom)} — ${fmtDayShort(P.prevTo)}`;
 function toolbar(r, withSave = true) {
   const per = periodKeys().map((k) => `<button data-on="click:setPeriod-a0" data-a0="${k}" data-p="${k}" class="${S.period === k ? 'on' : ''}">${daysWord(parseInt(k))}</button>`).join('');
   const filters = (r.filters || []).map((f) => `<label>${esc(f.label)}<select data-on="change:setFilter-a0-value" data-a0="${f.key}"><option value="">Все</option>${f.options.map(([v, t]) => `<option value="${esc(v)}" ${f.value === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`).join('');
@@ -147,7 +137,6 @@ function renderReport(r) {
   if (r.key === 'economy') html += economyExtras(r);
   if (r.charts && r.charts.length) html += `<div class="charts">${r.charts.map(vizCard).join('')}</div>`;
   if (r.key === 'users') html += usersTable(r);
-  if (r.key === 'content') html += contentFiles(r);
   for (const t of r.tables || []) html += tableCard(t, r.key);
   html += `<div id="extra"></div>`;
   if (r.how) html += `<div class="how"><b>Как считается.</b> ${esc(r.how)}</div>`;
@@ -155,7 +144,6 @@ function renderReport(r) {
   const ex = EXTRAS[r.key]; if (ex) ex(r).catch((e) => { $('extra').innerHTML = `<p class="msg err">Не загрузилось: ${esc(e.code || e.message)}</p>`; });
 }
 const fmtTs = (t) => (t ? new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
-const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 const field = (label, inner) => `<label style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--faint)">${label}${inner}</label>`;
 const utmLink = (c) => { const u = new URL('https://lunario.online/app/'); for (const k of ['source', 'medium', 'campaign', 'content', 'term']) if (c[k]) u.searchParams.set('utm_' + k, c[k]); return u.toString(); };
 const copy = (t) => navigator.clipboard.writeText(t).then(() => toast('Ссылка скопирована')).catch(() => prompt('Скопируйте ссылку', t));
@@ -242,21 +230,22 @@ async function campaignSave(id) {
 async function campaignDel(id) { if (!confirm('Удалить кампанию? Люди, пришедшие по ее UTM, останутся в базе.')) return; await api('/cabinet/campaigns?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.campaigns(); }
 function materialForm(id) {
   const r = S.materials, m = (r.items || []).find((x) => x.id === id) || {};
+  const img = m.kind === 'image';
   openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${id ? 'Изменить' : 'Новый материал'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
-    <div style="display:grid;gap:10px;margin-top:12px"><div class="row">${field('Тип', `<select data-on="change:materialKind" id="mt-kind">${Object.entries(r.kinds).map(([k, v]) => `<option value="${k}" ${m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}<span id="mt-section-wrap" ${m.kind === 'image' ? 'hidden' : ''}>${field('Раздел', `<select id="mt-section">${['Мой день', 'Обо мне', 'Свериться', 'Что вокруг', 'История'].map((x) => `<option ${m.section === x ? 'selected' : ''}>${x}</option>`).join('')}</select>`)}</span><span id="mt-feature-wrap" ${m.kind === 'image' ? '' : 'hidden'}>${field('Функция', `<select id="mt-feature">${(r.groups || [['', r.features || []]]).map(([g, items]) => `<optgroup label="${esc(g)}">${items.map(([k, v]) => `<option value="${k}" ${m.section === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</optgroup>`).join('')}</select>`)}</span></div>
-    ${field('Заголовок (для заметок)', `<input id="mt-title" value="${esc(m.title || '')}" maxlength="120">`)}
-    ${field('Текст', `<textarea id="mt-text" style="min-height:160px;font-family:inherit">${esc(m.text || '')}</textarea>`)}
-    ${field('Картинка', `<div class="row" style="gap:8px"><input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/… или загрузите файл" style="flex:1"><input type="file" id="mt-file" accept="image/png,image/jpeg,image/webp,image/gif" style="max-width:220px;padding:6px"><button data-on="click:materialUpload" class="btn sm" type="button">Загрузить</button></div><img id="mt-preview" src="${esc(m.image || '')}" alt="" style="margin-top:8px;max-height:140px;border-radius:10px;${m.image ? '' : 'display:none'}">`)}
-    <div class="row">${field('Дата показа (пусто — каждый день)', `<input id="mt-day" type="date" value="${m.show_day || ''}">`)}${field('Статус', `<select id="mt-status">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${(m.status || 'draft') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}</div>
-    <p class="hint">«Опубликован» — видно всем: вопрос и аффирмация подменяют текст дня, картинка появляется наверху выбранной функции (для «Сегодня» — рядом с настроем дня). Дата пустая — каждый день.</p>
-    <div class="row"><button data-on="click:materialSave-a0" data-a0="${id}" class="btn gold fixed">Сохранить</button>${id ? `<button data-on="click:materialDel-a0" data-a0="${id}" class="btn sm warn fixed">Удалить</button><button data-on="click:materialHistory-a0" data-a0="${id}" class="btn sm" type="button">История</button>` : ''}<span class="hint" id="mt-msg"></span></div><div id="mt-hist"></div></div>`);
+    <div class="form-grid">
+      <div class="row">${field('Тип', `<select data-on="change:materialKind" id="mt-kind">${Object.entries(r.kinds).map(([k, v]) => `<option value="${k}" ${m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}<span id="mt-feature-wrap" ${img ? '' : 'hidden'}>${field('Функция', `<select id="mt-feature">${(r.groups || []).map(([g, items]) => `<optgroup label="${esc(g)}">${items.map(([k, v]) => `<option value="${k}" ${m.section === k ? 'selected' : ''}>${esc(v)}</option>`).join('')}</optgroup>`).join('')}</select>`)}</span></div>
+      <span id="mt-text-wrap" ${img ? 'hidden' : ''}>${field('Текст', `<textarea id="mt-text" class="tall">${esc(m.text || '')}</textarea>`)}</span>
+      ${field('Картинка', `<div class="row"><input id="mt-image" value="${esc(m.image || '')}" placeholder="/app/uploads/… или загрузите файл" class="grow"><input type="file" id="mt-file" accept="image/png,image/jpeg,image/webp,image/gif" class="file-input"><button data-on="click:materialUpload" class="btn sm" type="button">Загрузить</button></div><img id="mt-preview" src="${esc(m.image || '')}" alt="" class="preview" ${m.image ? '' : 'hidden'}>`)}
+      <div class="row">${field('Дата показа (пусто — каждый день)', `<input id="mt-day" type="date" value="${m.show_day || ''}">`)}${field('Статус', `<select id="mt-status">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${(m.status || 'draft') === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`)}</div>
+      <p class="hint">«Опубликован» — видно всем: вопрос и аффирмация подменяют текст дня, картинка появляется наверху выбранной функции (для «Настрой дня» — рядом с фразой на «Сегодня»). Дата пустая — каждый день.</p>
+      <div class="row"><button data-on="click:materialSave-a0" data-a0="${id}" class="btn gold fixed">Сохранить</button>${id ? `<button data-on="click:materialDel-a0" data-a0="${id}" class="btn sm warn fixed">Удалить</button><button data-on="click:materialHistory-a0" data-a0="${id}" class="btn sm" type="button">История</button>` : ''}<span class="hint" id="mt-msg"></span></div><div id="mt-hist"></div></div>`);
 }
 async function materialSave(id) {
-  const kind = $('mt-kind').value, section = kind === 'image' ? $('mt-feature').value : $('mt-section').value;
-  const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ id, kind, section, title: $('mt-title').value, text: $('mt-text').value, image: $('mt-image').value, show_day: $('mt-day').value, status: $('mt-status').value }) });
-  if (!r.ok) { $('mt-msg').textContent = r.error === 'no_image' ? 'Загрузите картинку.' : r.error === 'no_feature' ? 'Выберите функцию.' : 'Нужен текст или заголовок.'; return; } toast('Сохранено'); closeModal(); EXTRAS.materials();
+  const kind = $('mt-kind').value;
+  const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ id, kind, section: kind === 'image' ? $('mt-feature').value : '', text: $('mt-text').value, image: $('mt-image').value, show_day: $('mt-day').value, status: $('mt-status').value }) });
+  if (!r.ok) { $('mt-msg').textContent = r.error === 'no_image' ? 'Загрузите картинку.' : r.error === 'no_feature' ? 'Выберите функцию.' : 'Нужен текст.'; return; } toast('Сохранено'); closeModal(); EXTRAS.materials();
 }
-function materialKind() { const img = $('mt-kind').value === 'image'; $('mt-section-wrap').hidden = img; $('mt-feature-wrap').hidden = !img; }
+function materialKind() { const img = $('mt-kind').value === 'image'; $('mt-text-wrap').hidden = img; $('mt-feature-wrap').hidden = !img; }
 /* картинка к материалу — прямо из формы: файл уходит в «Картинки и файлы», ссылка подставляется сама */
 function materialUpload() {
   const f = $('mt-file').files[0], msg = $('mt-msg'); if (!f) { msg.textContent = 'Выберите файл.'; return; }
@@ -265,7 +254,7 @@ function materialUpload() {
   const rd = new FileReader(); rd.onload = async () => {
     try { const r = await api('/cabinet/media', { method: 'POST', body: JSON.stringify({ name: f.name, type: f.type, data: rd.result }) });
       if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Такой тип не принимаем.' : 'Не загрузилось.'; return; }
-      $('mt-image').value = r.url; const pv = $('mt-preview'); pv.src = r.url; pv.style.display = ''; msg.textContent = 'Картинка загружена'; }
+      $('mt-image').value = r.url; const pv = $('mt-preview'); pv.src = r.url; pv.hidden = false; msg.textContent = 'Картинка загружена'; }
     catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); }
   }; rd.readAsDataURL(f);
 }
@@ -349,7 +338,7 @@ function lineViz(d) {
   const path = pts.map((p, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ');
   const area = path + ` L${X(n - 1).toFixed(1)},${(H - B).toFixed(1)} L${L},${(H - B).toFixed(1)} Z`;
   const grid = [0, .5, 1].map((f) => `<line x1="${L}" x2="${W - 8}" y1="${Y(max * f).toFixed(1)}" y2="${Y(max * f).toFixed(1)}" stroke="rgba(255,255,255,.1)"/><text x="${L - 6}" y="${(Y(max * f) + 4).toFixed(1)}" text-anchor="end">${fmt(Math.round(max * f))}</text>`).join('');
-  const lab = [0, Math.floor((n - 1) / 2), n - 1].map((i) => `<text x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${esc(/^\d{4}-\d{2}-\d{2}$/.test(pts[i].x) ? fmtDay(pts[i].x) : pts[i].x)}</text>`).join('');
+  const lab = [0, Math.floor((n - 1) / 2), n - 1].map((i) => `<text x="${X(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${esc(/^\d{4}-\d{2}-\d{2}$/.test(pts[i].x) ? fmtDayShort(pts[i].x) : pts[i].x)}</text>`).join('');
   const dots = pts.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="${n > 40 ? 2 : 3.5}" fill="#f3dca0"><title>${esc(p.x)}: ${fmt(p.y)}</title></circle>`).join('');
   const mk = marks.map((m) => { const i = pts.findIndex((p) => p.x === m.x); if (i < 0) return ''; return `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${T}" y2="${H - B}" stroke="#a9b8ff" stroke-width="1.5" stroke-dasharray="4 3"><title>${esc(m.label)} · ${esc(m.x)}</title></line><text x="${(X(i) + 4).toFixed(1)}" y="${T + 12}" style="fill:#a9b8ff">${esc(String(m.label).slice(0, 14))}</text>`; }).join('');
   return `<svg viewBox="0 0 ${W} ${H}">${grid}<path d="${area}" fill="rgba(224,192,112,.12)"/><path d="${path}" fill="none" stroke="#e0c070" stroke-width="2.2" stroke-linejoin="round"/>${mk}${dots}${lab}</svg>`;
@@ -469,12 +458,7 @@ async function costAdd(month) {
 }
 async function costDel(id) { if (!confirm('Убрать строку расходов?')) return; await api('/cabinet/costs?id=' + id, { method: 'DELETE' }); toast('Убрано'); openPage('economy'); }
 
-/* ── контент: файлы и правка ── */
-function contentFiles(r) {
-  const files = r.files || [];
-  return `<div class="notice">Тексты приложения — обычные файлы: одна строка — одна запись, поля через «|». Строки с решеткой # — заметки, приложение их не читает. Сохранение публикует сразу: статусов «черновик / на проверке / запланирован» пока нет.</div>
-    <div class="files">${files.map((f) => `<button data-on="click:editFile-a0" data-a0="${esc(f.name)}" class="file"><span>${esc(f.name)}<br><small>${f.lines} записей · изменен ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
-}
+/* ── контент: файл целиком (вкладка «Тексты») ── */
 async function editFile(name) {
   openModal('<p class="empty">Открываем…</p>');
   try {
@@ -482,32 +466,6 @@ async function editFile(name) {
     openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${esc(name)}</h2></div><div class="row"><button data-on="click:saveFile-a0" data-a0="${esc(name)}" class="btn gold fixed">Сохранить и опубликовать</button><button data-on="click:closeModal" class="btn sm fixed">Закрыть</button></div></div>
       <textarea id="f-text" style="margin-top:12px" spellcheck="true">${esc(f.text)}</textarea><p class="note" id="f-msg">Формат описан в «ПРОЧТИ-МЕНЯ.txt». После сохранения приложение перечитает файл само.</p>`);
   } catch (e) { openModal(`<p class="msg err">Не получилось открыть: ${esc(e.code || e.message)}</p>`); }
-}
-/* картинки функций: у карт, рун, лунных дней и личного года — заменить файл на месте */
-async function contentImages() {
-  const host = $('extra'); if (!host) return;
-  let box = $('content-images'); if (!box) { box = document.createElement('div'); box.id = 'content-images'; host.appendChild(box); }
-  box.innerHTML = '<p class="empty">Загружаем картинки…</p>';
-  try {
-    const r = await api('/cabinet/content-images');
-    box.innerHTML = r.sets.map((s) => `<div class="viz" style="margin-top:14px"><h3>${esc(s.title)} · ${s.items.length}</h3>
-      <div class="files" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:10px">${s.items.map((it) => `<div class="file" style="flex-direction:column;align-items:stretch;cursor:default;gap:6px">
-        ${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px">` : '<div style="aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:var(--muted);font-size:12px">нет картинки</div>'}
-        <small>${esc(it.name)}</small>
-        <label class="btn sm" style="text-align:center;cursor:pointer">Заменить<input data-on="change:contentImagePick-a0-a1-this" data-a0="${esc(s.kind)}" data-a1="${esc(it.key)}" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
-      </div>`).join('')}</div></div>`).join('') + '<p class="note" style="margin-top:8px">Новая картинка появляется у людей сразу: адрес меняется вместе с файлом.</p>';
-  } catch (e) { box.innerHTML = `<p class="msg err">Картинки не загрузились: ${esc(e.code || e.message)}</p>`; }
-}
-function contentImagePick(kind, key, input) {
-  const f = input.files[0]; if (!f) return;
-  if (f.size > 6 * 1024 * 1024) { toast('До 6 МБ'); return; }
-  toast('Загружаем…');
-  const rd = new FileReader(); rd.onload = async () => {
-    try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind, key, type: f.type, data: rd.result }) });
-      if (!r.ok) { toast(r.error === 'bad_type' ? 'Только JPG, PNG или WebP' : 'Не загрузилось'); return; }
-      toast(r.note || 'Картинка заменена'); setTimeout(contentImages, 1500); }   /* тексты перечитываются через секунду — потом обновим сетку */
-    catch (e) { toast('Не загрузилось: ' + (e.code || e.message)); }
-  }; rd.readAsDataURL(f);
 }
 async function saveFile(name) {
   const msg = $('f-msg');

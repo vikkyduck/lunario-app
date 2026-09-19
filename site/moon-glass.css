@@ -337,9 +337,6 @@ body.inner #v-account .danger-zone{padding-top:0;border-top:0}
 }
 
 /* каталог инструментов: подписи разделов золотой капителью, карточки как панели */
-body.inner .wpane .tools-group h3{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 8px}
-body.inner .tool-card{background:var(--moon-panel) padding-box,var(--moon-edge) border-box;background-color:var(--glass-base);border:1px solid transparent;box-shadow:var(--moon-shadow);border-radius:var(--r-l);padding:16px 18px}
-body.inner .tool-card.on{border-color:color-mix(in srgb,var(--gold) 55%,transparent)}
 body.inner .wpane .tool-card p{font-size:15px;line-height:1.5;color:var(--muted);margin:4px 0 0}
 body.inner .wpane .tool-card b{font-size:17px}
 

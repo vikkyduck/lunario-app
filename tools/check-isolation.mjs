@@ -202,9 +202,6 @@ try {
   assert.equal(db.prepare('SELECT user_id FROM push_subs WHERE endpoint = ?').get(bobEndpoint).user_id, bobId, 'ячейка осталась у Б');
   assert.equal(db.prepare('SELECT COUNT(*) c FROM push_subs WHERE user_id = ?').get(aliceId).c, 0, 'и А её себе не записал');
 
-  /* запись в чужой аккаунт напрямую */
-  const { randomUUID } = await import('node:crypto');
-  assert.equal((await asAlice('/sync/journal', 'POST', { operationId: randomUUID(), accountId: bobId, text: 'Пишу в чужой аккаунт' })).status, 409, 'запись в чужой аккаунт отклонена');
 
   /* ── ни одной метки Б в ответах А ── */
   const leaked = [];
