@@ -116,7 +116,7 @@ try {
 
   /* ── снимок всего личного, что есть у Б: после атаки должен совпасть до байта ── */
   const TABLES = ['users', 'journal', 'wishes', 'habits', 'habit_marks', 'askesis', 'askesis_days', 'moods', 'mood_marks',
-    'entries', 'daily_sets', 'tickets', 'messages', 'reminders', 'push_subs', 'push_queue', 'shelves', 'sessions', 'usage'];
+    'entries', 'daily_sets', 'tickets', 'messages', 'reminders', 'push_subs', 'push_queue', 'knowledge', 'compat_checks', 'sessions', 'usage'];
   function snapshot(id) {
     const parts = [];
     for (const t of TABLES) {
@@ -131,9 +131,6 @@ try {
     return createHash('sha256').update(parts.join('\n')).digest('hex');
   }
   function snapshotRaw(id){ const parts=[]; for (const t of TABLES) { const cols = db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name); const where = cols.includes('user_id') ? 'WHERE user_id = ?' : t === 'users' ? 'WHERE id = ?' : t === 'habit_marks' ? 'WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?)' : t === 'askesis_days' ? 'WHERE askesis_id IN (SELECT id FROM askesis WHERE user_id = ?)' : t === 'messages' ? 'WHERE ticket_id IN (SELECT id FROM tickets WHERE user_id = ?)' : null; parts.push(t + ':' + JSON.stringify(db.prepare(`SELECT * FROM ${t} ${where}`).all(id))); } return parts.join('\n'); }
-  /* полки Б досчитываются после ответа сервера (createShelves) — ждём, пока снимок перестанет меняться, иначе гонка со снимком */
-  { await new Promise((r) => setTimeout(r, 900));   /* scheduleShelves ждёт 500 мс тишины после последней записи */
-    let last = snapshot(bobId), stable = 0; for (let i = 0; i < 40 && stable < 3; i++) { await new Promise((r) => setTimeout(r, 150)); const cur = snapshot(bobId); stable = cur === last ? stable + 1 : 0; last = cur; } }
   const before = snapshot(bobId); const beforeRaw = process.env.ISO_DEBUG ? snapshotRaw(bobId) : '';
 
   /* ── А пробует дотянуться до всего, что есть у Б ── */
@@ -188,7 +185,7 @@ try {
 
   /* лента, досье, выгрузка, профиль */
   for (const path of ['/timeline', `/timeline?day=${today}`, '/timeline?offset=0', '/me', '/week', '/mood/report',
-    '/data/export', '/data/export.pdf', '/shelves', '/shelves/context', '/day-status', '/invite', '/photo',
+    '/data/export', '/data/export.pdf', '/knowledge?doc=recent', '/knowledge/text?doc=profile', '/day-status', '/invite', '/photo',
     '/reminders', '/reminders/askesis-plan', '/reminders/preview?feature=morning', '/wishes', '/habits', '/askesis', '/day']) await asAlice(path);
 
   /* уведомления: чужое устройство и чужая очередь */
@@ -217,7 +214,7 @@ try {
   /* ── без сессии личное не отдаётся ── */
   const open = [];
   for (const path of ['/timeline', '/entries', '/wishes', '/habits', '/askesis', '/journal', '/data/export',
-    '/data/export.pdf', '/shelves', '/shelves/context', '/photo', `/wishes/photo?id=${bobWish}`, '/support/tickets',
+    '/data/export.pdf', '/knowledge?doc=recent', '/knowledge/text?doc=profile', '/photo', `/wishes/photo?id=${bobWish}`, '/support/tickets',
     `/support/ticket?id=${bobTicket}`, '/reminders', '/push', '/invite', '/week', '/mood/report', '/day-status', '/natal', '/day']) {
     const r = await fetch(base + '/api' + path, { headers: { 'X-Forwarded-For': '203.0.113.251' } });
     if (r.status !== 401) open.push(`${path} → ${r.status}`);

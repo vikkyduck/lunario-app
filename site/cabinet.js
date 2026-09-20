@@ -667,12 +667,27 @@ function ctMemoryRepaint() {
       <div class="tbl mt-8"><div class="scroll"><table><thead><tr><th class="w-36">Когда срабатывает</th><th>Заголовок</th><th>Текст</th></tr></thead><tbody>${ruleRows(P, EVENING_RULES, [1, 2])}</tbody></table></div></div>
       <div class="row mt-10"><button data-on="click:ctMemorySave-a0" data-a0="напоминания.txt" class="btn gold fixed" type="button">Сохранить вечер</button><span class="hint" id="ct-memory-msg-напоминания.txt"></span></div></div>
     <div class="viz mt-14"><h3>Проверить на себе</h3><p class="hint mt-4">Что сработало бы у вас сегодня — по вашим записям, картам и вопросам в приложении</p>
-      <div class="row mt-8"><button data-on="click:ctMemoryPreview" class="btn sm" type="button">Показать</button></div><div id="ct-memory-preview" class="mt-10"></div></div>`;
+      <div class="row mt-8"><button data-on="click:ctMemoryPreview" class="btn sm" type="button">Показать</button></div><div id="ct-memory-preview" class="mt-10"></div></div>
+    <div class="viz mt-14"><h3>База знаний — на себе</h3><p class="hint mt-4">Папка документов о человеке, собранная из журнала: «Обо мне» с натальной картой дословно, «Тесты и совместимости», «Последние записи» (120 дней дословно), отчеты по месяцам, «Портрет». Читают ее ИИ и выгрузка, а не экраны; обновляется раз в сутки. Здесь — ваши собственные документы. Значения планет в знаках и аспектов — таблицы «планеты-в-знаках.txt» и «аспекты.txt» во вкладке «Тексты»</p>
+      <div class="row mt-8"><button data-on="click:ctKnowledge" class="btn sm" type="button">Показать документы</button></div><div id="ct-knowledge" class="mt-10"></div></div>`;
 }
 function ctMemoryCell(file, i, j, v) { CT.tables[file].rows[i][j] = v; }
 function ctMemoryDel(file, i) { CT.tables[file].rows.splice(i, 1); ctMemoryRepaint(); }
 function ctMemoryAddQ() { CT.tables['вопросы-по-темам.txt'].rows.push(['work', '']); ctMemoryRepaint(); }
 async function ctMemorySave(file) { const msg = document.getElementById('ct-memory-msg-' + file); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file, rows: CT.tables[file].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+async function ctKnowledge() {
+  const box = $('ct-knowledge'); box.innerHTML = '<p class="hint">Смотрим…</p>';
+  try { await api('/knowledge/rebuild', { method: 'POST' }); const r = await api('/cabinet/knowledge-self');
+    box.innerHTML = `<div class="files">${r.docs.map((x) => `<button data-on="click:ctKnowledgeDoc-a0" data-a0="${esc(x.doc)}" class="file" type="button"><span>${esc(x.title)}<br><small>${esc(x.doc)} · ${(x.size / 1024).toFixed(1)} КБ · обновлен ${esc(String(x.updated).slice(0, 16).replace('T', ' '))}</small></span><span class="btn sm">Открыть</span></button>`).join('')}</div>`;
+  } catch (e) { box.innerHTML = `<p class="msg err">Не получилось: ${esc(e.code || e.message)}</p>`; }
+}
+async function ctKnowledgeDoc(doc) {
+  const r = await api('/cabinet/knowledge-self?doc=' + encodeURIComponent(doc));
+  openModal(`<div class="head"><div><span class="eyebrow">база знаний · ${esc(doc)}</span><h2 class="mt-6">${esc((r.data && r.data.title) || doc)}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
+    <p class="hint mt-6">Так документ увидит ИИ — текстом; ниже — те же данные как есть</p>
+    <pre class="hint pre mt-10">${esc(r.text)}</pre>
+    <pre class="mono-box mt-10">${esc(JSON.stringify(r.data, null, 1))}</pre>`);
+}
 async function ctMemoryPreview() {
   const box = $('ct-memory-preview'); box.innerHTML = '<p class="hint">Смотрим…</p>';
   try {

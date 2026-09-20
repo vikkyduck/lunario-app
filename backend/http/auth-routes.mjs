@@ -1,6 +1,6 @@
 /* Вход по коду на почту, перенос гостевых записей, выход, удаление истории и аккаунта.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
-export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, flushShelves, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, scheduleShelves, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate }) {
+export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, knowledgeRebuild, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate }) {
   return async function authRoutes({ p, req, res, url, u, d }) {
     /* ── вход по коду на почту ── */
     if (p === '/api/auth/request' && req.method === 'POST') {
@@ -62,7 +62,7 @@ export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistor
       if (offer.accountId !== u.id) return json(res, 403, { ok: false, error: 'not_your_transfer' });
       const done = transferGuestRecords(db, offer.guestId, offer.accountId);
       if (!done.ok) return json(res, done.error === 'not_found' ? 404 : 409, { ok: false, error: done.error });
-      flushShelves(u.id, d); scheduleShelves(u.id, d, ['about', 'day', 'history']);
+      knowledgeRebuild(u, d);   /* записи переехали — документы базы знаний пересобираются */
       return json(res, 200, { ok: true, moved: done.moved, kept: done.kept, already: !!done.already });
     }
     if (p === '/api/auth/logout' && req.method === 'POST') {

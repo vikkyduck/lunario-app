@@ -4,7 +4,7 @@
    reports.mjs (числа), workspace.mjs (то, что сотрудники вносят сами), cabinet.mjs (роли и расходы),
    backup.mjs (копии) — сам этот файл ничего не вычисляет.
 
-   Зависимости передаются явно, одним объектом, как у createShelves: видно, что именно нужно кабинету,
+   Зависимости передаются явно, одним объектом, как у createKnowledge: видно, что именно нужно кабинету,
    и его можно собрать в проверке, не поднимая весь сервер. Правило доступа одно и то же на каждом
    запросе — скрытая кнопка не защита; состав кабинетов задает админ, по умолчанию берется из кода.
 
@@ -15,7 +15,7 @@ import { basename, extname } from 'node:path';
 export function createCabinetRoutes(deps) {
   const { json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, REPORT_META, OVERVIEW_BLOCKS,
     Reports, userCard, CE, IMAGE_DIRS, Backup, W,
-    staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive, memoryPreview } = deps;
+    staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive, memoryPreview, knowledgeList, knowledgeRead, knowledgeText } = deps;
 
   return async function cabinetRoutes({ p, req, res, url, u, d }) {
     const roles = rolesFor(u.email);
@@ -101,6 +101,8 @@ export function createCabinetRoutes(deps) {
       if (req.method === 'DELETE') { const r = CE.bookRecordRemove(String(url.searchParams.get('file') || ''), url.searchParams.get('index'), u.email); return json(res, r.ok ? 200 : 400, r); }
     }
     /* «Я помню» на себе: что сработало бы у этого сотрудника сегодня — строка дня, «Обо мне», любимый способ, вопрос по теме, вечерний пуш */
+    /* база знаний — только своя: список документов и любой из них текстом и данными; чужие документы кабинет не открывает */
+    if (p === '/api/cabinet/knowledge-self' && req.method === 'GET') { if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' }); const doc = url.searchParams.get('doc'); if (!doc) return json(res, 200, { docs: knowledgeList(u, d) }); const data = knowledgeRead(u, doc, d); return data ? json(res, 200, { doc, data, text: knowledgeText(u, doc, d) }) : json(res, 404, { ok: false, error: 'not_found' }); }
     if (p === '/api/cabinet/memory-preview' && req.method === 'GET') { if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' }); return json(res, 200, memoryPreview(u, d)); }
     if (p === '/api/cabinet/table') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });

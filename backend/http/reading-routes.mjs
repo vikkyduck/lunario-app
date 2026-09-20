@@ -1,6 +1,6 @@
 /* Карта дня, руна дня, вопрос «да/нет» и руны, расклад, натальная карта, нумерология, совместимость.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
-export function createReadingRoutes({ C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track }) {
+export function createReadingRoutes({ compatSave, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track }) {
   return async function readingRoutes({ p, req, res, url, u, d }) {
     /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
     if (p === '/api/natal' && req.method === 'GET') {
@@ -100,11 +100,13 @@ export function createReadingRoutes({ C, cardOfDay, cardPublic, clean, DAILY_WRI
       const rings = [['Эмоции', mk('e', 55, 95)], ['Общение', mk('c', 50, 95)], ['Быт', mk('b', 45, 90)], ['Страсть', mk('p', 55, 95)]];
       track(u, 'compat_calc', '');
       const total = Math.round(rings.reduce((s, r) => s + r[1], 0) / rings.length);
-      return json(res, 200, {
+      const out = {
         total, rings, you: a.name, other: o.name,
         // черта знака в контенте может уже начинаться с «вы …» — не дублируем обращение
         text: `${a.name} и ${o.name}. ${/^вы\s/i.test(a.trait) ? a.trait[0].toUpperCase() + a.trait.slice(1) : 'Вы ' + a.trait}; партнер — ${o.trait}. Это союз, который растет, когда каждый уважает темп другого.`,
-      });
+      };
+      compatSave(u, d, { ...out, otherBirth: other });   /* расчет — в журнал и в документ «Тесты и совместимости» базы знаний */
+      return json(res, 200, out);
     }
     return false;
   };

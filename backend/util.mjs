@@ -1,4 +1,4 @@
-/* Общие мелочи бэкенда — одно место вместо копий в server.mjs, reminders.mjs, shelves.mjs, practices.mjs, reports.mjs,
+/* Общие мелочи бэкенда — одно место вместо копий в server.mjs, reminders.mjs, knowledge.mjs, practices.mjs, reports.mjs,
    workspace.mjs и cabinet.mjs: московский день, координаты по умолчанию, проверка даты, сдвиг дня, склонение. */
 export const MSK = 'Europe/Moscow';
 /* Без координат в анкете считаем по Москве — как и все время в приложении */

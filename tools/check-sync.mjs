@@ -144,6 +144,9 @@ try {
 
   db.close();
   console.log('\nВсе проверки входа пройдены.');
+} catch (e) {
+  console.error(e); const lines = log.split('\n').filter((l) => /ошибка|Error|at /.test(l)); if (lines.length) console.error('--- журнал сервера:\n' + lines.slice(-25).join('\n'));   /* при падении — что сказал сам сервер */
+  process.exitCode = 1;
 } finally {
   await stop();
   await rm(fixture, { recursive: true, force: true });

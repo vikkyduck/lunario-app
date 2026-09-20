@@ -29,7 +29,7 @@ import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSe
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
 import * as W from './workspace.mjs';
 import { natalChart, skyAt, inSign } from './astro.mjs';
-import { createShelves } from './shelves.mjs';
+import { createKnowledge } from './knowledge.mjs';
 import { createMemory } from './memory.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
@@ -495,47 +495,29 @@ function natalFor(u) {
   } catch { chart.lunarBirth = null; }
   return chart;
 }
-const Shelves = createShelves({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, topicOf, ageBand, cardOfDay, dayPack, habitList, askesisList, natal: natalFor, MOOD_RU, nowISO });
+/* лунный день на вечер этой даты — по месту из анкеты; в записи дня, в строке прошлых дней и в базе знаний */
+const lunarOf = (u, d) => { try { const ld = lunarDay(Date.parse(d + 'T18:00:00Z'), u?.lat ?? MOSCOW.lat, u?.lon ?? MOSCOW.lon); return ld ? { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] } : null; } catch { return null; } };
 /* «Я помню» — память о человеке одной фразой: строка на карточке дня, вопрос дня по теме, любимый способ ответа, вечерний пуш, «Обо мне» */
 const Memory = createMemory({ db, open: open_, C, questionOf: (u, d) => dayPack(u, d).question, topicOf, MOOD_RU, habitList, askesisList });
-/* после этих действий полки пересобираются — уже после того, как ответ ушел человеку; у каждого маршрута — только те полки,
-   которых он касается: анкета меняет «Обо мне» (с натальной картой) и «Мой день», карта дня и вопросы — день и «Истории»,
-   настроение, дневник, желания и практики — только «Мой день» */
-const SHELF_TOUCH = {
-  '/api/profile': ['about', 'day'], '/api/preferences': ['about'], '/api/data': ['about', 'day', 'history'],
-  '/api/card': ['day', 'history'], '/api/ask': ['day', 'history'], '/api/spread': ['day', 'history'],
-  '/api/mood': ['day'], '/api/journal': ['day'], '/api/thought': ['day'], '/api/wishes': ['day'], '/api/habits': ['day'], '/api/askesis': ['day'],
-};
-/* Серия действий подряд (отметки привычек) пересобирает полки один раз, а не на каждое, полки копятся;
-   «Мои данные» дожидаются отложенной сборки */
-const shelfTimers = new Map();
-function scheduleShelves(uid, d, shelves) {
-  const prev = shelfTimers.get(uid);
-  if (prev) clearTimeout(prev.timer);
-  const only = [...new Set([...(prev ? prev.only : []), ...shelves])];
-  shelfTimers.set(uid, { only, timer: setTimeout(() => { shelfTimers.delete(uid); Shelves.refresh(uid, d, only); }, 500) });
+/* База знаний — папка документов о человеке, собранная из журнала (knowledge.mjs): ее читают ИИ, выгрузка и «на себе» в кабинете, экраны — нет */
+const Knowledge = createKnowledge({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal: natalFor, habitList, askesisList, MOOD_RU, topicOf, memory: Memory, lunarOf, nowISO });
+/* раз в сутки по поясу человека документы пересобираются — по одному человеку за такт, не задерживая запросы; свежие (за сегодня) не трогаются */
+function knowledgeDaily() {
+  try { const stale = Knowledge.staleUsers((u) => userDay(u)); let i = 0;
+    const step = () => { if (i >= stale.length) return; const u = stale[i++]; try { Knowledge.rebuild(u, userDay(u)); } catch (e) { logError('knowledge', e.message); } setImmediate(step); };
+    step(); } catch (e) { logError('knowledge', e.message); }
 }
-function flushShelves(uid, d) { const p = shelfTimers.get(uid); if (p) { clearTimeout(p.timer); shelfTimers.delete(uid); Shelves.refresh(uid, d, p.only); } }
+setTimeout(knowledgeDaily, 20000).unref(); setInterval(knowledgeDaily, 15 * 60000).unref();
 /* Заброшенные анонимные аккаунты (без почты, записей и захода 90 дней) убираются раз в сутки — правило в account-data.mjs */
 const sweep = () => { try { const n = sweepAbandoned(db); if (n) console.log(`Аккаунты: убрано заброшенных анонимных — ${n}`); } catch (e) { console.log('Аккаунты: уборка не прошла —', e.message); } };
 setTimeout(sweep, 60000).unref();
 setInterval(sweep, 24 * 3600 * 1000).unref();
-/* У тех, кто пришел раньше полок, они собираются один раз при старте — по одному человеку, не задерживая запросы */
-setTimeout(() => {
-  const ids = db.prepare('SELECT id FROM users WHERE onboarded = 1 AND id NOT IN (SELECT user_id FROM shelves)').all().map((r) => r.id);
-  if (!ids.length) return;
-  console.log(`Полочки: собираются для ${ids.length} человек`);
-  let i = 0;
-  const step = () => { if (i >= ids.length) { console.log('Полочки: собраны'); return; } Shelves.refresh(ids[i++], today()); setImmediate(step); };
-  step();
-}, 3000).unref();
-
 /* Кабинеты сотрудников — отдельный HTTP-слой со своими зависимостями (backend/http/cabinet-routes.mjs).
    Собирается здесь, где все перечисленное уже определено. */
 /* Картинки функций для кабинета «Контент»: что нарисовано у карт, рун, лунных дней и личного года, и замена файла на месте.
    Файл пишется в папку контента (картинки/<папка>/<имя>); если расширение новое — имя в текстовом файле переписывается,
    а адреса у людей обновляются сами: версия в адресе — время файла. */
-const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, memoryPreview: (u, d) => Memory.preview(u, d),
+const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, memoryPreview: (u, d) => Memory.preview(u, d), knowledgeList: (u, d) => Knowledge.list(u, d), knowledgeRead: (u, doc, d) => Knowledge.read(u, doc, d), knowledgeText: (u, doc, d) => Knowledge.text(u, doc, d),
   REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, CE, IMAGE_DIRS, Backup, W,
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
@@ -544,8 +526,7 @@ const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanTe
 const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten, questionOf: (u, d) => dayPack(u, d).question,
   morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
   themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '',
-  /* лунный день на вечер этой даты — по месту из анкеты; в записи дня и в строке прошлых дней */
-  lunarOf: (u, d) => { try { const ld = lunarDay(Date.parse(d + 'T18:00:00Z'), u?.lat ?? MOSCOW.lat, u?.lon ?? MOSCOW.lon); return ld ? { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] } : null; } catch { return null; } },
+  lunarOf,
   dailyWrites: DAILY_WRITES });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day, bridge: (u, d) => Memory.dayLine(u, d) });
 /* откуда настрой того дня — подпись для «Что отозвалось» в неделе: карта дня и ее имя, руна, планеты или прогноз дня */
@@ -563,8 +544,8 @@ function setSourceLabel(uid, day) {
 const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource: setSourceLabel });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
-const authRoutes = createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, flushShelves, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, scheduleShelves, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
-const readingRoutes = createReadingRoutes({ C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
+const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
+const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
 const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
 
@@ -630,7 +611,6 @@ const server = createServer(async (req, res) => {
         if (p === '/api/cabinet/me') { const cfg = getConfig(); return json(res, 200, { email: '', name: '', roles: [], isAdmin: false, mailReady: mailLive(), menus: cfg.menus, reports: cfg.reports, periods: cfg.periods, blocks: cfg.blocks, custom: cfg.custom }); }
         return json(res, 401, { ok: false, error: 'no_session' });
       }
-      if (req.method !== 'GET' && SHELF_TOUCH[p]) { const uid = u.id; res.once('finish', () => scheduleShelves(uid, d, SHELF_TOUCH[p])); }
 
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы — backend/http/cabinet-routes.mjs ── */
       if (p.startsWith('/api/cabinet/')) return cabinetRoutes({ p, req, res, url, u, d });
@@ -719,6 +699,7 @@ const server = createServer(async (req, res) => {
                CONSENT_VERSION, nowISO(), u.id);
         if (!u.onboarded) track(u, 'onboard_done', '');
         const fresh = userById(u.id);
+        try { Knowledge.rebuild(fresh, d, ['profile']); } catch (e) { logError('knowledge', e.message); }   /* анкета изменилась — «Обо мне» с натальной картой пересобирается сразу */
         return json(res, 200, { ok: true, user: publicUser(fresh), day: dayPack(fresh, d) });
       }
 
@@ -734,9 +715,10 @@ const server = createServer(async (req, res) => {
       /* ── на небе: сейчас и ближайшие недели ── */
       if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyCached(u.tz || MSK));
 
-      /* ── полочки: что Лунарио знает о человеке — три полки и досье текстом для разборов ── */
-      if (p === '/api/shelves' && req.method === 'GET') { flushShelves(u.id, d); return json(res, 200, Shelves.read(u, d)); }
-      if (p === '/api/shelves/context' && req.method === 'GET') { flushShelves(u.id, d); return json(res, 200, { text: Shelves.contextText(Shelves.read(u, d)) }); }
+      /* ── база знаний: папка документов о человеке — для ИИ, выгрузки и «на себе» в кабинете; экраны ее не читают ── */
+      if (p === '/api/knowledge' && req.method === 'GET') { const doc = url.searchParams.get('doc'); if (!doc) return json(res, 200, { docs: Knowledge.list(u, d) }); const data = Knowledge.read(u, doc, d); return data ? json(res, 200, { doc, data }) : json(res, 404, { ok: false, error: 'not_found' }); }
+      if (p === '/api/knowledge/text' && req.method === 'GET') { const doc = url.searchParams.get('doc') || 'portrait'; const text = Knowledge.text(u, doc, d); return text ? json(res, 200, { doc, text }) : json(res, 404, { ok: false, error: 'not_found' }); }
+      if (p === '/api/knowledge/rebuild' && req.method === 'POST') { Knowledge.rebuild(u, d); return json(res, 200, { ok: true, docs: Knowledge.list(u) }); }
 
       return json(res, 404, { ok: false, error: 'not_found' });
     }

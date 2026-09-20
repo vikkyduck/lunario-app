@@ -8,7 +8,7 @@
    После миграций verifySchema() проверяет обязательные колонки; только потом слушается порт.
 
    Таблицы кабинетов, напоминаний, очереди пушей, установок дня и полок создают свои модули
-   (cabinet, workspace, reminders, daily-sets, shelves): у них CREATE TABLE IF NOT EXISTS без истории,
+   (cabinet, workspace, reminders, daily-sets, knowledge): у них CREATE TABLE IF NOT EXISTS без истории,
    и их использует еще и отдельный процесс send-daily. Все, что касается users и личных таблиц, — здесь. */
 
 const columns = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
@@ -187,6 +187,8 @@ export const MIGRATIONS = [
   { v: 17, name: 'фото дня', up: (db) => db.exec(`CREATE TABLE IF NOT EXISTS day_photos (
     user_id INTEGER NOT NULL, day TEXT NOT NULL, ts TEXT NOT NULL, w INTEGER NOT NULL DEFAULT 0, h INTEGER NOT NULL DEFAULT 0,
     thumb BLOB NOT NULL, full BLOB NOT NULL, PRIMARY KEY (user_id, day))`) },
+  /* «Полки» (снимок только на сегодня, никем не читались) заменены базой знаний — knowledge.mjs создает свои таблицы сам */
+  { v: 18, name: 'база знаний вместо полок', up: (db) => db.exec('DROP TABLE IF EXISTS shelves') },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 

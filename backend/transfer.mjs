@@ -42,7 +42,7 @@ export function readOffer(token, now = Date.now()) {
 /* Таблицы, которые принадлежат человеку и переезжают вместе с ним: те же, что стираются при «Очистить историю».
    Дочерние (via) ссылаются на родителя и переезжают вместе с ним сами. Досье и квитанции операций не переносим:
    досье пересобирается из записей, а квитанция подтверждает действие прежнего аккаунта. */
-const SKIP = new Set(['shelves', 'sync_receipts']);
+const SKIP = new Set(['knowledge', 'sync_receipts']);
 export const MOVED_TABLES = PERSONAL_DATA.filter((r) => r.on === 'history' && !r.via && !SKIP.has(r.table)).map((r) => r.table);
 
 /* Сколько у гостя записей каждого вида — для честного вопроса «перенести?» */

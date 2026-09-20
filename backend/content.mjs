@@ -442,6 +442,9 @@ function build() {
      Файлы не обязательны: без них приложение просто молчит */
   r.MEMORY = Object.fromEntries((rows('память.txt', 1) || []).map((c) => [c[0], c[1] || '']));
   r.TOPIC_QUESTIONS = (rows('вопросы-по-темам.txt', 2) || []).map((c) => [c[0], c[1]]);
+  /* значения натальной карты для базы знаний (документ «Обо мне»): планета в знаке и аспект; ключи — строчными, файлы не обязательны */
+  r.NATAL_PLANETS = Object.fromEntries((rows('планеты-в-знаках.txt', 3) || []).map((x) => [`${x[0]}|${x[1]}`.toLowerCase(), x[2]]));
+  r.NATAL_ASPECTS = Object.fromEntries((rows('аспекты.txt', 4) || []).map((x) => [`${x[0]}|${x[1]}|${x[2]}`.toLowerCase(), x[3]]));
   r.AFFIRMATIONS = must('аффирмации.txt', lines('аффирмации.txt'));
   r.DAY_QUESTIONS = must('вопросы-дня.txt', lines('вопросы-дня.txt'));
 
@@ -468,6 +471,8 @@ export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) }
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
 export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
+export const NATAL_PLANETS = new Proxy({}, { get: (_, k) => Reflect.get(data.NATAL_PLANETS, String(k).toLowerCase()) });
+export const NATAL_ASPECTS = new Proxy({}, { get: (_, k) => Reflect.get(data.NATAL_ASPECTS, String(k).toLowerCase()) });
 export const MEMORY = new Proxy({}, { get: (_, k) => Reflect.get(data.MEMORY, k), ownKeys: () => Reflect.ownKeys(data.MEMORY), getOwnPropertyDescriptor: (_, k) => ({ value: data.MEMORY[k], enumerable: true, configurable: true }) });
 export const TOPIC_QUESTIONS = new Proxy([], { get: (_, k) => Reflect.get(data.TOPIC_QUESTIONS, k) });
 export const UI = new Proxy({}, { get: (_, k) => Reflect.get(data.UI, k), ownKeys: () => Reflect.ownKeys(data.UI), getOwnPropertyDescriptor: (_, k) => ({ value: data.UI[k], enumerable: true, configurable: true }) });

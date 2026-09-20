@@ -385,7 +385,7 @@ try {
     const t = await acc.json('/support/tickets', 'POST', { topic: 'Прочее', text: 'Личный вопрос в поддержку' }); await acc.json('/support/ticket?id=' + t.id, 'POST', { text: 'Ещё сообщение' });
     await acc.json('/reminders', 'POST', { feature: 'morning', enabled: true, tz: 'Europe/Moscow' });
     await acc.json('/push', 'POST', { endpoint: 'https://push.example.com/box/' + name });
-    await acc.json('/shelves');
+    await acc.json('/knowledge?doc=recent'); await acc.json('/compat', 'POST', { birth: '1990-01-01' });
     return (await acc.json('/me')).user.id;
   };
   const rowsOf = (uid) => Object.fromEntries(PERSONAL_DATA.filter((r) => r.table !== 'users').map((r) => [r.table, r.by === 'email' ? 0
@@ -394,7 +394,7 @@ try {
   const victim = account(), keeper = account();
   const victimId = await seed(victim, 'Удаляемый'), keeperId = await seed(keeper, 'Остающийся');
   const before = rowsOf(victimId), keeperBefore = rowsOf(keeperId);
-  for (const t of ['tickets', 'messages', 'reminders', 'push_subs', 'sessions', 'journal', 'habit_marks', 'askesis_days', 'shelves']) assert.ok(before[t] > 0, `Seed must fill ${t}`);
+  for (const t of ['tickets', 'messages', 'reminders', 'push_subs', 'sessions', 'journal', 'habit_marks', 'askesis_days', 'knowledge', 'compat_checks']) assert.ok(before[t] > 0, `Seed must fill ${t}`);
   assert.ok(qaDB.prepare('SELECT subject FROM tickets WHERE user_id=?').get(victimId).subject.startsWith('enc1:'), 'Ticket subject must be encrypted at rest');
   await victim.json('/account', 'DELETE');
   const after = rowsOf(victimId);
@@ -479,22 +479,22 @@ try {
   assert.ok(MOON_NAMES.includes(meMoon.day.moon) && MOON_NAMES.includes(sky.moon.phase));
   for (const [cycle, name] of [[0, 'Новолуние'], [0.06, 'Новолуние'], [0.07, 'Растущий серп'], [0.25, 'Первая четверть'], [0.5, 'Полнолуние'], [0.75, 'Последняя четверть'], [0.9, 'Убывающий серп'], [0.95, 'Новолуние']]) assert.equal(moonPhaseName(cycle), name, `phase name at ${cycle}`);
   for (const at of ['2026-09-15T12:00:00Z', '2026-09-18T12:00:00Z', '2026-09-26T12:00:00Z']) { const m = moonState(Date.parse(at)); assert.ok(MOON_NAMES.includes(m.name) && m.illumination >= 0 && m.illumination <= 100, at); }
-  const shelvesDay = (await evt.json('/shelves')).day;
-  assert.equal(shelvesDay.moon, meMoon.day.moon, 'Dossier shows the same phase as the day pack');
-  console.log('PASS: day pack, sky screen and dossier share one moon model and one naming rule.');
+  const recentDoc = (await evt.json('/knowledge?doc=recent')).data;
+  assert.equal(recentDoc.window, 120, 'Knowledge «recent» covers a 120-day window'); assert.ok(Array.isArray(recentDoc.days));
+  console.log('PASS: day pack and sky screen share one moon model; knowledge «recent» is a 120-day window.');
 
   // ── Досье аскезы читает актуальный контракт: те же поля, что у практик, в тексте нет undefined ──
   const askOwner = account(); await askOwner.json('/me'); await askOwner.json('/profile', 'POST', { name: 'Аскеза', birth: '1988-08-08', city: 'Москва', consent: true });
   const askDay = (await askOwner.json('/me')).day.date, askUntil = new Date(Date.parse(askDay) + 29 * 864e5).toISOString().slice(0, 10);
   const started = (await askOwner.json('/askesis', 'POST', { title: 'Без сладкого', until: askUntil })).active[0];
   assert.deepEqual([started.total, started.done, started.left], [30, 1, 29]);
-  const dossierAsk = (await askOwner.json('/shelves')).day.askesis[0];
-  for (const k of ['title', 'done', 'total', 'left', 'until', 'notes']) assert.ok(k in dossierAsk, `Dossier askesis carries ${k}`);
-  assert.deepEqual([dossierAsk.done, dossierAsk.total, dossierAsk.left, dossierAsk.until], [started.done, started.total, started.left, started.until]);
-  const dossierText = (await askOwner.json('/shelves/context')).text;
-  assert.ok(dossierText.includes('Без сладкого — день 1 из 30'), 'Context text uses the current askesis fields: ' + dossierText.split('\n').find((l) => l.startsWith('Аскезы')));
-  assert.ok(!/undefined|NaN/.test(dossierText), 'No undefined in dossier text');
-  console.log('PASS: dossier and context text use the same askesis contract as the practices model.');
+  const portraitAsk = (await askOwner.json('/knowledge?doc=portrait')).data.askesis[0];
+  for (const k of ['title', 'done', 'total', 'until']) assert.ok(k in portraitAsk, `Knowledge portrait askesis carries ${k}`);
+  assert.deepEqual([portraitAsk.done, portraitAsk.total, portraitAsk.until], [started.done, started.total, started.until]);
+  const portraitText = (await askOwner.json('/knowledge/text?doc=portrait')).text;
+  assert.ok(portraitText.includes('Без сладкого — день 1 из 30'), 'Portrait text uses the current askesis fields: ' + portraitText.split('\n').find((l) => l.startsWith('Аскезы')));
+  assert.ok(!/undefined|NaN/.test(portraitText), 'No undefined in portrait text');
+  console.log('PASS: knowledge portrait and its text use the same askesis contract as the practices model.');
 
   // ── «Я помню» (memory.mjs): любимый способ ответа, строка на карточке дня из вчерашнего настроения, вечерний пуш про аскезу ──
   { const d0 = (await askOwner.json('/me')).day.date, ago = (n) => new Date(Date.parse(d0 + 'T12:00:00Z') - n * 864e5).toISOString().slice(0, 10);
@@ -547,19 +547,23 @@ try {
   }
   console.log('PASS: tarot spreads are unlimited; the API reports no quota.');
 
-  // ── Досье пересобирается частями: отметка настроения не трогает «Обо мне» с натальной картой ──
-  const shelfRows = (uid) => Object.fromEntries(qaDB.prepare('SELECT shelf, json, updated_at FROM shelves WHERE user_id=?').all(uid).map((r) => [r.shelf, r]));
+  // ── База знаний: папка документов из журнала — профиль пересобирается по анкете, совместимость ложится в «Тесты и совместимости», записи — после пересборки ──
   const askId = (await askOwner.json('/me')).user.id;
-  const rowsBefore = shelfRows(askId); assert.equal(Object.keys(rowsBefore).length, 3);
-  await delay(20); await askOwner.json('/mood', 'POST', { mood: 'trust' }); await askOwner.json('/shelves');
-  const rowsAfter = shelfRows(askId);
-  assert.equal(rowsAfter.about.json, rowsBefore.about.json, 'Mood does not rebuild «Обо мне»'); assert.equal(rowsAfter.about.updated_at, rowsBefore.about.updated_at);
-  assert.notEqual(rowsAfter.day.updated_at, rowsBefore.day.updated_at, 'Mood rebuilds «Мой день»');
-  assert.equal((await askOwner.json('/shelves')).day.moodRu.toLowerCase(), 'доверие');
-  await askOwner.json('/profile', 'POST', { name: 'Аскеза-2', birth: '1988-08-08', city: 'Москва', consent: true }); await askOwner.json('/shelves');
-  assert.notEqual(shelfRows(askId).about.updated_at, rowsAfter.about.updated_at, 'Profile rebuilds «Обо мне»');
-  assert.equal((await askOwner.json('/shelves')).about.name, 'Аскеза-2');
-  console.log('PASS: dossier shelves are rebuilt only where the action touches them.');
+  const docsNow = (await askOwner.json('/knowledge')).docs.map((x) => x.doc);
+  for (const k of ['profile', 'readings', 'recent', 'portrait']) assert.ok(docsNow.includes(k), `Knowledge has «${k}»`);
+  await askOwner.json('/profile', 'POST', { name: 'Аскеза-2', birth: '1988-08-08', city: 'Москва', consent: true });
+  const prof = (await askOwner.json('/knowledge?doc=profile')).data;
+  assert.equal(prof.name, 'Аскеза-2', 'Profile rebuilds on anketa'); assert.ok(prof.natal && prof.natal.planets.length >= 10 && prof.natal.aspects.length, 'Natal chart is stored verbatim: planets and aspects');
+  assert.ok(prof.natal.planets.every((p) => p.name && p.sign && p.degree), 'Every planet carries name, sign and degree');
+  const cmp = await askOwner.json('/compat', 'POST', { birth: '1991-03-14' });
+  const readings = (await askOwner.json('/knowledge?doc=readings')).data;
+  assert.equal(readings.compat.length, 1); assert.equal(readings.compat[0].total, cmp.total); assert.equal(readings.compat[0].otherBirth, '1991-03-14');
+  assert.ok((await askOwner.json('/knowledge/text?doc=readings')).text.includes(`${cmp.total}%`), 'Readings text carries the compatibility');
+  await askOwner.json('/mood', 'POST', { mood: 'trust' }); await askOwner.json('/knowledge/rebuild', 'POST', {});
+  const todayRec = (await askOwner.json('/knowledge?doc=recent')).data.days.find((x) => x.day === askDay);
+  assert.ok(todayRec && todayRec.moods.some((m) => m.label.toLowerCase() === 'доверие'), 'Recent day record carries today\'s mood after rebuild: ' + JSON.stringify(todayRec));
+  assert.equal(qaDB.prepare("SELECT COUNT(*) c FROM knowledge WHERE user_id = ?").get(askId).c >= 4, true);
+  console.log('PASS: knowledge base — profile with verbatim natal chart, persisted compatibility, recent days after rebuild.');
 
   // ── Отчёты кабинета считаются в отдельном потоке и совпадают с расчётом в основном ──
   qaDB.prepare('INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts) VALUES (?,?,?,?,0)').run(adminMail, createHash('sha256').update(code + adminMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
