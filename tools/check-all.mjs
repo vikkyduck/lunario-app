@@ -29,6 +29,8 @@ const CHECKS = ['check-yo', 'check-features', 'check-daily-sets', 'check-entry-h
   'check-feature-recovery', 'check-four-sections', 'check-notifications', 'check-repeat-practices', 'check-restoration', 'check-usability',
   ...(quick ? [] : ['check-personal-features', 'check-sync', 'check-isolation'])];
 for (const c of CHECKS) step(c, run([`tools/${c}.mjs`]));
+/* оркестрация выпуска — shell, на локальном «сервере» (ревью v114, F11): зафиксированный коммит, чужая правка, обрыв копирования, мертвый health, откат */
+if (!quick) step('check-deploy (оркестрация выпуска)', spawnSync('bash', ['tools/check-deploy.sh'], { cwd: repo, encoding: 'utf8', env: process.env, maxBuffer: 64 * 1024 * 1024 }));
 
 /* 4. регрессии в браузере — обязательная часть набора (повторный аудит v112, R15): правка между экранами, потерянный ответ,
    удаление и повторное открытие, отмена выбора карт, очистка с черновиком. Без Playwright это не «пройдено», а провал —

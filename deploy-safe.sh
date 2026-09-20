@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# Безопасная выкатка из нескольких рабочих копий (аудит v98, F22): сравнивается не один index.html, а идентификатор выпуска
-# и манифест хешей ВСЕХ выложенных файлов site/ и backend/ — правка одного app.js или серверного модуля на проде остановит rsync.
+# Безопасная выкатка из нескольких рабочих копий (аудит v98 F22, ревью v114 F11): сравнивается идентификатор выпуска и манифест
+# хешей ВСЕХ живых файлов site/ и backend/ текущего выпуска — правка одного app.js или серверного модуля на проде остановит выпуск.
+# Снимок сверяется дважды: здесь и в deploy.sh под замком, прямо перед выкладкой (EXPECT_RELEASE + EXPECT_MANIFEST).
 #   bash deploy-safe.sh snapshot            — снять снимок прода (RELEASE + манифест) в .deploy-snapshot ДО своих правок
 #   bash deploy-safe.sh [файл-снимка]        — сверить прод со снимком (по умолчанию .deploy-snapshot) и, если совпал, выпустить
 set -euo pipefail
-SERVER="${SERVER_USER:-root}@${SERVER_HOST:-5.129.198.180}"
-cd "$(dirname "$0")"
-remote_state() {
-  ssh "$SERVER" "cd /opt/lunario-app && (cat RELEASE 2>/dev/null || echo unknown) && find site backend -type f ! -name cities.db ! -name '*.db-wal' ! -name '*.db-shm' -print0 | sort -z | xargs -0 sha256sum"
-}
+REPO="$(cd "$(dirname "$0")" && pwd)"; cd "$REPO"
+# shellcheck source=deploy-lib.sh
+. "$REPO/deploy-lib.sh"
 if [ "${1:-}" = "snapshot" ]; then remote_state > .deploy-snapshot; echo "✅ снимок прода снят: .deploy-snapshot ($(head -1 .deploy-snapshot), $(($(wc -l < .deploy-snapshot) - 1)) файлов)"; exit 0; fi
 SNAP="${1:-.deploy-snapshot}"
 [ -s "$SNAP" ] || { echo "❌ нет снимка $SNAP — сначала: bash deploy-safe.sh snapshot"; exit 1; }
@@ -21,4 +20,4 @@ if ! cmp -s "$TMP" "$SNAP"; then
 fi
 rm -f "$TMP"
 echo "✅ Прод совпадает со снимком ($(head -1 "$SNAP")) — чужой работы не затрем."
-EXPECT_RELEASE="$(head -1 "$SNAP")" bash deploy.sh   # deploy.sh сверит идентификатор еще раз под замком, прямо перед заменой файлов (R14)
+EXPECT_RELEASE="$(head -1 "$SNAP")" EXPECT_MANIFEST="$SNAP" bash deploy.sh   # deploy.sh сверит и идентификатор, и манифест еще раз под замком (R14, F11)

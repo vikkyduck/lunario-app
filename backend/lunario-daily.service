@@ -7,7 +7,8 @@ Type=oneshot
 User=lunario
 Group=lunario
 UMask=0077
-WorkingDirectory=/opt/lunario-app
+WorkingDirectory=/opt/lunario-app/current
+Environment=DATA_DIR=/opt/lunario-app/data
 Environment=CONTENT_DIR=/opt/lunario-content
 EnvironmentFile=-/opt/lunario-app/.env
-ExecStart=/usr/bin/node /opt/lunario-app/backend/send-daily.mjs
+ExecStart=/usr/bin/node /opt/lunario-app/current/backend/send-daily.mjs

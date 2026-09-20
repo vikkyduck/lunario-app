@@ -76,7 +76,11 @@ const photo = `data:image/png;base64,${png}`;
 try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true,
     filter: path => !path.endsWith('.db') && !path.endsWith('.db-wal') && !path.endsWith('.db-shm') });
-  await cp(join(repo, 'content'), join(fixture, 'content'), { recursive: true, filter: (p) => p === join(repo, 'content') || (dirname(p) === join(repo, 'content') && p.endsWith('.txt')) });   /* тексты приложения, без картинок и архива: запасных копий в коде нет */
+  /* тексты приложения, без картинок и архива: запасных копий в коде нет. Папка берется по настоящему пути (realpath): в пакете выпуска
+     content — символьная ссылка на рабочую копию (deploy.sh, F11), и копия ссылки вместо папки заставила бы проверки писать в настоящий контент */
+  const contentSrc = (await import('node:fs')).realpathSync(join(repo, 'content'));
+  await cp(contentSrc, join(fixture, 'content'), { recursive: true, dereference: true, filter: (p) => p === contentSrc || (dirname(p) === contentSrc && p.endsWith('.txt')) });
+  assert.ok(!(await import('node:fs')).lstatSync(join(fixture, 'content')).isSymbolicLink(), 'the fixture content folder is a real copy, never a link to the working copy');
   /* «Новое в приложении» живёт только в content/новое.txt (запасного списка в коде нет): две новинки на текущий месяц,
      чтобы экран новостей было чем проверять — плитка ведёт в существующий раздел */
   const newsMonth = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' }).slice(0, 7);

@@ -7,11 +7,11 @@ Type=oneshot
 User=lunario
 Group=lunario
 UMask=0077
-WorkingDirectory=/opt/lunario-app
+WorkingDirectory=/opt/lunario-app/current
 Environment=DATA_DIR=/opt/lunario-app/data
 Environment=CONTENT_DIR=/opt/lunario-content
 Environment=BACKUP_DIR=/opt/lunario-app-backups
 # BACKUP_SECRET — пароль шифрования копий. Читает systemd своим парсером: значения в .env
 # бывают с символами, которые sh принимает за перенаправление, поэтому cron с `. .env` тут не годится.
 EnvironmentFile=-/opt/lunario-app/.env
-ExecStart=/usr/bin/node /opt/lunario-app/backend/backup.mjs
+ExecStart=/usr/bin/node /opt/lunario-app/current/backend/backup.mjs
