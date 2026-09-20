@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=112"></script>
+<script src="/app/boot.js?v=113"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=112">
-<link rel="stylesheet" href="/app/app.css?v=112">
-<link rel="stylesheet" href="/app/frame.css?v=112">
+<link rel="stylesheet" href="/app/theme.css?v=113">
+<link rel="stylesheet" href="/app/app.css?v=113">
+<link rel="stylesheet" href="/app/frame.css?v=113">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -261,10 +261,11 @@
       <button data-on="click:wipe-data" class="wid" type="button"><i class="ico list"></i><b>Очистить историю</b></button>
       <button data-on="click:wipe-account" class="wid warn" type="button"><i class="ico exit"></i><b>Удалить аккаунт</b></button></div></section>
     </div><div class="account-col account-settings">
-    <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids tiles"><a data-on="click:openCabinet-return-false" class="wid" id="ac-cabs" href="/app/cabinet" hidden><i class="ico users"></i><b>Кабинет сотрудника</b><span>Задачи, тексты, поддержка</span></a><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Утро, вечер и неделя — время свое</span></button>
-      <button data-on="click:openWidget-appinfo" class="wid" type="button"><i class="ico moon"></i><b>О приложении</b></button>
-      <a data-on="click:installApp-event" class="wid" id="t-install" href="/app/install"><i class="ico star"></i><b>Установить на телефон</b><span>Иконка на экране «Домой», уведомления, полный экран</span></a></div></section>
-    <section class="account-group" id="ag-help"><h2>Помощь</h2><div class="wids tiles"><button data-on="click:openWidget-support" class="wid" data-feature="support" type="button" aria-label="Чат поддержки"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button data-on="click:openWidget-invite" class="wid" type="button" aria-label="Позвать подругу" data-feature="invite"><i class="ico person"></i><b>Позвать подругу</b></button></div></section>
+    <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids tiles"><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Утро, вечер, неделя</span></button>
+      <button data-on="click:openWidget-appinfo" class="wid" type="button"><i class="ico moon"></i><b>О приложении</b><span>Что это и условия</span></button>
+      <a data-on="click:installApp-event" class="wid" id="t-install" href="/app/install"><i class="ico star"></i><b>Установить на телефон</b><span>Иконка на экране «Домой», уведомления, полный экран</span></a>
+      <a data-on="click:openCabinet-return-false" class="wid" id="ac-cabs" href="/app/cabinet" hidden><i class="ico users"></i><b>Кабинет сотрудника</b><span>Задачи, тексты, поддержка</span></a></div></section>
+    <section class="account-group" id="ag-help"><h2>Помощь</h2><div class="wids tiles"><button data-on="click:openWidget-support" class="wid" data-feature="support" type="button" aria-label="Чат поддержки"><i class="ico chat"></i><b>Чат поддержки</b><span>Задать вопрос о приложении</span><span class="dot" id="h-supdot" hidden></span></button><button data-on="click:openWidget-invite" class="wid" type="button" aria-label="Позвать подругу" data-feature="invite"><i class="ico person"></i><b>Позвать подругу</b><span>Ссылка на Лунарио</span></button></div></section>
     </div></div>
   </section>
 </div>
@@ -368,22 +369,22 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=112"></script>
+<script src="/app/moon-logo.js?v=113"></script>
 
-<script type="module" src="/app/sky.js?v=112"></script>
+<script type="module" src="/app/sky.js?v=113"></script>
 
-<script src="/app/common.js?v=112"></script>
-<script src="/app/experience.js?v=112"></script>
-<script src="/app/app.js?v=112"></script>
-<script src="/app/today.js?v=112"></script>
-<script src="/app/diary.js?v=112"></script>
-<script src="/app/readings.js?v=112"></script>
-<script src="/app/practices.js?v=112"></script>
-<script src="/app/about.js?v=112"></script>
-<script src="/app/account.js?v=112"></script>
-<script src="/app/tour.js?v=112"></script>
-<script src="/app/handlers.js?v=112"></script>
-<script src="/app/on.js?v=112"></script>
-<script src="/app/start.js?v=112"></script>
+<script src="/app/common.js?v=113"></script>
+<script src="/app/experience.js?v=113"></script>
+<script src="/app/app.js?v=113"></script>
+<script src="/app/today.js?v=113"></script>
+<script src="/app/diary.js?v=113"></script>
+<script src="/app/readings.js?v=113"></script>
+<script src="/app/practices.js?v=113"></script>
+<script src="/app/about.js?v=113"></script>
+<script src="/app/account.js?v=113"></script>
+<script src="/app/tour.js?v=113"></script>
+<script src="/app/handlers.js?v=113"></script>
+<script src="/app/on.js?v=113"></script>
+<script src="/app/start.js?v=113"></script>
 </body>
 </html>

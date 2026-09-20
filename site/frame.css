@@ -57,6 +57,6 @@ html.framed body.inner :is(.mini-grid,.wids.tiles){grid-template-columns:repeat(
 html.framed body.inner #v-account .account-layout{display:block}
 html.framed body.inner #v-account .account-col{display:contents}
 html.framed body.inner:has(#v-account.on) .wrap{padding-top:74px}
-html.framed body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:16px;top:74px}
+html.framed body.inner:has(:is(#v-ask,#v-history,#v-about).on) .section-acct{right:16px;top:73px}   /* центр кружков — на линии центра заголовка */
 html.framed body.inner #v-home .hdr{margin-top:0}
 html.framed body.inner .later-row,html.framed body.inner .morning-summary{max-width:none}

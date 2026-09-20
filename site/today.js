@@ -135,7 +135,8 @@ function paintHome(){
   if (!S.rem) loadReminders().then(paintPushNudge).catch(() => {});   /* строка «не подключены» — когда расписание известно */
   paintAvatar();
   const staff = isStaff(u);                                           /* админы и все, кто есть в таблице доступов */
-  if ($('ac-cabs')) $('ac-cabs').hidden = !staff; document.body.classList.toggle('staff', staff);   /* вход в кабинеты — строкой в Аккаунте, шапка без второго кружка */
+  { const cabs = $('ac-cabs'); if (cabs) { if (staff) cabs.hidden = false; else cabs.remove(); } }   /* не сотруднику плитки нет и в DOM — иначе скрытая ломала бы счет плиток в сетке */
+  document.body.classList.toggle('staff', staff);   /* вход в кабинеты — строкой в Аккаунте, шапка без второго кружка */
   $('h-moon').innerHTML = esc(d.moon) + (d.lunar ? ' · <span class="nowrap">' + esc(ordinal(d.lunar.n)) + ' лунный день</span>' : '');   /* «6-й» не рвется по дефису */
   $('h-lunar').textContent = d.lunar ? d.lunar.period : '';
   moonSetPhase(d.moonPhase);
