@@ -602,7 +602,7 @@ const server = createServer(async (req, res) => {
     if (p.startsWith(BASE)) p = p.slice(BASE.length) || '/';
     if (p === '' ) p = '/';
 
-    if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app', schema: SCHEMA_VERSION });
+    if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app', schema: SCHEMA_VERSION, jobs: Reports.pendingSize });   /* глубина очереди заданий — для замера check-load (F09) */
     /* Кто зовет: по коду из реферальной ссылки — только имя, без аккаунта; страница установки показывает «Ирина зовет вас в Лунарио» */
     if (p === '/api/invite/host' && req.method === 'GET') {
       const host = inviteHost(url.searchParams.get('code') || '');

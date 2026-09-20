@@ -227,7 +227,7 @@ async function saveDayCard(){
     DC.firstSave=!DC.forDay&&!(S.daysTotal>0); dayChanged(r.day,false);
     DC.mode=matchMedia('(prefers-reduced-motion: reduce)').matches?'done':'celebrate'; paintDayCard();
   }
-  catch(e){ if(e.code==='cancelled')return; const st=$('dc-state'); if(st)st.textContent=e.code==='too_many'?'Записей за этот день уже сто — новые не сохраняются, текст остался в форме':e.code==='unreadable'?'Эта запись не читается — ее нельзя переписать, обратитесь в поддержку':ERR_SAVE_KEPT; }   /* лимит — честный отказ, черновик на месте (F15); нечитаемая запись не перезаписывается (F14) */
+  catch(e){ if(e.code==='cancelled')return; const st=$('dc-state'); if(st)st.textContent=e.code==='too_many'?'Записей за этот день уже сто — новые не сохраняются, текст остался в форме':e.code==='unreadable'?ui('diary.unreadable','Эта запись не читается — ее нельзя переписать, обратитесь в поддержку'):ERR_SAVE_KEPT; }   /* лимит — честный отказ, черновик на месте (F15); нечитаемая запись не перезаписывается (F14) */
   finally{ saveDayCard.busy=false; const b=$('dc-next'); if(b){b.disabled=false;b.textContent=DC.forDay?'Сохранить':'Запомнить этот день';} }
 }
 /* Дописать или поправить прошлый день — той же карточкой по шагам: «Вчера не записали» утром на «Сегодня», «Изменить» в открытом дне */
@@ -451,7 +451,8 @@ async function openDay(day){
   if(S.day&&day===S.day.date){ go('history'); requestAnimationFrame(()=>$('day-card')?.scrollIntoView({block:'start',behavior:'smooth'})); return; }
   openWidget('dayview',fmtDayWords(day,true)); const box=$('dayview-box'); box.innerHTML='<p class="hint">Загружаем…</p>'; track('day_open');
   try{
-    const v=await api('/day/view?day='+day); const moods=v.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
+    const c=ctx(); const v=await api('/day/view?day='+day); if(!c.alive()||!$('dayview-box'))return;   /* поздний ответ после сброса или закрытой панели не рисуем (F05) */
+    const moods=v.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
     const empty=!(v.texts||[]).length&&!(v.gratitudes||[]).length&&!(v.answers||[]).length&&!(v.thoughts||[]).length&&!v.weekly&&!moods.length&&!v.habits.length&&!v.askesis.length&&!v.photo;   /* итог недели — тоже запись (R12) */
     const canEdit=v.editable!==false;   /* старше года — только чтение, и это сказано заранее, без «Повторить» (аудит v98, F18) */
     const prev=addDaysC(day,-1), next=addDaysC(day,1), canNext=next<=S.day.date;

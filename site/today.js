@@ -20,7 +20,7 @@ const PUSH_KIND = { morning: 'Утреннее уведомление', evening:
 const pushHidden = () => { try { return localStorage.getItem('lun_push_hidden') || ''; } catch(e) { return ''; } };
 async function loadPushNote(force=false){
   const box = $('push-note'); if (!box || !S.user?.onboarded || IOS_SHELL) return null;
-  if (force || S.pushLast === undefined) { try { S.pushLast = (await api('/push/last')).item || false; } catch(e) { S.pushLast = S.pushLast ?? false; } }   /* один запрос на сессию; из уведомления — заново */
+  if (force || S.pushLast === undefined) { try { const c = ctx(); const r = await api('/push/last'); if (!c.alive()) return; S.pushLast = r.item || false; } catch(e) { if (e.code === 'cancelled') return; S.pushLast = S.pushLast ?? false; } }   /* один запрос на сессию; из уведомления — заново */
   const it = S.pushLast;
   if (!it || String(it.id) === pushHidden()) { box.hidden = true; box.replaceChildren(); return null; }
   if (it.feature === 'morning' && S.day?.set?.text && it.title === S.day.set.text) { box.hidden = true; box.replaceChildren(); return null; }   /* утреннее — тот же настрой, что уже на экране */

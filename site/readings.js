@@ -660,7 +660,7 @@ function lunarRefHtml(ref){
 /* ══════════ На небе: сегодня и ближайшие недели ══════════ */
 async function loadSky(){
   const box = $('sky-box'); if (!S.sky) box.innerHTML = '<p class="hint">Смотрим на небо…</p>';
-  try { S.sky = await api('/sky'); paintSky(); track('sky_view'); }
+  try { const c = ctx(); const sky = await api('/sky'); if (!c.alive()) return; S.sky = sky; paintSky(); track('sky_view'); }
   catch (e) { box.innerHTML = '<p class="msg err">Не получилось рассчитать небо.</p>'; }
 
 }

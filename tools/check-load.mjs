@@ -66,11 +66,12 @@ try {
   const t0 = performance.now();
   const exportP = raw('/data/export.pdf').then(async (r) => { assert.equal(r.status, 200, 'выгрузка отдана'); const buf = Buffer.from(await r.arrayBuffer()); return { ms: performance.now() - t0, bytes: buf.length }; });
   await delay(30);   /* запрос ушел и задание отдано потоку */
-  const lat = [];
-  for (let i = 0; i < 20; i++) { const t = performance.now(); const r = await raw('/health'); assert.equal(r.status, 200); lat.push(performance.now() - t); }
+  const lat = []; let depth = 0;
+  for (let i = 0; i < 20; i++) { const t = performance.now(); const r = await raw('/health'); assert.equal(r.status, 200); lat.push(performance.now() - t); depth = Math.max(depth, (await r.json()).jobs || 0); }
   const exp = await exportP;
   const p = p95(lat), rss = Math.round(process.memoryUsage().rss / 1048576);
-  console.log(`замер: выгрузка PDF ${Math.round(exp.ms)} мс (${Math.round(exp.bytes / 1024)} КБ, 365 записей, 20 фото); health во время выгрузки — p95 ${p.toFixed(1)} мс, max ${Math.max(...lat).toFixed(1)} мс; память проверки ${rss} МБ`);
+  console.log(`замер: выгрузка PDF ${Math.round(exp.ms)} мс (${Math.round(exp.bytes / 1024)} КБ, 365 записей, 20 фото); health во время выгрузки — p95 ${p.toFixed(1)} мс, max ${Math.max(...lat).toFixed(1)} мс; глубина очереди заданий ${depth}; память проверки ${rss} МБ`);
+  assert.ok(depth >= 1, 'во время выгрузки очередь заданий не пуста — значит, выгрузка шла в потоке');
   assert.ok(p < 50, `health p95 во время выгрузки ${p.toFixed(1)} мс — выгрузка должна идти в потоке заданий, а не в основном`);
   /* две выгрузки подряд одного человека — одна задача, обе отдаются; JSON тоже через поток и без data-URL картинок */
   const [a, b] = await Promise.all([raw('/data/export'), raw('/data/export')]);

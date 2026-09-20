@@ -56,7 +56,7 @@ async function saveGratitude(){
     S.grat.items=[item,...S.grat.items.filter(i=>i.id!==item.id)];
     if(typeof DC!=='undefined'&&DC.state&&DC.state.day===item.day){ DC.state.gratitude={id:item.id,text:item.text}; if(!DC.touched.fields.has('gratitude'))DC.gratitude=item.text; }   /* карточка дня знает свежий текст (R01) */
     gratitudeEdit=null;gratitudeDraft='';toast('Запись сохранена');hap('ok');paintGratitude();
-  } catch(e){if(e.code==='cancelled')return; toast(e.code==='too_many'?'Записей за день уже сто — текст остался в поле':e.code==='unreadable'?'Эта запись не читается — ее нельзя переписать':ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
+  } catch(e){if(e.code==='cancelled')return; toast(e.code==='too_many'?'Записей за день уже сто — текст остался в поле':e.code==='unreadable'?ui('diary.unreadable','Эта запись не читается — ее нельзя переписать, обратитесь в поддержку'):ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
   finally{gratitudeSaving=false;}
 }
 

@@ -7,7 +7,7 @@ function supStop(){ clearTimeout(supTimer); supTimer = null; supTicket = null; }
 async function supOpen(){
   rememberSupportDraft();supStop(); const box = $('sup-box'); box.innerHTML = LOADING;
   try{
-    const r = await api('/support/tickets');
+    const c = ctx(); const r = await api('/support/tickets'); if (!c.alive() || wgOpen !== 'support') return;   /* поздний ответ после выхода не рисуем (F05) */
     box.innerHTML = `<p>Напишите нам — ответ появится в этом чате. О новом ответе сообщит точка у «Чата поддержки».</p>
       <div class="card mt-3"><div class="field"><label>Тема</label><select id="sup-topic">${r.topics.map((t)=>`<option>${esc(t)}</option>`).join('')}</select></div>
         <div class="field mb-2"><label>Сообщение</label><textarea id="sup-text" maxlength="2000" placeholder="Что случилось или что хотите спросить"></textarea></div>
@@ -28,8 +28,8 @@ async function supCreate(){
 async function supThread(id){
   rememberSupportDraft();supStop(); supTicket = id; const box = $('sup-box');
   try{
-    const t = await api('/support/ticket?id='+id);
-    if(supTicket!==id||wgOpen!=='support')return;
+    const c = ctx(); const t = await api('/support/ticket?id='+id);
+    if(!c.alive()||supTicket!==id||wgOpen!=='support')return;
     // Refresh messages only while typing: keep the textarea, caret and keyboard intact.
     const messages=t.messages.map((m)=>`<div class="m ${m.who}"><small>${m.who==='support'?'поддержка':'вы'} · ${supWhen(m.ts)}</small>${esc(m.text)}</div>`).join('');
     const existing=$('sup-thread');
