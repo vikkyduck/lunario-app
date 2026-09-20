@@ -333,7 +333,7 @@ try {
   const deniedEdit=await other.raw('/journal','PATCH',{id:gratitude.id,text:'Чужая запись'});
   assert.equal(deniedEdit.status,404);
 
-  const bundle=await owner.json('/data/export');assert.equal(bundle.profile.photo,photo);assert.ok(bundle.wishes.some(w=>w.photo===photo));assert.ok(bundle.habits.some(h=>h.title==='Тест: прогулка вечером'));assert.ok(bundle.askesis.some(a=>a.observations.some(n=>n.note==='Тест: вечер прошёл спокойно')));assert.ok(!(await other.json('/data/export')).journal.some(j=>j.id===gratitude.id));
+  const bundle=await owner.json('/data/export');assert.equal(bundle.profile.photo,photo);assert.ok(bundle.wishes.some(w=>w.photo===true&&w.url===`/app/api/wishes/photo?id=${w.id}`),'wish photos are addresses in the export (F09)');assert.ok(!JSON.stringify(bundle.wishes).includes('data:image'));assert.ok(bundle.habits.some(h=>h.title==='Тест: прогулка вечером'));assert.ok(bundle.askesis.some(a=>a.observations.some(n=>n.note==='Тест: вечер прошёл спокойно')));assert.ok(!(await other.json('/data/export')).journal.some(j=>j.id===gratitude.id));
   /* Читаемая выгрузка: настоящий PDF, со шрифтом, текстами дневника и без чужих записей — те же данные, что в JSON */
   { const r=await owner.raw('/data/export.pdf');assert.equal(r.status,200);assert.equal(r.headers.get('content-type'),'application/pdf');assert.match(r.headers.get('content-disposition')||'',/^attachment; filename="lunario-\d{4}-\d{2}-\d{2}\.pdf"$/);
     const pdf=Buffer.from(await r.arrayBuffer());assert.ok(pdf.subarray(0,5).toString('latin1')==='%PDF-','PDF header');assert.ok(pdf.includes('/FontFile2') && pdf.includes('/Identity-H'),'embedded TrueType font');assert.ok(pdf.includes('/Subtype /Image'),'cover image');assert.ok(pdf.length>50000);

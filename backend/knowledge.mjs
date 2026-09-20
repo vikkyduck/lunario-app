@@ -92,37 +92,35 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     return { tests: [], compat };   /* тесты появятся вместе с экраном «Тесты» — сюда лягут их результаты по датам */
   }
 
-  /* ── один день дословно: все, что человек оставил в этот день. Кратность — по контракту JournalDay (day.mjs entriesOf, ревью v114 F08):
-     записей одного вида за день может быть несколько, поэтому texts[], gratitudes[], answers[] — массивы с id в порядке id, ничего не
-     вытесняется; weekly — одна на день (это гарантирует week.reflect). Выгрузка и сводка сопоставляются по id ── */
-  function dayRecord(u, day) {
-    const uid = u.id, rec = { day };
-    const lunar = lunarOf ? lunarOf(u, day) : null; if (lunar) rec.lunar = lunar;
-    const moods = moodsOf(uid, day); if (moods.length) rec.moods = moods.map((m) => ({ key: m, label: moodWord(m) }));
-    for (const r of db.prepare("SELECT id, kind, text, title FROM journal WHERE user_id = ? AND day = ? ORDER BY id").all(uid, day)) {
-      const t = readable(r.text), h = readable(r.title || ''), text = t.text, title = h.text;
+  /* ── дни дословно: все, что человек оставил за промежуток [from, to]. Кратность — по контракту JournalDay (day.mjs entriesOf,
+     ревью v114 F08): записей одного вида за день может быть несколько, поэтому texts[], gratitudes[], answers[] — массивы с id в
+     порядке id, ничего не вытесняется; weekly — одна на день (это гарантирует week.reflect). Выгрузка и сводка сопоставляются по id.
+     Пакетные выборки (F09): по одной выборке диапазона на таблицу и группировка по дню в JS — а не десятки SELECT на каждый из 120 дней ── */
+  function dayRecords(u, from, to) {
+    const uid = u.id, recs = new Map();
+    const rec = (day) => { if (!recs.has(day)) recs.set(day, { day }); return recs.get(day); };
+    for (const [day, list] of Moods.byDay(uid, from, to)) if (list.length) rec(day).moods = list.map((m) => ({ key: m, label: moodWord(m) }));
+    for (const r of db.prepare("SELECT id, day, kind, text, title FROM journal WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY id").all(uid, from, to)) {
+      const x = rec(r.day), t = readable(r.text), h = readable(r.title || ''), text = t.text, title = h.text;
       const flag = t.unreadable || h.unreadable ? { unreadable: true } : {};
-      if (r.kind === '') (rec.texts ||= []).push({ id: r.id, text, ...flag });
-      else if (r.kind === 'gratitude') (rec.gratitudes ||= []).push({ id: r.id, text, ...flag });
-      else if (r.kind === 'answer') (rec.answers ||= []).push({ id: r.id, question: title, text, ...flag });
-      else if (r.kind === 'weekly') rec.weekly = t.unreadable ? null : text;
-      else if (r.kind === 'thought') { const meta = parse(title) || {}; (rec.thoughts ||= []).push({ id: r.id, about: meta.source || '', name: meta.name || '', question: meta.question || '', entry: Number(meta.entry) || 0, text, ...flag }); }
+      if (r.kind === '') (x.texts ||= []).push({ id: r.id, text, ...flag });
+      else if (r.kind === 'gratitude') (x.gratitudes ||= []).push({ id: r.id, text, ...flag });
+      else if (r.kind === 'answer') (x.answers ||= []).push({ id: r.id, question: title, text, ...flag });
+      else if (r.kind === 'weekly') x.weekly = t.unreadable ? null : text;
+      else if (r.kind === 'thought') { const meta = parse(title) || {}; (x.thoughts ||= []).push({ id: r.id, about: meta.source || '', name: meta.name || '', question: meta.question || '', entry: Number(meta.entry) || 0, text, ...flag }); }
     }
-    for (const r of db.prepare('SELECT kind, question, title, body, data FROM entries WHERE user_id = ? AND day = ? ORDER BY id').all(uid, day)) {
-      const data = parse(r.data) || {};
-      if (r.kind === 'card') rec.card = { slug: data.card || '', name: r.title, keys: r.body };
-      else if (r.kind === 'dayrune') rec.rune = { slug: data.rune || '', name: r.title, answer: r.body };
-      else { const q = open(r.question || ''); (rec.asks ||= []).push({ kind: r.kind, kindRu: KIND_RU[r.kind] || r.kind, question: q, topic: q ? (TOPIC_RU[topicOf(q)] || '') : '', answer: r.title, text: r.body, layout: data.layout || '', cards: (data.cards || []).map(cardName).filter(Boolean), runes: (data.runes || []).map(runeName).filter(Boolean) }); }
+    for (const r of db.prepare('SELECT day, kind, question, title, body, data FROM entries WHERE user_id = ? AND day BETWEEN ? AND ? ORDER BY id').all(uid, from, to)) {
+      const x = rec(r.day), data = parse(r.data) || {};
+      if (r.kind === 'card') x.card = { slug: data.card || '', name: r.title, keys: r.body };
+      else if (r.kind === 'dayrune') x.rune = { slug: data.rune || '', name: r.title, answer: r.body };
+      else { const q = readable(r.question || '').text || ''; (x.asks ||= []).push({ kind: r.kind, kindRu: KIND_RU[r.kind] || r.kind, question: q, topic: q ? (TOPIC_RU[topicOf(q)] || '') : '', answer: r.title, text: r.body, layout: data.layout || '', cards: (data.cards || []).map(cardName).filter(Boolean), runes: (data.runes || []).map(runeName).filter(Boolean) }); }
     }
-    const habits = db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(uid, day).map((h) => readable(h.title).text).filter((x) => x !== null);
-    if (habits.length) rec.habits = habits;
-    const ask = db.prepare('SELECT a.title, x.kept, x.note FROM askesis_days x JOIN askesis a ON a.id = x.askesis_id WHERE a.user_id = ? AND x.day = ? ORDER BY a.id').all(uid, day).map((x) => ({ title: readable(x.title).text, kept: !!x.kept, note: readable(x.note || '').text }));
-    if (ask.length) rec.askesis = ask;
-    if (db.prepare('SELECT 1 FROM day_photos WHERE user_id = ? AND day = ?').get(uid, day)) rec.photo = true;
-    const echo = db.prepare('SELECT verdict FROM week_echoes WHERE user_id = ? AND day = ?').get(uid, day); if (echo) rec.echo = echo.verdict;
-    const set = db.prepare("SELECT text, question FROM daily_sets WHERE user_id = ? AND day = ? AND text <> ''").get(uid, day);
-    if (set) rec.morning = { set: set.text.replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim(), question: set.question || '' };
-    return Object.keys(rec).length > 1 ? rec : null;
+    for (const r of db.prepare('SELECT m.day, h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day BETWEEN ? AND ? ORDER BY m.day, h.id').all(uid, from, to)) { const t = readable(r.title).text; if (t !== null) (rec(r.day).habits ||= []).push(t); }
+    for (const r of db.prepare('SELECT x.day, a.title, x.kept, x.note FROM askesis_days x JOIN askesis a ON a.id = x.askesis_id WHERE a.user_id = ? AND x.day BETWEEN ? AND ? ORDER BY x.day, a.id').all(uid, from, to)) (rec(r.day).askesis ||= []).push({ title: readable(r.title).text, kept: !!r.kept, note: readable(r.note || '').text });
+    for (const r of db.prepare('SELECT day FROM day_photos WHERE user_id = ? AND day BETWEEN ? AND ?').all(uid, from, to)) rec(r.day).photo = true;
+    for (const r of db.prepare('SELECT day, verdict FROM week_echoes WHERE user_id = ? AND day BETWEEN ? AND ?').all(uid, from, to)) rec(r.day).echo = r.verdict;
+    for (const r of db.prepare("SELECT day, text, question FROM daily_sets WHERE user_id = ? AND day BETWEEN ? AND ? AND text <> ''").all(uid, from, to)) rec(r.day).morning = { set: r.text.replace(/,?\s*\{Имя\}/g, '').replace(/\s+([,.!?])/g, '$1').trim(), question: r.question || '' };
+    return [...recs.keys()].sort().map((day) => { const x = recs.get(day), lunar = lunarOf ? lunarOf(u, day) : null; return lunar ? { day, lunar, ...x } : x; });
   }
   /* дни, в которых что-то есть, в промежутке [from, to] */
   function daysWithRecords(uid, from, to) {
@@ -136,11 +134,10 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     ])].sort();
   }
 
-  /* ── «Последние записи»: окно в RECENT_DAYS дней, дословно ── */
+  /* ── «Последние записи»: окно в RECENT_DAYS дней, дословно — одной выборкой на таблицу (F09) ── */
   function buildRecent(u, d) {
     const from = addDays(d, -(RECENT_DAYS - 1));
-    const days = daysWithRecords(u.id, from, d).map((day) => dayRecord(u, day)).filter(Boolean);
-    return { from, to: d, window: RECENT_DAYS, days };
+    return { from, to: d, window: RECENT_DAYS, days: dayRecords(u, from, d) };
   }
 
   /* ── отчет за месяц (месяц целиком вышел из окна): без сырых текстов дневника ── */

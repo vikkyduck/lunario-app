@@ -42,7 +42,7 @@ import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveRemind
 import { CLIENT_EVENTS } from './events.mjs';
 import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs';
 import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
-import { createReportRunner } from './report-runner.mjs';
+import { createJobRunner } from './job-runner.mjs';
 import { createCabinetRoutes } from './http/cabinet-routes.mjs';
 import * as CE from './content-edit.mjs';
 import { FEATURES } from './features.mjs';
@@ -98,6 +98,13 @@ function dataUrlOk(v, max) {
 }
 let exportHeaderPng = null;   /* логотип с Луной для обложки PDF — та же картинка, что в письмах */
 const exportHeader = () => { if (exportHeaderPng === null) { try { exportHeaderPng = readFileSync(join(SITE_DIR, 'assets/mail/header.png')); } catch { exportHeaderPng = false; } } return exportHeaderPng || null; };
+/* выгрузка в основном потоке — только запасной путь job-runner для одиночного холодного вызова, когда поток вовсе не запустился (F09) */
+function exportInline(userId, format) {
+  const u = userById(userId); if (!u) throw new Error('not_found');
+  const data = personalExport(db, u, open_);
+  return format === 'pdf' ? personalExportPdf(data, { moodName: (m) => MOOD_RU[m], topicTitle: (k) => (C.READING_TOPICS.find((t) => t.key === k) || {}).title || k,
+    reminderTitle: (k) => (REMINDER_FEATURES[k] || {}).title || k, toolTitle: (k) => ([...C.TOOLS].find((t) => t.key === k) || {}).title || k, headerPng: exportHeader() }) : data;
+}
 /* «Как установить на телефон»: страница и PDF собираются из одного текста (install-guide.mjs) при первом запросе и живут в памяти —
    личного в них нет, а текст меняется только с выпуском */
 let installHtml = null, installPdfBuf = null;
@@ -119,8 +126,9 @@ initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid,
 initCabinet(db);   /* таблицы кабинетов; колонки users ведет schema.mjs */
 initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
-/* Отчеты и дашборд кабинета — в отдельном потоке: SQLite синхронна, и один отчет не должен задерживать запросы приложения */
-const Reports = createReportRunner({ dataDir: DATA_DIR, inline: { overview, report } });
+/* Отчеты, дашборд кабинета и полная выгрузка — в отдельном потоке с ограниченной очередью (job-runner.mjs, F09, F10): SQLite синхронна,
+   и один отчет или выгрузка года записей не должны задерживать запросы приложения. Выгрузок в очереди — не больше 4 */
+const Reports = createJobRunner({ dataDir: DATA_DIR, maxByKind: { export: 4 }, inline: { overview, report, export: (userId, format) => exportInline(userId, format) } });
 
 /* ── утилиты ── */
 const today = () => dayIn();                    // YYYY-MM-DD по Москве
@@ -690,13 +698,13 @@ const server = createServer(async (req, res) => {
         });
       }
 
-      if (p === '/api/data/export' && req.method === 'GET') return json(res,200,personalExport(db,u,open_));
+      /* Полная выгрузка — в потоке заданий (F09): основной процесс не читает и не расшифровывает архив сам; очередь занята — 429 busy,
+         клиент говорит «Выгрузка уже готовится — подождите»; вторая выгрузка того же человека объединяется с первой */
+      const exportError = (e) => e.code === 'busy' ? json(res, 429, { ok: false, error: 'busy' }) : e.code === 'report_timeout' ? json(res, 504, { ok: false, error: 'export_timeout' }) : (() => { throw e; })();
+      if (p === '/api/data/export' && req.method === 'GET') { try { return json(res, 200, await Reports.export(u.id, 'json')); } catch (e) { return exportError(e); } }
       /* Читаемая выгрузка: те же данные, что в JSON, но PDF в стиле Лунарио — для человека, а не для переноса */
       if (p === '/api/data/export.pdf' && req.method === 'GET') {
-        const pdf = personalExportPdf(personalExport(db, u, open_), {
-          moodName: (m) => MOOD_RU[m], topicTitle: (k) => (C.READING_TOPICS.find((t) => t.key === k) || {}).title || k,
-          reminderTitle: (k) => (REMINDER_FEATURES[k] || {}).title || k, toolTitle: (k) => ([...C.TOOLS].find((t) => t.key === k) || {}).title || k, headerPng: exportHeader(),
-        });
+        let pdf; try { pdf = await Reports.export(u.id, 'pdf'); } catch (e) { return exportError(e); }
         const name = `lunario-${d}.pdf`;
         res.writeHead(200, { 'Content-Type': 'application/pdf', 'Content-Length': pdf.length, 'Content-Disposition': `attachment; filename="${name}"`, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' });
         return res.end(pdf);

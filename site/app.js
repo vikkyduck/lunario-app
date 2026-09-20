@@ -190,7 +190,7 @@ function showForecastNote(){
 function dismissForecastNote(){try{localStorage.setItem('lun_forecast_note_'+S.user.id,'1');}catch(e){}$('forecast-note').replaceChildren();}
 async function exportPersonalData(){
   if(exportPersonalData.busy)return;exportPersonalData.busy=true;
-  try{const r=await fetch(API+'/data/export.pdf');if(r.status===401){location.reload();return;}if(!r.ok)throw new Error('export');
+  try{const r=await fetch(API+'/data/export.pdf');if(r.status===401){location.reload();return;}if(r.status===429){toast('Выгрузка уже готовится — подождите');return;}if(!r.ok)throw new Error('export');   /* очередь выгрузок занята (F09) */
     const blob=await r.blob(),url=URL.createObjectURL(blob);   /* читаемый PDF в стиле Лунарио; JSON для переноса — GET /api/data/export */
     const link=document.createElement('a');link.href=url;link.download='lunario-'+S.day.date+'.pdf';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);toast('Файл с вашими данными подготовлен');
   }catch(e){toast('Не получилось скачать');}finally{exportPersonalData.busy=false;}

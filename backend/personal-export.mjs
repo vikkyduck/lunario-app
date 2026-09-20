@@ -5,7 +5,7 @@ import {preferences} from './experience.mjs';
 import { createMoods } from './moods.mjs';
 import { readableWith } from './private-text.mjs';
 import { countWord } from './util.mjs';
-export const EXPORT_LIMITS = ['Фото дня в файле нет: у каждого снимка указан адрес (url), по нему фото открывается при входе в аккаунт', 'Картинки желаний — как есть, в поле photo (data-URL)'];
+export const EXPORT_LIMITS = ['Фото дня в файле нет: у каждого снимка указан адрес (url), по нему фото открывается при входе в аккаунт', 'Картинок желаний в файле нет: у желания с фото указан адрес (url), по нему картинка открывается при входе в аккаунт'];
 /* Строка «N записей не удалось расшифровать» — в limits, если такие есть; их id — отдельным полем unreadableIds (ревью v114, F14) */
 export const unreadableLimit = (n) => `${countWord(n, 'запись', 'записи', 'записей')} не удалось расшифровать — обратитесь в поддержку`;
 export function personalExport(db,u,open){
@@ -16,7 +16,8 @@ export function personalExport(db,u,open){
   const journal=rows('SELECT id,ts,day,text,kind,title FROM journal WHERE user_id=? ORDER BY id').map(r=>{const t=rd(r.id,r.text),h=rd(r.id,r.title||'');const out={...r,text:t.text,title:h.text,...(t.unreadable||h.unreadable?{unreadable:true}:{})};
     if(r.kind==='thought'&&!h.unreadable){try{const m=JSON.parse(out.title);out.title='';out.thought={source:m.source||'',slug:m.slug||'',name:m.name||'',question:m.question||'',entry:Number(m.entry)||0};}catch{}}
     return out;});
-  const wishes=rows('SELECT id,ts,text,done,done_ts,photo,photo_ts FROM wishes WHERE user_id=? ORDER BY id').map(r=>{const t=readable(r.text);return {...r,text:t.text,...(t.unreadable?{unreadable:true}:{})};});
+  /* фото желаний — адресами, не data-URL (F09): они раздували JSON и время выгрузки; photo — есть ли снимок */
+  const wishes=rows("SELECT id,ts,text,done,done_ts,photo<>'' AS hasPhoto,photo_ts FROM wishes WHERE user_id=? ORDER BY id").map(r=>{const t=readable(r.text);const {hasPhoto,...rest}=r;return {...rest,text:t.text,photo:!!hasPhoto,url:hasPhoto?`/app/api/wishes/photo?id=${r.id}`:'',...(t.unreadable?{unreadable:true}:{})};});
   const habits=rows('SELECT id,title,created_at,archived,rule,rule_text FROM habits WHERE user_id=? ORDER BY id').map(r=>{const t=readable(r.title);return {...r,title:t.text,rule_text:readable(r.rule_text||'').text,...(t.unreadable?{unreadable:true}:{}),marks:db.prepare('SELECT day FROM habit_marks WHERE habit_id=? ORDER BY day').all(r.id).map(x=>x.day)};});
   const askesis=rows('SELECT id,title,days,started,until,status,finished_at FROM askesis WHERE user_id=? ORDER BY id').map(r=>{const t=readable(r.title);return {...r,title:t.text,...(t.unreadable?{unreadable:true}:{}),observations:db.prepare('SELECT day,kept,note FROM askesis_days WHERE askesis_id=? ORDER BY day').all(r.id).map(n=>({...n,note:readable(n.note||'').text}))};});
   const limits=unreadableIds.length?[...EXPORT_LIMITS,unreadableLimit(unreadableIds.length)]:EXPORT_LIMITS;
