@@ -15,7 +15,7 @@ export async function checkRegressions({ browser, base, owner }) {
     /* R01: благодарность A → карточка дня загружена → в панели правим на B → сохраняем день с новым настроением: остается B */
     await owner.json('/journal', 'POST', { text: 'Благодарность A — из панели', kind: 'gratitude' });
     await page.evaluate(() => go('history')); await page.waitForFunction(() => DC.state && DC.state.gratitude && DC.state.gratitude.text.startsWith('Благодарность A'));
-    await page.evaluate(() => openWidget('gratitude')); await page.waitForSelector('#gr-box .saved-state');
+    await page.evaluate(() => openWidget('gratitude')); await page.waitForFunction(() => S.grat && S.grat.items.some((i) => i.day === S.day.date)); await page.waitForSelector('#gr-box .saved-state');
     await page.evaluate(() => editGratitude(S.grat.items.find((i) => i.day === S.day.date).id)); await page.waitForSelector('#gr-text');
     await page.fill('#gr-text', 'Благодарность B — уточнена в панели'); await page.click('#gr-box button[data-on="click:saveGratitude"]');
     await page.waitForFunction(() => S.grat.items.some((i) => i.text.startsWith('Благодарность B')));
@@ -30,7 +30,7 @@ export async function checkRegressions({ browser, base, owner }) {
     await page.waitForFunction(() => !ANS.saved);
     await page.evaluate(() => ensureAnswer()); assert.equal(await page.evaluate(() => ANS.saved), null, 'a deleted answer is gone from the panel without a reload (R01)');
     /* R04: ответ сервера потерян, текст уточнен, повтор — одна запись с последним текстом */
-    await page.evaluate(() => { go('history'); openWidget('gratitude'); }); await page.waitForSelector('#gr-box');
+    await page.evaluate(() => { go('history'); openWidget('gratitude'); }); await page.waitForFunction(() => S.grat && S.grat.items.some((i) => i.day === S.day.date));   /* после записи дня панель перечитывает ленту */
     await page.evaluate(() => editGratitude(S.grat.items.find((i) => i.day === S.day.date).id)); await page.waitForSelector('#gr-text');
     await page.evaluate(() => { gratitudeEdit = null; });   /* как новая запись: путь с ключом операции */
     let lost = 0; await page.route('**/api/journal', async (route) => { if (route.request().method() === 'POST' && !lost) { lost = 1; await route.fetch(); return route.abort(); } return route.continue(); });
