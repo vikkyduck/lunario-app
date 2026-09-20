@@ -787,11 +787,11 @@ try {
       page.on('pageerror', e => errors.push(e.message));
       await page.goto(base + '/', { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('#v-home.on');
-      /* «Аккаунт» больше не вкладка внизу: после перестройки навигации туда ведёт кружок с буквой имени в шапке,
-         а нижние вкладки — «Сегодня», «Свериться с собой», «Дневник», «Обо мне». Фото участницы в интерфейсе нет (20.09) */
-      await page.locator('#h-acct').click();
+      /* «Аккаунт» больше не вкладка внизу: туда ведёт строка «Аккаунт» на «Обо мне»; кружок справа вверху — тема (20.09).
+         Нижние вкладки — «Сегодня», «Свериться с собой», «Дневник», «Обо мне». Фото участницы в интерфейсе нет */
+      await page.evaluate(() => go('account'));
       await page.locator('#v-account.on').waitFor();
-      assert.ok(await page.locator('#theme-toggle').isVisible(), 'theme toggle sits where the photo used to be');
+      assert.ok(await page.locator('#ac-avatar').isVisible(), 'the profile shows the first letter of the name');
       await page.reload(); await page.waitForSelector('#v-home.on');
       await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
       await page.waitForFunction(() => document.querySelector('#m-wishes .wish-picture img')?.naturalWidth > 0);
@@ -851,11 +851,8 @@ try {
       await page.locator('#w-journal').getByText('Ответ из интерфейса',{exact:true}).waitFor();
       await close();
       await page.locator('.app-nav [data-nav=home]').click();
-      await page.locator('#h-acct').click();await page.locator('#v-account [data-feature=news]').click();
-      await page.locator('#news-box .wid').first().waitFor();
-      // A root card edit is immediately reflected in News, with the same action.
-      await page.evaluate(()=>{const root=document.querySelector('#v-history [data-feature=askesis]');root.querySelector('b').textContent='Взять аскезу · проверка';root.setAttribute('aria-label','Взять аскезу · проверка');return paintNews();});
-      await page.locator('#news-box').getByRole('button',{name:/^Взять аскезу · проверка/}).click();
+      /* экрана «Новое в приложении» больше нет (20.09): прямой путь к аскезе — со вкладки «Дневник» */
+      await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history [data-feature=askesis]').click();
       await page.locator('#as-box').getByText('Тест: без вечернего скроллинга',{exact:true}).waitFor();
       await close();
       for(const [width,height] of [[390,844],[320,568],[844,390],[1440,900]]) {

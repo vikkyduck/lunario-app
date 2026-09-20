@@ -8,7 +8,7 @@ html.framed{height:100%;overflow:hidden;background:#0b0b10 radial-gradient(ellip
 html.framed body{position:relative;box-sizing:border-box;width:430px;height:min(932px,calc(100vh - 84px));min-height:0;margin:42px auto 0;overflow:hidden;
   border-radius:54px;transform:translateZ(0);isolation:isolate;
   box-shadow:0 0 0 11px #121216,0 0 0 12px #3a3a44,0 0 0 13px #0c0c10,0 50px 120px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.05)}
-html.framed body.inner .wrap{height:100%;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;scroll-padding-top:70px;
+html.framed body.inner .wrap{height:100%;overflow:hidden auto;overscroll-behavior:contain;scrollbar-width:none;scroll-padding-top:70px;
   padding-top:74px;padding-inline:16px;padding-bottom:110px}
 html.framed .wrap::-webkit-scrollbar{display:none}
 /* экраны до входа (приветствие, анкета, три напоминания) — та же прокрутка внутри корпуса */

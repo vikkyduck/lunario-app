@@ -169,6 +169,11 @@
   "view": "account",
   "group": "Аккаунт"
  },
+ "appearance": {
+  "sec": "Оформление",
+  "title": "Оформление",
+  "view": "home"
+ },
  "appinfo": {
   "sec": "Аккаунт",
   "title": "О приложении",

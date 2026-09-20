@@ -44,24 +44,26 @@ function applyTheme(mode){
   try{localStorage.setItem('lun_theme',mode);}catch{}
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(XP.prefs.theme==='system')applyTheme('system');});
-/* Тема — одним значком на месте фото в профиле (решение владелицы 20.09, панель «Оформление» снята): в темной теме показано солнце
-   и подпись «Светлая» — нажатие включает светлую; в светлой — луна и «Темная». Прежний вариант «как на устройстве» остается у тех,
-   кто его выбирал, до первого нажатия */
+/* Тема — кружком справа вверху на всех экранах (решение владелицы 20.09): в темной теме в кружке солнце, в светлой — луна; нажатие открывает
+   панель «Оформление» с тремя вариантами — светлая, темная, как на устройстве. Выбор сохраняется в настройках */
 const SUN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg>';
 const MOON_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 14.2A8 8 0 0 1 9.8 4.5a8 8 0 1 0 9.7 9.7z"/></svg>';
 function paintThemeToggle(){
-  const b=$('theme-toggle'), c=$('theme-circle'), cap=$('theme-caption'); if(!b||!c)return;
   const light=document.documentElement.dataset.theme==='light';
-  c.innerHTML=light?MOON_SVG:SUN_SVG; if(cap)cap.textContent=light?'Темная':'Светлая';
-  b.setAttribute('aria-label',light?'Включить темную тему':'Включить светлую тему');
+  document.querySelectorAll('.theme-btn').forEach(b=>{ b.innerHTML=light?MOON_SVG:SUN_SVG; });
 }
-function themeToggle(){ hap?.(); saveTheme(document.documentElement.dataset.theme==='light'?'dark':'light'); }
+const THEME_OPTIONS=[['light','Светлая'],['dark','Темная'],['system','Как на устройстве']];
+function paintAppearance(){
+  const box=$('appearance-box'); if(!box)return;
+  box.innerHTML=`<div class="theme-options">${THEME_OPTIONS.map(([key,label])=>`<button data-on="click:saveTheme-a0" data-a0="${key}" type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div>`;
+}
 async function savePreferences(value){const r=await api('/preferences',{method:'POST',body:JSON.stringify(value)});XP.prefs=r.preferences;return r;}
 async function saveTheme(theme){
   if(saveTheme.busy)return;saveTheme.busy=true;
-  applyTheme(theme);   /* сразу на экране, сохранение — следом */
+  applyTheme(theme); hap?.();   /* сразу на экране, сохранение — следом */
   try{await savePreferences({...XP.prefs,theme});}
-  catch{applyTheme(XP.prefs.theme);toast(ERR_SAVE);}finally{saveTheme.busy=false;}
+  catch{applyTheme(XP.prefs.theme);toast(ERR_SAVE);}
+  finally{saveTheme.busy=false;paintAppearance();}
 }
 /* ── Инструменты: что человек оставил в «Дневнике». Список — prefs.tools; нет списка — стартовый набор из каталога (сейчас пустой:
    вечер начинается с записи и настроения, остальное предлагается по одному). Прежний «ритуал» сюда больше не подмешивается —

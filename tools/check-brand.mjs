@@ -54,7 +54,6 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(geometry.moon.width<=280 && Math.abs(geometry.moon.width-geometry.moon.height)<1);
       assert.ok(geometry.textRight<=geometry.moon.x+1,'Text and moon occupy separate columns');
       assert.equal(geometry.clip,'none');assert.equal(geometry.mask,'none');assert.match(geometry.font,/Onest/);
-      assert.equal(await page.locator('#h-acct').evaluate(e=>getComputedStyle(e).overflow),'visible','Keep the profile indicator outside its photo');
       coverage.push({width,height,...geometry});await shot('home-'+width);
     }
     await page.setViewportSize({width:390,height:844});

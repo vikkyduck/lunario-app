@@ -127,7 +127,7 @@ function openWidget(k, title){
 }
 /* Что подгрузить при открытии панели; у виджетов без записи содержимое статично (карта дня рисуется с главной) */
 const WIDGET_LOADERS = {
-  wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(''), hmood: () => loadMoodReport(),
+  appearance: () => paintAppearance(), wishes: () => loadWishes(), hentries: () => loadEntries(), week: () => loadWeek(''), hmood: () => loadMoodReport(),
   mood: () => { moodUI.precision=false; moodUI.mode='families'; renderMoods(); paintMoodExtra(); },
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
   askesis: () => loadAskesis(), days: () => loadAllDays(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => loadTone(),
@@ -1275,7 +1275,7 @@ async function paintMeCard(){
   if(!natalCache){ try{ natalCache=await api('/natal?quiet=1'); paint(natalCache); }catch(e){ /* карточка остается с датой и городом */ } }
 }
 function loadAccount(){
-  const u=S.user; paintAvatar(); paintThemeToggle();
+  const u=S.user; paintAvatar();
   $('ac-name').textContent=u.name||'Мой профиль';
   $('profile-summary').textContent=[u.birth?fmtDay(u.birth):'',u.city].filter(Boolean).join(' · ');
   const mail=$('profile-email'); mail.textContent=u.email||''; mail.hidden=!u.email;   /* почта, по которой вошли, — под датой рождения */
@@ -2782,11 +2782,11 @@ function showWishPhoto(id, t){
 }
 async function removeWishPhoto(id){ try { const r = await api('/wishes/photo?id=' + id, { method: 'DELETE' }); hidePostcard(); renderWishes(r); } catch (e) { toast('Не получилось'); } }
 
-/* ══════════ Кружок в правом верхнем углу главной — первая буква имени, по нему открывается «Аккаунт». Фото участницы снято 20.09
-   (владелица и Марина, голос ЦА: «это не соцсеть»); загруженные раньше фото на экране не показываются, API /photo остается для экспорта ══════════ */
+/* ══════════ Буква имени — в карточке профиля в «Аккаунте». Фото участницы снято 20.09 (владелица и Марина, голос ЦА: «это не соцсеть»);
+   загруженные раньше фото на экране не показываются, API /photo остается для экспорта. Кружок справа вверху — тема (paintThemeToggle) ══════════ */
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
-  document.querySelectorAll('.acct').forEach(el=>{el.innerHTML = `<span class="acct-content">${esc(letter)}</span>`;});
+  const av = $('ac-avatar'); if (av) av.textContent = letter;
 }
 
 /* снимок последнего удачного /me — только для аккаунта, который уже прошел анкету, и не старше суток */
