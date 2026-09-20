@@ -981,6 +981,54 @@ try {
   assert.ok(!/считаю в основном потоке|поток отчётов упал/.test(log), 'Reports were served by the worker thread, not the inline fallback');
   console.log('PASS: cabinet dashboard and reports come from the worker thread with the same numbers as the in-process functions.');
 
+  // ── F10 (ревью v114): очередь отчетов с пределом — зависший и упавший поток не лишают HTTP отзывчивости: таймаут снимает задание
+  //    и очищает очередь, падение отвечает ожидающим busy без пересчета в основном потоке, 9-й одновременный — busy, одинаковые — одна задача ──
+  { await writeFile(join(fixture, 'backend/fake-report-worker.mjs'), `
+      import { parentPort } from 'node:worker_threads';
+      let runs = 0; const cancelled = new Set();
+      parentPort.on('message', (m) => {
+        if (m && m.cancel) { cancelled.add(m.cancel); return; }
+        const { id, args } = m; if (cancelled.has(id)) return;
+        const [what, q] = args; runs++;
+        if (what === 'hang') { for (;;) { /* синхронно висит — как тяжелый отчет */ } }
+        if (what === 'crash') process.exit(2);
+        if (what === 'slow') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(q && q.ms) || 150);
+        parentPort.postMessage({ id, ok: true, result: { what, q, runs } });
+      });
+      parentPort.postMessage({ ready: true });`);
+    const { createReportRunner, MAX_PENDING } = await import(pathToFileURL(join(fixture, 'backend/report-runner.mjs')).href);
+    let inlineCalls = 0; const inline = { report: () => { inlineCalls++; return 'inline'; }, overview: () => { inlineCalls++; return 'inline'; } };
+    const workerUrl = pathToFileURL(join(fixture, 'backend/fake-report-worker.mjs'));
+    const R = createReportRunner({ dataDir: join(fixture, 'data'), inline, log: () => {}, workerUrl, timeoutMs: 400 });
+    assert.deepEqual((await R.report('echo', { a: 1 })).what, 'echo', 'the fake worker answers');
+    /* зависание: вызов получает report_timeout, очередь после этого пуста, следующий вызов работает на новом потоке */
+    await assert.rejects(R.report('hang', {}), (e) => e.code === 'report_timeout', 'a hung report times out by name');
+    assert.equal(R.pendingSize, 0, 'nothing is left in the queue after the timeout');
+    assert.equal((await R.report('echo', { after: 'hang' })).what, 'echo', 'the queue is alive after a hang: the thread was restarted');
+    assert.equal(inlineCalls, 0, 'no inline recalculation');
+    /* падение: и упавшее задание, и ожидавшие за ним получают busy, а не пересчет в основном потоке */
+    const [crashR, waitingR] = await Promise.allSettled([R.report('crash', {}), R.report('echo', { behind: 'crash' })]);
+    assert.equal(crashR.status, 'rejected'); assert.equal(crashR.reason.code, 'busy', 'the crashed job answers busy');
+    assert.equal(waitingR.status, 'rejected'); assert.equal(waitingR.reason.code, 'busy', 'a job waiting behind the crash gets busy');
+    assert.equal(inlineCalls, 0, 'a crash never triggers inline recalculation'); assert.equal(R.pendingSize, 0);
+    /* предел: 8 принятых (одно в потоке, семь ждут), 9-й одновременный — busy сразу */
+    const many = []; for (let i = 0; i < MAX_PENDING; i++) many.push(R.report('slow', { i, ms: 20 }));
+    await assert.rejects(R.report('slow', { i: 99, ms: 1 }), (e) => e.code === 'busy', 'the 9th concurrent request is refused at once');
+    const done = await Promise.all(many); assert.equal(done.length, MAX_PENDING); assert.ok(done.every((r) => r.what === 'slow'));
+    /* одинаковые запросы — одна задача: оба ответа один и тот же объект, поток выполнил его один раз */
+    const runsBefore = (await R.report('echo', { count: true })).runs;
+    const [a, b] = await Promise.all([R.report('slow', { same: 1, ms: 80 }), R.report('slow', { same: 1, ms: 80 })]);
+    assert.equal(a, b, 'two identical requests share one promise'); assert.equal(a.runs, runsBefore + 1, 'the worker ran it once');
+    /* слишком частые падения — busy без запуска нового потока и без inline */
+    const R2 = createReportRunner({ dataDir: join(fixture, 'data'), inline, log: () => {}, workerUrl, timeoutMs: 400 });
+    for (let i = 0; i < 4; i++) { const r = await Promise.allSettled([R2.report('crash', { i })]); assert.equal(r[0].reason.code, 'busy'); }
+    await assert.rejects(R2.report('echo', {}), (e) => e.code === 'busy', 'after too many restarts calls are busy'); assert.equal(inlineCalls, 0);
+    /* маршрут кабинета отвечает на busy 429, на таймаут — 504 (проверяется по коду: живой поток отчетов так не заставить) */
+    const routesSrc10 = (await import('node:fs')).readFileSync(join(repo, 'backend/http/cabinet-routes.mjs'), 'utf8');
+    assert.ok(/'busy' \? json\(res, 429/.test(routesSrc10) && /report_timeout' \? json\(res, 504/.test(routesSrc10), 'busy → 429, timeout → 504 in the cabinet routes');
+    assert.ok(/Отчеты заняты, повторите через минуту/.test((await import('node:fs')).readFileSync(join(repo, 'site/cabinet.js'), 'utf8')), 'the cabinet names the busy state');
+    console.log('PASS: F10 — a hung report times out and frees the queue, a crashed thread answers busy without inline recalculation, the queue is capped and identical requests share one task.'); }
+
   // ── Сессии: вход по коду меняет токен устройства; выход со всех устройств; у сотрудников срок короче ──
   const rot = account(); await rot.json('/me'); const rotCookieBefore = rot.cookie;
   const rotMail = 'rotate@example.test';

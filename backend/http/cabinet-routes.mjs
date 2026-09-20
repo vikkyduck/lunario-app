@@ -33,14 +33,16 @@ export function createCabinetRoutes(deps) {
       if (req.method === 'POST') { const b = await readBody(req); const r = setConfig(b, u.email); if (r.ok) console.log(`[кабинет] ${u.email} изменил конфигурацию кабинетов`); return json(res, r.ok ? 200 : 400, r); }
       if (req.method === 'DELETE') { console.log(`[кабинет] ${u.email} сбросил конфигурацию кабинетов`); return json(res, 200, resetConfig()); }
     }
+    /* очередь отчетов ограничена (ревью v114, F10): busy — 429, кабинет просит повторить через минуту; таймаут — 504 по имени */
+    const reportError = (e) => e.code === 'busy' ? json(res, 429, { ok: false, error: 'busy' }) : e.code === 'report_timeout' ? json(res, 504, { ok: false, error: 'report_timeout' }) : (() => { throw e; })();
     if (p === '/api/cabinet/dashboard') {
       if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
-      return json(res, 200, await Reports.overview(Object.fromEntries(url.searchParams)));
+      try { return json(res, 200, await Reports.overview(Object.fromEntries(url.searchParams))); } catch (e) { return reportError(e); }
     }
     if (p === '/api/cabinet/report') {
       const kind = url.searchParams.get('kind') || '';
       if (!allowed(kind)) return json(res, 403, { ok: false, error: 'no_access' });
-      const r = await Reports.report(kind, Object.fromEntries(url.searchParams));
+      let r; try { r = await Reports.report(kind, Object.fromEntries(url.searchParams)); } catch (e) { return reportError(e); }
       if (!r) return json(res, 404, { ok: false, error: 'not_found' });
       if (kind === 'content') r.files = CE.contentFiles();
       return json(res, 200, r);

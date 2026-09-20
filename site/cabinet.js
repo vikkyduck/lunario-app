@@ -106,7 +106,7 @@ async function openPage(p) {
     S.data = r;
     if (p === 'overview') return renderOverview(r);
     renderReport(r);
-  } catch (e) { box.innerHTML += `<p class="msg err">Не получилось загрузить: ${esc(e.code || e.message)}</p>`; }
+  } catch (e) { box.innerHTML += `<p class="msg err">${e.code === 'busy' ? 'Отчеты заняты, повторите через минуту' : e.code === 'report_timeout' ? 'Отчет считался слишком долго — повторите позже' : 'Не получилось загрузить: ' + esc(e.code || e.message)}</p>`; }   /* очередь отчетов с пределом (F10) */
 }
 const periodLabel = (P) => `${fmtDayShort(P.from)} — ${fmtDayShort(P.to)} · сравнение с ${fmtDayShort(P.prevFrom)} — ${fmtDayShort(P.prevTo)}`;
 function toolbar(r, withSave = true) {

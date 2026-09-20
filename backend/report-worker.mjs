@@ -20,7 +20,12 @@ initWorkspace(db, dataDir, seal, open);   // таблицы уже есть — 
 initReports(db, dataDir);
 
 const RUN = { overview: (q) => overview(q), report: (kind, q) => report(kind, q) };
-parentPort.on('message', ({ id, kind, args }) => {
+/* задания идут по одному; отмененное по таймауту (основной поток шлет { cancel: id }) не начинается (ревью v114, F10) */
+const cancelled = new Set();
+parentPort.on('message', (m) => {
+  if (m && m.cancel) { cancelled.add(m.cancel); return; }
+  const { id, kind, args } = m;
+  if (cancelled.has(id)) { cancelled.delete(id); return; }
   try { parentPort.postMessage({ id, ok: true, result: RUN[kind](...args) }); }
   catch (e) { parentPort.postMessage({ id, ok: false, error: e.message || String(e) }); }
 });
