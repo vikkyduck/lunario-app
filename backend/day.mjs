@@ -12,10 +12,12 @@ import { VERDICTS } from './week.mjs';
 import { createMoods } from './moods.mjs';
 import { countActiveDays, activeDays } from './day-sources.mjs';
 
-export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten = null, questionOf, morningOf = () => null, themeTitle = (k) => k, lunarOf = () => null, dailyWrites = 100 }) {
+export function createDay({ db, seal, open, readable = null, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten = null, questionOf, morningOf = () => null, themeTitle = (k) => k, lunarOf = () => null, dailyWrites = 100 }) {
   const KINDS = { text: '', gratitude: 'gratitude', answer: 'answer' };
   const latest = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(uid, d, kind);
-  const cell = (row) => row ? { id: row.id, text: open(row.text), title: open(row.title || '') } : null;
+  /* ячейка дня: запись не расшифровалась (чужой ключ, испорченные данные) — { text: null, unreadable: true }, не пустая строка (ревью v114, F14) */
+  const read = readable || ((s) => ({ text: open(s), unreadable: false }));
+  const cell = (row) => { if (!row) return null; const t = read(row.text), h = read(row.title || ''); return { id: row.id, text: t.text, title: h.unreadable ? null : h.text, ...(t.unreadable || h.unreadable ? { unreadable: true } : {}) }; };
   const allOf = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id').all(uid, d, kind).map(cell);
   const moodOk = (m) => /^own:[^\s|]{1,24}$/u.test(m) || !!C.moodInfo(m);
   const Moods = createMoods(db);
@@ -116,6 +118,8 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     const fresh = Object.entries(KINDS).filter(([field, kind]) => b[field] !== undefined && b[field] !== null && cleanText(b[field], 2000) && !latest(u.id, d, kind)).length;
     if (fresh && db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c + fresh > dailyWrites) return { ok: false, error: 'too_many', limit: dailyWrites };
     if (b.echo !== undefined && b.echo !== null && !(typeof b.echo === 'string' && (b.echo === '' || VERDICTS.includes(b.echo)))) return { ok: false, error: 'bad_echo' };
+    /* нечитаемую запись не переписываем (F14): текст, который человек, возможно, еще восстановит из копии, не затирается новым */
+    for (const [field, kind] of Object.entries(KINDS)) { if (b[field] === undefined || b[field] === null || !cleanText(b[field], 2000)) continue; const row = latest(u.id, d, kind); if (row && read(row.text).unreadable) return { ok: false, error: 'unreadable', field }; }
     transaction(db, () => {
       for (const [field, kind] of Object.entries(KINDS)) {
         if (b[field] === undefined || b[field] === null) continue;

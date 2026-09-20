@@ -956,6 +956,39 @@ try {
   assert.ok(!B.list().items.some((i) => i.name.includes('2020-01-01')) && B.list().items.length >= 2, 'fresh copies stay');
   console.log('PASS: backups are encrypted with a separate secret and the app key no longer sits beside the database; copies older than 30 days are swept.');
 
+  // ── F14 (ревью v114): чужой ключ и испорченные данные — исключение decrypt_failed, штатная пустая строка — ''; в ленте, дне и выгрузке
+  //    нечитаемая запись помечена, а не пуста; ее нельзя переписать; выгрузка называет число нечитаемых и их id ──
+  { const dirA = join(fixture, 'keys-a'), dirB = join(fixture, 'keys-b'); await mkdir(dirA); await mkdir(dirB);
+    const A = privateText(dirA), Bk = privateText(dirB);
+    const sealed = A.seal('текст под ключом A');
+    assert.equal(A.open(sealed), 'текст под ключом A'); assert.equal(A.open(''), '', 'an empty string stays empty — that is normal'); assert.equal(A.open('старая открытая запись'), 'старая открытая запись');
+    assert.throws(() => Bk.open(sealed), (e) => e.code === 'decrypt_failed', 'another key throws decrypt_failed instead of returning an empty string');
+    assert.throws(() => A.open(sealed.slice(0, -6) + 'AAAAAA'), (e) => e.code === 'decrypt_failed', 'a damaged ciphertext throws too');
+    assert.deepEqual(A.readable(sealed), { text: 'текст под ключом A', unreadable: false }); assert.deepEqual(Bk.readable(sealed), { text: null, unreadable: true });
+    const { readFileSync: rfs } = await import('node:fs');
+    assert.ok(rfs(join(fixture, 'data/key.check'), 'utf8').startsWith('enc1:'), 'the server wrote its key marker on start');
+    /* нечитаемая строка в базе: лента и день помечают ее, выгрузка называет, правка отклоняется */
+    const un = account(); const unMe = await un.json('/me'), unId = unMe.user.id, unDay = unMe.day.date;
+    await un.json('/profile', 'POST', { name: 'Нечитаемая', birth: '1990-01-01', city: 'Москва', consent: true });
+    const good = await un.json('/journal', 'POST', { text: 'Читаемая запись', kind: 'gratitude' });
+    qaDB.prepare("INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?, ?, ?, ?, '', '')").run(unId, new Date().toISOString(), unDay, Bk.seal('запись чужим ключом'));
+    const badId = qaDB.prepare("SELECT id FROM journal WHERE user_id = ? AND kind = ''").get(unId).id;
+    const feed = (await un.json('/journal')).items; const badRow = feed.find((i) => i.id === badId), goodRow = feed.find((i) => i.id === good.item.id);
+    assert.ok(badRow && badRow.unreadable === true && badRow.text === null, 'the feed marks the unreadable record: ' + JSON.stringify(badRow)); assert.equal(goodRow.text, 'Читаемая запись'); assert.ok(!('unreadable' in goodRow));
+    const dayState = await un.json('/day'); assert.ok(dayState.text && dayState.text.unreadable === true && dayState.text.text === null, 'the day card marks the cell: ' + JSON.stringify(dayState.text)); assert.equal(dayState.gratitude.text, 'Читаемая запись');
+    const overwrite = await un.raw('/day', 'POST', { text: 'Новый текст поверх нечитаемого' }); assert.equal(overwrite.status, 409); assert.equal((await overwrite.json()).error, 'unreadable', 'an unreadable record is not overwritten');
+    assert.equal(qaDB.prepare('SELECT text FROM journal WHERE id = ?').get(badId).text.startsWith('enc1:'), true, 'the damaged bytes are untouched');
+    assert.equal((await un.json('/day', 'POST', { gratitude: 'Читаемая запись — поправлена' })).gratitude.text, 'Читаемая запись — поправлена', 'other cells of the day still save');
+    const ex = await un.json('/data/export');
+    assert.ok(ex.limits.some((l) => /1 запись не удалось расшифровать/.test(l)), 'the export names the unreadable count: ' + JSON.stringify(ex.limits)); assert.deepEqual(ex.unreadableIds, [badId]);
+    assert.ok(ex.journal.find((j) => j.id === badId).unreadable === true && ex.journal.find((j) => j.id === badId).text === null);
+    const { personalExportPdf: pdfF14 } = await import(pathToFileURL(join(fixture, 'backend/personal-export-pdf.mjs')).href);
+    const pdfBuf = pdfF14(ex, {}); assert.ok(pdfBuf.length > 1000, 'the PDF builds with an unreadable record');
+    const pdfText = [...pdfBuf.toString('latin1').matchAll(/stream\r?\n([\s\S]*?)endstream/g)].map((m) => { try { return inflateSync(Buffer.from(m[1], 'latin1')).toString('latin1'); } catch { return ''; } }).join('\n');
+    assert.ok(pdfText.length > 0, 'PDF streams inflate');
+    const pdfR = await un.raw('/data/export.pdf'); assert.equal(pdfR.status, 200, 'the PDF route serves with an unreadable record');
+    console.log('PASS: F14 — decrypt failure is an exception, not an empty string; unreadable records are marked in the feed, the day card and the export, named in limits and never overwritten.'); }
+
   // ── Схема: версия базы записана, повторный запуск ничего не меняет, health её показывает ──
   const { SCHEMA_VERSION } = await import(pathToFileURL(join(fixture, 'backend/schema.mjs')).href);
   assert.equal(qaDB.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION, 'user_version tracks the last applied migration');
@@ -1126,7 +1159,7 @@ try {
     assert.equal(v19.prepare('PRAGMA user_version').get().user_version, 19);
     const ts = new Date().toISOString();
     v19.prepare("INSERT INTO users (id, created_at, last_seen, name, onboarded) VALUES (7, ?, ?, 'Квитанции', 1)").run(ts, ts);
-    v19.prepare("INSERT INTO journal (id, user_id, ts, day, text, kind, title) VALUES (1, 7, ?, '2026-09-01', 'enc1:notreal', 'gratitude', '')").run(ts);
+    v19.prepare("INSERT INTO journal (id, user_id, ts, day, text, kind, title) VALUES (1, 7, ?, '2026-09-01', 'старая запись без шифрования', 'gratitude', '')").run(ts);   /* без enc1: у этой базы нет ключа, а с ключом сервер сверяет маркер (F14) */
     const put = v19.prepare('INSERT INTO sync_receipts (user_id, operation_id, payload_hash, response_json, created_at) VALUES (7, ?, ?, ?, ?)');
     put.run('op-old-format', 'h1', '{"ok":true,"item":{"id":1,"day":"2026-09-01","text":"MARKER-секрет","kind":"gratitude","title":""},"streak":3}', ts);
     put.run('op-old-updated', 'h2', '{"ok":true,"updated":true,"item":{"id":1,"text":"MARKER-еще"}}', ts);
@@ -1150,6 +1183,19 @@ try {
     assert.equal(m20.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND kind = 'gratitude'").get(rpId).c, 1, 'one gratitude after a repeat on the migrated base');
     m20.close(); }
   console.log('PASS: F03 — receipts of the v110–v113 form are reduced to references by migration 20, unrecognised and refusal receipts are dropped, repeats stay honest.');
+
+  // ── F14 (ревью v114): сервер с подмененным или пропавшим ключом при непустой базе не стартует — и не пишет новым ключом поверх архива ──
+  { const fs14 = await import('node:fs');
+    const keyPath = join(fixture, 'data/secret.key'), keyBytes = fs14.readFileSync(keyPath);
+    const guarded = account(); await guarded.json('/me'); await guarded.json('/journal', 'POST', { text: 'Запись под настоящим ключом' });   /* база не пуста и зашифрована */
+    await stop();
+    fs14.writeFileSync(keyPath, 'другой-ключ-' + Date.now());
+    log = ''; await assert.rejects(start(), /ключ/, 'a replaced key refuses to start'); assert.match(log, /ключ шифрования не совпадает/, 'the log names the key: ' + log.slice(-300));
+    fs14.rmSync(keyPath);
+    log = ''; await assert.rejects(start(), /ключ/, 'a missing key on an encrypted base refuses to start too'); assert.ok(!fs14.existsSync(keyPath), 'no fresh key is created over the archive');
+    fs14.writeFileSync(keyPath, keyBytes);
+    log = ''; await start(); assert.equal((await guarded.json('/journal')).items[0].text, 'Запись под настоящим ключом', 'the real key restored — the server starts and reads');
+    console.log('PASS: F14 — a replaced or lost key on a non-empty base stops the server before it writes anything.'); }
 } finally {
   await stop();
   await rm(fixture, { recursive: true, force: true });

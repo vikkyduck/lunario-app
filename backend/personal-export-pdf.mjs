@@ -186,7 +186,10 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   if (!journal.length) flow.empty('Записей пока не было.');
   /* у мысли к материалу — источник: имя карты, руны или расклада и вопрос, к которому она записана (аудит v98, F11) */
   const thoughtTitle = (j) => j.thought ? [j.thought.name, j.thought.question].filter(Boolean).join(' · ') : '';
-  for (const j of journal) flow.card({ meta: [fmtDay(j.day), JOURNAL_KIND[j.kind]].filter(Boolean).join(' · '), title: j.kind === 'answer' && j.title ? j.title : j.kind === 'thought' ? thoughtTitle(j) : '', text: j.text });
+  for (const j of journal.filter((x) => !x.unreadable)) flow.card({ meta: [fmtDay(j.day), JOURNAL_KIND[j.kind]].filter(Boolean).join(' · '), title: j.kind === 'answer' && j.title ? j.title : j.kind === 'thought' ? thoughtTitle(j) : '', text: j.text });
+  /* записи, которые не расшифровались, — одной строкой в конце раздела, а не пустыми карточками (ревью v114, F14) */
+  const unreadable = journal.filter((x) => x.unreadable).length;
+  if (unreadable) flow.empty(`${plural(unreadable, 'запись', 'записи', 'записей')} не удалось расшифровать — обратитесь в поддержку.`);
 
   /* ── желания ── */
   const wishes = data.wishes || [];

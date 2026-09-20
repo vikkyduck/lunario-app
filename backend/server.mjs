@@ -16,7 +16,7 @@ import { installPdf } from './install-pdf.mjs';
 import { preferences, validPreferences, timeline, morningOf } from './experience.mjs';
 import { entryPage } from './entries.mjs';
 import { initDailySets, dailySet } from './daily-sets.mjs';
-import { privateText } from './private-text.mjs';
+import { privateText, hasEncrypted, isDecryptFailed } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak } from './practices.mjs';
 import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
 import { MSK, MOSCOW, ISO_DAY, isDay, dayIn, addDays, clean, cleanText, countWord } from './util.mjs';
@@ -72,7 +72,6 @@ const CONSENT_VERSION = '2026-08-23';
 const PUSH = vapidKeys(DATA_DIR);
 const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replace(/\/+$/, '');
 /* Какие события принимает /api/event и какие пишет сам обработчик — в реестре events.mjs */
-const {seal, open:open_, sealBytes, openBytes} = privateText(DATA_DIR);
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
 /* Короткое ожидание, если база занята другим писателем (напоминания, отчеты, ночная копия). Без него редкая
@@ -84,6 +83,9 @@ db.exec('PRAGMA busy_timeout = 1000');
    порт слушается только после того, как миграции прошли и обязательные колонки на месте */
 migrate(db);
 verifySchema(db);
+/* Ключ шифрования — после базы (ревью v114, F14): новый ключ заводится только на пустой базе, а с записями сверяется маркер
+   data/key.check — не сошелся или файла ключа нет, сервер не стартует и не пишет новым ключом поверх архива */
+const {seal, open:open_, sealBytes, openBytes, readable} = privateText(DATA_DIR, { encrypted: hasEncrypted(db) });
 
 const wishList = (userId) => db.prepare("SELECT id, text, done, ts, photo <> '' AS hasPhoto, photo_ts FROM wishes WHERE user_id=? ORDER BY done, id DESC").all(userId)
   .map((r) => ({ id: r.id, text: open_(r.text), done: r.done, ts: r.ts, photo: !!r.hasPhoto, photoTs: r.photo_ts || '' }));
@@ -563,7 +565,7 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
   track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
-const Day = createDay({ db, seal, open: open_, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten, questionOf: (u, d) => dayPack(u, d).question,
+const Day = createDay({ db, seal, open: open_, readable, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten, questionOf: (u, d) => dayPack(u, d).question,
   morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
   themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '',
   lunarOf,
@@ -586,7 +588,7 @@ const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
 const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
 const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
-const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods, Receipts });
+const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods, Receipts });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
 
 const server = createServer(async (req, res) => {
@@ -823,7 +825,8 @@ const server = createServer(async (req, res) => {
     const known = e.message === 'bad_json' ? 400 : e.message === 'too_big' ? 413 : 0;   /* ошибки запроса — человеку по имени; внутренние — только в журнал */
     if (!known) { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
     if (known === 413) { res.setHeader('Connection', 'close'); res.once('finish', () => req.destroy()); }   /* недочитанное тело не тянем — закрываем после ответа */
-    json(res, known || 500, { ok: false, error: known ? e.message : 'server_error' });
+    /* запись не расшифровалась (чужой ключ или испорченные данные) — по имени, а не server_error: это не «пустая запись» и не наша ошибка кода (F14) */
+    json(res, known || 500, { ok: false, error: known ? e.message : isDecryptFailed(e) ? 'decrypt_failed' : 'server_error' });
   }
 });
 server.listen(PORT, HOST, () => console.log(`lunario-app: http://${HOST}:${PORT}${BASE} · site=${SITE_DIR} · db=${DATA_DIR}/app.db`));

@@ -1,10 +1,12 @@
 /* Настроение, дневник, желания и фото, лента записей, отчет по настроениям.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
 import { addDays } from '../util.mjs';
-export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList, Moods, Receipts }) {
+export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList, Moods, Receipts }) {
   /* Квитанции операций — receipts.mjs: ключ op от клиента, в квитанции только ссылка на запись (без текста); повтор отдает запись
      в актуальном виде или говорит, что она удалена; другой текст с тем же ключом — конфликт с найденной записью (R02, R04) */
-  const journalItem = (ref) => { const row = ref && ref.id ? db.prepare('SELECT id, day, text, kind, title FROM journal WHERE id = ? AND user_id = ?').get(ref.id, ref.uid) : null; return row ? { id: row.id, day: row.day, text: open_(row.text), kind: row.kind, title: open_(row.title || '') } : null; };
+  /* Запись ленты: не расшифровалась — { text: null, unreadable: true }, а не пустая строка и не 500 на всю ленту (ревью v114, F14) */
+  const shape = (row) => { const t = readable(row.text), h = readable(row.title || ''); return { id: row.id, day: row.day, kind: row.kind, text: t.text, title: h.unreadable ? null : h.text, ...(t.unreadable || h.unreadable ? { unreadable: true } : {}) }; };
+  const journalItem = (ref) => { const row = ref && ref.id ? db.prepare('SELECT id, day, text, kind, title FROM journal WHERE id = ? AND user_id = ?').get(ref.id, ref.uid) : null; return row ? shape(row) : null; };
   return async function journalRoutes({ p, req, res, url, u, d }) {
     if (p === '/api/mood' && req.method === 'POST') {
       const b = await readBody(req);
@@ -22,11 +24,12 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
     if (p === '/api/journal') {
       if (req.method === 'PATCH') {
         const b = await readBody(req), text = cleanText(b.text, 2000);
-        const item = db.prepare("SELECT id, day FROM journal WHERE id=? AND user_id=? AND kind='gratitude'").get(Number(b.id) || 0, u.id);
+        const item = db.prepare("SELECT id, day, text FROM journal WHERE id=? AND user_id=? AND kind='gratitude'").get(Number(b.id) || 0, u.id);
         if (!item) return json(res, 404, { ok: false, error: 'not_found' });
         if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
+        if (readable(item.text).unreadable) return json(res, 409, { ok: false, error: 'unreadable' });   /* нечитаемую запись не переписываем: ее еще можно восстановить из копии (F14) */
         db.prepare('UPDATE journal SET text=? WHERE id=? AND user_id=?').run(seal(text), item.id, u.id);
-        return json(res, 200, { ok: true, item: { ...item, text } });
+        return json(res, 200, { ok: true, item: { id: item.id, day: item.day, text } });
       }
       if (req.method === 'POST') {
         const b = await readBody(req);
@@ -53,7 +56,7 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
       const kind = url.searchParams.get('kind'), before = Math.max(0, Math.trunc(Number(url.searchParams.get('before'))) || 0), limit = Math.min(100, Math.max(1, Math.trunc(Number(url.searchParams.get('limit'))) || 60));
       const rows = db.prepare(`SELECT id, day, text, kind, title FROM journal WHERE user_id=? AND (?='' OR kind=?) AND (?=0 OR id<?) ORDER BY id DESC LIMIT ?`).all(u.id, kind || '', kind || '', before, before, limit + 1);
       const page = rows.slice(0, limit);
-      return json(res, 200, { items: page.map((r) => ({ ...r, text: open_(r.text), title: open_(r.title || '') })), next: rows.length > limit ? page[page.length - 1].id : null, today: !!(kind && page.find((r) => r.day === d)) });
+      return json(res, 200, { items: page.map(shape), next: rows.length > limit ? page[page.length - 1].id : null, today: !!(kind && page.find((r) => r.day === d)) });
     }
     /* Фото у желания — картинка для визуализации. Уменьшается в телефоне, хранится как есть, отдается только хозяйке. */
     if (p === '/api/wishes/photo') {

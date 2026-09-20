@@ -52,7 +52,7 @@ export function createDayRoutes({ json, readBody, day, bridge }) {
       if (!b || typeof b !== 'object') return json(res, 400, { ok: false, error: 'bad_body' });
       const x = typeof b.day === 'string' ? b.day : ''; if (x && x !== d && !past(x)) return refuse(x);
       const r = day.save(u, x && x !== d ? x : d, b, { today: !x || x === d });
-      return json(res, r.ok ? 200 : r.error === 'too_many' ? 429 : 400, r);   /* лимит — явный отказ, не «сохранено» (F15) */
+      return json(res, r.ok ? 200 : r.error === 'too_many' ? 429 : r.error === 'unreadable' ? 409 : 400, r);   /* лимит — явный отказ, не «сохранено» (F15); нечитаемая запись не перезаписывается (F14) */
     }
     if (req.method === 'DELETE') { const x = url.searchParams.get('day') || d; if (x !== d && !past(x)) return refuse(x); const r = day.remove(u, x, url.searchParams.get('what') || ''); return json(res, r.ok ? 200 : 400, r); }
     return false;
