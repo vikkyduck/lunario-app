@@ -634,7 +634,7 @@ try {
     const n0 = CE.versions('руны.txt').length;
     assert.equal(CE.bookRecordSave('руны.txt', { key: r0.key, version: v0, title: r0.title, fields: r0.fields, body: r0.body + '\n\nПроверка правки.' }, 'test').ok, true, 'a record saves by key and version');
     assert.equal(CE.bookRecordSave('руны.txt', { key: r0.key, version: v0, title: r0.title, fields: r0.fields, body: r0.body }, 'test').error, 'conflict', 'a stale version is a conflict, not an overwrite');
-    assert.equal(CE.bookRecordSave('руны.txt', { key: 'нет-такой-руны', title: 'x' }, 'test').error, 'not_found');
+    assert.equal(CE.bookRecordSave('руны.txt', { key: 'нет-такой-руны', version: CE.fileVersion('руны.txt'), title: 'x' }, 'test').error, 'not_found');
     assert.equal(CE.bookRecords('руны.txt').find((r) => r.key === r0.key).body.endsWith('Проверка правки.'), true, 'the right record changed');
     for (let i = 0; i < 3; i++) assert.equal(CE.writeFile('руны.txt', CE.readContent('руны.txt'), 'test', CE.fileVersion('руны.txt')).ok, true);   /* три записи подряд внутри одной секунды, каждая — с прочитанной версией */
     const vs = CE.versions('руны.txt'); assert.equal(vs.length, n0 + 4, 'every save leaves its own archive version'); assert.equal(new Set(vs.map((x) => x.id)).size, vs.length); assert.ok(vs.every((x) => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(x.ts)), 'version time parses: ' + vs[0].ts);
@@ -715,6 +715,61 @@ try {
     const raw = CE2.contentRead('привычки.txt'); assert.equal(CE2.writeContent('привычки.txt', raw.text, 'd', 'stale').error, 'conflict'); assert.equal(CE2.writeContent('привычки.txt', raw.text, 'd', raw.version).ok, true);
     assert.throws(() => CE2.writeFile('привычки.txt', 'x', 'e'), /версия/, 'the low-level write demands a version');
     console.log('PASS: audit v112 — receipts without text and honest repeats, edit after a lost response, wishes and habits repeat safely, invalid habit dates refused, knowledge base fresh within the day, portrait counts every mark, compatibility exported with a named basis, weekly-only days in the archive, record lunar day fixed, tables and raw files save by version.'); }
+
+  // ── F07 (ревью v114): защиту от перезаписи нельзя обойти без версии — у каждого редактора (книга, таблица, сырой файл, откат,
+  //    картинка) три случая: без версии — no_version и данные не изменились; со старой — conflict и не изменились; со свежей — ok;
+  //    «два редактора»: A сохранил, B с версией A — conflict, итог — вариант A; импорт без версии — отдельная операция с правом admin ──
+  { const E = await import(pathToFileURL(join(fixture, 'backend/content-edit.mjs')).href);
+    const fsE = await import('node:fs');
+    const book = 'руны.txt', table = 'привычки.txt';
+    const rec = () => E.bookRecords(book)[0], text = (n) => E.readContent(n);
+    /* книга */
+    { const r0 = rec(), before = text(book);
+      assert.equal(E.bookRecordSave(book, { key: r0.key, title: r0.title, fields: r0.fields, body: r0.body + '\nБез версии' }, 't').error, 'no_version'); assert.equal(text(book), before, 'book: nothing changed without a version');
+      assert.equal(E.bookRecordSave(book, { key: r0.key, version: 'stale000000', title: r0.title, fields: r0.fields, body: r0.body + '\nСтарая версия' }, 't').error, 'conflict'); assert.equal(text(book), before);
+      assert.equal(E.bookRecordSave(book, { key: r0.key, version: r0.version, title: r0.title, fields: r0.fields, body: r0.body + '\nСвежая версия' }, 't').ok, true); assert.ok(rec().body.endsWith('Свежая версия'));
+      assert.equal(E.bookRecordAdd(book, 0, 't').error, 'no_version'); assert.equal(E.bookRecordAdd(book, 0, 't', 'stale000000').error, 'conflict');
+      const added = E.bookRecordAdd(book, 0, 't', E.fileVersion(book)); assert.equal(added.ok, true, 'add with a fresh version');
+      assert.equal(E.bookRecordRemove(book, { index: added.index }, 't').error, 'no_version'); assert.equal(E.bookRecordRemove(book, { index: added.index, version: 'stale000000' }, 't').error, 'conflict');
+      assert.equal(E.bookRecordRemove(book, { index: added.index, version: E.fileVersion(book) }, 't').ok, true); }
+    /* таблица */
+    { const t0 = E.tableRows(table), before = text(table);
+      assert.equal(E.tableSave(table, [...t0.rows, ['Без версии']], 't').error, 'no_version'); assert.equal(E.tableSave(table, [...t0.rows, ['Без версии']], 't', null).error, 'no_version'); assert.equal(text(table), before);
+      assert.equal(E.tableSave(table, [...t0.rows, ['Старая']], 't', 'stale000000').error, 'conflict'); assert.equal(text(table), before);
+      assert.equal(E.tableSave(table, [...t0.rows, ['Свежая F07']], 't', t0.version).ok, true); assert.ok(E.tableRows(table).rows.some((r) => r[0] === 'Свежая F07')); }
+    /* сырой файл */
+    { const raw = E.contentRead(table);
+      assert.equal(E.writeContent(table, raw.text + '\n# без версии', 't', '').error, 'no_version'); assert.equal(E.writeContent(table, raw.text, 't', null).error, 'no_version'); assert.equal(text(table), raw.text);
+      assert.equal(E.writeContent(table, raw.text + '\n# старая', 't', 'stale000000').error, 'conflict'); assert.equal(text(table), raw.text);
+      assert.equal(E.writeContent(table, raw.text + '\n# свежая', 't', raw.version).ok, true); assert.ok(text(table).endsWith('# свежая')); }
+    /* откат */
+    { const vid = E.versions(table)[0].id, before = text(table);
+      assert.equal(E.restore(table, vid, 't').error, 'no_version'); assert.equal(E.restore(table, vid, 't', null).error, 'no_version'); assert.equal(text(table), before);
+      assert.equal(E.restore(table, vid, 't', 'stale000000').error, 'conflict'); assert.equal(text(table), before);
+      assert.equal(E.restore(table, vid, 't', E.fileVersion(table)).ok, true); assert.notEqual(text(table), before, 'restore with the fresh version applies'); }
+    /* картинка: версия текстового файла записи; при конфликте файл на диск не пишется */
+    { const r0 = rec(), imgDir = join(fixture, 'content', 'картинки', 'руны'), oldImg = r0.image; assert.ok(oldImg, 'the fixture record has an image name: ' + JSON.stringify(r0.fields));
+      const pngData = 'data:image/png;base64,' + png;
+      assert.equal(E.contentImagePut({ kind: 'runes', key: r0.key, type: 'image/png', data: pngData, by: 't' }).error, 'no_version');
+      assert.equal(E.contentImagePut({ kind: 'runes', key: r0.key, type: 'image/png', data: pngData, by: 't', version: 'stale000000' }).error, 'conflict');
+      assert.ok(!fsE.existsSync(join(imgDir, oldImg.replace(/\.[^.]+$/, '') + '.png')), 'no image file is written on conflict');
+      const put = E.contentImagePut({ kind: 'runes', key: r0.key, type: 'image/png', data: pngData, by: 't', version: E.fileVersion(book) });
+      assert.equal(put.ok, true, 'image with the fresh version: ' + JSON.stringify(put)); assert.ok(put.version, 'the reply carries the new file version');
+      assert.ok(fsE.existsSync(join(imgDir, put.name)), 'the image file is written'); assert.equal(rec().image, put.name, 'the record names the new file (extension changed)'); assert.equal(put.version, E.fileVersion(book)); }
+    /* два редактора */
+    { const a = rec(); const va = a.version;
+      assert.equal(E.bookRecordSave(book, { key: a.key, version: va, title: a.title, fields: a.fields, body: 'Вариант A' }, 'A').ok, true);
+      assert.equal(E.bookRecordSave(book, { key: a.key, version: va, title: a.title, fields: a.fields, body: 'Вариант B' }, 'B').error, 'conflict');
+      assert.equal(rec().body, 'Вариант A', 'the first editor wins, the second is told'); }
+    /* импорт целиком — отдельная операция: через writeFile ее нет, у маршрута — право admin */
+    assert.throws(() => E.writeFile(table, 'x', 't'), /версия/); assert.equal(E.writeFile(table, 'x', 't', null).error, 'no_version', 'null is no longer «without a check»');
+    const imp = E.importFile(table, '# импорт целиком\nПроверка импорта\n', 'admin-test'); assert.equal(imp.ok, true); assert.equal(imp.imported, true); assert.ok(text(table).includes('Проверка импорта'));
+    assert.equal((await staff.raw('/cabinet/content/import', 'POST', { file: table, text: '# от контента' })).status, 403, 'a content editor cannot import');
+    assert.equal((await staff.raw('/cabinet/versions', 'POST', { file: table, id: E.versions(table)[0].id })).status, 400, 'restore without a version is refused by the route');
+    assert.equal((await (await staff.raw('/cabinet/versions', 'POST', { file: table, id: E.versions(table)[0].id })).json()).error, 'no_version');
+    assert.equal((await staff.raw('/cabinet/record', 'POST', { file: book, add: 0 })).status, 400, 'adding a record without a version is refused');
+    assert.equal((await staff.raw('/cabinet/content-images', 'POST', { kind: 'runes', key: rec().key, type: 'image/png', data: 'data:image/png;base64,' + png })).status, 400, 'an image without the file version is refused');
+    console.log('PASS: F07 — every editor refuses a write without a version, refuses a stale one without changing data, accepts a fresh one; two editors conflict honestly; whole-file import is a separate admin-only operation.'); }
 
   // ── F04 (ревью v114): ревизией личных данных владеет тот, кто пишет — тест-страж по каждой таблице PERSONAL_DATA с on:'history':
   //    типичная запись через API поднимает users.data_rev ровно на 1, отклоненный запрос не трогает ее; гонка «ревизия раньше данных» воспроизведена ──
@@ -909,6 +964,8 @@ try {
   qaDB.prepare('INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts) VALUES (?,?,?,?,0)').run(adminMail, createHash('sha256').update(code + adminMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
   const adminAcc = account(); await adminAcc.json('/me'); await adminAcc.json('/auth/verify', 'POST', { email: adminMail, code });
   assert.equal((await adminAcc.json('/cabinet/me')).isAdmin, true);
+  { const impR = await adminAcc.raw('/cabinet/content/import', 'POST', { file: 'привычки.txt', text: '# импорт админом\nСтрока после импорта\n' }); assert.equal(impR.status, 200, 'an admin may import a whole file (F07)');
+    assert.ok((await staff.json('/cabinet/content?file=' + encodeURIComponent('привычки.txt'))).text.includes('Строка после импорта')); }
   const { privateText } = await import(pathToFileURL(join(fixture, 'backend/private-text.mjs')).href);
   const Wsp = await import(pathToFileURL(join(fixture, 'backend/workspace.mjs')).href);
   const Rep = await import(pathToFileURL(join(fixture, 'backend/reports.mjs')).href);

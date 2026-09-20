@@ -81,15 +81,23 @@ function archive(name, by) {
   const id = uniqueName(dir, `${stamp()}__${who(by)}`, '.txt'); copyFileSync(src, join(dir, id)); return id;
 }
 function writeAtomic(file, text) { const tmp = `${file}.tmp-${process.pid}-${Date.now().toString(36)}`; writeFileSync(tmp, text, 'utf8'); renameSync(tmp, file); }
-/* Версия файла — отпечаток его текста. Единственный низкоуровневый способ записи (R03): expected — версия, которую редактор
-   читал; не совпала с текущей — conflict, файл не трогается. null — осознанный пропуск проверки (нет прочитанной версии:
-   загрузка целиком новой копии текстов). Все редакторы — книги, таблицы, сырой файл, откат версии — идут через этот путь */
+/* Версия файла — отпечаток его текста. Единственный низкоуровневый способ записи (R03, ревью v114 F07): expected — версия,
+   которую редактор читал, и она обязательна: пустая — no_version, не совпала с текущей — conflict, файл не трогается.
+   Варианта «без проверки» здесь больше нет — замена файла целиком, минуя версию, это отдельная операция importFile с отдельным
+   правом (admin). Все редакторы — книги, таблицы, сырой файл, откат версии, переименование картинки — идут через этот путь */
 const versionOf = (text) => createHash('sha1').update(text).digest('hex').slice(0, 12);
 export const fileVersion = (name) => existsSync(path(name)) ? versionOf(read(name)) : '';
+const noVersion = (v) => v === null || v === '' || typeof v !== 'string';
 export function writeFile(name, text, by, expected) {
-  if (expected === undefined) throw new Error('writeFile: нужна прочитанная версия (или null — осознанно без проверки)');
-  if (expected !== null && expected !== fileVersion(name)) return { ok: false, error: 'conflict', version: fileVersion(name) };
+  if (expected === undefined) throw new Error('writeFile: нужна прочитанная версия (замена файла целиком — importFile)');
+  if (noVersion(expected)) return { ok: false, error: 'no_version', version: fileVersion(name) };
+  if (expected !== fileVersion(name)) return { ok: false, error: 'conflict', version: fileVersion(name) };
   archive(name, by); writeAtomic(path(name), noYo(text)); return { ok: true, version: fileVersion(name) };
+}
+/* Принудительный импорт, минуя версию (F07): загрузка целиком новой копии текстов. Отдельная операция с отдельным правом —
+   роль admin в кабинете, не content; прежняя версия все равно уходит в архив, откуда ее можно вернуть */
+export function importFile(name, text, by) {
+  archive(name, by); writeAtomic(path(name), noYo(text)); return { ok: true, version: fileVersion(name), imported: true };
 }
 const write = writeFile;
 export function versions(name) {
@@ -102,7 +110,9 @@ export function versionText(name, id) {
   const root = join(ARCHIVE(), safeName(name)), f = join(root, safeVersionId(id));
   return inside(f, root) && statSync(f).isFile() ? readFileSync(f, 'utf8') : null;
 }
-export function restore(name, id, by, expected = null) {
+/* откат — тоже запись по версии (F07): expected обязательна, значения по умолчанию нет */
+export function restore(name, id, by, expected) {
+  if (noVersion(expected)) return { ok: false, error: 'no_version' };
   let text; try { text = versionText(name, id); } catch (e) { if (KNOWN_ERRORS.includes(e.code)) return { ok: false, error: e.code }; throw e; }
   if (text === null) return { ok: false, error: 'not_found' };
   return writeFile(name, text, by, expected);
@@ -124,10 +134,10 @@ export function imageArchivePath(kind, id) {
 }
 const IMAGE_TYPE = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
 /* вернуть картинку записи из архива: тот же путь, что у загрузки новой (contentImagePut) */
-export function imageRestore({ kind, key, id, by }) {
+export function imageRestore({ kind, key, id, by, version }) {
   let f; try { f = imageArchivePath(kind, id); } catch (e) { if (KNOWN_ERRORS.includes(e.code)) return { ok: false, error: e.code }; throw e; }
   if (!f) return { ok: false, error: 'not_found' };
-  return contentImagePut({ kind, key, type: IMAGE_TYPE[extname(f).slice(1).toLowerCase()], data: readFileSync(f).toString('base64'), by });
+  return contentImagePut({ kind, key, type: IMAGE_TYPE[extname(f).slice(1).toLowerCase()], data: readFileSync(f).toString('base64'), by, version });
 }
 
 /* ── книга / статья ── */
@@ -167,10 +177,12 @@ export function bookRecords(name) {
 }
 /* запись ищется по ключу (код, число или название); index — только для старых вызовов без ключа */
 const locate = (name, book, { key, index }) => { if (key !== undefined && key !== null && String(key) !== '') { const i = book.records.findIndex((r) => keyOf(name, r) === String(key)); return i; } const i = Number(index); return i >= 0 && i < book.records.length ? i : -1; };
+/* версия обязательна у всех редакторов (F07): запрос без версии — no_version, а не «проверка выключена» */
 export function bookRecordSave(name, { index, key, version, title, fields, body }, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
   const text = read(name), cur = versionOf(text);
-  if (version && version !== cur) return { ok: false, error: 'conflict', version: cur };
+  if (noVersion(version)) return { ok: false, error: 'no_version', version: cur };
+  if (version !== cur) return { ok: false, error: 'conflict', version: cur };
   const book = parseBook(text);
   const i = locate(name, book, { key, index });
   if (i < 0) return { ok: false, error: 'not_found' };
@@ -179,19 +191,22 @@ export function bookRecordSave(name, { index, key, version, title, fields, body 
   book.records[i] = { title: t, fields: fl, body: String(body || '').replace(/\r/g, '').trim() };
   return write(name, serializeBook(book), by, cur);
 }
-export function bookRecordAdd(name, after, by) {
+export function bookRecordAdd(name, after, by, version) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
-  const text = read(name), book = parseBook(text);
+  const text = read(name), cur = versionOf(text), book = parseBook(text);
+  if (noVersion(version)) return { ok: false, error: 'no_version', version: cur };
+  if (version !== cur) return { ok: false, error: 'conflict', version: cur };
   const sample = book.records[Math.min(book.records.length - 1, Math.max(0, Number(after) || 0))];
   const rec = { title: 'Новая запись', fields: (sample ? sample.fields : []).map(([k]) => [k, '']), body: '' };
   book.records.splice(Math.min(book.records.length, (Number(after) || 0) + 1), 0, rec);
-  const w = write(name, serializeBook(book), by, versionOf(text)); if (!w.ok) return w;
+  const w = write(name, serializeBook(book), by, cur); if (!w.ok) return w;
   return { ok: true, index: Math.min(book.records.length - 1, (Number(after) || 0) + 1), version: w.version };
 }
 export function bookRecordRemove(name, { index, key, version } = {}, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
   const text = read(name), cur = versionOf(text);
-  if (version && version !== cur) return { ok: false, error: 'conflict', version: cur };
+  if (noVersion(version)) return { ok: false, error: 'no_version', version: cur };
+  if (version !== cur) return { ok: false, error: 'conflict', version: cur };
   const book = parseBook(text); const i = locate(name, book, { key, index });
   if (i < 0) return { ok: false, error: 'not_found' };
   book.records.splice(i, 1); return write(name, serializeBook(book), by, cur);
@@ -237,11 +252,16 @@ export const CONTENT_IMAGE_SETS = {
 };
 const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 export function contentImageList() { return Object.entries(CONTENT_IMAGE_SETS).map(([kind, s]) => ({ kind, title: s.title, items: s.items() })); }
-export function contentImagePut({ kind, key, type, data, by }) {
+/* Картинка записи меняется согласованно с текстовым файлом (F07): version — версия текстового файла записи, с которой редактор
+   работал; сначала проверка версии, потом файл — при конфликте картинка на диск не пишется. Ответ несет новую версию файла */
+export function contentImagePut({ kind, key, type, data, by, version }) {
   const set = CONTENT_IMAGE_SETS[kind]; if (!set) return { ok: false, error: 'bad_kind' };
   const item = set.items().find((i) => i.key === String(key)); if (!item) return { ok: false, error: 'not_found' };
+  if (noVersion(version)) return { ok: false, error: 'no_version', version: fileVersion(set.file) };
   /* имя текущего файла — из текстового файла на диске, а не из памяти: тексты перечитываются с задержкой, и две замены подряд иначе расходятся */
-  try { const fresh = bookRecords(set.file).find((r) => r.key === String(key)); if (fresh) item.image = fresh.image ? `/app/content/${kind}/${fresh.image}` : ''; } catch { /* оставим как в памяти */ }
+  const txt = readContent(set.file), cur = versionOf(txt);
+  if (version !== cur) return { ok: false, error: 'conflict', version: cur };
+  try { const fresh = parseBook(txt).records.map((r, i) => ({ key: keyOf(set.file, r), image: (r.fields.find(([n]) => n === 'картинка') || [])[1] || '' })).find((r) => r.key === String(key)); if (fresh) item.image = fresh.image ? `/app/content/${kind}/${fresh.image}` : ''; } catch { /* оставим как в памяти */ }
   const ext = IMAGE_EXT[type]; if (!ext) return { ok: false, error: 'bad_type' };
   const buf = Buffer.from(String(data || '').replace(/^data:[^,]*,/, ''), 'base64');
   if (!buf.length || buf.length > 6 * 1024 * 1024) return { ok: false, error: 'too_big' };
@@ -249,22 +269,22 @@ export function contentImagePut({ kind, key, type, data, by }) {
   const oldName = item.image ? decodeURIComponent(item.image.split('/').pop().split('?')[0]) : '';
   const base = oldName ? oldName.replace(/\.[^.]+$/, '') : String(key).replace(/[^\w.-]/g, '') || 'img';
   const name = `${base}.${ext}`;
+  let fileVersionAfter = cur;
+  if (oldName && oldName !== name) {   /* новое расширение — сначала имя в текстовом файле по версии, потом сама картинка */
+    if (txt.includes(oldName)) { const w = writeContent(set.file, txt.split(oldName).join(name), by, cur); if (!w.ok) return w; fileVersionAfter = w.version; }
+  }
   if (oldName) archiveImage(IMAGE_DIRS[kind], oldName, by);   /* прежняя картинка — в архив, вернуть можно из записи */
   writeFileSync(join(dir, name), buf);
-  if (oldName && oldName !== name) {   /* новое расширение — переписываем имя в текстовом файле, старый файл убираем */
-    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name), by, versionOf(txt)); } catch { /* текст не тронули — картинка все равно на месте */ }
-    try { unlinkSync(join(dir, oldName)); } catch {}
-  } else if (!oldName) {
-    return { ok: true, name, note: 'В текстовом файле у записи нет поля «картинка» — впишите имя файла: ' + name };
-  }
-  return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
+  if (oldName && oldName !== name) { try { unlinkSync(join(dir, oldName)); } catch {} }
+  if (!oldName) return { ok: true, name, version: fileVersionAfter, note: 'В текстовом файле у записи нет поля «картинка» — впишите имя файла: ' + name };
+  return { ok: true, name, version: fileVersionAfter, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
 }
 
 /* ── ContentRepository (ревью v114, F01): единственная дверь для маршрутов кабинета. Все, что берет имя файла, набор картинок
    или идентификатор версии из запроса, проходит через проверки выше; путей из данных запроса в cabinet-routes.mjs нет ── */
 export const ContentRepository = {
   BOOKS, TABLES, KNOWN_ERRORS,
-  files: contentFiles, contentFiles, read: contentRead, contentRead, write: writeContent, writeContent, fileVersion,
+  files: contentFiles, contentFiles, read: contentRead, contentRead, write: writeContent, writeContent, importFile, fileVersion,
   versions, versionText, restore,
   bookVersion, bookRecords, bookRecordSave, bookRecordAdd, bookRecordRemove, tableRows, tableSave,
   contentImageList, contentImagePut, imageVersions, imageArchivePath, imageRestore,

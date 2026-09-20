@@ -81,11 +81,21 @@ export function createCabinetRoutes(deps) {
         const b = await readBody(req);
         const text = String(b.text || '');
         if (text.length > 200000) return json(res, 400, { ok: false, error: 'too_long' });
-        const r = CE.writeContent(name, text, u.email, String(b.version || ''));   // папка под наблюдением — тексты перечитаются сами; прежняя версия — в архив; чужая правка — conflict (R03)
+        const r = CE.writeContent(name, text, u.email, String(b.version || ''));   // папка под наблюдением — тексты перечитаются сами; прежняя версия — в архив; чужая правка — conflict (R03); без версии — no_version (F07)
         if (!r.ok) return json(res, r.error === 'conflict' ? 409 : 400, r);
         console.log(`[контент] ${u.email} сохранил ${name} (${text.length} симв.)`);
         return json(res, 200, r);
       }
+    }
+    /* замена файла целиком, минуя версию (F07): отдельная операция с отдельным правом — только admin, не content */
+    if (p === '/api/cabinet/content/import' && req.method === 'POST') {
+      if (!admin) return json(res, 403, { ok: false, error: 'admins_only' });
+      const b = await readBody(req);
+      const name = String(b.file || ''); if (!CE.contentFiles().some((f) => f.name === name)) return json(res, 404, { ok: false, error: 'not_found' });
+      const text = String(b.text || ''); if (text.length > 200000) return json(res, 400, { ok: false, error: 'too_long' });
+      const r = CE.importFile(name, text, u.email);
+      console.log(`[контент] ${u.email} заменил файл целиком ${name} (${text.length} симв.)`);
+      return json(res, 200, r);
     }
     /* тексты записями и строками (content-edit.mjs): книги — карты, руны, лунные дни, личный год; таблицы — настрой, пуши, темы… */
     if (p === '/api/cabinet/content-map') {
@@ -103,7 +113,7 @@ export function createCabinetRoutes(deps) {
     }
     if (p === '/api/cabinet/record') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
-      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add, u.email) : CE.bookRecordSave(String(b.file || ''), b, u.email); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
+      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add, u.email, String(b.version || '')) : CE.bookRecordSave(String(b.file || ''), b, u.email); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
       if (req.method === 'DELETE') { const q = url.searchParams; const r = CE.bookRecordRemove(String(q.get('file') || ''), { index: q.get('index'), key: q.get('key'), version: q.get('version') || '' }, u.email); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
     }
     /* «Я помню» на себе: что сработало бы у этого сотрудника сегодня — строка дня, «Обо мне», любимый способ, вопрос по теме, вечерний пуш */
@@ -133,13 +143,13 @@ export function createCabinetRoutes(deps) {
         try { const id = url.searchParams.get('id'); if (id) { const t = CE.versionText(file, id); return t === null ? json(res, 404, { ok: false, error: 'not_found' }) : json(res, 200, { ok: true, text: t }); } return json(res, 200, { file, version: CE.fileVersion(file), items: CE.versions(file) }); }
         catch (e) { return refused(e); }
       }
-      if (req.method === 'POST') { const b = await readBody(req); const r = CE.restore(String(b.file || ''), String(b.id || ''), u.email, b.version ? String(b.version) : null); if (r.ok) console.log(`[контент] ${u.email} откатил ${b.file} к ${b.id}`); return json(res, codeOf(r), r); }
+      if (req.method === 'POST') { const b = await readBody(req); if (!b.version) return json(res, 400, { ok: false, error: 'no_version' }); const r = CE.restore(String(b.file || ''), String(b.id || ''), u.email, String(b.version)); if (r.ok) console.log(`[контент] ${u.email} откатил ${b.file} к ${b.id}`); return json(res, codeOf(r), r); }   /* откат — по версии, как любая запись (F07) */
     }
     if (p === '/api/cabinet/image-versions') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const kind = String(url.searchParams.get('kind') || '');
       if (req.method === 'GET') { try { return json(res, 200, { items: CE.imageVersions(kind, String(url.searchParams.get('base') || '')) }); } catch (e) { return refused(e); } }
-      if (req.method === 'POST') { const b = await readBody(req); const r = CE.imageRestore({ kind, key: b.key, id: String(b.id || ''), by: u.email }); if (r.ok) console.log(`[контент] ${u.email} вернул картинку ${kind}/${b.key} из ${b.id}`); return json(res, codeOf(r), r); }
+      if (req.method === 'POST') { const b = await readBody(req); const r = CE.imageRestore({ kind, key: b.key, id: String(b.id || ''), by: u.email, version: String(b.version || '') }); if (r.ok) console.log(`[контент] ${u.email} вернул картинку ${kind}/${b.key} из ${b.id}`); return json(res, codeOf(r), r); }
     }
     /* картинки функций: список по наборам и замена файла */
     if (p === '/api/cabinet/content-images') {
@@ -148,9 +158,9 @@ export function createCabinetRoutes(deps) {
       if (req.method === 'POST') {
         const b = await readBody(req, 8 * 1024 * 1024);
         if (b.mediaId) { const f = W.mediaFile(b.mediaId); if (!f) return json(res, 404, { ok: false, error: 'not_found' }); b.type = f.type; b.data = readFileSync(f.path).toString('base64'); }   /* картинка из библиотеки — на карту, руну, день */
-        b.by = u.email; const r = CE.contentImagePut(b);
+        b.by = u.email; b.version = String(b.version || ''); const r = CE.contentImagePut(b);   /* версия текстового файла записи обязательна (F07) */
         if (r.ok) console.log(`[контент] ${u.email} заменил картинку ${b.kind}/${b.key} → ${r.name}`);
-        return json(res, r.ok ? 200 : 400, r);
+        return json(res, codeOf(r), r);
       }
     }
     if (p === '/api/cabinet/campaigns') {

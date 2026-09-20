@@ -463,7 +463,8 @@ async function editFile(name) {
   openModal('<p class="empty">Открываем…</p>');
   try {
     const f = await api('/cabinet/content?file=' + encodeURIComponent(name)); CT.fileVersion = f.version || '';
-    openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 class="mt-6">${esc(name)}</h2></div><div class="row"><button data-on="click:saveFile-a0" data-a0="${esc(name)}" class="btn gold fixed">Сохранить и опубликовать</button><button data-on="click:closeModal" class="btn sm fixed">Закрыть</button></div></div>
+    /* «Заменить файл целиком» — импорт, минуя версию (F07): только у админа; обычное сохранение — по прочитанной версии */
+    openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 class="mt-6">${esc(name)}</h2></div><div class="row"><button data-on="click:saveFile-a0" data-a0="${esc(name)}" class="btn gold fixed">Сохранить и опубликовать</button>${S.me?.isAdmin ? `<button data-on="click:importFile-a0" data-a0="${esc(name)}" class="btn sm warn fixed" type="button">Заменить файл целиком</button>` : ''}<button data-on="click:closeModal" class="btn sm fixed">Закрыть</button></div></div>
       <textarea id="f-text" class="mt-12" spellcheck="true">${esc(f.text)}</textarea><p class="note" id="f-msg">Формат описан в «ПРОЧТИ-МЕНЯ.txt». После сохранения приложение перечитает файл само.</p>`);
   } catch (e) { openModal(`<p class="msg err">Не получилось открыть: ${esc(e.code || e.message)}</p>`); }
 }
@@ -471,6 +472,13 @@ async function saveFile(name) {
   const msg = $('f-msg');
   try { await api('/cabinet/content?file=' + encodeURIComponent(name), { method: 'POST', body: JSON.stringify({ text: $('f-text').value, version: CT.fileVersion }) }); toast('Сохранено — уже в приложении'); closeModal(); openPage('content'); }
   catch (e) { msg.className = 'msg err'; msg.textContent = e.code === 'conflict' ? CT_CONFLICT : 'Не сохранилось: ' + (e.code || e.message); }
+}
+/* замена файла целиком без сверки версии — осознанное действие админа: чужие правки с момента открытия будут перекрыты (прежняя версия — в архиве) */
+async function importFile(name) {
+  const msg = $('f-msg');
+  if (!confirm('Заменить файл целиком, не сверяя версию? Правки, сделанные другими с момента открытия, будут перекрыты (прежняя версия останется в архиве).')) return;
+  try { await api('/cabinet/content/import', { method: 'POST', body: JSON.stringify({ file: name, text: $('f-text').value }) }); toast('Файл заменен целиком — уже в приложении'); closeModal(); openPage('content'); }
+  catch (e) { msg.className = 'msg err'; msg.textContent = 'Не заменилось: ' + (e.code || e.message); }
 }
 
 
@@ -554,15 +562,16 @@ async function ctRecordDel(key) {
   try { await api('/cabinet/record?file=' + encodeURIComponent(CT.book) + '&key=' + encodeURIComponent(key) + '&version=' + encodeURIComponent(CT.records?.version || ''), { method: 'DELETE' }); toast('Удалено'); closeModal(); ctCatalog(); }
   catch (e) { const msg = $('rec-msg'); if (msg) msg.textContent = e.code === 'conflict' ? CONFLICT_MSG : 'Не удалилось: ' + (e.code || e.message); }
 }
-async function ctRecordAdd() { const r = await api('/cabinet/record', { method: 'POST', body: JSON.stringify({ file: CT.book, add: (CT.records?.records.length || 1) - 1 }) }); if (r.ok) { await ctCatalog(); ctRecord(r.index); } }
+async function ctRecordAdd() { try { const r = await api('/cabinet/record', { method: 'POST', body: JSON.stringify({ file: CT.book, add: (CT.records?.records.length || 1) - 1, version: CT.records?.version || '' }) }); if (r.ok) { await ctCatalog(); ctRecord(r.index); } } catch (e) { toast(e.code === 'conflict' ? CONFLICT_MSG : 'Не добавилось: ' + (e.code || e.message)); } }   /* версия обязательна и здесь (F07) */
 const readAsDataUrl = (f) => new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(f); });
 async function ctRecordImage(key, input) {
   const f = input.files[0], msg = $('rec-img-msg'); if (!f) return; if (f.size > 6 * 1024 * 1024) { msg.textContent = 'До 6 МБ'; return; }
   msg.textContent = 'Загружаем…';
-  try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.records.images, key, type: f.type, data: await readAsDataUrl(f) }) });
+  try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.records.images, key, type: f.type, data: await readAsDataUrl(f), version: CT.records.version }) });   /* версия текстового файла записи (F07) */
     if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Только JPG, PNG или WebP' : 'Не загрузилось'; return; }
+    if (r.version) CT.records.version = r.version;   /* переименование картинки меняет текстовый файл — версия обновляется */
     msg.textContent = r.note || 'Картинка заменена'; const im = $('rec-img'); if (im && r.url) im.src = r.url; }
-  catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); }
+  catch (e) { msg.textContent = e.code === 'conflict' ? CONFLICT_MSG : 'Не загрузилось: ' + (e.code || e.message); }
 }
 /* пакетная загрузка: имя файла без расширения = «картинка» записи или ее ключ; что не совпало — выбрать запись руками */
 let ctBulk = [];
@@ -578,7 +587,7 @@ async function ctBulkGo() {
   const msg = $('ct-bulk-msg'); let ok = 0, fail = 0;
   for (const b of ctBulk.filter((x) => x.key)) {
     msg.textContent = `Загружаем ${ok + fail + 1}…`;
-    try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.records.images, key: b.key, type: b.file.type, data: await readAsDataUrl(b.file) }) }); if (r.ok) ok++; else fail++; } catch { fail++; }
+    try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.records.images, key: b.key, type: b.file.type, data: await readAsDataUrl(b.file), version: CT.records.version }) }); if (r.ok) { ok++; if (r.version) CT.records.version = r.version; } else fail++; } catch { fail++; }
   }
   toast(`Загружено ${ok}${fail ? `, не получилось ${fail}` : ''}`); ctBulk = []; setTimeout(ctCatalog, 1500);
 }
@@ -751,7 +760,7 @@ async function mediaAttach(id) {
 }
 async function mediaAttachBook(file) { const r = await api('/cabinet/records?file=' + encodeURIComponent(file)); CT.attachBook = r; $('ma-record').innerHTML = r.records.map((x) => `<option value="${esc(x.key)}">${esc(x.title)}</option>`).join(''); }
 async function mediaAttachFeature(id) { const m = (S.mediaItems || []).find((x) => x.id === Number(id)); const r = await api('/cabinet/materials', { method: 'POST', body: JSON.stringify({ kind: 'image', section: $('ma-feature').value, image: '/app/uploads/' + m.file, show_day: $('ma-day').value, status: 'published' }) }); $('ma-msg').textContent = r.ok ? 'Опубликовано — уже в приложении' : 'Не получилось: ' + r.error; if (r.ok) toast('Опубликовано'); }
-async function mediaAttachRecord(id) { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.attachBook.images, key: $('ma-record').value, mediaId: Number(id) }) }); $('ma-msg').textContent = r.ok ? (r.note || 'Поставлено — уже в приложении') : 'Не получилось: ' + r.error; if (r.ok) toast('Поставлено'); }
+async function mediaAttachRecord(id) { try { const r = await api('/cabinet/content-images', { method: 'POST', body: JSON.stringify({ kind: CT.attachBook.images, key: $('ma-record').value, mediaId: Number(id), version: CT.attachBook.version }) }); if (r.version) CT.attachBook.version = r.version; $('ma-msg').textContent = r.ok ? (r.note || 'Поставлено — уже в приложении') : 'Не получилось: ' + r.error; if (r.ok) toast('Поставлено'); } catch (e) { $('ma-msg').textContent = e.code === 'conflict' ? CONFLICT_MSG : 'Не получилось: ' + (e.code || e.message); } }
 
 /* ── поиск по всем текстам ── */
 function ctSearchGo() { ctSearch($('ct-q').value); }
@@ -784,7 +793,7 @@ async function ctImageHistory(kind, base, key) {
   const box = $('rec-img-hist'); if (!box) return;
   box.innerHTML = r.items.length ? `<div class="stack-6 mt-8">${r.items.map((v) => `<div class="row gap-8 fs-12"><span>${fmtTs(v.ts)}</span><button data-on="click:ctImageRestore-a0-a1-a2" data-a0="${esc(kind)}" data-a1="${esc(v.id)}" data-a2="${esc(key)}" class="btn sm" type="button">Вернуть</button></div>`).join('')}</div>` : '<p class="hint mt-6">Прежних картинок нет</p>';
 }
-async function ctImageRestore(kind, id, key) { const r = await api('/cabinet/image-versions?kind=' + encodeURIComponent(kind), { method: 'POST', body: JSON.stringify({ id, key }) }); if (r.ok) { toast('Картинка возвращена'); const im = $('rec-img'); if (im && r.url) im.src = r.url; } else toast('Не получилось: ' + r.error); }
+async function ctImageRestore(kind, id, key) { try { const r = await api('/cabinet/image-versions?kind=' + encodeURIComponent(kind), { method: 'POST', body: JSON.stringify({ id, key, version: CT.records?.version || '' }) }); if (r.ok) { if (r.version && CT.records) CT.records.version = r.version; toast('Картинка возвращена'); const im = $('rec-img'); if (im && r.url) im.src = r.url; } else toast('Не получилось: ' + r.error); } catch (e) { toast(e.code === 'conflict' ? CONFLICT_MSG : 'Не получилось: ' + (e.code || e.message)); } }
 /* материалы: история и возврат */
 async function materialHistory(id) {
   const r = await api('/cabinet/materials/versions?id=' + id);
