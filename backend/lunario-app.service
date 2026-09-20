@@ -21,9 +21,16 @@ EnvironmentFile=-/opt/lunario-app/.env
 ExecStart=/usr/bin/node /opt/lunario-app/backend/server.mjs
 Restart=on-failure
 RestartSec=3
+# Свой пользователь без входа (ревью v114, F02): процесс не root, код (site/, backend/) ему только на чтение,
+# писать может лишь в данные, контент и копии. Пользователя и права ставит backend/service-user.sh — его зовет deploy.sh.
+# ProtectSystem=strict делает всю систему только для чтения, кроме ReadWritePaths; UMask — новые файлы видны только сервису
+User=lunario
+Group=lunario
+UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
+ProtectSystem=strict
+ProtectHome=true
 ReadWritePaths=/opt/lunario-app/data /opt/lunario-content /opt/lunario-app-backups
 
 [Install]

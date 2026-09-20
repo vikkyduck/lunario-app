@@ -3,6 +3,10 @@ Description=Лунарио — резервная копия базы, ключ�
 
 [Service]
 Type=oneshot
+# тот же пользователь, что у сервиса (F02): копии, снятые от root, кабинет админа потом не смог бы убрать по сроку
+User=lunario
+Group=lunario
+UMask=0077
 WorkingDirectory=/opt/lunario-app
 Environment=DATA_DIR=/opt/lunario-app/data
 Environment=CONTENT_DIR=/opt/lunario-content

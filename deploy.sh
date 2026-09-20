@@ -42,6 +42,9 @@ rsync -az --delete "$PKG/site/" "$SERVER:/opt/lunario-app/site/"
 rsync -az --delete --exclude cities.db --exclude "*.db-wal" --exclude "*.db-shm" "$PKG/backend/" "$SERVER:/opt/lunario-app/backend/"
 # идентификатор выпуска и манифест хешей всех выложенных файлов — по ним deploy-safe.sh узнает чужой выпуск (F22)
 ssh "$SERVER" "cd /opt/lunario-app && echo '$RELEASE' > RELEASE && find site backend -type f ! -name cities.db ! -name '*.db-wal' ! -name '*.db-shm' -print0 | sort -z | xargs -0 sha256sum > MANIFEST"
+# сервис работает не от root (ревью v114, F02): пользователь lunario и права — backend/service-user.sh; rsync от root сбросил владельцев, ставим заново
+echo "==> пользователь сервиса и права"
+ssh "$SERVER" 'bash /opt/lunario-app/backend/service-user.sh'
 # тексты и картинки — не код: они живут в /opt/lunario-content и выкладываются отдельно, ./обновить-тексты.sh
 echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app/backend/lunario-app.service /etc/systemd/system/lunario-app.service \

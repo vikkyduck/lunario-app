@@ -22,6 +22,8 @@ for i in 1 2 3 4 5; do
   echo "   связь оборвалась, пробую ещё раз ($i)"; sleep 15
 done
 
+# файлы, пришедшие от root, сервису (пользователь lunario, F02) иначе не переписать из кабинета «Контент»
+ssh "$SERVER" 'test -x /opt/lunario-app/backend/service-user.sh && bash /opt/lunario-app/backend/service-user.sh >/dev/null || true'
 echo "==> проверяю, что приложение их увидело"
 sleep 3
 ssh "$SERVER" 'curl -s -o /dev/null -w "   сайт отвечает: %{http_code}\n" https://lunario.online/app/'
