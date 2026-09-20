@@ -782,6 +782,39 @@ try {
     assert.ok(after && JSON.stringify(after).includes('Запись во время гонки ревизии'), 'after the write the summary is fresh, not signed with a revision it never saw: ' + JSON.stringify(after));
     console.log('PASS: F04 — every personal-data table has a named write that raises data_rev by exactly one, refusals do not, the router keeps no path list, and the review race yields a fresh summary.'); }
 
+  // ── F06 (ревью v114): квитанция гарантирует одинаковый исход повтора — до, на и после лимита; отказ квитанции не оставляет;
+  //    один ключ op для разных сущностей — не то же тело; PATCH желания с done — желаемое состояние ──
+  { const q = account(); const qMe = await q.json('/me'), qId = qMe.user.id, d0 = qMe.day.date;
+    const count = () => qaDB.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(qId, d0).c;
+    const receipts = (op) => qaDB.prepare('SELECT COUNT(*) c FROM sync_receipts WHERE user_id = ? AND operation_id = ?').get(qId, op).c;
+    /* (а) довести дневник до лимита; повтор 100-й с тем же op — 200, repeated, число записей не выросло */
+    let opLast = '';
+    for (let i = 0; i < 100; i++) { opLast = 'op-limit-' + i + '-' + Date.now().toString(36); assert.equal((await q.raw('/journal', 'POST', { text: 'Запись у лимита ' + i, op: opLast })).status, 200); }
+    assert.equal(count(), 100);
+    const rep = await q.json('/journal', 'POST', { text: 'Запись у лимита 99', op: opLast }); assert.equal(rep.repeated, true, 'the accepted 100th record repeats as 200, not 429'); assert.equal(count(), 100);
+    /* (б) 101-я с новым op — 429, квитанции нет; повтор 101-й — снова 429, не 200 и не removed */
+    const op101 = 'op-101-' + Date.now().toString(36);
+    const over = await q.raw('/journal', 'POST', { text: 'Сто первая запись', op: op101 }); assert.equal(over.status, 429); assert.equal((await over.json()).error, 'too_many');
+    assert.equal(receipts(op101), 0, 'a refusal leaves no receipt');
+    const overAgain = await q.raw('/journal', 'POST', { text: 'Сто первая запись', op: op101 }); assert.equal(overAgain.status, 429, 'repeating a refused operation is refused again'); assert.ok(!(await overAgain.json()).removed);
+    assert.equal(count(), 100);
+    /* (в) желания: довести до предела; попытка → 429; повтор с тем же op → 429; желаний столько же */
+    for (let i = 0; i < 300; i++) await q.json('/wishes', 'POST', { text: 'Желание ' + i });
+    const wop = 'op-wish-over-' + Date.now().toString(36);
+    const w1 = await q.raw('/wishes', 'POST', { text: 'Триста первое', op: wop }); assert.equal(w1.status, 429);
+    const w2 = await q.raw('/wishes', 'POST', { text: 'Триста первое', op: wop }); assert.equal(w2.status, 429, 'a repeated refused wish is refused again, not «removed»');
+    assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(qId).c, 300); assert.equal(receipts(wop), 0);
+    /* один ключ op у разных сущностей — не «то же тело»: желание с ключом уже принятой записи дневника — конфликт, а не повтор */
+    const sameOp = await q.raw('/wishes', 'POST', { text: 'Запись у лимита 99', op: opLast }); assert.equal(sameOp.status, 409, 'the operation kind is part of the receipt key: ' + sameOp.status);
+    /* (г) PATCH желания с done:true дважды — выполнено; done:false — снято; без поля — прежнее переключение */
+    const wishQ = (await q.json('/wishes')).items.find((w) => w.text === 'Желание 0');
+    await q.json('/wishes', 'PATCH', { id: wishQ.id, done: true }); const twice = await q.json('/wishes', 'PATCH', { id: wishQ.id, done: true });
+    assert.equal(twice.items.find((w) => w.id === wishQ.id).done, 1, 'done=true twice keeps the wish done');
+    assert.equal((await q.json('/wishes', 'PATCH', { id: wishQ.id, done: false })).items.find((w) => w.id === wishQ.id).done, 0);
+    assert.equal((await q.json('/wishes', 'PATCH', { id: wishQ.id })).items.find((w) => w.id === wishQ.id).done, 1, 'no field — the old toggle still works');
+    assert.ok(/done:cur\?!cur\.done/.test((await import('node:fs')).readFileSync(join(repo, 'site/account.js'), 'utf8')), 'the client sends the desired state');
+    console.log('PASS: F06 — repeats before, at and past the limit keep their original outcome, refusals leave no receipt, the receipt key carries the operation kind, wish done is a desired state.'); }
+
   // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
   { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);
     const put = (who, thumb, full, q = '') => fetch(`${base}/api/day/photo?thumb=${thumb.length}&w=1280&h=960${q}`, { method: 'PUT', headers: { Cookie: who.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': who.ip }, body: Buffer.concat([thumb, full]) });

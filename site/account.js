@@ -101,9 +101,11 @@ async function addWish(){
   } catch(e){ toast(ERR_SAVE_KEPT); }
   finally { addWish.saving=false;$('wish-save').disabled=false; }
 }
+/* done — желаемое состояние, а не «переключить» (F06): повтор запроса после обрыва не вернет отметку назад */
 async function toggleWish(id){
   hap();
-  try { renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id})})); }
+  const cur=(renderWishes.items||[]).find((w)=>w.id===id);
+  try { renderWishes(await api('/wishes',{method:'PATCH',body:JSON.stringify({id,done:cur?!cur.done:true})})); }
   catch(e){ toast('Не получилось отметить'); }
 }
 /* Подсказки и диктовка — в «Записать мысль» (j) и в первой ячейке карточки дня (dc): одна механика, разные поля */

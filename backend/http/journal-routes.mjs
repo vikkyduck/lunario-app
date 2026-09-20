@@ -43,11 +43,13 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
         const title = clean(b.title, 300);
         /* ответ на вопрос дня — один на день: повторная отправка обновляет его, как и карточка дня в Дневнике */
         const prev = kind === 'answer' ? db.prepare("SELECT id FROM journal WHERE user_id = ? AND day = ? AND kind = 'answer' ORDER BY id DESC LIMIT 1").get(u.id, d) : null;
-        if (!prev && db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many', limit: DAILY_WRITES });
         const r = Receipts.run(u.id, b, { text, kind, title }, {
+          kind: 'journal.create',
           load: (ref) => journalItem({ ...ref, uid: u.id }),
           write: () => {
             if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(title), prev.id, u.id); return { ref: { table: 'journal', id: prev.id, updated: true }, out: { ok: true, updated: true, item: { id: prev.id, day: d, text, kind, title } } }; }
+            /* лимит строк за день — внутри записи, после поиска квитанции (F06): повтор принятой 100-й записи не получит 429, а отказ не оставит квитанции */
+            if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return { refuse: { status: 429, out: { ok: false, error: 'too_many', limit: DAILY_WRITES } } };
             const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
             track(u, kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add', '');
             const id = Number(inserted.lastInsertRowid);
@@ -100,22 +102,27 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
         if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
         const photo=b.photo ? dataUrlOk(b.photo,600*1024) : '';
         if (b.photo && !photo) return json(res,400,{error:'bad_photo'});
-        /* тот же ключ op после потерянного ответа — то же желание, а не второе (R05); квитанция хранит только id */
+        /* тот же ключ op после потерянного ответа — то же желание, а не второе (R05); квитанция хранит только id;
+           отказ по лимиту — { refuse }: квитанции нет, повтор отказа снова 429, а не «удалено» (F06) */
         const r = Receipts.run(u.id, b, { text, photo: photo ? photo.length : 0 }, {
+          kind: 'wish.create',
           load: (ref) => db.prepare('SELECT id FROM wishes WHERE id = ? AND user_id = ?').get(ref.id || 0, u.id) || null,
           write: () => {
-            if (db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(u.id).c >= WISHES_MAX) return { ref: { table: 'wishes', id: 0, refused: 'too_many' }, out: { ok: false, error: 'too_many' } };
+            if (db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(u.id).c >= WISHES_MAX) return { refuse: { status: 429, out: { ok: false, error: 'too_many', limit: WISHES_MAX } } };
             const ins = db.prepare('INSERT INTO wishes (user_id, ts, text, photo, photo_ts) VALUES (?,?,?,?,?)').run(u.id, nowISO(), seal(text),photo,photo?nowISO():'');
             track(u, 'wish_add', photo ? 'photo' : '');
             return { ref: { table: 'wishes', id: Number(ins.lastInsertRowid) }, out: { ok: true } };
           },
         });
-        if (r.out.error === 'too_many') return json(res, 429, r.out);
         if (r.status !== 200) return json(res, r.status, r.out);
         return json(res, 200, { items: wishList(u.id), ...(r.out.repeated ? { repeated: true, removed: !!r.out.removed } : {}) });
       } else if (req.method === 'PATCH') {
+        /* done — желаемое состояние (F06): два одинаковых запроса оставляют то же, что один; без поля — прежнее переключение для старых клиентов */
         const b = await readBody(req);
-        mutate(u.id, () => ({ ok: db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), Number(b.id) || 0, u.id).changes > 0 }));
+        const id = Number(b.id) || 0;
+        mutate(u.id, () => ({ ok: (typeof b.done === 'boolean'
+          ? db.prepare('UPDATE wishes SET done = ?, done_ts = ? WHERE id = ? AND user_id = ? AND done <> ?').run(b.done ? 1 : 0, nowISO(), id, u.id, b.done ? 1 : 0)
+          : db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), id, u.id)).changes > 0 }));
       }
       return json(res, 200, { items: wishList(u.id) });
     }

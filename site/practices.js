@@ -226,6 +226,7 @@ async function askStop(id){
 
 /* ══════════ Желания с фото для визуализации ══════════ */
 function renderWishes(r){
+  renderWishes.items = r.items;   /* текущее состояние желаний — toggleWish шлет желаемое, а не «переключить» (F06) */
   const html = r.items.map(w => `<article class="wish-card">
     ${w.photo?`<button data-on="click:showWishPhoto-a0-a1" data-a0="${w.id}" data-a1="${encodeURIComponent(w.photoTs)}" class="wish-picture" type="button" aria-label="Открыть фото желания: ${esc(w.text)}"><img src="/app/api/wishes/photo?id=${w.id}&t=${encodeURIComponent(w.photoTs)}" alt="${esc(w.text)}" loading="lazy"></button>`:`<button data-on="click:wishPhoto-a0" data-a0="${w.id}" class="wish-picture" type="button">＋ Добавить фото</button>`}
     <div class="wish-copy"><p>${esc(w.text)}</p><button data-on="click:toggleWish-a0" data-a0="${w.id}" class="btn ghost sm" type="button" aria-pressed="${!!w.done}">${w.done?'✓ Сбылось · отменить отметку':'Сбылось'}</button>${w.photo?`<button data-on="click:wishPhoto-a0" data-a0="${w.id}" class="btn ghost sm" type="button">Заменить фото</button>`:''}</div></article>`).join('')
