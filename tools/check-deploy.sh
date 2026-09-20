@@ -5,7 +5,9 @@
 # ловит); health не отвечает (ссылка current осталась прежней); обрыв копирования (прежний каталог не тронут).
 #   bash tools/check-deploy.sh      (запускается из tools/check-all.mjs)
 set -euo pipefail
-REPO="$(cd "$(dirname "$0")/.." && pwd)"
+# Источник — настоящий репозиторий: из пакета выпуска (deploy.sh гоняет проверки над пакетом без .git) его путь приходит в LUNARIO_REPO
+REPO="${LUNARIO_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
+git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 || { echo "❌ check-deploy: $REPO — не git-репозиторий (из пакета выпуска задайте LUNARIO_REPO)"; exit 1; }
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 CLONE="$T/clone"; SRV="$T/srv"
 git clone -q "$REPO" "$CLONE"

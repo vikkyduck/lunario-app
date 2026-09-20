@@ -38,7 +38,7 @@ echo "==> проверка версии оболочки"
 (cd "$PKG" && node tools/bump-version.mjs >/dev/null) || { echo "❌ версии ?v= расходятся — node tools/bump-version.mjs <N>"; exit 1; }
 if [ "${SKIP_CHECKS:-}" != "1" ]; then
   echo "==> проверки перед выпуском — над пакетом (SKIP_CHECKS=1 — пропустить)"
-  (cd "$PKG" && $CHECK_CMD) || { echo "❌ проверки не прошли — выпуск остановлен (подробности выше)"; exit 1; }
+  (cd "$PKG" && LUNARIO_REPO="$REPO" $CHECK_CMD) || { echo "❌ проверки не прошли — выпуск остановлен (подробности выше)"; exit 1; }   # LUNARIO_REPO — для check-deploy: в пакете нет .git
 fi
 rm -f "$PKG/content" "$PKG/node_modules"
 
