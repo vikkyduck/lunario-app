@@ -41,7 +41,9 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
   CREATE TABLE IF NOT EXISTS compat_checks (
     id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL, day TEXT NOT NULL,
     other_birth TEXT NOT NULL, total INTEGER NOT NULL, rings TEXT NOT NULL, you TEXT NOT NULL, other TEXT NOT NULL, text TEXT NOT NULL);`);
-  /* rev — ревизия личных данных, с которой собран документ (users.data_rev, R08): изменилась — документ пересобирается при чтении */
+  /* rev — ревизия личных данных, с которой собран документ (users.data_rev, R08): изменилась — документ пересобирается при чтении.
+     Ревизия поднимается в той же транзакции, что и сама запись (mutation.mjs, ревью v114 F04), поэтому документ, собранный под
+     ревизией N, видит все данные ревизии N — гонки «старые данные под новой ревизией» нет */
   try { db.exec('ALTER TABLE knowledge ADD COLUMN rev INTEGER DEFAULT 0'); } catch { /* колонка уже есть */ }
   const put = db.prepare('INSERT INTO knowledge (user_id, doc, json, updated_at, day, rev) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id, doc) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at, day = excluded.day, rev = excluded.rev');
   const getDoc = db.prepare('SELECT json, updated_at, day, rev FROM knowledge WHERE user_id = ? AND doc = ?');

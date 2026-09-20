@@ -24,7 +24,8 @@ export function compatRings(a, b) {
 /* открытый вопрос — начинается с вопросительного слова, на которое «да» или «нет» не отвечают; «как думаешь, стоит ли…» — все же про да/нет */
 const OPEN_Q = /^[«"'\s]*(как|что|почему|зачем|когда|где|куда|откуда|кто|кого|кому|кем|чем|чего|сколько|какой|какая|какое|какие|каким|какую|о чем)(?![а-я\u0451])/iu;   /* \b в JS не знает кириллицы — граница слова задана явно */
 const YESNO_LEAD = /^[«"'\s]*как\s+(думае|счита|по-твоему|по-вашему|вы\s+думаете|вы\s+считаете)/iu;
-export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track }) {
+export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track, mutate }) {
+  /* каждая запись в entries, usage и compat_checks — через единый путь записи (mutation.mjs, F04) */
   return async function readingRoutes({ p, req, res, url, u, d }) {
     /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
     if (p === '/api/natal' && req.method === 'GET') {
@@ -40,8 +41,8 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
       if (card) markOpened(u, d, 'card', 'card_open', (Morning.cardOfDay(u, d) || {}).slug || '');
       if (!card) {
         const a = drawDistinct([...C.ARCANA], 1)[0];
-        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-          .run(u.id, nowISO(), d, 'card', '', a.name, a.keys, JSON.stringify({ card: a.slug }));
+        mutate(u.id, () => { db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+          .run(u.id, nowISO(), d, 'card', '', a.name, a.keys, JSON.stringify({ card: a.slug })); return { ok: true }; });
         card = cardPublic(a); track(u, 'card_open', a.slug);
       }
       return json(res, 200, { ok: true, card, streak: touchStreak(u) });
@@ -54,8 +55,8 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
       if (rune) markOpened(u, d, 'dayrune', 'dayrune_open', slug);
       if (!rune) {
         rune = drawDistinct([...C.RUNES], 1)[0];
-        db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-          .run(u.id, nowISO(), d, 'dayrune', '', rune.name, rune.answer, JSON.stringify({ rune: rune.slug, layout: 'one', runes: [rune.slug] }));
+        mutate(u.id, () => { db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+          .run(u.id, nowISO(), d, 'dayrune', '', rune.name, rune.answer, JSON.stringify({ rune: rune.slug, layout: 'one', runes: [rune.slug] })); return { ok: true }; });
         track(u, 'dayrune_open', rune.slug);
       }
       return json(res, 200, { ok: true, day: d, rune: runePublic(rune) });
@@ -84,8 +85,8 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
         const i = hash32(q) % 3;
         title = C.YN_VERDICTS[i]; body = C.YN_RIDERS[topic][i];
       }
-      const ins = db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-        .run(u.id, nowISO(), d, stored, seal(q), title, body, data);
+      const ins = mutate(u.id, () => ({ ok: true, ...db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+        .run(u.id, nowISO(), d, stored, seal(q), title, body, data) }));
       track(u, kind === 'rune' ? 'ask_rune' : 'ask_yesno', kind === 'rune' ? extra.layout : topic);
       const prev = db.prepare("SELECT title, day FROM entries WHERE user_id=? AND kind='yesno' AND day<? AND title<>? ORDER BY id DESC LIMIT 1").get(u.id, d, title);
       return json(res, 200, { ok: true, kind, entry: Number(ins.lastInsertRowid), title, body, topic, ...extra, streak: touchStreak(u), memory: kind === 'yesno' && prev ? { title: prev.title, day: prev.day } : null });   /* entry — id результата: к нему привязывается мысль (F13) */
@@ -99,10 +100,12 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
       const L = C.LAYOUTS.tarot[b.layout] ? b.layout : 'three';
       const pos = C.LAYOUTS.tarot[L].pos;
       const cards = drawDistinct([...C.ARCANA], pos.length).map((a, i) => ({ pos: pos[i].name, ...cardPublic(a) }));
-      db.prepare('INSERT INTO usage (user_id, day, spreads) VALUES (?,?,1) ON CONFLICT(user_id, day) DO UPDATE SET spreads = spreads + 1').run(u.id, d);
-      const ins = db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
-        .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.name} — ${c.keys}`).join(' '),
-             JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) }));
+      const ins = mutate(u.id, () => {
+        db.prepare('INSERT INTO usage (user_id, day, spreads) VALUES (?,?,1) ON CONFLICT(user_id, day) DO UPDATE SET spreads = spreads + 1').run(u.id, d);
+        return { ok: true, ...db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+          .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.name} — ${c.keys}`).join(' '),
+               JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) })) };
+      });
       track(u, 'ask_spread', L);
       return json(res, 200, { ok: true, entry: Number(ins.lastInsertRowid), layout: L, cards, streak: touchStreak(u) });
     }
@@ -131,7 +134,7 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
         method: C.UI['compat.method'] || 'Как считается: по знакам Солнца двух дат рождения — стихии, кресты и угол между знаками. Это условная шкала для разговора, а не измерение ваших отношений.',
         question: C.UI['compat.question'] || 'Что из этого вы узнаете в ваших отношениях, а что — совсем не про вас?',
       };
-      compatSave(u, d, { ...out, otherBirth: other });   /* расчет — в журнал и в документ «Тесты и совместимости» базы знаний */
+      mutate(u.id, () => { compatSave(u, d, { ...out, otherBirth: other }); return { ok: true }; });   /* расчет — в журнал и в документ «Тесты и совместимости» базы знаний; ревизия — той же транзакцией (F04) */
       return json(res, 200, out);
     }
     return false;

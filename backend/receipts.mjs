@@ -6,7 +6,9 @@
 import { createHash } from 'node:crypto';
 import { transaction } from './sync.mjs';
 
-export function createReceipts(db, nowISO) {
+/* mutate — единый путь записи (mutation.mjs, F04): запись, квитанция и ревизия личных данных — одна транзакция;
+   без него (проверки) — простая транзакция без ревизии */
+export function createReceipts(db, nowISO, mutate = (uid, work) => transaction(db, work)) {
   const opOf = (b) => typeof b?.op === 'string' && /^[\w.-]{8,64}$/.test(b.op) ? b.op : '';
   const hashOf = (payload) => createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   const find = (uid, op) => { const r = db.prepare('SELECT payload_hash, response_json FROM sync_receipts WHERE user_id = ? AND operation_id = ?').get(uid, op); if (!r) return null; try { return { hash: r.payload_hash, ref: JSON.parse(r.response_json) }; } catch { return { hash: r.payload_hash, ref: {} }; } };
@@ -26,8 +28,9 @@ export function createReceipts(db, nowISO) {
         return { status: 409, out: { ok: false, error: 'op_conflict', item } };
       }
     }
-    const { ref, out } = transaction(db, () => { const r = write(); if (op) remember(uid, op, hash, r.ref); return r; });
-    return { status: 200, out, ref };
+    /* отказ (out.ok === false) квитанции не оставляет и ревизию не двигает — иначе повтор отказа выглядел бы успехом (F04, F06) */
+    const r = mutate(uid, () => { const w = write(); if (!w.out || w.out.ok === false) return { ...w, ok: false }; if (op) remember(uid, op, hash, w.ref); return w; });
+    return { status: 200, out: r.rev ? { ...r.out, rev: r.rev } : r.out, ref: r.ref };
   }
   return { opOf, hashOf, find, remember, run };
 }

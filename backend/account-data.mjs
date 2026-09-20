@@ -48,7 +48,7 @@ function run(db, user, mode) {
       else if (r.via) db.prepare(`DELETE FROM ${r.table} WHERE ${r.via.key} IN (SELECT id FROM ${r.via.table} WHERE user_id = ?)`).run(user.id);
       else db.prepare(`DELETE FROM ${r.table} WHERE user_id = ?`).run(user.id);
     }
-    if (mode === 'history') db.prepare("UPDATE users SET streak = 0, streak_date = '' WHERE id = ?").run(user.id);
+    if (mode === 'history') db.prepare("UPDATE users SET streak = 0, streak_date = '', data_rev = data_rev + 1 WHERE id = ?").run(user.id);   /* ревизия — в той же транзакции: производные документы пересоберутся пустыми (R08, F04) */
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
 }

@@ -12,7 +12,8 @@
 import { isDay } from '../util.mjs';
 export function createPracticeRoutes(deps) {
   const { db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO, track, touchStreak,
-    habitList, askesisList, parseRule, habitStreak, validEndDate } = deps;
+    habitList, askesisList, parseRule, habitStreak, validEndDate, mutate } = deps;
+  /* каждая запись привычки или аскезы — через единый путь записи (mutation.mjs, F04): изменение и ревизия одной транзакцией */
 
   return async function practiceRoutes({ p, req, res, url, u, d }) {
   /* ── главная: что из практик уже сделано сегодня — одним запросом вместо пяти ── */
@@ -28,7 +29,7 @@ export function createPracticeRoutes(deps) {
       const title = clean(b.title, 80), ruleText = clean(b.rule, 60);
       if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
       if (db.prepare('SELECT COUNT(*) c FROM habits WHERE user_id = ? AND archived = 0').get(u.id).c >= 20) return json(res, 400, { ok: false, error: 'too_many' });
-      db.prepare('INSERT INTO habits (user_id, title, created_at, rule, rule_text) VALUES (?,?,?,?,?)').run(u.id, seal(title), nowISO(), parseRule(ruleText), ruleText);
+      mutate(u.id, () => { db.prepare('INSERT INTO habits (user_id, title, created_at, rule, rule_text) VALUES (?,?,?,?,?)').run(u.id, seal(title), nowISO(), parseRule(ruleText), ruleText); return { ok: true }; });
       touchStreak(u); track(u, 'habit_add', parseRule(ruleText));
     } else if (req.method === 'PATCH') {
       const b = await readBody(req);
@@ -37,7 +38,7 @@ export function createPracticeRoutes(deps) {
       if (b.rule !== undefined || b.title !== undefined) {   // правка названия или регулярности
         const ruleText = b.rule !== undefined ? clean(b.rule, 60) : h.rule_text, title = b.title !== undefined ? clean(b.title, 80) : open_(h.title);
         if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
-        db.prepare('UPDATE habits SET title = ?, rule = ?, rule_text = ? WHERE id = ?').run(seal(title), parseRule(ruleText), ruleText, h.id);
+        mutate(u.id, () => { db.prepare('UPDATE habits SET title = ?, rule = ?, rule_text = ? WHERE id = ?').run(seal(title), parseRule(ruleText), ruleText, h.id); return { ok: true }; });
       } else {
         /* день — только если передан и настоящий, не старше недели и не в будущем; иначе ошибка, а не отметка за сегодня (R13).
            done — желаемое состояние: два одинаковых запроса оставляют то же, что и один; без done — переключение (старые вызовы) (R05) */
@@ -45,13 +46,14 @@ export function createPracticeRoutes(deps) {
         if (b.day !== undefined && b.day !== null && b.day !== '') { if (!isDay(b.day) || b.day > d || Date.parse(d) - Date.parse(b.day) > 6 * 864e5) return json(res, 400, { ok: false, error: 'bad_day' }); day = b.day; }
         const has = !!db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day);
         const want = typeof b.done === 'boolean' ? b.done : !has;
-        if (!want && has) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
+        if (!want && has) mutate(u.id, () => { db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day); return { ok: true }; });
         else if (want && !has) {
-          db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u); track(u, 'habit_mark', day === d ? 'today' : 'past');
+          mutate(u.id, () => { db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); return { ok: true }; });
+          if (day === d) touchStreak(u); track(u, 'habit_mark', day === d ? 'today' : 'past');
         }
       }
     } else if (req.method === 'DELETE') {
-      db.prepare('UPDATE habits SET archived = 1 WHERE id = ? AND user_id = ?').run(Number(url.searchParams.get('id')) || 0, u.id);
+      mutate(u.id, () => ({ ok: db.prepare('UPDATE habits SET archived = 1 WHERE id = ? AND user_id = ?').run(Number(url.searchParams.get('id')) || 0, u.id).changes > 0 }));   /* чужой или несуществующий id ничего не меняет — и ревизию не двигает */
     }
     return json(res, 200, { items: habitList(u.id, d), streak: u.streak });
   }
@@ -65,7 +67,7 @@ export function createPracticeRoutes(deps) {
       if (!validEndDate(until, d)) return json(res, 400, { ok: false, error: 'bad_until' });
       if (db.prepare("SELECT COUNT(*) c FROM askesis WHERE user_id = ? AND status = 'active'").get(u.id).c >= 5) return json(res, 400, { ok: false, error: 'too_many' });
       const days = Math.round((Date.parse(until) - Date.parse(d)) / 864e5) + 1;
-      db.prepare('INSERT INTO askesis (user_id, title, days, started, until) VALUES (?,?,?,?,?)').run(u.id, seal(title), days, d, until);
+      mutate(u.id, () => { db.prepare('INSERT INTO askesis (user_id, title, days, started, until) VALUES (?,?,?,?,?)').run(u.id, seal(title), days, d, until); return { ok: true }; });
       touchStreak(u); track(u, 'askesis_start', String(days));
     } else if (req.method === 'PATCH') {
       const b = await readBody(req);
@@ -74,14 +76,14 @@ export function createPracticeRoutes(deps) {
       if (b.until !== undefined) {                                   // передвинуть дату
         const until = String(b.until || '');
         if (!validEndDate(until, d)) return json(res, 400, { ok: false, error: 'bad_until' });
-        db.prepare('UPDATE askesis SET until = ?, days = ? WHERE id = ?').run(until, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1, a.id);
+        mutate(u.id, () => { db.prepare('UPDATE askesis SET until = ?, days = ? WHERE id = ?').run(until, Math.round((Date.parse(until) - Date.parse(a.started)) / 864e5) + 1, a.id); return { ok: true }; });
       } else {                                                       // заметка-наблюдение за сегодня
         const note = cleanText(b.note, 500);
-        db.prepare('INSERT INTO askesis_days (askesis_id, day, kept, note) VALUES (?,?,1,?) ON CONFLICT(askesis_id, day) DO UPDATE SET note = excluded.note').run(a.id, d, seal(note));
+        mutate(u.id, () => { db.prepare('INSERT INTO askesis_days (askesis_id, day, kept, note) VALUES (?,?,1,?) ON CONFLICT(askesis_id, day) DO UPDATE SET note = excluded.note').run(a.id, d, seal(note)); return { ok: true }; });
         touchStreak(u); track(u, 'askesis_mark', '');
       }
     } else if (req.method === 'DELETE') {
-      db.prepare("UPDATE askesis SET status = 'stopped', finished_at = ? WHERE id = ? AND user_id = ? AND status = 'active'").run(d, Number(url.searchParams.get('id')) || 0, u.id);
+      mutate(u.id, () => ({ ok: db.prepare("UPDATE askesis SET status = 'stopped', finished_at = ? WHERE id = ? AND user_id = ? AND status = 'active'").run(d, Number(url.searchParams.get('id')) || 0, u.id).changes > 0 }));
     }
     return json(res, 200, askesisList(u.id, d));
   }

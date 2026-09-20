@@ -6,7 +6,7 @@
    Мало данных — короткий экран. Зависимости — явным объектом, как у createDay. */
 import { isDay, addDays, plural } from './util.mjs';
 import { hash32 } from './morning.mjs';
-import { transaction } from './sync.mjs';
+import { createMutation } from './mutation.mjs';
 import { createMoods } from './moods.mjs';
 
 const dow = (day) => (new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7;   /* 0 — понедельник */
@@ -21,8 +21,9 @@ export function weekOf(d, pick) {
   return { start, end, days: [...Array(7)].map((_, i) => addDays(start, i)) };
 }
 
-export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource = () => '' }) {
+export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource = () => '', mutate = null }) {
   const trim = (t) => t.length > FRAGMENT ? t.slice(0, FRAGMENT - 1).trimEnd() + '…' : t;
+  const write = mutate || createMutation(db);   /* отметка и рефлексия — через единый путь записи с ревизией (F04) */
   const texts = (key) => [...(C.WEEK_TEXTS[key] || [])];
   const Moods = createMoods(db);
   /* Личные записи недели — один перечень и один способ чтения (аудит v98, F08): запись, благодарность, ответ на вопрос дня
@@ -116,22 +117,26 @@ export function createWeek({ db, open, seal, C, MOOD_RU, habitList, askesisList,
     const day = isDay(b.day) ? b.day : '';
     const verdict = VERDICTS.includes(b.verdict) ? b.verdict : b.verdict === '' ? '' : null;
     if (!day || day > d || day < addDays(d, -366) || verdict === null) return { ok: false, error: 'bad_echo' };
-    if (verdict) db.prepare('INSERT INTO week_echoes (user_id, day, verdict, ts) VALUES (?,?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET verdict = excluded.verdict, ts = excluded.ts').run(u.id, day, verdict, nowISO());
-    else db.prepare('DELETE FROM week_echoes WHERE user_id = ? AND day = ?').run(u.id, day);
+    const out = write(u.id, () => {
+      if (verdict) db.prepare('INSERT INTO week_echoes (user_id, day, verdict, ts) VALUES (?,?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET verdict = excluded.verdict, ts = excluded.ts').run(u.id, day, verdict, nowISO());
+      else db.prepare('DELETE FROM week_echoes WHERE user_id = ? AND day = ?').run(u.id, day);
+      return { ok: true, day, verdict };
+    });
     track(u, 'week_echo', verdict || 'clear');
-    return { ok: true, day, verdict };
+    return out;
   }
   /* Рефлексия недели — одна запись на неделю; пустой текст снимает ее */
   function reflect(u, d, b) {
     const w = weekOf(d, b.week), text = cleanText(b.text, 2000);
-    transaction(db, () => {
+    const { rev } = write(u.id, () => {
       const row = db.prepare("SELECT id FROM journal WHERE user_id = ? AND day = ? AND kind = 'weekly' ORDER BY id DESC LIMIT 1").get(u.id, w.end);
       if (!text) { if (row) db.prepare('DELETE FROM journal WHERE id = ? AND user_id = ?').run(row.id, u.id); }
       else if (row) db.prepare('UPDATE journal SET text = ? WHERE id = ? AND user_id = ?').run(seal(text), row.id, u.id);
       else db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), w.end, seal(text), 'weekly', seal(''));
+      return { ok: true };
     });
     track(u, 'week_reflect', text ? 'save' : 'clear');
-    return { ok: true, ...reflectionOf(u.id, w) };
+    return { ok: true, rev, ...reflectionOf(u.id, w) };
   }
   return { state, echo, reflect };
 }

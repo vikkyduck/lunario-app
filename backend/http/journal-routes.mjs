@@ -1,7 +1,8 @@
 /* Настроение, дневник, желания и фото, лента записей, отчет по настроениям.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
 import { addDays } from '../util.mjs';
-export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList, Moods, Receipts }) {
+export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList, Moods, Receipts, mutate }) {
+  /* настроение, фото, желания — через единый путь записи (mutation.mjs, F04); дневник и желания с ключом op — через Receipts.run, у него тот же mutate внутри */
   /* Квитанции операций — receipts.mjs: ключ op от клиента, в квитанции только ссылка на запись (без текста); повтор отдает запись
      в актуальном виде или говорит, что она удалена; другой текст с тем же ключом — конфликт с найденной записью (R02, R04) */
   /* Запись ленты: не расшифровалась — { text: null, unreadable: true }, а не пустая строка и не 500 на всю ленту (ревью v114, F14) */
@@ -13,8 +14,11 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
       const mood = clean(b.mood, 30);
       const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* свое слово: «own:собранно» */
       if (!own && !C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
-      db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
-      db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);   /* карточка дня показывает все отмеченные */
+      mutate(u.id, () => {
+        db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
+        db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);   /* карточка дня показывает все отмеченные */
+        return { ok: true };
+      });
       track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* свое слово — личный текст, в аналитику не идет */
       const month = d.slice(0, 7);
       return json(res, 200, { ok: true, mood, stats: Moods.summary(u.id, month + '-01', month + '-31').stats, streak: touchStreak(u) });
@@ -71,10 +75,10 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
         const wid = Number(b.id) || 0;
         if (!db.prepare('SELECT 1 FROM wishes WHERE id = ? AND user_id = ?').get(wid, u.id)) return json(res, 404, { ok: false, error: 'not_found' });
         const photo = dataUrlOk(b.photo, 600 * 1024); if (!photo) return json(res, 400, { ok: false, error: 'bad_photo' });
-        db.prepare('UPDATE wishes SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), wid);
+        mutate(u.id, () => { db.prepare('UPDATE wishes SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), wid); return { ok: true }; });
         track(u, 'wish_photo', '');
       }
-      if (req.method === 'DELETE') db.prepare("UPDATE wishes SET photo = '', photo_ts = '' WHERE id = ? AND user_id = ?").run(id, u.id);
+      if (req.method === 'DELETE') mutate(u.id, () => ({ ok: db.prepare("UPDATE wishes SET photo = '', photo_ts = '' WHERE id = ? AND user_id = ?").run(id, u.id).changes > 0 }));
       return json(res, 200, { items: wishList(u.id) });
     }
     /* Свое фото в аккаунте — показывается в кружке в правом верхнем углу */
@@ -83,10 +87,10 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
       if (req.method === 'POST') {
         const b = await readBody(req, 512 * 1024);
         const photo = dataUrlOk(b.photo, 300 * 1024); if (!photo) return json(res, 400, { ok: false, error: 'bad_photo' });
-        db.prepare('UPDATE users SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), u.id);
+        mutate(u.id, () => { db.prepare('UPDATE users SET photo = ?, photo_ts = ? WHERE id = ?').run(photo, nowISO(), u.id); return { ok: true }; });
         track(u, 'photo_set', '');
       }
-      if (req.method === 'DELETE') db.prepare("UPDATE users SET photo = '', photo_ts = '' WHERE id = ?").run(u.id);
+      if (req.method === 'DELETE') mutate(u.id, () => { db.prepare("UPDATE users SET photo = '', photo_ts = '' WHERE id = ?").run(u.id); return { ok: true }; });
       return json(res, 200, { ok: true, user: publicUser(userById(u.id)) });
     }
     if (p === '/api/wishes') {
@@ -111,7 +115,7 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
         return json(res, 200, { items: wishList(u.id), ...(r.out.repeated ? { repeated: true, removed: !!r.out.removed } : {}) });
       } else if (req.method === 'PATCH') {
         const b = await readBody(req);
-        db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), Number(b.id) || 0, u.id);
+        mutate(u.id, () => ({ ok: db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), Number(b.id) || 0, u.id).changes > 0 }));
       }
       return json(res, 200, { items: wishList(u.id) });
     }

@@ -22,6 +22,7 @@ import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
 import { MSK, MOSCOW, ISO_DAY, isDay, dayIn, addDays, clean, cleanText, countWord } from './util.mjs';
 import { createMoods } from './moods.mjs';
 import { createReceipts } from './receipts.mjs';
+import { createMutation } from './mutation.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
@@ -167,11 +168,10 @@ function rememberTz(u, req) {
 
 /* Событие продукта: только тип, короткая деталь и возрастная когорта — без личных текстов */
 const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), today(), u.id, type, String(detail || '').slice(0, 60), ageBand(u.birth));
-/* Ревизия личных данных (R08): любая запись, правка или удаление через API поднимает users.data_rev — база знаний сверяет ее при чтении.
-   Вызывается в маршрутизаторе для всех не-GET запросов к личным данным (см. DATA_PATHS ниже) и после очистки истории */
-const touchData = (uid) => db.prepare('UPDATE users SET data_rev = data_rev + 1 WHERE id = ?').run(uid);
+/* Ревизия личных данных (R08, ревью v114 F04): растет вместе с самой записью, правкой или удалением — одной транзакцией, через
+   mutate() из mutation.mjs; маршрутизатор ее не трогает и списка путей не держит. База знаний сверяет ревизию при чтении */
+const mutate = createMutation(db);
 const dataRev = (uid) => (db.prepare('SELECT data_rev FROM users WHERE id = ?').get(uid) || {}).data_rev || 0;
-const DATA_PATHS = /^\/api\/(day|day\/photo|thought|journal|mood|wishes|wishes\/photo|habits|askesis(?:\/[\w-]+)?|week\/echo|week\/reflect|card|dayrune|ask|spread|compat|profile|photo|data)$/;
 function ageBand(birth) {
   if (!ISO_DAY.test(String(birth || ''))) return '';
   const b = new Date(birth + 'T00:00:00Z'), now = new Date();
@@ -289,7 +289,7 @@ function markOpened(u, day, kind, event, detail) {
   const row = db.prepare('SELECT id, data FROM entries WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(u.id, day, kind);
   if (!row) return;
   const data = parseData(row.data) || {};
-  if (data.auto) { delete data.auto; db.prepare('UPDATE entries SET data = ? WHERE id = ?').run(JSON.stringify(data), row.id); }
+  if (data.auto) { delete data.auto; mutate(u.id, () => { db.prepare('UPDATE entries SET data = ? WHERE id = ?').run(JSON.stringify(data), row.id); return { ok: true }; }); }
   if (!db.prepare('SELECT 1 FROM events WHERE user_id = ? AND day = ? AND type = ? LIMIT 1').get(u.id, day, event)) track(u, event, detail);
 }
 
@@ -404,7 +404,7 @@ const PUSH_DEVICES = 10;   /* сколько ячеек уведомлений �
 const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : 'настроение без названия'; } });
 const moodTone = (k) => { const m = C.moodInfo(k); return m ? m.tone : '0'; };
 const Moods = createMoods(db);
-const Receipts = createReceipts(db, nowISO);
+const Receipts = createReceipts(db, nowISO, mutate);
 /* Последние семь дней (не календарная неделя — та в week.mjs): все отметки по контракту moods.mjs;
    вывод о характере дней — только при трех и больше днях наблюдения (аудит v98, F10) */
 function weekSummary(u, d) {
@@ -564,12 +564,12 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
-  track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate });
+  track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate, mutate });
 const Day = createDay({ db, seal, open: open_, readable, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten, questionOf: (u, d) => dayPack(u, d).question,
   morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
   themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '',
   lunarOf,
-  dailyWrites: DAILY_WRITES });
+  dailyWrites: DAILY_WRITES, mutate });
 const dayRoutes = createDayRoutes({ json, readBody, day: Day, bridge: (u, d) => Memory.dayLine(u, d) });
 /* откуда настрой того дня — подпись для «Что отозвалось» в неделе: карта дня и ее имя, руна, планеты или прогноз дня */
 function setSourceLabel(uid, day) {
@@ -583,12 +583,12 @@ function setSourceLabel(uid, day) {
     return 'по прогнозу дня';
   } catch { return ''; }
 }
-const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource: setSourceLabel });
+const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource: setSourceLabel, mutate });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
 const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
-const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
-const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods, Receipts });
+const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track, mutate });
+const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods, Receipts, mutate });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
 
 const server = createServer(async (req, res) => {
@@ -737,10 +737,10 @@ const server = createServer(async (req, res) => {
         if (b.consent !== true) return json(res, 400, { ok: false, error: 'no_consent' });
         const cityName = clean(b.city, 60);
         const geo = cityName ? cityByName(cityName) : null;   // координаты подставляются по названию
-        db.prepare('UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1, consent_version=?, consent_ts=? WHERE id=?')
+        mutate(u.id, () => { db.prepare('UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1, consent_version=?, consent_ts=? WHERE id=?')
           .run(clean(b.name, 60), birth, clean(b.birthTime, 5), geo ? geo.name : cityName,
                geo ? [geo.region, geo.country].filter(Boolean).join(', ') : '', geo ? geo.lat : null, geo ? geo.lon : null, geo ? geo.tz : '',
-               CONSENT_VERSION, nowISO(), u.id);
+               CONSENT_VERSION, nowISO(), u.id); return { ok: true }; });   /* анкета — часть «Обо мне» в базе знаний: ревизия вместе с записью (F04) */
         if (!u.onboarded) track(u, 'onboard_done', '');
         const fresh = userById(u.id);
         try { Knowledge.rebuild(fresh, d, ['profile']); } catch (e) { logError('knowledge', e.message); }   /* анкета изменилась — «Обо мне» с натальной картой пересобирается сразу */
@@ -748,7 +748,6 @@ const server = createServer(async (req, res) => {
       }
 
       /* ── остальные маршруты — по модулям в backend/http/: вход и аккаунт, гадания, дневник, уведомления, практики, день, неделя ── */
-      if (req.method !== 'GET' && DATA_PATHS.test(p)) touchData(u.id);   /* личные данные меняются — производные документы узнают об этом (R08) */
       if (await authRoutes({ p, req, res, url, u, d })) return;
       if (await readingRoutes({ p, req, res, url, u, d })) return;
       if (await journalRoutes({ p, req, res, url, u, d })) return;

@@ -6,7 +6,7 @@ import { mkdtemp, cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { createServer } from 'node:net';
+import { createServer, connect as netConnect } from 'node:net';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -715,6 +715,72 @@ try {
     const raw = CE2.contentRead('привычки.txt'); assert.equal(CE2.writeContent('привычки.txt', raw.text, 'd', 'stale').error, 'conflict'); assert.equal(CE2.writeContent('привычки.txt', raw.text, 'd', raw.version).ok, true);
     assert.throws(() => CE2.writeFile('привычки.txt', 'x', 'e'), /версия/, 'the low-level write demands a version');
     console.log('PASS: audit v112 — receipts without text and honest repeats, edit after a lost response, wishes and habits repeat safely, invalid habit dates refused, knowledge base fresh within the day, portrait counts every mark, compatibility exported with a named basis, weekly-only days in the archive, record lunar day fixed, tables and raw files save by version.'); }
+
+  // ── F04 (ревью v114): ревизией личных данных владеет тот, кто пишет — тест-страж по каждой таблице PERSONAL_DATA с on:'history':
+  //    типичная запись через API поднимает users.data_rev ровно на 1, отклоненный запрос не трогает ее; гонка «ревизия раньше данных» воспроизведена ──
+  { const g = account(); const gMe = await g.json('/me'), gId = gMe.user.id, d0 = gMe.day.date;
+    await g.json('/profile', 'POST', { name: 'Страж ревизии', birth: '1990-05-05', city: 'Москва', consent: true });
+    const rev = () => qaDB.prepare('SELECT data_rev FROM users WHERE id = ?').get(gId).data_rev;
+    const untilG = new Date(Date.parse(d0 + 'T12:00:00Z') + 9 * 864e5).toISOString().slice(0, 10);
+    let habitG = null, askG = null;
+    const jpegG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(1500, 5)]);
+    /* какой запрос какую таблицу трогает — это и есть документация пути записи; null — таблица без действия человека, причина рядом */
+    const WRITES = [
+      ['entries', () => g.json('/ask', 'POST', { question: 'Стоит ли мне сегодня начать новое дело?', kind: 'yesno' })],
+      ['usage', () => g.json('/spread', 'POST', { question: 'Что мне важно понять про эту неделю?', layout: 'three' })],
+      ['moods', () => g.json('/mood', 'POST', { mood: 'joy' })],
+      ['mood_marks', () => g.json('/day', 'POST', { moods: ['trust', 'joy'] })],
+      ['journal', () => g.json('/journal', 'POST', { text: 'Запись для стража ревизии' })],
+      ['sync_receipts', () => g.json('/journal', 'POST', { text: 'Запись с ключом операции', kind: 'gratitude', op: 'op-guard-' + Date.now().toString(36) })],
+      ['week_echoes', () => g.json('/week/echo', 'POST', { day: d0, verdict: 'yes' })],
+      ['day_photos', () => fetch(`${base}/api/day/photo?thumb=${jpegG.length}&w=100&h=100`, { method: 'PUT', headers: { Cookie: g.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': g.ip }, body: Buffer.concat([jpegG, jpegG]) }).then((r) => assert.equal(r.status, 200))],
+      ['wishes', () => g.json('/wishes', 'POST', { text: 'Желание стража' })],
+      ['habits', async () => { habitG = (await g.json('/habits', 'POST', { title: 'Привычка стража', rule: 'каждый день' })).items[0]; }],
+      ['habit_marks', () => g.json('/habits', 'PATCH', { id: habitG.id, done: true })],
+      ['askesis', async () => { askG = (await g.json('/askesis', 'POST', { title: 'Аскеза стража', until: untilG })).active[0]; }],
+      ['askesis_days', () => g.json('/askesis', 'PATCH', { id: askG.id, note: 'Заметка стража' })],
+      ['compat_checks', () => g.json('/compat', 'POST', { birth: '1991-11-11' })],
+      ['daily_sets', null, 'настрой дня выпадает сервером на первом /me дня — не действие человека, документ дня и так собирается заново'],
+      ['habit_awards', null, 'больше не пишется (награды сняты)'],
+      ['knowledge', null, 'производная: собирается из остального и хранит ревизию, с которой собрана — сама ее не двигает'],
+    ];
+    const { PERSONAL_DATA: PDG } = await import(pathToFileURL(join(fixture, 'backend/account-data.mjs')).href);
+    for (const row of PDG.filter((r) => r.on === 'history')) assert.ok(WRITES.some(([t]) => t === row.table), `guard lists ${row.table}`);
+    for (const [table, act, why] of WRITES) {
+      if (!act) { assert.ok(why, table + ' explains why no write'); continue; }
+      const before = rev(); await act(); assert.equal(rev(), before + 1, `${table}: one write raises data_rev by exactly 1`);
+    }
+    /* отклоненный ввод ревизию не трогает: короткая запись, чужая привычка, мусорный отклик */
+    const r0 = rev();
+    assert.equal((await g.raw('/journal', 'POST', { text: 'ab' })).status, 400);
+    assert.equal((await g.raw('/day', 'POST', { echo: 'maybe' })).status, 400);
+    assert.equal((await g.raw('/habits', 'PATCH', { id: 99999999, done: true })).status, 404);
+    assert.equal((await g.raw('/day', 'DELETE')).status, 400);
+    assert.equal(rev(), r0, 'refused requests leave data_rev alone');
+    /* удаление и очистка — тоже записи */
+    const jg = await g.json('/journal', 'POST', { text: 'Запись, которую удалят' }); const r1 = rev();
+    await g.json(`/day?day=${d0}&what=text:${jg.item.id}`, 'DELETE'); assert.equal(rev(), r1 + 1, 'a delete raises data_rev');
+    const r2 = rev(); await g.json('/data', 'DELETE'); assert.equal(rev(), r2 + 1, 'clearing the history raises data_rev inside its own transaction');
+    /* в маршрутизаторе больше нет списка путей: ревизией владеет запись */
+    const srvSrc = (await import('node:fs')).readFileSync(join(repo, 'backend/server.mjs'), 'utf8');
+    assert.ok(!/DATA_PATHS|touchData/.test(srvSrc), 'server.mjs holds no path list for the revision');
+    /* гонка из ревью: POST /journal уходит по частям — заголовки и половина тела; пока тело не дошло, читается recent; потом тело досылается.
+       Раньше ревизия поднималась до чтения тела: сводка собиралась без записи, но под новой ревизией, и считала себя свежей */
+    const rc = account(); const rcMe = await rc.json('/me'), rcDay = rcMe.day.date;
+    await rc.json('/profile', 'POST', { name: 'Гонка', birth: '1990-06-06', city: 'Москва', consent: true });
+    await rc.json('/knowledge?doc=recent');
+    const bodyBuf = Buffer.from(JSON.stringify({ text: 'Запись во время гонки ревизии' })), half = Math.floor(bodyBuf.length / 2);
+    const sock = netConnect(port, '127.0.0.1'); await once(sock, 'connect');
+    let reply = ''; sock.on('data', (c) => { reply += c; }); const closed = once(sock, 'close');
+    sock.write(`POST /app/api/journal HTTP/1.1\r\nHost: 127.0.0.1\r\nCookie: ${rc.cookie}\r\nX-Forwarded-For: ${rc.ip}\r\nContent-Type: application/json\r\nContent-Length: ${bodyBuf.length}\r\nConnection: close\r\n\r\n`);
+    sock.write(bodyBuf.subarray(0, half)); await delay(150);
+    const during = (await rc.json('/knowledge?doc=recent')).data.days.find((x) => x.day === rcDay);
+    assert.ok(!during || !JSON.stringify(during).includes('во время гонки'), 'before the body arrives the record is not in the summary');
+    sock.write(bodyBuf.subarray(half)); await closed;
+    assert.match(reply, /^HTTP\/1\.1 200/, 'the split request is accepted: ' + reply.slice(0, 60));
+    const after = (await rc.json('/knowledge?doc=recent')).data.days.find((x) => x.day === rcDay);
+    assert.ok(after && JSON.stringify(after).includes('Запись во время гонки ревизии'), 'after the write the summary is fresh, not signed with a revision it never saw: ' + JSON.stringify(after));
+    console.log('PASS: F04 — every personal-data table has a named write that raises data_rev by exactly one, refusals do not, the router keeps no path list, and the review race yields a fresh summary.'); }
 
   // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
   { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);

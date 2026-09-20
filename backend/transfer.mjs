@@ -83,6 +83,7 @@ export function transferGuestRecords(db, guestId, accountId) {
       if (n) moved[t] = n;
       if (left) kept[t] = left;
     }
+    db.prepare('UPDATE users SET data_rev = data_rev + 1 WHERE id = ?').run(accountId);   /* записи переехали — ревизия аккаунта в той же транзакции (F04) */
     /* Досье гостя не нужно: у аккаунта свое, и оно пересоберется из переехавших записей.
        Остальное личное гостя (устройства, напоминания, обращения) уходит вместе с ним по общей политике. */
     for (const r of PERSONAL_DATA) {
