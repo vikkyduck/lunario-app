@@ -14,7 +14,7 @@ fi
 if [ -n "$(git status --porcelain --untracked-files=no)" ] && [ "${ALLOW_DIRTY:-}" != "1" ]; then
   echo "❌ в рабочей копии есть незакоммиченные правки — сначала commit (ALLOW_DIRTY=1 — выпустить как есть)"; git status --short | head -20; exit 1
 fi
-RELEASE="$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain --untracked-files=no)" ] && echo '-dirty' )"
+RELEASE="$(git rev-parse --short HEAD)"; if [ -n "$(git status --porcelain --untracked-files=no)" ]; then RELEASE="$RELEASE-dirty"; fi
 echo "==> выпуск $RELEASE"
 # cities.db не в git: свежий клон без него не должен стереть серверный (rsync --delete)
 if ! ssh "$SERVER" 'test -s /opt/lunario-app/backend/cities.db' && [ ! -s backend/cities.db ]; then
