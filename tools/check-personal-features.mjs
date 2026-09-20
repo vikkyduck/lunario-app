@@ -213,7 +213,7 @@ try {
   qaDB.exec('PRAGMA busy_timeout=5000');
   /* Наград за серии больше нет (решение владелицы): отметка — просто отметка, серия считается, но ничего не «выдаётся» */
   { const h=(await owner.json('/habits','POST',{title:'Ежедневно 30',rule:'каждый день'})).items.find(h=>h.title==='Ежедневно 30');
-    qaDB.prepare('UPDATE habits SET created_at=? WHERE id=?').run(new Date(Date.parse(day)-29*864e5).toISOString(),h.id);
+    qaDB.prepare('UPDATE habits SET created_at=?, start_day=? WHERE id=?').run(new Date(Date.parse(day)-29*864e5).toISOString(),new Date(Date.parse(day)-29*864e5).toISOString().slice(0,10),h.id);   /* привычка «завелась» 29 дней назад: день начала — start_day (F13) */
     const add=qaDB.prepare('INSERT INTO habit_marks(habit_id,day) VALUES(?,?)');for(let i=1;i<30;i++)add.run(h.id,new Date(Date.parse(day)-i*864e5).toISOString().slice(0,10));
     const result=await owner.json('/habits','PATCH',{id:h.id});assert.equal(result.award,undefined,'no award field');
     const row=result.items.find(x=>x.id===h.id);assert.equal(row.streak,30);assert.equal(row.awards,undefined);assert.equal(row.next,undefined);
@@ -835,6 +835,29 @@ try {
     assert.deepEqual((await k.json('/journal')).items.filter((i) => i.kind === '').map((i) => i.id).sort((a, b) => a - b), day.texts.map((t) => t.id).sort((a, b) => a - b));
     console.log('PASS: F08 — two texts and two gratitudes of one day survive in recent as arrays, the text quotes all of them, export and summary match by id.'); }
 
+  // ── F13 (ревью v114): день начала привычки — день человека, не Москвы: западнее и восточнее UTC ритм «через день» стартует
+  //    в свой локальный день и в этот день должен делаться; пояс и «локальный момент» живут в одном модуле clock.mjs ──
+  { const addD = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+    for (const [tz, createdAtOf] of [['America/Los_Angeles', (d) => `${addD(d, 1)}T00:30:00.000Z`], ['Asia/Vladivostok', (d) => `${addD(d, -1)}T18:30:00.000Z`]]) {
+      const t = account(); const h = { 'X-Tz': tz };
+      const me = await (await t.raw('/me', 'GET', undefined, h)).json(); const d = me.day.date;
+      assert.equal(d, new Date().toLocaleDateString('sv-SE', { timeZone: tz }), tz + ': the day comes from the device zone');
+      await t.raw('/profile', 'POST', { name: 'Пояс ' + tz, birth: '1990-01-01', city: 'Москва', consent: true }, h);
+      const created = (await (await t.raw('/habits', 'POST', { title: 'Через день', rule: 'через день' }, h)).json()).items[0];
+      const row = qaDB.prepare('SELECT start_day, tz FROM habits WHERE id = ?').get(created.id);
+      assert.equal(row.start_day, d, tz + ': start_day is the local day of creation'); assert.equal(row.tz, tz, 'the creation zone is stored');
+      /* момент создания — когда по UTC (и по Москве) уже другая дата, а у человека еще/уже d: раньше старт брался по Москве и фаза сдвигалась */
+      qaDB.prepare('UPDATE habits SET created_at = ? WHERE id = ?').run(createdAtOf(d), created.id);
+      const item = (await (await t.raw('/habits', 'GET', undefined, h)).json()).items.find((x) => x.id === created.id);
+      assert.equal(item.since, d, tz + ': the habit starts on the local day, not the Moscow one: ' + item.since);
+      assert.equal(item.due, true, tz + ': an every-other-day habit is due on its first (local) day');
+      assert.equal(item.week.find((w) => w.day === d).due, true); assert.equal(item.week.find((w) => w.day === addD(d, -1)).due, false, 'the day before the start is not due');
+    }
+    const fs13 = await import('node:fs'); const srcFiles = ['server.mjs', 'reminders.mjs', 'send-daily.mjs'].map((f) => fs13.readFileSync(join(repo, 'backend', f), 'utf8'));
+    assert.ok(srcFiles.every((s) => /from '\.\/clock\.mjs'/.test(s)), 'the zone choice lives in clock.mjs and everyone imports it');
+    assert.ok(!/const userTz = |function userDayOf|tzOffsetMinutes\(tz, local\)/.test(srcFiles[0] + srcFiles[1] + srcFiles[2]), 'no private copies of userTz / userDayOf / at() remain');
+    console.log('PASS: F13 — habit start is the local day west and east of UTC with a consistent schedule, the zone choice and the local moment live in clock.mjs.'); }
+
   // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
   { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);
     const put = (who, thumb, full, q = '') => fetch(`${base}/api/day/photo?thumb=${thumb.length}&w=1280&h=960${q}`, { method: 'PUT', headers: { Cookie: who.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': who.ip }, body: Buffer.concat([thumb, full]) });
@@ -1279,6 +1302,7 @@ try {
     const ts = new Date().toISOString();
     v19.prepare("INSERT INTO users (id, created_at, last_seen, name, onboarded) VALUES (7, ?, ?, 'Квитанции', 1)").run(ts, ts);
     v19.prepare("INSERT INTO journal (id, user_id, ts, day, text, kind, title) VALUES (1, 7, ?, '2026-09-01', 'старая запись без шифрования', 'gratitude', '')").run(ts);   /* без enc1: у этой базы нет ключа, а с ключом сервер сверяет маркер (F14) */
+    v19.prepare("INSERT INTO habits (id, user_id, title, created_at, rule, rule_text) VALUES (5, 7, 'Старая привычка', '2026-09-01T22:30:00.000Z', 'alt', 'через день')").run();   /* без start_day — его заполнит миграция 21 (F13) */
     const put = v19.prepare('INSERT INTO sync_receipts (user_id, operation_id, payload_hash, response_json, created_at) VALUES (7, ?, ?, ?, ?)');
     put.run('op-old-format', 'h1', '{"ok":true,"item":{"id":1,"day":"2026-09-01","text":"MARKER-секрет","kind":"gratitude","title":""},"streak":3}', ts);
     put.run('op-old-updated', 'h2', '{"ok":true,"updated":true,"item":{"id":1,"text":"MARKER-еще"}}', ts);
@@ -1294,6 +1318,7 @@ try {
     assert.equal(m20.prepare("SELECT response_json FROM sync_receipts WHERE operation_id = 'op-new-format'").get().response_json, '{"table":"journal","id":1}', 'a v114 receipt is untouched');
     for (const op of ['op-refused', 'op-garbage']) assert.equal(m20.prepare('SELECT COUNT(*) c FROM sync_receipts WHERE operation_id = ?').get(op).c, 0, op + ' is dropped: unrecognised or a refusal is not a receipt');
     assert.equal(m20.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION);
+    assert.deepEqual({ ...m20.prepare('SELECT start_day, tz FROM habits WHERE id = 5').get() }, { start_day: '2026-09-01', tz: '' }, 'an old habit gets start_day from its UTC creation date (F13, migration 21)');
     /* повтор успешной операции на обновленной базе — тот же результат, а не вторая запись */
     const rp = account(); const rpId = (await rp.json('/me')).user.id, rop = 'op-after-migrate';
     const first = await rp.json('/journal', 'POST', { text: 'Повтор после обновления', kind: 'gratitude', op: rop });

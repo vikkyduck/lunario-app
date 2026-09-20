@@ -23,6 +23,7 @@ import { MSK, MOSCOW, ISO_DAY, isDay, dayIn, addDays, clean, cleanText, countWor
 import { createMoods } from './moods.mjs';
 import { createReceipts } from './receipts.mjs';
 import { createMutation } from './mutation.mjs';
+import { validTz, userTz, userDay, localMoment } from './clock.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
@@ -150,15 +151,7 @@ async function notifyStaffAccess(email, roleKeys) {
 console.log('Личные записи шифруются перед записью в базу');
 
 /* «Сегодня» человека — по поясу его устройства (заголовок X-Tz, запоминается в preferences.tz), иначе по поясу города из анкеты,
-   иначе по Москве. Все личное — настрой, карта, записи, неделя — считается этим днем; аналитика и кабинет остаются по Москве. */
-const tzOk = new Map();
-function validTz(tz) {
-  if (typeof tz !== 'string' || !/^[A-Za-z][\w+\-/]{1,60}$/.test(tz)) return false;
-  if (!tzOk.has(tz)) { try { new Intl.DateTimeFormat('ru-RU', { timeZone: tz }); tzOk.set(tz, true); } catch { tzOk.set(tz, false); } }
-  return tzOk.get(tz);
-}
-const userTz = (u) => { const p = u ? preferences(u.preferences) : {}; return validTz(p.tz) ? p.tz : validTz(u?.tz) ? u.tz : MSK; };
-const userDay = (u) => dayIn(userTz(u));
+   иначе по Москве (clock.mjs: userTz, userDay). Все личное — настрой, карта, записи, неделя — считается этим днем; аналитика и кабинет остаются по Москве. */
 /* пояс устройства сменился (переезд, поездка) — запоминаем, чтобы и пуши, и день считались по нему */
 function rememberTz(u, req) {
   const tz = req.headers['x-tz']; if (!u || !validTz(tz)) return;
@@ -378,7 +371,7 @@ function lunarPack(u) {
 function lunarDaysOf(u, day) {
   try {
     const tz = u.tz || MSK, lat = u.lat ?? MOSCOW.lat, lon = u.lon ?? MOSCOW.lon;
-    const at = (d, hm) => { const local = `${d}T${hm}:00`; return Date.parse(local + 'Z') - tzOffsetMinutes(tz, local) * 60000; };
+    const at = (d, hm) => localMoment(d, hm, tz);   /* clock.mjs: одна функция «локальный момент» на лунные дни и день записи (F13) */
     const start = at(day, '00:00'), end = at(addDays(day, 1), '00:00');
     const out = []; let t = start;
     for (let i = 0; i < 4 && t < end; i++) {
@@ -532,7 +525,7 @@ function natalFor(u) {
 const lunarOf = (u, d) => {
   try {
     const tz = u?.tz || MSK, lat = u?.lat ?? MOSCOW.lat, lon = u?.lon ?? MOSCOW.lon;
-    const at = (hm) => { const local = `${d}T${hm}:00`; return Date.parse(local + 'Z') - tzOffsetMinutes(tz, local) * 60000; };
+    const at = (hm) => localMoment(d, hm, tz);
     const ev = lunarDay(at('21:00'), lat, lon); if (!ev) return null;
     const mo = lunarDay(at('09:00'), lat, lon);
     return { n: ev.n, title: (C.LUNAR_DAYS[ev.n - 1] || [''])[0], nFrom: mo && mo.n !== ev.n ? mo.n : 0, at: '21:00' };
@@ -564,7 +557,7 @@ const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, g
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,
-  track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate, mutate });
+  track, touchStreak, habitList, askesisList, parseRule, habitStreak, validEndDate, mutate, userTz });
 const Day = createDay({ db, seal, open: open_, readable, sealBytes, openBytes, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten, questionOf: (u, d) => dayPack(u, d).question,
   morningOf: (u, d) => { const p = dayPack(u, d); return { set: p.set ? p.set.text : '', theme: p.theme ? p.theme.title : '' }; },   /* вечер продолжает утро: настрой и тема на карточке дня */
   themeTitle: (key) => ([...C.THEMES].find((t) => t.key === key) || {}).title || '',

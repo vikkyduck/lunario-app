@@ -28,7 +28,9 @@ const RULE_LABEL = (rule) => rule === 'daily' ? 'каждый день' : rule =
   : rule.startsWith('mtimes:') ? `${rule.slice(7)} раза в месяц` : rule.startsWith('every:') ? `каждые ${rule.slice(6)} дн.`
   : rule.startsWith('days:') ? rule.slice(5).split(',').map((n) => ['', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'][Number(n)]).join(', ') : rule;
 const wdOf = (day) => ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;     // 1 — понедельник … 7 — воскресенье
-const habitStart = h => dayIn(MSK, Date.parse(h.created_at));
+/* день начала привычки — день человека в момент создания (habits.start_day, ревью v114 F13): для ритма «через день» и «каждые N
+   дней» он задает фазу; запасная ветка по Москве — только для строк без start_day (до миграции 21 — их заполняет она сама) */
+const habitStart = h => h.start_day || dayIn(MSK, Date.parse(h.created_at));
 const weekStart = (day) => addDays(day, 1 - wdOf(day));
 /* нужно ли делать привычку в этот день; для недельных и месячных — «еще не сделана в этом периоде» */
 function habitDue(h, day, marks) {
@@ -96,7 +98,7 @@ for (const h of db.prepare("SELECT id, rule, rule_text FROM habits WHERE rule_te
 /* Привычки: что делать сегодня, отметки за 7 дней, серия и награды за 30/60/90/180/365 дней подряд (только ежедневные) */
 function habitList(userId, d) {
   const week = []; for (let i = 6; i >= 0; i--) week.push(addDays(d, -i));
-  return db.prepare('SELECT id, title, created_at, rule, rule_text FROM habits WHERE user_id = ? AND archived = 0 ORDER BY id').all(userId).map((h) => {
+  return db.prepare('SELECT id, title, created_at, start_day, rule, rule_text FROM habits WHERE user_id = ? AND archived = 0 ORDER BY id').all(userId).map((h) => {
     const marks = new Set(db.prepare('SELECT day FROM habit_marks WHERE habit_id = ?').all(h.id).map((m) => m.day));
     const rule = h.rule || 'daily', streak = habitStreak(h, d, marks);
 ;

@@ -210,6 +210,13 @@ export const MIGRATIONS = [
     }
     if (fixed || dropped) console.log(`квитанции: приведено к ссылке ${fixed}, удалено нераспознанных ${dropped}`);
   } },
+  /* День начала привычки — день человека, а не Москвы (ревью v114, F13): для ритма «через день» и «каждые N дней» старт задает фазу,
+     а created_at по Москве сдвигал ее у тех, кто западнее или восточнее. Существующие привычки получают дату создания по UTC —
+     совместимая политика: расхождение с прежним московским расчетом возможно только у созданных между 21:00 и 00:00 UTC, это осознанно */
+  { v: 21, name: 'день и пояс начала привычки', up(db) {
+    addColumn(db, 'habits', 'start_day', "TEXT DEFAULT ''"); addColumn(db, 'habits', 'tz', "TEXT DEFAULT ''");
+    db.exec("UPDATE habits SET start_day = substr(created_at, 1, 10) WHERE start_day = ''");
+  } },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
@@ -217,7 +224,7 @@ export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 const REQUIRED = {
   users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
-  entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text'], wishes: ['photo', 'photo_ts'],
+  entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text', 'start_day', 'tz'], wishes: ['photo', 'photo_ts'],
   events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],
 };
 

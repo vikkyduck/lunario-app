@@ -8,12 +8,12 @@
    Так личное не летит через чужие почтовые службы — только «проснись».
    В оболочке App Store веб-пуша нет: там те же настройки превращаются в локальные
    уведомления телефона (NativeBridge.swift), сервер ничего не шлет. */
-import { tzOffsetMinutes } from './cities.mjs';
 import { lunarDay } from './lunar.mjs';
 import { sendPush } from './push.mjs';
 import * as C from './content.mjs';
 import { preferences } from './experience.mjs';
 import { MSK, MOSCOW, dayIn, plural } from './util.mjs';
+import { validTz, userDay, localMoment } from './clock.mjs';
 
 export const FEATURES = {
   morning: { title: 'Утро',    hint: 'Настрой дня и то, что вы выбрали на «Сегодня»',      time: '09:00', freq: 'daily',  weekday: 7, url: '/app/?open=today' },
@@ -23,7 +23,6 @@ export const FEATURES = {
 /* Прежние восемь поштучных напоминаний: переносятся один раз в три новых, дальше не показываются и не срабатывают */
 const LEGACY = { morning: ['card', 'lunar', 'sky'], evening: ['mood', 'habits', 'askesis', 'gratitude'], week: ['moodreport'] };
 const FREQS = ['daily', 'weekdays', 'weekly'];
-const validTz = (tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } };
 
 let db = null, hooks = {};
 export function initReminders(database, h = {}) {
@@ -82,8 +81,7 @@ export function nextAt(r, fromMs = Date.now()) {
     const wd = ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;   // 1 — понедельник … 7 — воскресенье
     const okDay = r.freq === 'weekly' ? wd === Number(r.weekday) : r.freq === 'weekdays' ? wd <= 5 : true;
     if (okDay) {
-      const local = `${day}T${r.time}:00`;
-      const ms = Date.parse(local + 'Z') - tzOffsetMinutes(tz, local) * 60000;
+      const ms = localMoment(day, r.time, tz);   /* clock.mjs: тот же «локальный момент», что у лунных дней и дня записи (F13) */
       if (ms > fromMs) return ms;
     }
     day = new Date(Date.parse(day + 'T12:00:00Z') + 864e5).toISOString().slice(0, 10);
@@ -134,12 +132,9 @@ const tpl = (key, vars) => {
   const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => { const lower = k[0].toLowerCase() + k.slice(1); const v = vars && (vars[k] ?? vars[lower]); if (v == null) return ''; const sv = String(v); return k[0] !== lower[0] ? sv[0].toUpperCase() + sv.slice(1) : sv; }).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
   return { title: fill(title), body: fill(body) };
 };
-/* День человека — тем же правилом, что сервер (userDay): пояс устройства из preferences.tz → пояс города из анкеты → Москва.
+/* День человека — тем же правилом, что сервер: clock.mjs userDay (пояс устройства → город анкеты → Москва; F13).
    Иначе вечерний пуш «не видит» записанный день у тех, кто западнее Москвы, а утро снимает настрой на вчера у тех, кто восточнее. */
-export function userDayOf(u, atMs = Date.now()) {
-  const p = preferences(u.preferences);
-  return dayIn(p.tz && validTz(p.tz) ? p.tz : u.tz && validTz(u.tz) ? u.tz : MSK, atMs);
-}
+export const userDayOf = userDay;
 export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK) {
   if (!FEATURES[feature]) return null;
   const d = userDayOf(u, atMs), url = FEATURES[feature].url;

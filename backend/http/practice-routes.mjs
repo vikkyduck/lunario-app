@@ -12,7 +12,7 @@
 import { isDay } from '../util.mjs';
 export function createPracticeRoutes(deps) {
   const { db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO, track, touchStreak,
-    habitList, askesisList, parseRule, habitStreak, validEndDate, mutate } = deps;
+    habitList, askesisList, parseRule, habitStreak, validEndDate, mutate, userTz } = deps;
   /* каждая запись привычки или аскезы — через единый путь записи (mutation.mjs, F04): изменение и ревизия одной транзакцией */
 
   return async function practiceRoutes({ p, req, res, url, u, d }) {
@@ -29,7 +29,8 @@ export function createPracticeRoutes(deps) {
       const title = clean(b.title, 80), ruleText = clean(b.rule, 60);
       if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
       if (db.prepare('SELECT COUNT(*) c FROM habits WHERE user_id = ? AND archived = 0').get(u.id).c >= 20) return json(res, 400, { ok: false, error: 'too_many' });
-      mutate(u.id, () => { db.prepare('INSERT INTO habits (user_id, title, created_at, rule, rule_text) VALUES (?,?,?,?,?)').run(u.id, seal(title), nowISO(), parseRule(ruleText), ruleText); return { ok: true }; });
+      /* start_day — день человека, tz — его пояс в момент создания (F13): ритм «через день» считается от локального дня, не от московского */
+      mutate(u.id, () => { db.prepare('INSERT INTO habits (user_id, title, created_at, start_day, tz, rule, rule_text) VALUES (?,?,?,?,?,?,?)').run(u.id, seal(title), nowISO(), d, userTz(u), parseRule(ruleText), ruleText); return { ok: true }; });
       touchStreak(u); track(u, 'habit_add', parseRule(ruleText));
     } else if (req.method === 'PATCH') {
       const b = await readBody(req);
