@@ -1798,3 +1798,13 @@ body.inner .later-row .later-go{justify-self:end;align-self:center;padding:8px 1
 .wrap{overflow-x:clip}
 .practice-header .practice-eb{display:block;margin-top:16px}   /* раздел над названием страницы практики — та же крошка, что у панелей */
 body.inner .practice-header .practice-eb+h1{margin-top:4px}
+/* ── Сетка плиток (решение владелицы 20.09): две колонки одной ширины, ряд — одной высоты, ряды и полоски на одних левом и правом краях;
+   нечетная последняя плитка — на всю ширину, чтобы не было дыр; история (не инструмент) — полоской внизу ── */
+body.inner :is(.wids.tiles,.wids.mini-grid)>:last-child:nth-child(odd){grid-column:1/-1}
+body.inner .wids.strip{grid-template-columns:minmax(0,1fr);gap:12px}
+body.inner .wids.strip .wid{display:grid;grid-template-columns:24px minmax(0,1fr) 14px;column-gap:14px;row-gap:2px;align-items:center;min-height:64px;padding:12px 16px}
+body.inner .wids.strip .wid .ico{grid-column:1;grid-row:1/span 2;width:22px;height:22px;margin:0}
+body.inner .wids.strip .wid b{grid-column:2;grid-row:1}
+body.inner .wids.strip .wid>span:not(.dot){grid-column:2;grid-row:2;font-size:13px;line-height:1.4;color:var(--muted)}
+body.inner .wids.strip .wid::after{content:'›';grid-column:3;grid-row:1/span 2;align-self:center;font-size:22px;line-height:1;color:var(--muted);opacity:.7}
+body.inner .wids.tiles+.wids.strip,body.inner .wids.strip{margin-top:12px}

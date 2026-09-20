@@ -7,3 +7,6 @@ document.documentElement.dataset.skin='compact';
    впрыснутым до загрузки страницы; ?shell=ios — для проверки в обычном браузере */
 if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__ || /[?&]shell=ios/.test(location.search))
   document.documentElement.className += ' ios-shell';
+/* Корпус телефона на компьютере (решение владелицы 17.09, «как в Клабс»): при ширине окна от 700px приложение живет в рамке 430px (frame.css);
+   на телефоне и в оболочке iOS — как есть. Строка пропала вместе с переключателем скинов в v98 — возвращена 20.09 */
+try{const framed=()=>{const on=matchMedia('(min-width: 700px)').matches&&!/ios-shell/.test(document.documentElement.className);document.documentElement.classList.toggle('framed',on);};framed();matchMedia('(min-width: 700px)').addEventListener('change',framed);}catch{}

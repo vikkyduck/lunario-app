@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=111"></script>
+<script src="/app/boot.js?v=112"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=111">
-<link rel="stylesheet" href="/app/app.css?v=111">
-<link rel="stylesheet" href="/app/frame.css?v=111">
+<link rel="stylesheet" href="/app/theme.css?v=112">
+<link rel="stylesheet" href="/app/app.css?v=112">
+<link rel="stylesheet" href="/app/frame.css?v=112">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -218,7 +218,8 @@
     <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button"><i class="ico question"></i><b>Ответить себе на вопрос</b><span>Отношения, работа, решения, отношение к себе</span></button></div>
     <div class="wids tiles method-grid" aria-label="Выбрать способ">
 <button data-on="click:openAsk-yesno" class="wid" type="button"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ с пояснением</span></button><button data-on="click:openAsk-rune" class="wid" type="button"><i class="ico rune"></i><b>Руны</b><span>Одна, три, крест, четыре стихии</span></button><button data-on="click:openAsk-spread" class="wid" type="button"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест</span></button></div>
-    <div class="wids tiles history-rows"><button data-on="click:openWidget-hentries" class="wid" data-feature="hentries" type="button"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b><span>Все, о чем спрашивали</span></button></div></section>
+    <!-- история — не инструмент: полоской на всю ширину внизу (правило владелицы 20.09) -->
+    <div class="wids strip history-rows"><button data-on="click:openWidget-hentries" class="wid" data-feature="hentries" type="button"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b><span>Все, о чем спрашивали</span></button></div></section>
   <section class="view" id="v-history"><h1>Дневник</h1>
     <!-- Карточка сегодняшнего дня — по шагам: один вопрос на экран, «Дальше», в конце — праздник и день в режиме чтения.
          Все рисует paintDayCard(); ни один шаг не обязателен, пустое не сохраняется -->
@@ -367,22 +368,22 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=111"></script>
+<script src="/app/moon-logo.js?v=112"></script>
 
-<script type="module" src="/app/sky.js?v=111"></script>
+<script type="module" src="/app/sky.js?v=112"></script>
 
-<script src="/app/common.js?v=111"></script>
-<script src="/app/experience.js?v=111"></script>
-<script src="/app/app.js?v=111"></script>
-<script src="/app/today.js?v=111"></script>
-<script src="/app/diary.js?v=111"></script>
-<script src="/app/readings.js?v=111"></script>
-<script src="/app/practices.js?v=111"></script>
-<script src="/app/about.js?v=111"></script>
-<script src="/app/account.js?v=111"></script>
-<script src="/app/tour.js?v=111"></script>
-<script src="/app/handlers.js?v=111"></script>
-<script src="/app/on.js?v=111"></script>
-<script src="/app/start.js?v=111"></script>
+<script src="/app/common.js?v=112"></script>
+<script src="/app/experience.js?v=112"></script>
+<script src="/app/app.js?v=112"></script>
+<script src="/app/today.js?v=112"></script>
+<script src="/app/diary.js?v=112"></script>
+<script src="/app/readings.js?v=112"></script>
+<script src="/app/practices.js?v=112"></script>
+<script src="/app/about.js?v=112"></script>
+<script src="/app/account.js?v=112"></script>
+<script src="/app/tour.js?v=112"></script>
+<script src="/app/handlers.js?v=112"></script>
+<script src="/app/on.js?v=112"></script>
+<script src="/app/start.js?v=112"></script>
 </body>
 </html>

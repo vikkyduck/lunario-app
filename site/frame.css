@@ -52,8 +52,8 @@ html.framed .pc-bg{border-radius:54px;padding:66px 20px 40px}
 html.framed .bg{border-radius:54px}
 /* десктопные правила сеток внутри корпуса не действуют — там телефон */
 html.framed body.inner .home-intro{grid-template-columns:minmax(0,1fr) 56px}
-html.framed body.inner :is(#morning-feed,#morning-more,.about-links,.method-grid,.practice-links,.wids){grid-template-columns:1fr}
-html.framed body.inner .mini-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+html.framed body.inner .wids{grid-template-columns:1fr}   /* без id в :is() — иначе правило получало вес id и било сетку квадратов */
+html.framed body.inner :is(.mini-grid,.wids.tiles){grid-template-columns:repeat(2,minmax(0,1fr))}   /* квадраты — по два в ряд и в корпусе */
 html.framed body.inner #v-account .account-layout{display:block}
 html.framed body.inner #v-account .account-col{display:contents}
 html.framed body.inner:has(#v-account.on) .wrap{padding-top:74px}
