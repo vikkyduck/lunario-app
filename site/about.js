@@ -32,10 +32,18 @@ async function loadNatal(){
     const houses = c.houses ? `<h3 class="mt-4">Дома · ${esc(c.houses.system)}</h3><table class="nt"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${c.houses.cusps.map((h) => `<tr><td>${h.house}${h.house===1?' · Asc':h.house===10?' · MC':''}</td><td>${dms(h)} <small>${esc(h.signOf)}</small></td></tr>`).join('')}</tbody></table>`
       : `<div class="card mt-3"><p>${!c.timeKnown ? 'Без времени рождения дома, Асцендент и MC не считаются — положения планет по знакам верны' + (c.moonUncertain ? ', а Луна за этот день перешла границу знака: ее знак зависит от времени' : '') + '. ' : ''}${!c.hasPlace ? (c.city ? `Город «${esc(c.city)}» не нашелся в базе — откройте анкету и выберите его из подсказок, по нему считаются дома и часовой пояс. ` : 'Укажите город рождения в аккаунте — по нему считаются дома и часовой пояс. ') : ''}<button data-on="click:closeWidget-go-account-openWidget-edit" class="btn ghost sm mt-3" type="button">Дополнить анкету</button></p></div>`;
     const aspects = c.aspects.length ? `<h3 class="mt-4">Аспекты</h3><div class="hbars mt-2">${c.aspects.map((a) => `<div class="l"><span>${esc(a.aName)} ${a.symbol} ${esc(a.bName)} <small class="faint">${esc(a.name)}</small></span><b>орб ${a.orb}°</b></div>`).join('')}</div>` : '';
-    const sun = c.planets[0], moon = c.planets[1];
+    const sun = c.planets[0], moon = c.planets[1], m = c.meanings || {};
+    /* резюме по правилам — выводы из значений (natal-texts.mjs), наверху; подробные значения — после таблиц, только там, где текст есть */
+    const summary = (m.summary || []).length ? `<div class="card mt-3 natal-summary"><p class="eyebrow">Резюме</p>${m.summary.map((x) => `<p class="mt-2"><b>${esc(x.title)}</b> — ${esc(x.gist)}</p>`).join('')}</div>` : '';
+    const block = (title, items) => items.length ? `<h3 class="mt-4">${title}</h3><div class="list">${items.map((x) => `<div class="item"><b>${esc(x.title)}</b><p class="mt-1">${esc(x.text)}</p></div>`).join('')}</div>` : '';
+    const inSigns = (m.planets || []).flatMap((p) => [p.inSign, p.inHouse].filter(Boolean));
+    const inPoints = (m.points || []).map((p) => p.meaning).filter(Boolean);
+    const inAspects = (m.aspects || []).map((a) => a.meaning).filter(Boolean);
     box.innerHTML = `<div class="card sec"><p class="eyebrow">Западная традиция · тропический зодиак${c.houses ? ' · ' + esc(c.houses.system) : ''}</p>
         <p class="t2">☉ Солнце ${esc(sun.signIn)} · ☽ Луна ${esc(moon.signIn)}${c.houses ? ` · Asc ${esc(c.houses.asc.signIn)}` : ''}</p></div>
+      ${summary}
       <h3 class="mt-4">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
-      ${points}${houses}${aspects}`;   /* строка с датой, координатами и UTC и сноска о точности эфемерид сняты (решение владелицы 20.09) */
+      ${points}${houses}${aspects}
+      ${block('Планеты в знаках и домах', inSigns)}${block('Асцендент и точки', inPoints)}${block('Что значат аспекты', inAspects)}`;   /* строка с датой, координатами и UTC и сноска о точности эфемерид сняты (решение владелицы 20.09) */
   }catch(e){ box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без нее карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
 }

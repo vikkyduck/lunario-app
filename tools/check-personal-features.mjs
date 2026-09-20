@@ -555,6 +555,11 @@ try {
   const prof = (await askOwner.json('/knowledge?doc=profile')).data;
   assert.equal(prof.name, 'Аскеза-2', 'Profile rebuilds on anketa'); assert.ok(prof.natal && prof.natal.planets.length >= 10 && prof.natal.aspects.length, 'Natal chart is stored verbatim: planets and aspects');
   assert.ok(prof.natal.planets.every((p) => p.name && p.sign && p.degree), 'Every planet carries name, sign and degree');
+  assert.ok(prof.natal.summary.length >= 1 && prof.natal.summary.every((x) => x.title && x.gist), 'Natal summary is built by rules from content: ' + JSON.stringify(prof.natal.summary[0]));
+  assert.ok(['огонь', 'земля', 'воздух', 'вода'].includes(prof.natal.balance.dominant), 'Dominant element is one of four');
+  const natalScreen = await askOwner.json('/natal');
+  assert.deepEqual(natalScreen.meanings.summary.map((x) => x.title), prof.natal.summary.map((x) => x.title), 'Screen and knowledge base share one summary');
+  assert.ok((await askOwner.json('/knowledge/text?doc=profile')).text.includes('Резюме:'), 'Profile text opens with the natal summary');
   const cmp = await askOwner.json('/compat', 'POST', { birth: '1991-03-14' });
   const readings = (await askOwner.json('/knowledge?doc=readings')).data;
   assert.equal(readings.compat.length, 1); assert.equal(readings.compat[0].total, cmp.total); assert.equal(readings.compat[0].otherBirth, '1991-03-14');

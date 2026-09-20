@@ -6,6 +6,7 @@
    владелец продукта без программиста. Здесь остаются запасные значения:
    если файла нет или строка испорчена, приложение возьмет их и продолжит
    работать, а в журнал напишет, что именно не прочиталось. */
+import { loadNatalTexts } from './natal-texts.mjs';
 import { readFileSync, writeFileSync, existsSync, statSync, watch } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -442,9 +443,8 @@ function build() {
      Файлы не обязательны: без них приложение просто молчит */
   r.MEMORY = Object.fromEntries((rows('память.txt', 1) || []).map((c) => [c[0], c[1] || '']));
   r.TOPIC_QUESTIONS = (rows('вопросы-по-темам.txt', 2) || []).map((c) => [c[0], c[1]]);
-  /* значения натальной карты для базы знаний (документ «Обо мне»): планета в знаке и аспект; ключи — строчными, файлы не обязательны */
-  r.NATAL_PLANETS = Object.fromEntries((rows('планеты-в-знаках.txt', 3) || []).map((x) => [`${x[0]}|${x[1]}`.toLowerCase(), x[2]]));
-  r.NATAL_ASPECTS = Object.fromEntries((rows('аспекты.txt', 4) || []).map((x) => [`${x[0]}|${x[1]}|${x[2]}`.toLowerCase(), x[3]]));
+  /* значения натальной карты — планеты в знаках и домах, аспекты, точки, баланс (natal-texts.mjs); файлы не обязательны */
+  r.NATAL = loadNatalTexts(rows);
   r.AFFIRMATIONS = must('аффирмации.txt', lines('аффирмации.txt'));
   r.DAY_QUESTIONS = must('вопросы-дня.txt', lines('вопросы-дня.txt'));
 
@@ -471,8 +471,7 @@ export const YEARS = new Proxy({}, { get: (_, k) => Reflect.get(data.YEARS, k) }
 export const NUM_DAY = new Proxy({}, { get: (_, k) => Reflect.get(data.NUM_DAY, k) });
 export const LUNAR_DAYS = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_DAYS, k) });
 export const LUNAR_INFO = new Proxy([], { get: (_, k) => Reflect.get(data.LUNAR_INFO, k) });
-export const NATAL_PLANETS = new Proxy({}, { get: (_, k) => Reflect.get(data.NATAL_PLANETS, String(k).toLowerCase()) });
-export const NATAL_ASPECTS = new Proxy({}, { get: (_, k) => Reflect.get(data.NATAL_ASPECTS, String(k).toLowerCase()) });
+export const natalTexts = () => data.NATAL;   /* живая структура: после правки файлов перечитывается вместе со всем */
 export const MEMORY = new Proxy({}, { get: (_, k) => Reflect.get(data.MEMORY, k), ownKeys: () => Reflect.ownKeys(data.MEMORY), getOwnPropertyDescriptor: (_, k) => ({ value: data.MEMORY[k], enumerable: true, configurable: true }) });
 export const TOPIC_QUESTIONS = new Proxy([], { get: (_, k) => Reflect.get(data.TOPIC_QUESTIONS, k) });
 export const UI = new Proxy({}, { get: (_, k) => Reflect.get(data.UI, k), ownKeys: () => Reflect.ownKeys(data.UI), getOwnPropertyDescriptor: (_, k) => ({ value: data.UI[k], enumerable: true, configurable: true }) });

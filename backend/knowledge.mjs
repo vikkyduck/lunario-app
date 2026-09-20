@@ -32,7 +32,7 @@ const parse = (t) => { try { return t ? JSON.parse(t) : null; } catch { return n
 /* начало недели (понедельник) для группировки настроений */
 const weekStart = (d) => { const dt = new Date(d + 'T12:00:00Z'); return addDays(d, -((dt.getUTCDay() + 6) % 7)); };
 
-export function createKnowledge({ db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal, habitList, askesisList, MOOD_RU, topicOf, memory, lunarOf, nowISO }) {
+export function createKnowledge({ db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory, lunarOf, nowISO }) {
   db.exec(`CREATE TABLE IF NOT EXISTS knowledge (
     user_id INTEGER NOT NULL, doc TEXT NOT NULL, json TEXT NOT NULL, updated_at TEXT NOT NULL, day TEXT NOT NULL,
     PRIMARY KEY (user_id, doc));
@@ -64,16 +64,16 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
         year: { n: py.n, from: py.from, to: py.to, text: C.NUM_YEAR[py.n] || '', planet: info ? info.planet : '', energy: info ? info.energy : '', caption: info ? info.caption : '' },
         dayNumber: { n: dayNum(d), text: C.NUM_DAY[dayNum(d)] || '' } };
       try {
-        const ch = natal(u);   /* натальная карта — дословно: планеты с градусами и домами, дома, аспекты с орбами */
+        const ch = natal(u);   /* натальная карта — дословно: планеты с градусами и домами, дома, аспекты с орбами; значения и резюме — natal-texts.mjs */
         if (ch) {
-          const meaning = (planet, sign) => C.NATAL_PLANETS[`${planet}|${sign}`] || '';
-          const aspectText = (a, aspect, b) => C.NATAL_ASPECTS[`${a}|${aspect}|${b}`] || C.NATAL_ASPECTS[`${b}|${aspect}|${a}`] || '';
+          const m = natalMeanings(ch);
           doc.natal = {
             input: ch.input, zodiac: ch.zodiac, houseSystem: ch.houseSystem, timeKnown: ch.timeKnown, hasPlace: ch.hasPlace, moonUncertain: ch.moonUncertain, precision: ch.precision, tz: ch.tz, city: ch.city,
-            planets: (ch.planets || []).map((p) => ({ key: p.key, name: p.name, sign: p.sign, signIn: p.signIn, degree: p.text, lon: p.lon, house: p.house, retro: !!p.retro, meaning: meaning(p.name, p.sign) })),
-            points: (ch.points || []).map((p) => ({ key: p.key, name: p.name, sign: p.sign, degree: p.text, house: p.house, note: p.note || '' })),
+            summary: m.summary, balance: m.balance,
+            planets: m.planets.map((p) => ({ ...p, lon: (ch.planets.find((x) => x.key === p.key) || {}).lon })),
+            points: m.points,
             houses: ch.houses ? { system: ch.houses.system, asc: { sign: ch.houses.asc.sign, degree: ch.houses.asc.text }, mc: { sign: ch.houses.mc.sign, degree: ch.houses.mc.text }, cusps: ch.houses.cusps.map((c) => ({ house: c.house, sign: c.sign, degree: c.text })) } : null,
-            aspects: (ch.aspects || []).map((a) => ({ a: a.aName, b: a.bName, aspect: a.name, symbol: a.symbol, angle: a.angle, orb: a.orb, meaning: aspectText(a.aName, a.name, a.bName) })),
+            aspects: m.aspects,
           };
           doc.lunarBirth = ch.lunarBirth ? { n: ch.lunarBirth.n, title: (C.LUNAR_DAYS[ch.lunarBirth.n - 1] || [''])[0], uncertain: !!ch.lunarBirth.uncertain } : null;
         }
@@ -257,9 +257,11 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     if (p.natal) {
       const n = p.natal;
       out.push('', `НАТАЛЬНАЯ КАРТА (${n.zodiac}${n.houseSystem ? `, дома — ${n.houseSystem}` : ''}${n.timeKnown ? '' : '; время рождения неизвестно — дома и Асцендент не считаются, Луна взята на полдень'})`);
-      for (const pl of n.planets) out.push(`${pl.name} ${pl.signIn || 'в ' + pl.sign}, ${String(pl.degree).split(' ')[0]}${pl.house ? `, ${pl.house}-й дом` : ''}${pl.retro ? ', ретроградная' : ''}${pl.meaning ? ` — ${pl.meaning}` : ''}`);
-      if (n.houses) out.push(`Асцендент ${n.houses.asc.sign} ${n.houses.asc.degree}, MC ${n.houses.mc.sign} ${n.houses.mc.degree}.`);
-      if (n.aspects.length) { out.push('Аспекты:'); for (const a of n.aspects) out.push(`${a.a} ${a.aspect.toLowerCase()} ${a.b} (орб ${a.orb}°)${a.meaning ? ` — ${a.meaning}` : ''}`); }
+      if (n.summary && n.summary.length) { out.push('Резюме:'); for (const s of n.summary) out.push(`${s.title} — ${s.gist}`); out.push(''); }
+      if (n.balance) out.push(`Стихии: ${Object.entries(n.balance.elements).map(([k, v]) => `${k} ${v}`).join(', ')}; кресты: ${Object.entries(n.balance.modalities).map(([k, v]) => `${k} ${v}`).join(', ')}.`);
+      for (const pl of n.planets) out.push(`${pl.name} ${pl.signIn || 'в ' + pl.sign}, ${pl.degree}${pl.house ? `, ${pl.house}-й дом` : ''}${pl.retro ? ', ретроградная' : ''}${pl.inSign ? ` — ${pl.inSign.text}` : ''}${pl.inHouse ? ` В ${pl.house}-м доме: ${pl.inHouse.text}` : ''}`);
+      for (const pt of n.points) if (pt.meaning || pt.name === 'Асцендент' || pt.name === 'MC') out.push(`${pt.name} ${pt.signIn || 'в ' + pt.sign}${pt.degree ? `, ${pt.degree}` : ''}${pt.meaning ? ` — ${pt.meaning.text}` : ''}`);
+      if (n.aspects.length) { out.push('Аспекты:'); for (const a of n.aspects) out.push(`${a.a} ${a.aspect.toLowerCase()} ${a.b} (орб ${a.orb}°)${a.meaning ? ` — ${a.meaning.text}` : ''}`); }
     }
     out.push(`В Лунарио с ${p.since ? fmt(p.since) : '—'}${p.streak ? `, серия ${p.streak} ${plural(p.streak, 'день', 'дня', 'дней')} подряд` : ''}.`);
     return L(out);

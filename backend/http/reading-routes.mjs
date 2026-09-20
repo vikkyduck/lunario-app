@@ -1,13 +1,13 @@
 /* Карта дня, руна дня, вопрос «да/нет» и руны, расклад, натальная карта, нумерология, совместимость.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
-export function createReadingRoutes({ compatSave, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track }) {
+export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track }) {
   return async function readingRoutes({ p, req, res, url, u, d }) {
     /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
     if (p === '/api/natal' && req.method === 'GET') {
       if (!ISO_DAY.test(u.birth || '')) return json(res, 400, { ok: false, error: 'no_birth' });
       const chart = natalFor(u);
       if (!url.searchParams.has('quiet')) track(u, 'natal_view', chart.timeKnown ? 'with_time' : 'no_time');   /* quiet — карточка на «Обо мне», а не открытие карты */
-      return json(res, 200, chart);
+      return json(res, 200, { ...chart, meanings: natalMeanings(chart) });   /* значения из контента и резюме по правилам — те же, что в базе знаний */
     }
     /* Карта дня: тянется случайно, один раз в день, и сразу ложится в историю. Повторное нажатие
        возвращает ту же карту — колода на сегодня уже открыта. */

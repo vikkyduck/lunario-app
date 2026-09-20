@@ -30,6 +30,7 @@ import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, 
 import * as W from './workspace.mjs';
 import { natalChart, skyAt, inSign } from './astro.mjs';
 import { createKnowledge } from './knowledge.mjs';
+import { natalMeanings as natalMeaningsOf } from './natal-texts.mjs';
 import { createMemory } from './memory.mjs';
 import { createBackup } from './backup.mjs';
 import { skyNow } from './sky.mjs';
@@ -500,7 +501,8 @@ const lunarOf = (u, d) => { try { const ld = lunarDay(Date.parse(d + 'T18:00:00Z
 /* «Я помню» — память о человеке одной фразой: строка на карточке дня, вопрос дня по теме, любимый способ ответа, вечерний пуш, «Обо мне» */
 const Memory = createMemory({ db, open: open_, C, questionOf: (u, d) => dayPack(u, d).question, topicOf, MOOD_RU, habitList, askesisList });
 /* База знаний — папка документов о человеке, собранная из журнала (knowledge.mjs): ее читают ИИ, выгрузка и «на себе» в кабинете, экраны — нет */
-const Knowledge = createKnowledge({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal: natalFor, habitList, askesisList, MOOD_RU, topicOf, memory: Memory, lunarOf, nowISO });
+const natalMeanings = (chart) => natalMeaningsOf(chart, C.natalTexts());   /* значения и резюме карты — одни и те же для экрана и базы знаний */
+const Knowledge = createKnowledge({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal: natalFor, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory: Memory, lunarOf, nowISO });
 /* раз в сутки по поясу человека документы пересобираются — по одному человеку за такт, не задерживая запросы; свежие (за сегодня) не трогаются */
 function knowledgeDaily() {
   try { const stale = Knowledge.staleUsers((u) => userDay(u)); let i = 0;
@@ -545,7 +547,7 @@ const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisL
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
 const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
-const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
+const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
 const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
 
