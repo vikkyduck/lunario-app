@@ -2431,7 +2431,9 @@ const moodList = () => CAT?.moods || [];
 const moodFams = () => CAT?.moodFamilies || {};
 /* свое слово: хранится как «own:слово» — на экране и в отчете показывается как есть, без лепестка */
 const ownMood = (key) => typeof key === 'string' && key.startsWith('own:') ? key.slice(4) : '';
-function moodInfo(key){ const quick=quickMoods().find(m=>m.key===key);if(quick)return quick; if(key==='displeasure') return {key,label:'неудовольствие',family:'disgust',tone:'-'}; if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = (CAT?.legacyMoods || {})[key] || key; return moodList().find(m => m.key === k) || null; }
+/* пять быстрых настроений известны и до каталога — иначе на карточке дня мелькает ключ вроде quick:calm */
+const QUICK_FALLBACK={'quick:well':'Хорошо','quick:calm':'Спокойно','quick:tired':'Устала','quick:anxious':'Тревожно','quick:heavy':'Тяжело'};
+function moodInfo(key){ const quick=quickMoods().find(m=>m.key===key);if(quick)return quick; if(!CAT&&QUICK_FALLBACK[key])return {key,label:QUICK_FALLBACK[key],family:key==='quick:anxious'?'fear':key==='quick:well'?'joy':key==='quick:calm'?'trust':'sadness',tone:key==='quick:well'||key==='quick:calm'?'+':'-'}; if(key==='displeasure') return {key,label:'неудовольствие',family:'disgust',tone:'-'}; if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = (CAT?.legacyMoods || {})[key] || key; return moodList().find(m => m.key === k) || null; }
 const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : String(k); } });
 const moodFace = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return 'anticipation'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
 const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || ['', '#b9b2cf'])[1]; };
