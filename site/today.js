@@ -7,7 +7,7 @@ const quoted = (t) => '«' + esc(unperiod(t)) + '»';
 /* Строка-плитка: надзаголовок · текст · действие справа — одна разметка на «Вечер», «Вчера», «Обо мне», «Подсказки», «Напоминания».
    on — 'click:имя' обработчика (кнопка) или { href } (ссылка); attrs — дополнительные атрибуты (data-a0, id, класс) */
 function row(eyebrow, text, go, on, attrs = '') {
-  const inner = `<span class="eyebrow">${eyebrow}</span><b>${text}</b>${go ? `<span class="later-go">${go}</span>` : ''}`;
+  const inner = `<span class="eyebrow">${eyebrow}</span><b>${text}</b>${go ? `<span class="later-go">${String(go).replace(/\s*→$/, '')}</span>` : ''}`;   /* действие — кнопкой, без стрелки */
   return typeof on === 'object' ? `<a class="later-row" href="${on.href}" ${attrs}>${inner}</a>` : `<button data-on="${on}" class="later-row" type="button" ${attrs}>${inner}</button>`;
 }
 /* «Сохранить открытку»: настрой дня, тема и вопрос — открыткой на экран блокировки; собирается заранее, как остальные */

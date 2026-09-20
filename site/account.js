@@ -509,9 +509,13 @@ async function paintAllReminders(){
   if (IOS_SHELL && IOS_BRIDGE >= 2) nativePost({ type: 'scheduleStatus' });
 }
 
-/* ══════════ Буква имени — в карточке профиля в «Аккаунте». Фото участницы снято 20.09 (владелица и Марина, голос ЦА: «это не соцсеть»);
-   загруженные раньше фото на экране не показываются, API /photo остается для экспорта. Кружок справа вверху — тема (paintThemeToggle) ══════════ */
+/* ══════════ Буква имени — в кружке справа вверху на каждой вкладке (дверь в «Аккаунт») и в карточке профиля. Фото участницы снято 20.09
+   (владелица и Марина, голос ЦА: «это не соцсеть»); загруженные раньше фото на экране не показываются, API /photo остается для экспорта ══════════ */
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
+  document.querySelectorAll('.acct-btn').forEach(el=>{ el.textContent = letter; });
   const av = $('ac-avatar'); if (av) av.textContent = letter;
 }
+/* «Аккаунт» открывается с любой вкладки — «← Назад» возвращает туда же */
+function openAccount(){ S.accountFrom = activeView(); go('account'); }
+function accountBack(){ hap?.(); go(S.accountFrom && S.accountFrom !== 'account' ? S.accountFrom : 'home'); }

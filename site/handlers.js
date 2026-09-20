@@ -6,7 +6,6 @@
 window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "go-hello": function (event) { go('hello') },
   "openCabinet-return-false": function (event) { openCabinet();return false },
-  "go-account": function (event) { go('account') },
   "tourShort": function (event) { tourStart(true, 'short') },
   "go-about": function (event) { go('about') },
   "openWidget-tone": function (event) { openWidget('tone') },
@@ -49,7 +48,7 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "loadEntries-true": function (event) { loadEntries(true) },
   "openWidget-terms": function (event) { openWidget('terms') },
   "if-event-target-this-hidePostcard": function (event) { if(event.target===this)hidePostcard() },
-  "closeWidget-go-account-openWidget-edit": function (event) { closeWidget();go('account');openWidget('edit') },
+  "closeWidget-go-account-openWidget-edit": function (event) { closeWidget();openAccount();openWidget('edit') },
   "supThread-a0": function (event) { supThread(JSON.parse(this.dataset.a0)) },
   "supportDrafts-a0-value": function (event) { supportDrafts[JSON.parse(this.dataset.a0)]=this.value },
   "supSend-a0": function (event) { supSend(JSON.parse(this.dataset.a0)) },

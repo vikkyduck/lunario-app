@@ -339,6 +339,7 @@ function dayPack(u, day) {
     /* вопрос дня знает, чем человек живет (memory.mjs): через день — по теме, к которой он возвращается; иначе — вопрос к настрою */
     question: Memory.topicQuestion(u, day) || (set || {}).question || (W.materialForDay('question', day) || {}).text || C.DAY_QUESTIONS[hash32(seed + ':q') % C.DAY_QUESTIONS.length],
     lunar: lunarPack(u),
+    lunarDays: lunarDaysOf(u, day),                   /* все лунные дни этих суток по порядку — экран лунного дня дает читать каждый */
     art: artWithSet(day, set),                         /* картинки к функциям из кабинета «Контент» на этот день; у настроя может быть своя */
   };
 }
@@ -363,6 +364,23 @@ function lunarPack(u) {
     return { n: ld.n, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null, period: lunarPeriodText(ld, u.tz || MSK), title, advice,
       theme: info ? info.theme : '', symbol: info ? info.symbol : '', image: info ? info.image : '' };
   } catch (e) { return null; }
+}
+/* Лунные дни календарных суток day (в поясе человека) по порядку: обычно два, на границе месяца — три (29 → 30 → 1), изредка один.
+   Лунный день идет от восхода до восхода и с солнечными сутками не совпадает — экран лунного дня показывает каждый со временем начала и конца */
+function lunarDaysOf(u, day) {
+  try {
+    const tz = u.tz || MSK, lat = u.lat ?? MOSCOW.lat, lon = u.lon ?? MOSCOW.lon;
+    const at = (d, hm) => { const local = `${d}T${hm}:00`; return Date.parse(local + 'Z') - tzOffsetMinutes(tz, local) * 60000; };
+    const start = at(day, '00:00'), end = at(addDays(day, 1), '00:00');
+    const out = []; let t = start;
+    for (let i = 0; i < 4 && t < end; i++) {
+      const ld = lunarDay(t, lat, lon); if (!ld) break;
+      const [title] = C.LUNAR_DAYS[ld.n - 1] || [''];
+      out.push({ n: ld.n, title, from: new Date(ld.from).toISOString(), to: ld.to ? new Date(ld.to).toISOString() : null });
+      if (!ld.to) break; t = ld.to + 60000;
+    }
+    return out;
+  } catch (e) { return []; }
 }
 const topicOf = (q) => (C.TOPICS.find(([, re]) => re.test(q)) || ['self'])[0];
 /* «На небе» считает события на 62 дня вперед — держим результат пять минут на часовой пояс */

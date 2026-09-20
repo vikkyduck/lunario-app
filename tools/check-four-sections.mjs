@@ -14,12 +14,12 @@ export async function checkFourSections({browser,base,owner}){
     assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.replace(/\s+/g,' ').trim()),['Сегодня','Свериться с собой','Дневник','Обо мне']);
     assert.equal(await page.locator('#v-home .sqs,#v-home .mini,#v-today,#v-around').count(),0,'No obsolete menu or orphan category');
     // «Аккаунт» — не вкладка: открывается со вкладки «Обо мне» (кружок справа вверху — тема), ни одна вкладка не подсвечена, назад — на «Сегодня»
-    await page.evaluate(()=>go('about'));await page.locator('#v-about [data-feature=account]').click();await page.locator('#v-account.on').waitFor();assert.equal(await page.locator('.app-nav [aria-current=page]').count(),0);
+    await page.locator('#h-acct').click();await page.locator('#v-account.on').waitFor();assert.equal(await page.locator('.app-nav [aria-current=page]').count(),0);
     assert.equal(await page.locator('#v-account [data-feature=natal],#v-account [data-feature=year]').count(),0,'Readings live in «Обо мне», not in the account');
     await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home.on').waitFor();
-    // кружок темы виден на каждой из вкладок и открывает панель «Оформление»
-    for(const view of ['ask','history','about']){await page.locator(`.app-nav [data-nav=${view}]`).click();await page.locator('#v-'+view+'.on').waitFor();assert.ok(await page.locator('.section-acct').isVisible(),view+' shows the theme circle');}
-    await page.locator('.section-acct').click();await page.locator('#wg-body #w-appearance').waitFor();await page.locator('.wg-x').click();await page.evaluate(()=>go('account'));await page.locator('#v-account.on').waitFor();assert.ok(await page.locator('.section-acct').isHidden(),'No circle on the account screen itself');await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home.on').waitFor();
+    // шестеренка и кружок с буквой видны на каждой из вкладок: шестеренка открывает «Оформление», кружок — «Аккаунт»
+    for(const view of ['ask','history','about']){await page.locator(`.app-nav [data-nav=${view}]`).click();await page.locator('#v-'+view+'.on').waitFor();assert.ok(await page.locator('.section-acct .acct-btn').isVisible(),view+' shows the account circle');}
+    await page.locator('.section-acct .gear-btn').click();await page.locator('#wg-body #w-appearance').waitFor();await page.locator('.wg-x').click();await page.locator('.section-acct .acct-btn').click();await page.locator('#v-account.on').waitFor();assert.ok(await page.locator('.section-acct').isHidden(),'No circles on the account screen itself');await page.locator('#account-back').click();await page.locator('#v-about.on').waitFor();await page.locator('.app-nav [data-nav=home]').click();await page.locator('#v-home.on').waitFor();
     const initialDay=(await owner.json('/me')).day;
     await page.locator('#v-home [data-feature=tone]').click();
     assert.equal(await page.locator('#tone-box .practice-question').innerText(),initialDay.question);

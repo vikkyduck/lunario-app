@@ -525,17 +525,43 @@ function lunarPeriodCompact(l){
   const end=new Date(l.to),tz=S.user.tz||'Europe/Moscow',today=new Date().toLocaleDateString('sv-SE',{timeZone:tz});
   return end.toLocaleDateString('sv-SE',{timeZone:tz})===today?'Сегодня, до '+end.toLocaleTimeString('ru-RU',{timeZone:tz,hour:'2-digit',minute:'2-digit'}):'До '+end.toLocaleString('ru-RU',{timeZone:tz,day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
 }
+/* ── Лунные дни этих суток (S.day.lunarDays, с сервера): лунный день идет от восхода до восхода, и в календарных сутках их обычно два,
+   на границе месяца три (29 → 30 → 1), изредка один. Наверху — ряд чипов «9-й · до 16:48», «10-й · с 16:48»; текущий выбран сам,
+   любой другой открывается нажатием: его название, рекомендация и глава. «Период и место расчета» сняты (решение владелицы 20.09) ── */
+let lunarSel=0;   /* выбранный на экране лунный день; 0 — текущий */
+const lunarDaysToday=()=>(S.day&&S.day.lunarDays)||[];
+const lunarTz=()=>S.user?.tz||'Europe/Moscow';
+const lunarTime=(iso)=>new Date(iso).toLocaleTimeString('ru-RU',{timeZone:lunarTz(),hour:'2-digit',minute:'2-digit'});
+const lunarDateOf=(iso)=>new Date(iso).toLocaleDateString('sv-SE',{timeZone:lunarTz()});
+function lunarCurrentN(){ const now=Date.now(), cur=lunarDaysToday().find(x=>Date.parse(x.from)<=now&&(!x.to||now<Date.parse(x.to))); return cur?cur.n:(S.day?.lunar?.n||0); }
+/* карточка дня n: текущий — из пакета дня (там рекомендация и картинка), остальные — из каталога (название, рекомендация) и справочника (тема, картинка) */
+function lunarInfoFor(n){
+  const l=S.day?.lunar; if(l&&l.n===n)return l;
+  const pair=(CAT?.lunarDays||[])[n-1]||['',''], d=LUN?.days.find(x=>x.n===n), x=lunarDaysToday().find(y=>y.n===n);
+  return {n,title:pair[0]||'',advice:pair[1]||'',theme:d?.theme||'',symbol:d?.symbol||'',image:d?.image||'',period:x?`с ${lunarTime(x.from)}${x.to?` по ${lunarTime(x.to)}`:''}`:''};
+}
+/* подпись чипа: первый день суток — «до 16:48», последний — «с 16:48», средний (три дня в сутках) — «06:10–16:48» */
+function lunarChipLabel(x){
+  const before=lunarDateOf(x.from)!==S.day.date, after=!x.to||lunarDateOf(x.to)!==S.day.date;
+  return `${ordinal(x.n)}${before&&x.to?' · до '+lunarTime(x.to):after?' · с '+lunarTime(x.from):' · '+lunarTime(x.from)+'–'+lunarTime(x.to)}`;
+}
+function lunarSelect(n){ lunarSel=Number(n)||0; hap(); paintLunarWidget(); }
 function paintLunarWidget(){
   const l=S.day?.lunar,box=$('ln-box');if(!box)return;
   if(!l){box.innerHTML='<p class="stubtext">Лунный день пока не рассчитан.</p>';return;}
-  const id=regRes({type:'lunar',l,day:S.day.date});
-  box.innerHTML=`<div class="lunar-heading"><h3>${ordinal(l.n)} лунный день</h3>${l.title?`<p class="practice-question">${esc(l.title)}</p>`:''}<p>${esc(lunarPeriodCompact(l))}</p></div>
-    ${l.advice?`<div class="card practice-card"><h3>Рекомендация</h3><p>${esc(l.advice)}</p></div>`:''}
+  const days=lunarDaysToday(), curN=lunarCurrentN();
+  if(!lunarSel||!days.some(x=>x.n===lunarSel))lunarSel=curN;
+  const n=lunarSel, sel=days.find(x=>x.n===n), info=lunarInfoFor(n);
+  const when=!sel?lunarPeriodCompact(l):n===curN?lunarPeriodCompact({to:sel.to,period:l.period}):Date.parse(sel.from)>Date.now()?`Начнется в ${lunarTime(sel.from)}`:`Закончился в ${lunarTime(sel.to)}`;
+  const tabs=days.length>1?`<div class="chips flow ln-today" role="group" aria-label="Лунные дни этих суток">${days.map(x=>`<button data-on="click:lunarSelect-a0" data-a0="${x.n}" type="button" class="chip${x.n===n?' on':''}" aria-pressed="${x.n===n}">${lunarChipLabel(x)}</button>`).join('')}</div>`:'';
+  const id=regRes({type:'lunar',get l(){return lunarInfoFor(n);},day:S.day.date});   /* открытка берет карточку дня в момент сборки — когда справочник уже загружен */
+  box.innerHTML=`${tabs}<div class="lunar-heading"><h3>${ordinal(n)} лунный день</h3>${info.title?`<p class="practice-question">${esc(info.title)}</p>`:''}<p>${esc(when)}</p></div>
+    ${info.advice?`<div class="card practice-card"><h3>Рекомендация</h3><p>${esc(info.advice)}</p></div>`:''}
     <div id="ln-art"><p class="hint">Загружаем главу справочника…</p></div>${actionsHtml(id)}
-    <details class="lunar-period"><summary>Период и место расчета</summary><p>${esc(l.period)}</p><p>По месту рождения из профиля: ${esc(S.user.city||'Москва')}. Часовой пояс: ${esc(S.user.tz||'Europe/Moscow')}</p></details>
     <details class="lunar-library"><summary>Все 30 лунных дней</summary><div id="ln-days"></div><div id="ln-preview"></div><div id="ln-ref"></div></details>`;
   XP.lunarSeenAtOpen=(XP.prefs.lunarViews||0)>=1;   /* ряд тем — со второго открытия: смотрим счетчик до того, как засчитать это открытие */
-  preparePending();track('lunar_view','topics:'+(topicsAll()?'all':((XP.prefs.topics||[]).length||'default')));XP.prefs.lunarViews=(XP.prefs.lunarViews||0)+1;
+  track('lunar_view','topics:'+(topicsAll()?'all':((XP.prefs.topics||[]).length||'default')));XP.prefs.lunarViews=(XP.prefs.lunarViews||0)+1;
+  if(n!==l.n&&!CAT)loadCatalog().then(()=>{ if(wgOpen==='lunar'&&lunarSel===n)paintLunarWidget(); }).catch(()=>{});   /* название и рекомендация другого дня — из каталога */
   loadLunarDays().then(()=>{paintLunarArticle();$('ln-ref').innerHTML=lunarRefHtml(LUN.reference);}).catch(()=>{if($('ln-art'))$('ln-art').innerHTML='<p class="hint">Справочник не загрузился. Откройте лунный день еще раз</p>';});
 }
 /* ── Темы чтения: человек выбирает разделы, остальное — под заголовками-свертками. Ряд тем появляется со второго открытия. ── */
@@ -562,10 +588,10 @@ async function setTopicsAll(on){
   XP.topicsShown=true;paintLunarArticle();
 }
 function paintLunarArticle(){
-  const l=S.day&&S.day.lunar,d=LUN&&LUN.days.find(x=>x.n===l.n);if(!l||!$('ln-art'))return;
-  $('ln-art').innerHTML=(topicsRowVisible()?topicsRowHtml():'')+(d?lunarDayHtml(d,l.n,true):'');
+  const l=S.day&&S.day.lunar,n=lunarSel||(l&&l.n),d=LUN&&LUN.days.find(x=>x.n===n);if(!l||!$('ln-art'))return;
+  $('ln-art').innerHTML=(topicsRowVisible()?topicsRowHtml():'')+(d?lunarDayHtml(d,n,true):'');
   const adv=document.querySelector('#ln-box .practice-card');if(adv)adv.style.display=(topicsAll()||topicsChosen().includes('advice'))?'':'none';
-  showLunarDay(l.n);preparePending();
+  showLunarDay(n);preparePending();
 }
 function trackExpand(el,key){if(el.open)track('lunar_expand',key);}
 /* Открытка: одна выбранная содержательная тема — ее заголовок и первая фраза вместо общей рекомендации */
@@ -581,7 +607,7 @@ function registerWebMcp(){
     const mc=navigator.modelContext; if(!mc||typeof mc.provideContext!=='function')return;
     mc.provideContext({tools:[
       {name:'lunario_today',description:'Сегодня в Лунарио: дата, фаза Луны, лунный день и его рекомендация, установка дня. Без личных записей.',inputSchema:{type:'object',properties:{}},
-        execute:async()=>{const d=S.day||{};const l=d.lunar||{};return {date:d.date,moon:d.moon,lunarDay:l.n?{n:l.n,title:l.title,advice:l.advice,period:l.period}:null,setting:d.set?d.set.statement||'':'' };}},
+        execute:async()=>{const d=S.day||{};const l=d.lunar||{};return {date:d.date,moon:d.moon,lunarDay:l.n?{n:l.n,title:l.title,advice:l.advice,period:l.period}:null,lunarDays:d.lunarDays||[],setting:d.set?d.set.statement||'':'' };}},
       {name:'lunario_open',description:'Открыть раздел или инструмент Лунарио: home, ask, history, about, account; или виджет card, mood, lunar, sky, natal, year, compat.',
         inputSchema:{type:'object',properties:{target:{type:'string'}},required:['target']},
         execute:async({target})=>{const t=String(target||'');if(['home','ask','history','about','account'].includes(t)){go(t);return {ok:true,view:t};}if(FEATURES[t]){openWidget(t);return {ok:true,widget:t};}return {ok:false,error:'unknown target'};}}
@@ -598,7 +624,7 @@ function lunarDayHtml(d, today, primary=false){
   return `<div class="item rise yr-art">
     <img class="yr-img" src="${d.image}" width="1080" height="1080" alt="${d.n} лунный день · ${esc(d.symbol || d.theme)}">
     ${primary?'':`<p class="ln-eb">${d.n} лунный день${d.n===today?' · сегодня':''}</p>`}
-    ${primary && d.theme===S.day.lunar.title?'':`<p class="ln-title">${esc(d.theme)}</p>`}
+    ${primary && d.theme===lunarInfoFor(d.n).title?'':`<p class="ln-title">${esc(d.theme)}</p>`}
     ${shown.map(secHtml).join('')}${hiddenHtml}
   </div>`;
 }

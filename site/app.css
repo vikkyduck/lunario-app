@@ -429,11 +429,6 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .wid .ico{width:26px;height:26px;margin-bottom:4px}
 .wid b{display:block;font-size:15px;font-weight:650;color:var(--text);line-height:1.3}
 .wid span{display:block;font-size:13px;color:var(--muted);line-height:1.45}
-.rows{display:grid;gap:var(--s2);margin-top:var(--s5)}
-.rowbtn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border-radius:var(--r-m);background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);font:inherit;font-size:15px;text-align:left;cursor:pointer}
-.rowbtn .ico{width:22px;height:22px;background:var(--muted)}
-.rowbtn.warn{color:var(--warn)}
-.rowbtn.warn .ico{background:var(--warn)}
 .stubtext{color:var(--faint);font-size:16px;text-align:center;margin-top:44px}
 /* виджет: на телефоне во весь экран, на широком — панель по центру */
 .wg-bg{position:fixed;inset:0;z-index:150;display:none;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -640,7 +635,6 @@ body.inner .app-nav{display:grid}
 /* ── главная: шесть квадратов, три в ряд ── */
 .acct{overflow:visible}
 .acct-content{display:grid;place-items:center;width:100%;height:100%;overflow:hidden;border-radius:inherit}
-.acct img{width:100%;height:100%;object-fit:cover;display:block}
 /* ── круг эмоций Плутчика ── */
 .mfam{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
 .mfam:first-child{border-top:0;padding-top:0}
@@ -815,9 +809,6 @@ html[data-theme=light] .home-hero .hero-glow{background:radial-gradient(circle,r
 .feature-group,.account-group{margin-top:30px}
 .feature-group>h2,.account-group>h2{font-size:18px;line-height:1.4;font-weight:600}
 .feature-group>.wids,.account-group>.wids{margin-top:12px}
-body.inner .compact-links .wid{gap:3px 12px}
-.compact-links .wid .ico{grid-column:1;grid-row:1/span 2;margin:0}
-.compact-links .wid b,.compact-links .wid>span:not(.dot){grid-column:2}
 body.inner #home-sky .moonline{cursor:pointer}
 #home-sky .moonline .grow{min-width:0;display:grid;gap:5px}
 #home-sky .moonline b{font-size:14px;line-height:1.5;font-weight:500}
@@ -1268,7 +1259,7 @@ body.hello::before{background:radial-gradient(ellipse 90% 25% at 20% 76%,rgba(24
 }
 /* Readability: original ivory and gold, stronger Onest; metadata remains quieter. */
 body{font-size:18px;font-weight:500}
-body.inner :is(.wid,.compact-links .wid) b{font-weight:600;line-height:1.45;letter-spacing:-.01em}
+body.inner .wid b{font-weight:600;line-height:1.45;letter-spacing:-.01em}
 body.inner .wid>span:not(.dot):not(.destination-arrow){font-weight:500}
 body.inner :is(.hint,.section-caption,.practice-progress,.rem-status,.field label,.hb-rule,.rem-lbl small,#profile-summary){font-size:17px;font-weight:500;color:var(--muted);line-height:1.65}
 body.inner :is(.field label,.text-action,.back,.rem-summary,.segmented button,.emotion-family,.mchip,.chip,.observation>summary,.practice-create>summary){font-size:17px;font-weight:600;color:var(--text)}
@@ -1380,20 +1371,10 @@ body.inner #v-account .profile-actions .text-action.secondary{font-weight:500;co
 body.inner #v-account .account-group{margin-top:0}
 body.inner #v-account .account-group>h2{margin:0 0 10px 2px}
 #v-account .profile-block>h2{display:none}
-body.inner #v-account :is(.compact-links .wid,.rowbtn){overflow:visible;transform:none;font-size:17px;transition:background-color var(--t-fast) ease}
-body.inner #v-account :is(.compact-links .wid,.rowbtn):active{background:var(--selected);transform:none;box-shadow:none}
-body.inner #v-account :is(.compact-links .wid,.rowbtn) .ico{background-color:var(--gold-2);filter:none}
-body.inner #v-account .compact-links .wid>span.destination-arrow{position:static;grid-column:3;grid-row:1/span 2;align-self:center;justify-self:end;font-size:20px;line-height:1;color:var(--gold-2);opacity:.7}
-body.inner #v-account .compact-links .wid .dot{position:absolute;right:44px;top:50%;margin-top:-4px;box-shadow:0 0 0 3px var(--glass-base)}
-body.inner #v-account .rowbtn{font-weight:600;letter-spacing:-.01em}
-body.inner #v-account .rowbtn.warn .ico{background-color:var(--warn)}
 body.inner #v-account .danger-zone{padding-top:0;border-top:0}
 @media(hover:hover) and (pointer:fine){
-  body.inner #v-account :is(.compact-links .wid,.rowbtn):hover{background:var(--selected);border-bottom-color:var(--line);box-shadow:none;transform:none}
-  body.inner #v-account :is(.compact-links .wid,.rowbtn):hover .destination-arrow{opacity:1}
 }
 @media(min-width:900px){
-  #v-account .account-group .compact-links,#v-account .rows{grid-template-columns:1fr;gap:0;margin-top:0}
   /* две колонки одной высоты: слева Профиль и Управление аккаунтом, справа Приложение и Помощь. Верх, низ и края
      совпадают; в более короткой колонке нижняя панель дотягивается до общей линии — её ряды делят лишние пиксели поровну */
   #v-account .account-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:32px;align-items:stretch;margin-top:2px}
@@ -1401,7 +1382,6 @@ body.inner #v-account .danger-zone{padding-top:0;border-top:0}
   /* четыре панели целиком над навигацией на экране 900px высотой */
   #v-account .account-col{display:flex;flex-direction:column;gap:28px;min-width:0}
   #v-account .account-col>.account-group:last-child{flex:1;display:flex;flex-direction:column}
-  body.inner #v-account .account-col>.account-group:last-child>:is(.compact-links,.rows){flex:1;grid-auto-rows:minmax(64px,1fr)}
   #v-account .profile-block>h2{display:block}
 }
 /* каталог инструментов: подписи разделов золотой капителью, карточки как панели */
@@ -1538,11 +1518,7 @@ body.inner #wk-reflect-state:empty{display:none}
    чтобы победить его порядком, а не ещё большим весом. Тёмная тема меняется только там, где сказано «обе темы». */
 /* ── Строки-переходы (обе темы): иконка · заголовок · подпись в одну строку · «›», один контейнер с разделителями —
       тот же формат, что в Аккаунте; списки «Обо мне», способы «Свериться», «Инструменты» Дневника ── */
-body.inner .list-rows .wid{transform:none}
-body.inner .list-rows .wid:active{background:var(--selected);transform:none;box-shadow:none}
-body.inner .list-rows .wid>span.destination-arrow{position:static;grid-column:3;grid-row:1/span 2;align-self:center;justify-self:end;font-size:20px;line-height:1;color:var(--gold-2);opacity:.7}
 @media(hover:hover) and (pointer:fine){
-  body.inner .list-rows .wid:hover{background:var(--selected);box-shadow:none;transform:none}
 }
 /* ── Нижняя навигация (обе темы): 60px + safe-area один раз, иконки 24, подпись 11px (у «Свериться с собой» две строки),
       активный пункт — цветом, без заливки ── */
@@ -1587,7 +1563,6 @@ html[data-theme=light] body.inner :is(.wid,.morning-summary,.later-row,.rem-summ
 html[data-theme=light] body.inner :is(.wid,.morning-summary,.later-row,.rem-summary,.acct,.wg-x,#home-sky .moonline,#morning-more .moonline,.timeline-entry,.timeline-empty,.profile-summary,.wish-card)::after{content:none}
 @media(hover:hover) and (pointer:fine){
   html[data-theme=light] body.inner :is(.wid,.rem-summary,#home-sky .moonline,#morning-more .moonline):hover{background:var(--surface);border-color:var(--control-border);box-shadow:var(--glass-shadow);transform:none}
-  html[data-theme=light] body.inner .list-rows .wid:hover{background:var(--selected);border-color:var(--line)}
 }
 html[data-theme=light] body.inner :is(.wid,.rem-summary,#home-sky .moonline,#morning-more .moonline):active{transform:scale(.985)}
 html[data-theme=light] body.inner .btn:not(.ghost){background:#2a2150;color:#fff;border:0;box-shadow:none}
@@ -1624,30 +1599,6 @@ html[data-theme=light][data-skin=compact]{--surface:#fff;--line:rgba(42,33,80,.1
 html[data-skin=compact] body.inner :is(#v-ask,#v-history,#v-about)>h1{font-size:24px;margin-right:52px}
 html[data-skin=compact] body.inner :is(.feature-group>h2,.account-group>h2,.past-days .sec-head>h2){line-height:1.3;font-weight:700;text-transform:uppercase;color:var(--muted)}
 html[data-skin=compact] body.inner :is(.feature-group,.account-group){margin-top:24px}
-/* ── строки: иконка в кружке 40px слева, заголовок 16, подпись 13, «›» справа, 64px, разделители ── */
-html[data-skin=compact] body.inner :is(.wids.list-rows,#v-account .compact-links,#v-account .rows,#morning-feed,#morning-more){display:grid;grid-template-columns:1fr;gap:0;margin:0;padding:0;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:var(--ck-radius);box-shadow:none}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn,#morning-feed>.wid,#morning-feed>.moonline,#morning-more>.wid,#morning-more>.moonline){position:relative;display:grid;grid-template-columns:40px minmax(0,1fr) 12px;column-gap:14px;row-gap:1px;align-items:center;align-content:center;width:100%;min-height:var(--ck-row);height:auto;margin:0;padding:10px 16px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;box-shadow:none;text-align:left;color:var(--text)}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn,#morning-feed>*,#morning-more>*):last-child{border-bottom:0}
-/* кружок под иконкой — псевдоэлемент строки; сама иконка сверху в той же ячейке */
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid)::before{content:'';display:block;position:static;inset:auto;width:40px;height:40px;border-radius:50%;background:var(--selected);grid-column:1;grid-row:1/span 2;justify-self:center;mask:none;-webkit-mask:none;padding:0;z-index:0;opacity:1;animation:none;transform:none}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid) .ico{grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;width:20px;height:20px;margin:0;z-index:1;background-color:var(--gold-2);filter:none}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid) b{grid-column:2;grid-row:1;padding:0;font-size:16px;line-height:1.3;font-weight:600;letter-spacing:-.01em}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid)>span:not(.dot):not(.destination-arrow){grid-column:2;grid-row:2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:500;color:var(--muted);padding:0}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid)>span.destination-arrow{display:none}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn,#morning-feed>*,#morning-more>*)::after{content:'›';display:block;position:static;inset:auto;grid-column:3;grid-row:1/span 2;align-self:center;justify-self:end;width:auto;height:auto;font-size:22px;line-height:1;color:var(--muted);opacity:.7;background:none;border-radius:0;transform:none;animation:none;pointer-events:none}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#v-account .rowbtn,#morning-feed>*,#morning-more>*):active{background:var(--selected)}
-html[data-skin=compact] body.inner #v-account .rowbtn{font-size:16px}
-/* плитка Луны — тоже строка: диск в кружке, фаза заголовком, лунный день и совет подписью */
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline{gap:0}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline .moon-sm{grid-column:1;grid-row:1/span 2;width:40px;height:40px;flex:0 0 40px;justify-self:center}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline .grow{grid-column:2;grid-row:1/span 2;display:grid;gap:1px;min-width:0}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline .moon-title{display:none}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline #h-moon{display:block;font-size:16px;line-height:1.3;font-weight:600}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline :is(small,.lunar-advice){display:block;color:var(--muted);font-weight:500}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline .lunar-advice{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline .lunar-arrow{display:none}
-html[data-skin=compact] body.inner #morning-more>.moonline #h-moon{display:block}
-html[data-skin=compact] body.inner #morning-feed>:last-child:nth-child(odd){grid-column:auto}
 /* ── «Сегодня»: шапка компактная, настрой — карточкой с маленькой луной, а не на полэкрана ── */
 html[data-skin=compact] body.inner #v-home .compact-brand{font-size:26px;line-height:1.2}
 html[data-skin=compact] body.inner #v-home .hdr{margin-bottom:4px}
@@ -1712,7 +1663,6 @@ html[data-skin=compact] body.inner .week-part h3{font-size:16px}
 html[data-skin=compact] body.inner .rem-summary{padding:12px 16px}
 /* Аккаунт: профиль и группы */
 html[data-skin=compact] body.inner .profile-summary>p{font-size:13px}
-html[data-skin=compact] body.inner #v-account .compact-links .wid b{font-size:16px}
 /* ── Онбординг, вход и экран трёх напоминаний: та же типографика ── */
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) h1:not(.wordmark){font-size:26px;line-height:1.2}
 html[data-skin=compact] :is(#v-hello,#v-onb,#v-login,#v-rhythm) :is(p,li,label){font-size:15px;line-height:1.5}
@@ -1736,30 +1686,15 @@ html[data-skin=compact] body.inner #timeline-list .timeline-empty,html[data-skin
 /* ── Светлая тема: активный чип — мягкое золото (как голубой в референсе, но в палитре Лунарио) ── */
 html[data-theme=light][data-skin=compact] body.inner :is(.chips.flow .chip.on,.chip.on,.chip[aria-pressed=true],.timeline-filters [aria-pressed=true],.entries-tabs [aria-selected=true]){background:#efe0b3;border-color:#e4cf95;color:#2a2150}
 html[data-theme=light][data-skin=compact]{--selected:rgba(217,184,104,.22)}
-html[data-theme=light][data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid)::before{background:#f4ecd6}
-html[data-theme=light][data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid) .ico{background-color:#8a6d2a}
 html[data-theme=light][data-skin=compact] body.inner .app-nav button.on{color:#2a2150}
-/* строки «Управление аккаунтом» — с тем же кружком под иконкой */
-html[data-skin=compact] body.inner #v-account .rowbtn::before{content:'';display:block;position:static;inset:auto;width:40px;height:40px;border-radius:50%;background:var(--selected);grid-column:1;grid-row:1/span 2;justify-self:center;mask:none;-webkit-mask:none;padding:0;z-index:0;opacity:1;animation:none;transform:none}
-html[data-skin=compact] body.inner #v-account .rowbtn .ico{grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;width:20px;height:20px;margin:0;z-index:1}
-html[data-skin=compact] body.inner #v-account .rowbtn.warn::before{background:rgba(120,90,160,.14)}
 /* ── Каскадные поправки по ревью 17.09: капитель в Аккаунте, отступ строк в «Уведомлениях», подсказки в панелях,
    точка новостей на кружке аккаунта, подписи строк «Ещё про этот день» ── */
 html[data-skin=compact] body.inner #v-account .account-group>h2{line-height:1.3;text-transform:uppercase;color:var(--muted)}
 html[data-skin=compact] body.inner .wpane .item{padding:12px 16px}
-html[data-skin=compact] body.inner .acct img{border-radius:50%}
 html[data-skin=compact] body.inner .mini-grid .wid>span:not(.dot){text-align:left}
 /* строка «напоминания не подключены» — сразу под настроем дня, той же формы, что «Вечер» */
 html[data-skin=compact] body.inner .home-push{margin-top:12px}
 html[data-skin=compact] body.inner .home-push .later-row{border-color:rgba(240,215,154,.35)}
-/* ── карта дня в строке — предмет: миниатюра рубашки (после открытия — лица) вместо иконки в кружке ── */
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb::before{content:none}
-/* специфичность выше общей строки «>span:not(.dot):not(.destination-arrow)» — иначе миниатюра уезжает во вторую колонку */
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb>span.card-thumb.card-thumb:not(.dot){grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;display:block;width:34px;height:56px;overflow:hidden;font-size:0}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid.has-thumb{min-height:72px}
-/* строка «Руна дня»: после выбора — камень в кружке вместо иконки */
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb.rune-thumb:not(.dot){grid-column:1;grid-row:1/span 2;justify-self:center;align-self:center;display:block;width:40px;height:40px;overflow:hidden;z-index:1}
-html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.rune-thumb[hidden]{display:none}
 /* ═══════════════════════════ ЕДИНЫЙ СТИЛЬ (решение владелицы 19.09, вечер) ═══════════════════════════
    Плоские сине-черные карточки (#1d1738 — фон из слоя «ночь, свет, стекло»), стекло — только у главного действия каждой вкладки
    наверху (как «День записан» в слое «каркас»); все строки ниже — плоские, компактные. Без курсива, подписи 14px, ничего мельче 12px,
@@ -1767,7 +1702,7 @@ html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.wid>span.ru
    Блок временно лежит поверх прежних слоев; при схлопывании файла сольется с ними. */
 html[data-theme=dark][data-skin=compact]{--surface:#1d1738;--line:rgba(245,242,234,.13);--muted:#dcd6ee;--faint:#b4adcf;--selected:rgba(217,184,104,.16)}
 /* плоский материал — правило компактного вида, потерявшее селектор в v97, восстановлено */
-html[data-skin=compact] body.inner :is(.wid,.card,.morning-summary,.morning-picker,.wids.list-rows,.day-entry,.timeline-entry,.wish-card,.rem-summary,#v-account .compact-links,#v-account .rows,#home-sky .moonline,#morning-more .moonline,.push-note,.home-intro,.dayview,.tool-card){background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
+html[data-skin=compact] body.inner :is(.wid,.card,.morning-summary,.morning-picker,.day-entry,.timeline-entry,.wish-card,.rem-summary,#home-sky .moonline,#morning-more .moonline,.push-note,.home-intro,.dayview,.tool-card){background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
 /* стекло — главное действие вкладки: «День записан» и вопрос дня на «Сегодня», строка над записью и карточка шагов в Дневнике, «Моя неделя»,
    «Ответить себе на вопрос», карточка человека на «Обо мне», профиль в Аккаунте */
 html[data-skin=compact] body.inner .later-row{background:var(--surface);border:1px solid var(--line);box-shadow:none;border-radius:var(--ck-radius)}
@@ -1785,7 +1720,7 @@ html[data-skin=compact] body.inner{font-size:16px}
 html[data-skin=compact] body.inner :is(.feature-group>h2,.account-group>h2,.past-days .sec-head>h2,#v-account .account-group>h2){font-size:12px;letter-spacing:.1em}
 html[data-skin=compact] body.inner :is(.eyebrow,.wg-eb,.dc-label,.timeline-day,.morning-summary .eyebrow,#h-theme,.kw){font-size:12px;letter-spacing:.1em}
 html[data-skin=compact] body.inner #h-date{font-size:13px}
-html[data-skin=compact] body.inner :is(.list-rows .wid,#v-account .compact-links .wid,#morning-feed>.wid,#morning-more>.wid,.question-entry .wid)>span:not(.dot):not(.destination-arrow),
+html[data-skin=compact] body.inner :is(.question-entry .wid)>span:not(.dot):not(.destination-arrow),
 html[data-skin=compact] body.inner :is(#morning-feed,#morning-more)>.moonline :is(small,.lunar-advice){font-size:14px;line-height:1.4}
 html[data-skin=compact] body.inner :is(.section-caption,.hint,.field label,.saved-state,.wpane small,.wpane p.hint,.profile-summary>p,.me-card .me-sub,.morning-picker .hint,.hero-actions .text-action,.morning-summary .text-action,.later-row .later-go,.theme-option,.week-quote p,.dc-read .q,.ha .saved-state,.timeline-empty,.day-row .t p,.dc-quiet,.dc-lunar,.profile-note){font-size:14px}
 html[data-skin=compact] body.inner .app-nav button{font-size:12px}
@@ -1829,14 +1764,37 @@ body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.luna
 body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)[open]>summary{margin-bottom:12px}
 body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)[open]>summary::after{content:'⌃'}
 body.inner .ln-hidden summary{border:1px solid var(--line);border-radius:var(--r-m);padding:11px 14px;margin-top:8px;background:var(--surface)}
-/* ── Аккаунт после чистки 20.09: кружок справа вверху — тема (солнце в темной, луна в светлой → панель с тремя вариантами), в профиле — буква имени,
-   почта — под датой рождения, привязка почты — прямо в профиле; в «Обо мне» — строка «Аккаунт» ── */
-.acct.theme-btn{padding:0}
-/* display задает .section-acct: на «Сегодня» верхний кружок скрыт, там свой #h-acct */
-.acct.theme-btn svg{width:22px;height:22px;display:block}
+/* ── Шапка (решение владелицы 20.09): справа вверху два кружка — шестеренка (панель «Оформление»: светлая, темная, как на устройстве)
+   и буква имени (дверь в «Аккаунт»); «← Назад» из аккаунта возвращает на ту вкладку, откуда пришли ── */
+.head-tools{align-items:center;gap:8px;flex:0 0 auto}
+#v-home .head-tools{display:flex}
+.head-tools.section-acct{display:none}   /* на «Сегодня» и в аккаунте — своя шапка или ничего; на трех вкладках — в углу */
+html[data-skin=compact] body.inner:has(:is(#v-ask,#v-history,#v-about).on) .head-tools.section-acct{display:flex;width:auto;height:auto}
+.acct.gear-btn{padding:0;color:var(--muted)}
+.acct.gear-btn svg{width:21px;height:21px;display:block}
+#v-account .practice-header{margin-bottom:14px}
 #v-account #profile-email{margin:2px 0 0;font-size:15px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
 #v-account .ac-auth{margin-top:14px;padding:16px}
-#v-about .account-link{margin-top:14px}
 .theme-options{margin:8px 0 0}
+/* ── Подпункты везде — квадратами по два в ряд (решение владелицы 20.09; главная плашка вкладки наверху остается): «Свериться с собой»,
+   Практики, «Обо мне», Аккаунт, «Мое утро» и «Еще про этот день». Строки-списки компактного вида сняты ── */
+body.inner .wids.tiles{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;gap:12px}
+body.inner .wids.tiles .wid{min-height:118px;padding:16px;gap:10px;justify-content:flex-start}
+body.inner .wids.tiles .wid>span:not(.dot){font-size:13px;line-height:1.4;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.inner .wids.tiles .wid .dot{position:absolute;right:14px;top:14px}
+body.inner .wid.warn,body.inner .wid.warn b{color:var(--warn)}
+body.inner .wid.warn .ico{background-color:var(--warn)}
+body.inner #v-account .account-group>.wids{margin-top:0}
+body.inner #morning-feed{gap:12px}
+/* квадрат Луны: диск, «Луна» и фаза с лунным днем; период и совет — в панели лунного дня, не в плитке */
+body.inner .mini-grid .moonline #h-moon{display:block;font-size:13px;line-height:1.4;color:var(--muted);font-weight:500}
+body.inner .mini-grid .moonline :is(#h-lunar,.lunar-advice,.lunar-arrow){display:none}
+body.inner .mini-grid .wid>span:not(.dot){font-size:13px;line-height:1.4;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* действие в строке-плашке («Дописать», «Открыть», «Включить») — тоже кнопкой, а не словом со стрелкой */
+body.inner .later-row .later-go{justify-self:end;align-self:center;padding:8px 14px;border:1px solid var(--gold);border-radius:var(--r-m);background:var(--surface);color:var(--text);font-size:14px;font-weight:500;line-height:1.3;white-space:nowrap}
+/* лунные дни этих суток — ряд чипов над заголовком лунного дня */
+.ln-today{margin:0 0 14px}
 /* свечение за Луной на «Сегодня» шире экрана телефона (120vw) и давало горизонтальную прокрутку — страница «уезжала» вправо; обрезаем по краю */
 .wrap{overflow-x:clip}
+.practice-header .practice-eb{display:block;margin-top:16px}   /* раздел над названием страницы практики — та же крошка, что у панелей */
+body.inner .practice-header .practice-eb+h1{margin-top:4px}
