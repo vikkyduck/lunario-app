@@ -466,6 +466,36 @@ try {
   assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
   console.log('PASS: cabinet uploads reject SVG and are served under a sandbox CSP with nosniff.');
 
+  // ── F01 (ревью v114): архив версий читается только внутри папки контента — чужие имена, кодированные разделители,
+  //    абсолютные пути и символьная ссылка наружу отклоняются; разрешенная версия читается ──
+  { for (const bad of ['../..', '..%2F..', '/etc', 'руны.txt/..', 'руны.txt%00'])
+      assert.equal((await staff.raw('/cabinet/versions?file=' + bad + '&id=synthetic.txt')).status, 400, 'archive: ' + bad);
+    assert.equal((await staff.raw('/cabinet/versions?file=руны.txt&id=../../secret.key')).status, 400, 'a version id with .. is refused');
+    assert.equal((await staff.raw('/cabinet/versions?file=руны.txt&id=%2Fetc%2Fpasswd')).status, 400, 'an absolute version id is refused');
+    assert.equal((await staff.raw('/cabinet/versions?file=руны.txt&id=нет-такой.txt')).status, 400, 'an id not of our own form (время__кто.txt) is refused');
+    assert.equal((await staff.raw('/cabinet/versions?file=руны.txt&id=2000-01-01T00-00-00.000__nobody.txt')).status, 404, 'a well-formed but missing version is 404, not an error');
+    assert.equal((await staff.raw('/cabinet/versions', 'POST', { file: '../..', id: 'synthetic.txt', version: 'x' })).status, 400, 'restore checks the file name too');
+    /* символьная ссылка наружу: имя версии приличное, но настоящий путь — вне контента; «секрет» — синтетический файл проверки */
+    const { symlink } = await import('node:fs/promises');
+    await writeFile(join(fixture, 'outside-secret.txt'), 'MARKER-снаружи');
+    await mkdir(join(fixture, 'content', 'архив', 'руны.txt'), { recursive: true });
+    await symlink(join(fixture, 'outside-secret.txt'), join(fixture, 'content', 'архив', 'руны.txt', '2026-01-01T00-00-00.000__evil.txt'));
+    const viaLink = await staff.raw('/cabinet/versions?file=руны.txt&id=2026-01-01T00-00-00.000__evil.txt');
+    assert.ok(viaLink.status === 400 || viaLink.status === 404, 'a symlink out of the archive is not served: ' + viaLink.status);
+    assert.ok(!(await viaLink.text()).includes('MARKER'), 'no outside bytes leak through the archive');
+    const CE0 = await import(pathToFileURL(join(fixture, 'backend/content-edit.mjs')).href);
+    assert.equal(CE0.writeFile('руны.txt', CE0.readContent('руны.txt'), 'f01', CE0.fileVersion('руны.txt')).ok, true);
+    const okId = CE0.versions('руны.txt').find((v) => v.by === 'f01').id;
+    const okVersion = await staff.raw('/cabinet/versions?file=руны.txt&id=' + encodeURIComponent(okId));
+    assert.equal(okVersion.status, 200, 'a real archived version is served'); assert.ok((await okVersion.json()).text.includes('==='), 'with its text');
+    /* картинки: набор — только известный, идентификатор версии — только вида base__время__кто.ext */
+    assert.equal((await staff.raw('/cabinet/image-versions?kind=nope&base=x')).status, 404);
+    for (const bad of ['../../x.png', '/etc/passwd', 'x.svg', 'noseparator.png']) assert.equal((await staff.raw('/cabinet/image-versions?kind=runes', 'POST', { id: bad, key: 'fehu' })).status, 400, 'image archive: ' + bad);
+    assert.equal((await staff.raw('/cabinet/image-versions?kind=runes', 'POST', { id: 'fehu__2026-01-01T00-00-00.000__x.png', key: 'fehu' })).status, 404, 'a missing image version is 404');
+    const routesSrc = (await import('node:fs')).readFileSync(join(repo, 'backend/http/cabinet-routes.mjs'), 'utf8');
+    assert.ok(!/(?<![.\w])join\(/.test(routesSrc) && !/CONTENT_DIR|IMAGE_DIRS\[|from 'node:path'.*join/.test(routesSrc), 'cabinet routes build no paths from request data — the repository does');
+    console.log('PASS: F01 — content archive refuses foreign names, encoded separators, absolute paths and symlinks out of the tree; real versions are served; routes build no paths.'); }
+
   // ── Одна модель Луны: дневной пакет, «На небе» и досье считают фазу одной функцией lunar.mjs ──
   const { moonState, moonPhaseName, MOON_NAMES } = await import(pathToFileURL(join(fixture, 'backend/lunar.mjs')).href);
   const meMoon = await evt.json('/me');

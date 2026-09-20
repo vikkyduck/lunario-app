@@ -558,7 +558,7 @@ setInterval(sweep, 24 * 3600 * 1000).unref();
    Файл пишется в папку контента (картинки/<папка>/<имя>); если расширение новое — имя в текстовом файле переписывается,
    а адреса у людей обновляются сами: версия в адресе — время файла. */
 const cabinetRoutes = createCabinetRoutes({ json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, memoryPreview: (u, d) => Memory.preview(u, d), knowledgeList: (u, d) => Knowledge.list(u, d), knowledgeRead: (u, doc, d) => Knowledge.read(u, doc, d), knowledgeText: (u, doc, d) => Knowledge.text(u, doc, d),
-  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, CE, IMAGE_DIRS, Backup, W,
+  REPORT_META, OVERVIEW_BLOCKS, Reports, userCard, CE: CE.ContentRepository, Backup, W,   /* маршруты кабинета видят только репозиторий контента (F01) */
   staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive });
 
 const practiceRoutes = createPracticeRoutes({ db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO,

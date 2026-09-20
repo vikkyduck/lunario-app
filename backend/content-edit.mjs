@@ -3,8 +3,8 @@
    короткие поля «поле: значение», затем разделы «[Раздел]» и текст. Таблицы (настрой, вопросы, темы, напоминания…):
    строка = запись, поля через «|», строки с # — заметки, они сохраняются как есть.
    Читаем и пишем только сам файл в папке контента; приложение перечитывает его само (watch в content.mjs). */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, renameSync, unlinkSync } from 'node:fs';
-import { join, extname, basename } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, renameSync, unlinkSync, realpathSync } from 'node:fs';
+import { join, extname, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
 import * as C from './content.mjs';
@@ -48,7 +48,21 @@ export const TABLES = {
   'нумерология-год.txt': { title: 'Личный год (строка)', cols: ['число', 'текст'] },
   'нумерология-день.txt': { title: 'Число дня', cols: ['число', 'текст'] },
 };
-const path = (name) => { if (!/^[\wа-яА-Я.-]+\.txt$/u.test(name) || name.includes('/')) throw new Error('bad_file'); return join(CONTENT_DIR, name); };
+/* ── Имена и пути (ревью v114, F01). Одна проверка имени файла и одна — идентификатора версии, которыми обязаны пользоваться
+   все пути к контенту и архиву: право «править тексты» не должно превращаться в «читать файлы сервера». Имя версии мы
+   формируем сами (время__кто.txt), поэтому от запроса требуется ровно эта форма. После сборки пути — сверка настоящего пути
+   (realpath) с корнем архива: символьная ссылка наружу не пройдет, даже если имя выглядит прилично. Ошибки — по коду
+   (bad_file, bad_version, bad_kind), без подробностей о файловой системе; маршрут отвечает на них 400 ── */
+const refuse = (code) => Object.assign(new Error(code), { code });
+export const KNOWN_ERRORS = ['bad_file', 'bad_version', 'bad_kind'];
+export const safeName = (name) => { const s = String(name ?? ''); if (!/^[\wа-яА-Я.-]+\.txt$/u.test(s) || s.includes('/') || s.includes('..')) throw refuse('bad_file'); return s; };
+export const safeVersionId = (id) => { const s = String(id ?? ''); if (!/^[\w.@-]+\.txt$/u.test(s) || s.includes('..')) throw refuse('bad_version'); return s; };
+/* версия картинки: base__время__кто.ext, расширение — только из тех, что принимает загрузка; «..» и разделителей нет по форме */
+export const safeImageId = (id) => { const s = String(id ?? ''); if (!/^[\wа-яА-Я.@-]+__[\w.@-]+\.(?:jpe?g|png|webp)$/u.test(s) || s.includes('..')) throw refuse('bad_version'); return s; };
+const imageDirOf = (kind) => { const dir = IMAGE_DIRS[String(kind ?? '')]; if (!dir) throw refuse('bad_kind'); return dir; };
+/* настоящий путь файла — внутри корня (или сам корень); файла нет или ссылка ведет наружу — false */
+export const inside = (file, root) => { try { const real = realpathSync(file), r = realpathSync(root); return real === r || real.startsWith(r + sep); } catch { return false; } };
+const path = (name) => join(CONTENT_DIR, safeName(name));
 const read = (name) => readFileSync(path(name), 'utf8');
 
 /* ── архив версий (решение владелицы 19.09): перед каждой записью прежний файл уезжает в архив/<файл>/<время>__<кто>.txt,
@@ -57,7 +71,7 @@ const read = (name) => readFileSync(path(name), 'utf8');
    Сам файл пишется во временный и подменяется атомарно: обрыв посередине не оставит половину справочника. ── */
 const ARCHIVE = () => join(CONTENT_DIR, 'архив');
 const stamp = (d = new Date()) => d.toISOString().replace(/Z$/, '').replace(/:/g, '-');
-const who = (by) => String(by || '').replace(/[^\w.@-]/g, '').slice(0, 60) || 'кабинет';
+const who = (by) => String(by || '').replace(/[^\w.@-]/g, '').replace(/\.{2,}/g, '.').slice(0, 60) || 'кабинет';   /* без «..» — иначе safeVersionId не примет свое же имя */
 const uniqueName = (dir, base, ext) => { let id = base + ext; for (let n = 2; existsSync(join(dir, id)); n++) id = `${base}-${n}${ext}`; return id; };
 /* время из имени версии: 2026-09-20T10-11-12.345-2 → 2026-09-20T10:11:12.345Z */
 const tsOf = (s) => String(s || '').replace(/T(\d\d)-(\d\d)-(\d\d)(\.\d+)?(-\d+)?$/, 'T$1:$2:$3$4') + 'Z';
@@ -79,26 +93,42 @@ export function writeFile(name, text, by, expected) {
 }
 const write = writeFile;
 export function versions(name) {
-  const dir = join(ARCHIVE(), name); if (!existsSync(dir)) return [];
+  const dir = join(ARCHIVE(), safeName(name)); if (!existsSync(dir)) return [];
   return readdirSync(dir).filter((f) => f.endsWith('.txt')).sort().reverse().map((f) => { const m = f.match(/^(.+?)__(.+)\.txt$/); const st = statSync(join(dir, f));
     return { id: f, ts: m ? tsOf(m[1]) : '', by: m ? m[2] : '', size: st.size }; });
 }
-export function versionText(name, id) { const f = join(ARCHIVE(), name, basename(String(id))); return existsSync(f) ? readFileSync(f, 'utf8') : null; }
+/* текст версии: имя и идентификатор — по форме, файл — только внутри архива (ссылка наружу — как «нет такой версии») */
+export function versionText(name, id) {
+  const root = join(ARCHIVE(), safeName(name)), f = join(root, safeVersionId(id));
+  return inside(f, root) && statSync(f).isFile() ? readFileSync(f, 'utf8') : null;
+}
 export function restore(name, id, by, expected = null) {
-  const text = versionText(name, id); if (text === null) return { ok: false, error: 'not_found' };
+  let text; try { text = versionText(name, id); } catch (e) { if (KNOWN_ERRORS.includes(e.code)) return { ok: false, error: e.code }; throw e; }
+  if (text === null) return { ok: false, error: 'not_found' };
   return writeFile(name, text, by, expected);
 }
-/* картинка: старый файл — в архив с меткой времени, список и возврат — по записи */
+/* картинка: старый файл — в архив с меткой времени, список и возврат — по записи; папка набора — только из IMAGE_DIRS (по kind) */
 export function archiveImage(dir, file, by) {
   const src = join(CONTENT_DIR, 'картинки', dir, file); if (!existsSync(src)) return '';
   const adir = join(ARCHIVE(), 'картинки', dir); if (!existsSync(adir)) mkdirSync(adir, { recursive: true });
   const id = uniqueName(adir, `${file.replace(/\.[^.]+$/, '')}__${stamp()}__${who(by)}`, extname(file)); copyFileSync(src, join(adir, id)); return id;
 }
-export function imageVersions(dir, base) {
-  const adir = join(ARCHIVE(), 'картинки', dir); if (!existsSync(adir)) return [];
-  return readdirSync(adir).filter((f) => f.startsWith(base + '__')).sort().reverse().map((f) => { const m = f.match(/__(.+?)__(.+?)(?:-\d+)?\.[^.]+$/); return { id: f, ts: m ? tsOf(m[1]) : '', by: m ? m[2] : '' }; });
+export function imageVersions(kind, base) {
+  const adir = join(ARCHIVE(), 'картинки', imageDirOf(kind)); if (!existsSync(adir)) return [];
+  const prefix = String(base ?? '') + '__';
+  return readdirSync(adir).filter((f) => f.startsWith(prefix)).sort().reverse().map((f) => { const m = f.match(/__(.+?)__(.+?)(?:-\d+)?\.[^.]+$/); return { id: f, ts: m ? tsOf(m[1]) : '', by: m ? m[2] : '' }; });
 }
-export function imageArchivePath(dir, id) { const f = join(ARCHIVE(), 'картинки', dir, basename(String(id))); return existsSync(f) ? f : null; }
+export function imageArchivePath(kind, id) {
+  const root = join(ARCHIVE(), 'картинки', imageDirOf(kind)), f = join(root, safeImageId(id));
+  return inside(f, root) && statSync(f).isFile() ? f : null;
+}
+const IMAGE_TYPE = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+/* вернуть картинку записи из архива: тот же путь, что у загрузки новой (contentImagePut) */
+export function imageRestore({ kind, key, id, by }) {
+  let f; try { f = imageArchivePath(kind, id); } catch (e) { if (KNOWN_ERRORS.includes(e.code)) return { ok: false, error: e.code }; throw e; }
+  if (!f) return { ok: false, error: 'not_found' };
+  return contentImagePut({ kind, key, type: IMAGE_TYPE[extname(f).slice(1).toLowerCase()], data: readFileSync(f).toString('base64'), by });
+}
 
 /* ── книга / статья ── */
 export function parseBook(text) {
@@ -229,3 +259,13 @@ export function contentImagePut({ kind, key, type, data, by }) {
   }
   return { ok: true, name, url: `/app/content/${kind}/${name}?v=${Date.now().toString(36)}` };
 }
+
+/* ── ContentRepository (ревью v114, F01): единственная дверь для маршрутов кабинета. Все, что берет имя файла, набор картинок
+   или идентификатор версии из запроса, проходит через проверки выше; путей из данных запроса в cabinet-routes.mjs нет ── */
+export const ContentRepository = {
+  BOOKS, TABLES, KNOWN_ERRORS,
+  files: contentFiles, contentFiles, read: contentRead, contentRead, write: writeContent, writeContent, fileVersion,
+  versions, versionText, restore,
+  bookVersion, bookRecords, bookRecordSave, bookRecordAdd, bookRecordRemove, tableRows, tableSave,
+  contentImageList, contentImagePut, imageVersions, imageArchivePath, imageRestore,
+};

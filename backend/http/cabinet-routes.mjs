@@ -10,11 +10,11 @@
 
    Возвращает true: запрос обработан, ответ отправлен. */
 import { readFileSync } from 'node:fs';
-import { basename, extname } from 'node:path';
+import { basename } from 'node:path';
 
 export function createCabinetRoutes(deps) {
   const { json, readBody, rolesFor, isAdmin, getConfig, setConfig, resetConfig, REPORT_META, OVERVIEW_BLOCKS,
-    Reports, userCard, CE, IMAGE_DIRS, Backup, W,
+    Reports, userCard, CE, Backup, W,
     staffList, staffSet, staffRemove, notifyStaffAccess, ADMIN_EMAILS, costAdd, costRemove, logError, mailLive, memoryPreview, knowledgeList, knowledgeRead, knowledgeText } = deps;
 
   return async function cabinetRoutes({ p, req, res, url, u, d }) {
@@ -67,6 +67,11 @@ export function createCabinetRoutes(deps) {
       const c = userCard(url.searchParams.get('id'));
       return c ? json(res, 200, c) : json(res, 404, { ok: false, error: 'not_found' });
     }
+    /* Ответы репозитория контента (ревью v114, F01): имя файла, набор картинок и идентификатор версии проверяет сам репозиторий —
+       чужое имя отвечает 400 по коду (bad_file, bad_version), неизвестный набор — 404, нет версии — 404; подробностей
+       о файловой системе в ответе нет, все остальное — ошибка сервера в журнал */
+    const codeOf = (r) => r.ok ? 200 : r.error === 'conflict' ? 409 : r.error === 'not_found' ? 404 : r.error === 'bad_kind' ? 404 : 400;
+    const refused = (e) => { if (CE.KNOWN_ERRORS.includes(e.code)) return json(res, e.code === 'bad_kind' ? 404 : 400, { ok: false, error: e.code }); if (['not_book', 'not_table'].includes(e.message)) return json(res, 404, { ok: false, error: e.message }); throw e; };
     if (p === '/api/cabinet/content') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const name = String(url.searchParams.get('file') || '');
@@ -94,7 +99,7 @@ export function createCabinetRoutes(deps) {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(url.searchParams.get('file') || '');
       if (!CE.BOOKS[file]) return json(res, 404, { ok: false, error: 'not_found' });
-      try { return json(res, 200, { file, ...CE.BOOKS[file], version: CE.bookVersion(file), records: CE.bookRecords(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); }
+      try { return json(res, 200, { file, ...CE.BOOKS[file], version: CE.bookVersion(file), records: CE.bookRecords(file) }); } catch (e) { return refused(e); }
     }
     if (p === '/api/cabinet/record') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
@@ -108,7 +113,7 @@ export function createCabinetRoutes(deps) {
     if (p === '/api/cabinet/table') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(req.method === 'GET' ? url.searchParams.get('file') || '' : '');
-      if (req.method === 'GET') { if (!CE.TABLES[file]) return json(res, 404, { ok: false, error: 'not_found' }); try { return json(res, 200, { file, title: CE.TABLES[file].title, ...CE.tableRows(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
+      if (req.method === 'GET') { if (!CE.TABLES[file]) return json(res, 404, { ok: false, error: 'not_found' }); try { return json(res, 200, { file, title: CE.TABLES[file].title, ...CE.tableRows(file) }); } catch (e) { return refused(e); } }
       if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = CE.tableSave(String(b.file || ''), b.rows, u.email, String(b.version || '')); if (r.ok) console.log(`[контент] ${u.email} сохранил таблицу ${b.file} (${r.rows} строк)`); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
     }
     /* поиск по всем текстам: записи книг и строки таблиц */
@@ -124,15 +129,17 @@ export function createCabinetRoutes(deps) {
     if (p === '/api/cabinet/versions') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(url.searchParams.get('file') || '');
-      if (req.method === 'GET') { const id = url.searchParams.get('id'); if (id) { const t = CE.versionText(file, id); return t === null ? json(res, 404, { ok: false }) : json(res, 200, { ok: true, text: t }); } try { return json(res, 200, { file, version: CE.fileVersion(file), items: CE.versions(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
-      if (req.method === 'POST') { const b = await readBody(req); const r = CE.restore(String(b.file || ''), String(b.id || ''), u.email, b.version ? String(b.version) : null); if (r.ok) console.log(`[контент] ${u.email} откатил ${b.file} к ${b.id}`); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
+      if (req.method === 'GET') {
+        try { const id = url.searchParams.get('id'); if (id) { const t = CE.versionText(file, id); return t === null ? json(res, 404, { ok: false, error: 'not_found' }) : json(res, 200, { ok: true, text: t }); } return json(res, 200, { file, version: CE.fileVersion(file), items: CE.versions(file) }); }
+        catch (e) { return refused(e); }
+      }
+      if (req.method === 'POST') { const b = await readBody(req); const r = CE.restore(String(b.file || ''), String(b.id || ''), u.email, b.version ? String(b.version) : null); if (r.ok) console.log(`[контент] ${u.email} откатил ${b.file} к ${b.id}`); return json(res, codeOf(r), r); }
     }
     if (p === '/api/cabinet/image-versions') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
-      const kind = String(url.searchParams.get('kind') || ''), dir = IMAGE_DIRS[kind]; if (!dir) return json(res, 404, { ok: false });
-      if (req.method === 'GET') return json(res, 200, { items: CE.imageVersions(dir, String(url.searchParams.get('base') || '')) });
-      if (req.method === 'POST') { const b = await readBody(req); const f = CE.imageArchivePath(dir, String(b.id || '')); if (!f) return json(res, 404, { ok: false, error: 'not_found' });
-        const ext = extname(f).slice(1); const type = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext]; const r = CE.contentImagePut({ kind, key: b.key, type, data: readFileSync(f).toString('base64'), by: u.email }); return json(res, r.ok ? 200 : 400, r); }
+      const kind = String(url.searchParams.get('kind') || '');
+      if (req.method === 'GET') { try { return json(res, 200, { items: CE.imageVersions(kind, String(url.searchParams.get('base') || '')) }); } catch (e) { return refused(e); } }
+      if (req.method === 'POST') { const b = await readBody(req); const r = CE.imageRestore({ kind, key: b.key, id: String(b.id || ''), by: u.email }); if (r.ok) console.log(`[контент] ${u.email} вернул картинку ${kind}/${b.key} из ${b.id}`); return json(res, codeOf(r), r); }
     }
     /* картинки функций: список по наборам и замена файла */
     if (p === '/api/cabinet/content-images') {
