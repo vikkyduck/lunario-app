@@ -676,10 +676,10 @@ try {
     await rq.json('/knowledge?doc=recent');
     const j = await rq.json('/journal', 'POST', { text: 'Запись, которая должна попасть в базу знаний сразу' });
     const rec1 = (await rq.json('/knowledge?doc=recent')).data.days.find((x) => x.day === d0);
-    assert.ok(rec1 && rec1.text === 'Запись, которая должна попасть в базу знаний сразу', 'recent reflects a new entry on the next read (R08): ' + JSON.stringify(rec1));
+    assert.ok(rec1 && rec1.texts && rec1.texts.some((t) => t.text === 'Запись, которая должна попасть в базу знаний сразу'), 'recent reflects a new entry on the next read (R08): ' + JSON.stringify(rec1));
     await rq.json(`/day?day=${d0}&what=text:${j.item.id}`, 'DELETE');
     const rec2 = (await rq.json('/knowledge?doc=recent')).data.days.find((x) => x.day === d0);
-    assert.ok(!rec2 || rec2.text === undefined, 'a deleted entry leaves the recent document: ' + JSON.stringify(rec2));
+    assert.ok(!rec2 || !(rec2.texts || []).some((t) => t.id === j.item.id), 'a deleted entry leaves the recent document: ' + JSON.stringify(rec2));
     assert.ok((await rq.json('/knowledge/text?doc=recent')).text.includes('Запись, которая') === false);
     /* R09: портрет считает все отметки дня */
     await rq.json('/day', 'POST', { moods: ['joy', 'trust'] });
@@ -814,6 +814,26 @@ try {
     assert.equal((await q.json('/wishes', 'PATCH', { id: wishQ.id })).items.find((w) => w.id === wishQ.id).done, 1, 'no field — the old toggle still works');
     assert.ok(/done:cur\?!cur\.done/.test((await import('node:fs')).readFileSync(join(repo, 'site/account.js'), 'utf8')), 'the client sends the desired state');
     console.log('PASS: F06 — repeats before, at and past the limit keep their original outcome, refusals leave no receipt, the receipt key carries the operation kind, wish done is a desired state.'); }
+
+  // ── F08 (ревью v114): сводка не теряет записи дня — две записи и две благодарности за день лежат в recent массивами,
+  //    текст документа содержит обе, а выгрузка и сводка сопоставляются по id ──
+  { const k = account(); const kMe = await k.json('/me'), d0 = kMe.day.date;
+    await k.json('/profile', 'POST', { name: 'Кратность', birth: '1990-07-07', city: 'Москва', consent: true });
+    const t1 = await k.json('/journal', 'POST', { text: 'Первая запись дня для сводки' }), t2 = await k.json('/journal', 'POST', { text: 'Вторая запись дня для сводки' });
+    const g1 = await k.json('/journal', 'POST', { text: 'Первая благодарность для сводки', kind: 'gratitude' }), g2 = await k.json('/journal', 'POST', { text: 'Вторая благодарность для сводки', kind: 'gratitude' });
+    const day = (await k.json('/knowledge?doc=recent')).data.days.find((x) => x.day === d0);
+    assert.equal(day.texts.length, 2, 'both texts of the day are in recent: ' + JSON.stringify(day.texts)); assert.equal(day.gratitudes.length, 2, 'both gratitudes are in recent');
+    assert.deepEqual(day.texts.map((t) => t.id), [t1.item.id, t2.item.id], 'texts keep id order'); assert.deepEqual(day.gratitudes.map((g) => g.id), [g1.item.id, g2.item.id]);
+    assert.ok(!('text' in day) && !('gratitude' in day), 'no single-value fields that would hide the others');
+    const txt = (await k.json('/knowledge/text?doc=recent')).text;
+    for (const s of ['Первая запись дня для сводки', 'Вторая запись дня для сводки', 'Первая благодарность для сводки', 'Вторая благодарность для сводки']) assert.ok(txt.includes(s), 'the document text quotes: ' + s);
+    /* сопоставление по id: множество id записей дня в выгрузке и в сводке совпадает */
+    const exK = await k.json('/data/export');
+    const exIds = exK.journal.filter((j) => j.day === d0 && ['', 'gratitude', 'answer'].includes(j.kind)).map((j) => j.id).sort((a, b) => a - b);
+    const docIds = [...(day.texts || []), ...(day.gratitudes || []), ...(day.answers || [])].map((x) => x.id).sort((a, b) => a - b);
+    assert.deepEqual(docIds, exIds, 'export and summary name the same records by id');
+    assert.deepEqual((await k.json('/journal')).items.filter((i) => i.kind === '').map((i) => i.id).sort((a, b) => a - b), day.texts.map((t) => t.id).sort((a, b) => a - b));
+    console.log('PASS: F08 — two texts and two gratitudes of one day survive in recent as arrays, the text quotes all of them, export and summary match by id.'); }
 
   // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
   { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);

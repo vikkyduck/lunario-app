@@ -18,6 +18,7 @@
 import { addDays, plural } from './util.mjs';
 import { createMoods } from './moods.mjs';
 import { countActiveDays } from './day-sources.mjs';
+import { readableWith } from './private-text.mjs';
 
 export const RECENT_DAYS = 120;
 export const DOC_TITLES = { profile: 'Обо мне', readings: 'Тесты и совместимости', recent: 'Последние записи', portrait: 'Портрет' };
@@ -52,6 +53,7 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
   const cardName = (slug) => { const a = [...C.ARCANA].find((c) => c.slug === slug); return a ? a.name : ''; };
   const runeName = (slug) => { const r = [...C.RUNES].find((x) => x.slug === slug); return r ? r.name : ''; };
   const Moods = createMoods(db);
+  const readable = readableWith(open);   /* нечитаемая запись помечается, а не роняет документ и не выглядит пустой (F14) */
   const moodWord = (k) => String(MOOD_RU[k] || k);
   const moodsOf = (uid, d) => Moods.ofDay(uid, d);   /* один контракт чтения настроений — moods.mjs (аудит v98, F10) */
 
@@ -96,18 +98,21 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     return { tests: [], compat };   /* тесты появятся вместе с экраном «Тесты» — сюда лягут их результаты по датам */
   }
 
-  /* ── один день дословно: все, что человек оставил в этот день ── */
+  /* ── один день дословно: все, что человек оставил в этот день. Кратность — по контракту JournalDay (day.mjs entriesOf, ревью v114 F08):
+     записей одного вида за день может быть несколько, поэтому texts[], gratitudes[], answers[] — массивы с id в порядке id, ничего не
+     вытесняется; weekly — одна на день (это гарантирует week.reflect). Выгрузка и сводка сопоставляются по id ── */
   function dayRecord(u, day) {
     const uid = u.id, rec = { day };
     const lunar = lunarOf ? lunarOf(u, day) : null; if (lunar) rec.lunar = lunar;
     const moods = moodsOf(uid, day); if (moods.length) rec.moods = moods.map((m) => ({ key: m, label: moodWord(m) }));
-    for (const r of db.prepare("SELECT kind, text, title FROM journal WHERE user_id = ? AND day = ? ORDER BY id").all(uid, day)) {
-      const text = open(r.text), title = open(r.title || '');
-      if (r.kind === '') rec.text = text;
-      else if (r.kind === 'gratitude') rec.gratitude = text;
-      else if (r.kind === 'answer') rec.answer = { question: title, text };
-      else if (r.kind === 'weekly') rec.weekly = text;
-      else if (r.kind === 'thought') { const meta = parse(title) || {}; (rec.thoughts ||= []).push({ about: meta.source || '', name: meta.name || '', question: meta.question || '', entry: Number(meta.entry) || 0, text }); }
+    for (const r of db.prepare("SELECT id, kind, text, title FROM journal WHERE user_id = ? AND day = ? ORDER BY id").all(uid, day)) {
+      const t = readable(r.text), h = readable(r.title || ''), text = t.text, title = h.text;
+      const flag = t.unreadable || h.unreadable ? { unreadable: true } : {};
+      if (r.kind === '') (rec.texts ||= []).push({ id: r.id, text, ...flag });
+      else if (r.kind === 'gratitude') (rec.gratitudes ||= []).push({ id: r.id, text, ...flag });
+      else if (r.kind === 'answer') (rec.answers ||= []).push({ id: r.id, question: title, text, ...flag });
+      else if (r.kind === 'weekly') rec.weekly = t.unreadable ? null : text;
+      else if (r.kind === 'thought') { const meta = parse(title) || {}; (rec.thoughts ||= []).push({ id: r.id, about: meta.source || '', name: meta.name || '', question: meta.question || '', entry: Number(meta.entry) || 0, text, ...flag }); }
     }
     for (const r of db.prepare('SELECT kind, question, title, body, data FROM entries WHERE user_id = ? AND day = ? ORDER BY id').all(uid, day)) {
       const data = parse(r.data) || {};
@@ -115,9 +120,9 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
       else if (r.kind === 'dayrune') rec.rune = { slug: data.rune || '', name: r.title, answer: r.body };
       else { const q = open(r.question || ''); (rec.asks ||= []).push({ kind: r.kind, kindRu: KIND_RU[r.kind] || r.kind, question: q, topic: q ? (TOPIC_RU[topicOf(q)] || '') : '', answer: r.title, text: r.body, layout: data.layout || '', cards: (data.cards || []).map(cardName).filter(Boolean), runes: (data.runes || []).map(runeName).filter(Boolean) }); }
     }
-    const habits = db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(uid, day).map((h) => open(h.title));
+    const habits = db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(uid, day).map((h) => readable(h.title).text).filter((x) => x !== null);
     if (habits.length) rec.habits = habits;
-    const ask = db.prepare('SELECT a.title, x.kept, x.note FROM askesis_days x JOIN askesis a ON a.id = x.askesis_id WHERE a.user_id = ? AND x.day = ? ORDER BY a.id').all(uid, day).map((x) => ({ title: open(x.title), kept: !!x.kept, note: open(x.note || '') }));
+    const ask = db.prepare('SELECT a.title, x.kept, x.note FROM askesis_days x JOIN askesis a ON a.id = x.askesis_id WHERE a.user_id = ? AND x.day = ? ORDER BY a.id').all(uid, day).map((x) => ({ title: readable(x.title).text, kept: !!x.kept, note: readable(x.note || '').text }));
     if (ask.length) rec.askesis = ask;
     if (db.prepare('SELECT 1 FROM day_photos WHERE user_id = ? AND day = ?').get(uid, day)) rec.photo = true;
     const echo = db.prepare('SELECT verdict FROM week_echoes WHERE user_id = ? AND day = ?').get(uid, day); if (echo) rec.echo = echo.verdict;
@@ -299,10 +304,12 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     if (r.card) parts.push(`карта дня — ${r.card.name}`);
     if (r.rune) parts.push(`руна дня — ${r.rune.name}`);
     const lines = [`${fmt(r.day)}${parts.length ? ' · ' + parts.join('; ') : ''}`];
-    if (r.text) lines.push(`Запись: «${r.text}»`);
-    if (r.gratitude) lines.push(`Благодарность: «${r.gratitude}»`);
-    if (r.answer) lines.push(`Вопрос дня «${r.answer.question}» — ответ: «${r.answer.text}»`);
-    for (const t of r.thoughts || []) lines.push(`Мысль к ${t.name || t.about}: «${t.text}»`);
+    /* по одной строке на каждую запись вида, в порядке id (F08); нечитаемая — названа, а не пропущена молча (F14) */
+    const quote = (label, x) => x.unreadable ? `${label}: запись не удалось расшифровать` : `${label}: «${x.text}»`;
+    for (const t of r.texts || []) lines.push(quote('Запись', t));
+    for (const g of r.gratitudes || []) lines.push(quote('Благодарность', g));
+    for (const a of r.answers || []) lines.push(a.unreadable ? 'Вопрос дня — ответ не удалось расшифровать' : `Вопрос дня «${a.question}» — ответ: «${a.text}»`);
+    for (const t of r.thoughts || []) lines.push(t.unreadable ? `Мысль к ${t.name || t.about}: не удалось расшифровать` : `Мысль к ${t.name || t.about}: «${t.text}»`);
     for (const a of r.asks || []) { const list = a.cards?.length ? a.cards : a.runes?.length ? a.runes : []; lines.push(`${a.kindRu}${a.topic ? ` (${a.topic})` : ''}: «${a.question}» → ${a.answer}${list.length > 1 ? ` (${list.join(', ')})` : ''}`); }
     if (r.habits) lines.push(`Привычки: ${r.habits.join(', ')} ✓`);
     for (const a of r.askesis || []) lines.push(`Аскеза «${a.title}»: ${a.kept ? 'держусь' : 'сорвалась'}${a.note ? ` — «${a.note}»` : ''}`);

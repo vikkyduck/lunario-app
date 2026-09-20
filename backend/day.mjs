@@ -67,7 +67,10 @@ export function createDay({ db, seal, open, readable = null, sealBytes = null, o
     };
   }
 
-  /* все записи дня по видам — экран показывает каждую, удаляет по одной; итог недели (kind='weekly') лежит под воскресеньем */
+  /* Контракт JournalDay (ревью v114, F08) — источник истины о кратности записей дня: записей одного вида за день может быть
+     несколько (старые версии писали отдельной панелью), читатели работают с массивами в порядке id — texts[], gratitudes[],
+     answers[] с id каждой записи. Так читают экран дня, база знаний (knowledge.mjs dayRecord) и выгрузка; одиночные text /
+     gratitude / answer — только «ячейка для правки», последняя запись вида. Итог недели (kind='weekly') один на день, под воскресеньем */
   const entriesOf = (uid, d) => ({ texts: allOf(uid, d, ''), gratitudes: allOf(uid, d, 'gratitude'), answers: allOf(uid, d, 'answer'), weekly: cell(latest(uid, d, 'weekly')) });
   /* Правка задним числом — до года назад (day-routes); день старше отдается только для чтения, и экран знает это заранее (аудит v98, F18) */
   const EDIT_DAYS = 366;
