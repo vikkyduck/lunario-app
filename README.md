@@ -477,12 +477,16 @@ systemd до смены пользователя). Тестовый стенд (
 
 | Проверка | Ожидание | Результат |
 |---|---|---|
-| `systemctl show -p User lunario-app` | `User=lunario` | _после выпуска_ |
-| `sudo -u lunario touch /opt/lunario-app/backend/x` | отказ (Permission denied) | _после выпуска_ |
-| запись в дневник в приложении | сохраняется | _после выпуска_ |
-| правка текста в кабинете «Контент» | сохраняется, версия в архиве | _после выпуска_ |
-| «Снять копию сейчас» в кабинете админа | файл в `/opt/lunario-app-backups` | _после выпуска_ |
-| `systemctl restart lunario-app` | `/api/health` отвечает | _после выпуска_ |
+| `systemctl show -p User lunario-app` | `User=lunario` | ✅ 20.09.2026, выпуск c0598a9: `User=lunario`, `Group=lunario`, active; таймеры daily и backup — тоже `lunario` |
+| `runuser -u lunario -- touch /opt/lunario-app/current/backend/x` | отказ (Permission denied) | ✅ 20.09.2026: `Permission denied`; код `root:lunario 640` |
+| запись в дневник в приложении | сохраняется | ⏳ проверить в приложении (данные `lunario:lunario`, `app.db` 640 — права есть) |
+| правка текста в кабинете «Контент» | сохраняется, версия в архиве | ⏳ проверить в кабинете (проба от `lunario`: чтение и запись в `/opt/lunario-content` — ок) |
+| «Снять копию сейчас» в кабинете админа | файл в `/opt/lunario-app-backups` | ⏳ проверить в кабинете (папка копий `lunario:lunario`) |
+| `systemctl restart lunario-app` | `/api/health` отвечает | ✅ 20.09.2026: `{"ok":true,"schema":22}` после перезапуска |
+
+Урок первого выпуска: `./обновить-тексты.sh` раньше слал файлы с владельцем вашего компьютера (rsync `-a` хранит uid),
+и после перехода на `lunario` сервис не мог читать и править контент — теперь rsync идет без `-o/-g`, а права после
+отправки ставит `service-user.sh` из `current/`. Повторный выпуск той же версии больше не делает ее «прежней» для отката.
 
 ## Локальный просмотр
 

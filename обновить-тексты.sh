@@ -17,13 +17,14 @@ process.exit(0);" 2>/dev/null | grep -v '^Тексты:'
 
 echo "==> отправляю на сервер (новее на сервере — не трогаю)"
 ssh "$SERVER" "mkdir -p $REMOTE/картинки"
+# без -o/-g: иначе файлы приезжают с владельцем вашего компьютера (uid 501), и сервис (пользователь lunario, F02) не может их ни читать, ни править из кабинета
 for i in 1 2 3 4 5; do
-  rsync -az --update --exclude '.DS_Store' content/ "$SERVER:$REMOTE/" && break
+  rsync -rlptDz --update --exclude '.DS_Store' content/ "$SERVER:$REMOTE/" && break
   echo "   связь оборвалась, пробую ещё раз ($i)"; sleep 15
 done
 
 # файлы, пришедшие от root, сервису (пользователь lunario, F02) иначе не переписать из кабинета «Контент»
-ssh "$SERVER" 'test -x /opt/lunario-app/backend/service-user.sh && bash /opt/lunario-app/backend/service-user.sh >/dev/null || true'
+ssh "$SERVER" 'for s in /opt/lunario-app/current/backend/service-user.sh /opt/lunario-app/backend/service-user.sh; do if [ -e "$s" ]; then bash "$s" >/dev/null; break; fi; done'
 echo "==> проверяю, что приложение их увидело"
 sleep 3
 ssh "$SERVER" 'curl -s -o /dev/null -w "   сайт отвечает: %{http_code}\n" https://lunario.online/app/'

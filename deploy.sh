@@ -83,7 +83,9 @@ remote "cd $REL && bash -c '$SHA_CMD' sha -c --quiet MANIFEST 2>/dev/null || (cd
 PREV="$(remote "readlink $APP_ROOT/current 2>/dev/null || echo ''")"
 PREV_OF_PREV="$(remote "cat $APP_ROOT/PREVIOUS 2>/dev/null || echo ''")"   # при откате PREVIOUS возвращается к прежнему значению
 finish_or_rollback() {
-  remote "cd $APP_ROOT && ln -sfn releases/$RELEASE current && echo '$PREV' > PREVIOUS && cp $REL/RELEASE RELEASE && cp $REL/MANIFEST MANIFEST" || return 1
+  # повторный выпуск той же версии не делает ее «прежней» для отката — PREVIOUS остается на настоящем прежнем каталоге
+  if [ "$PREV" = "releases/$RELEASE" ]; then remote "cd $APP_ROOT && ln -sfn releases/$RELEASE current && cp $REL/RELEASE RELEASE && cp $REL/MANIFEST MANIFEST" || return 1
+  else remote "cd $APP_ROOT && ln -sfn releases/$RELEASE current && echo '$PREV' > PREVIOUS && cp $REL/RELEASE RELEASE && cp $REL/MANIFEST MANIFEST" || return 1; fi
   if [ "$INSTALL_UNITS" = 1 ]; then
     # сервис работает не от root (ревью v114, F02): пользователь lunario и права — backend/service-user.sh; rsync от root сбросил владельцев
     remote "bash $APP_ROOT/current/backend/service-user.sh $APP_ROOT $CONTENT_ROOT $BACKUP_ROOT" || return 1

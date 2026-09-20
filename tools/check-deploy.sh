@@ -43,6 +43,12 @@ grep -q "site/index.html" "$APP_ROOT/MANIFEST" || fail "манифест не з
 [ ! -e "$APP_ROOT/.deploy.lock" ] || fail "замок не снят"
 [ "$(cat "$APP_ROOT/PREVIOUS")" = "releases/prev-old1" ] && [ -s "$APP_ROOT/releases/prev-old1/backend/server.mjs" ] || fail "прежняя раскладка не сохранена как releases/prev-old1: PREVIOUS=$(cat "$APP_ROOT/PREVIOUS")"
 echo "✅ коммит во время проверок: выпущен $FIRST, новый $NEWEST не попал; прежняя раскладка сохранена для отката"
+# повторный выпуск той же версии: current та же, PREVIOUS не указывает сам на себя
+git -C "$CLONE" checkout -q "$FIRST"
+deploy >"$T/log1b" 2>&1 || { cat "$T/log1b"; fail "повторный выпуск той же версии не прошел"; }
+[ "$(cur)" = "releases/$FIRST" ] && [ "$(cat "$APP_ROOT/PREVIOUS")" = "releases/prev-old1" ] || fail "после повторного выпуска PREVIOUS=$(cat "$APP_ROOT/PREVIOUS"), ожидался releases/prev-old1"
+git -C "$CLONE" checkout -q -
+echo "✅ повторный выпуск той же версии не делает ее прежней для отката"
 
 # ── 2. чужая правка на сервере без смены RELEASE — манифест ловит, ссылка не меняется ──
 (cd "$CLONE" && . ./deploy-lib.sh && remote_state > "$T/snapshot")
