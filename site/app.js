@@ -2782,21 +2782,12 @@ function showWishPhoto(id, t){
 }
 async function removeWishPhoto(id){ try { const r = await api('/wishes/photo?id=' + id, { method: 'DELETE' }); hidePostcard(); renderWishes(r); } catch (e) { toast('Не получилось'); } }
 
-/* ══════════ Фото в аккаунте — кружок в правом верхнем углу главной, по нему же открывается «Аккаунт» ══════════ */
-const photoUrl = (u) => u && u.photo ? `/app/api/photo?t=${encodeURIComponent(u.photoTs || '')}` : '';
+/* ══════════ Кружок в правом верхнем углу главной — первая буква имени, по нему открывается «Аккаунт». Фото участницы снято 20.09
+   (владелица и Марина, голос ЦА: «это не соцсеть»); загруженные раньше фото на экране не показываются, API /photo остается для экспорта ══════════ */
 function paintAvatar(){
   const u = S.user, letter = (u.name || '').trim().charAt(0).toUpperCase() || '✦';
-  document.querySelectorAll('.acct:not(.theme-toggle)').forEach(el=>{el.innerHTML = `<span class="acct-content">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : esc(letter)}</span>`;});
-  const box = $('ac-photo'); if (box) box.innerHTML = `<div class="avatar">${u.photo ? `<img src="${photoUrl(u)}" alt="">` : letter}</div>`;
-  const actions = $('ac-photo-actions'); if (actions) actions.innerHTML = `<button data-on="click:setPhoto" class="btn ghost sm" type="button">${u.photo ? 'Заменить фото' : 'Загрузить фото'}</button>${u.photo ? '<button data-on="click:removePhoto" class="btn ghost sm" type="button">Убрать фото</button>' : ''}`;
-  const note = $('ac-photo-note'); if (note) note.hidden = !!u.photo;
+  document.querySelectorAll('.acct').forEach(el=>{el.innerHTML = `<span class="acct-content">${esc(letter)}</span>`;});
 }
-async function setPhoto(){
-  const photo = await pickImage(320, 0.85); if (!photo) return;
-  try { const r = await api('/photo', { method: 'POST', body: JSON.stringify({ photo }) }); S.user = Object.assign(S.user, r.user); paintAvatar(); toast('Фото сохранено ✦'); }
-  catch (e) { toast(e.status === 413 ? 'Фото слишком большое — попробуйте другое' : 'Не получилось загрузить фото'); }
-}
-async function removePhoto(){ try { const r = await api('/photo', { method: 'DELETE' }); S.user = Object.assign(S.user, r.user); paintAvatar(); } catch (e) { toast('Не получилось'); } }
 
 /* снимок последнего удачного /me — только для аккаунта, который уже прошел анкету, и не старше суток */
 function offlineSnapshot(){

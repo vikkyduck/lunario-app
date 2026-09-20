@@ -2135,8 +2135,10 @@ body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.luna
 body.inner :is(.practice-ideas,.observation,.practice-create,.lunar-period,.lunar-library)[open]>summary::after{content:'⌃'}
 body.inner .ln-hidden summary{border:1px solid var(--line);border-radius:var(--r-m);padding:11px 14px;margin-top:8px;background:var(--surface)}
 /* ── Аккаунт после чистки 20.09: тема — значком рядом с фото, почта — под датой рождения, привязка почты — прямо в профиле ── */
-#v-account .profile-head .theme-toggle{margin-left:auto;flex:0 0 44px;width:44px;height:44px;padding:0;display:grid;place-items:center}
-#v-account .theme-toggle svg{width:22px;height:22px}
+#v-account .profile-head .theme-toggle{flex:0 0 auto;display:grid;justify-items:center;gap:4px;padding:0;background:none;border:0;color:var(--gold-2);font:inherit;cursor:pointer}   /* на месте фото: круг с солнцем или луной и слово, куда переключит */
+#v-account .theme-toggle .theme-circle{width:64px;height:64px;flex:0 0 64px;display:grid;place-items:center;border-radius:50%}
+#v-account .theme-toggle svg{width:28px;height:28px}
+#v-account .theme-toggle small{font-size:12px;line-height:1;color:var(--muted);letter-spacing:.02em}
 #v-account #profile-email{margin:2px 0 0;font-size:15px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
 #v-account .ac-auth{margin-top:14px;padding:16px}
 #v-account .ac-auth[hidden]{display:none}

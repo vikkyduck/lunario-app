@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=104"></script>
+<script src="/app/boot.js?v=105"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=104">
-<link rel="stylesheet" href="/app/app.css?v=104">
-<link rel="stylesheet" href="/app/frame.css?v=104">
+<link rel="stylesheet" href="/app/theme.css?v=105">
+<link rel="stylesheet" href="/app/app.css?v=105">
+<link rel="stylesheet" href="/app/frame.css?v=105">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -59,7 +59,7 @@
 </div>
 <div class="wrap">
   <div class="section-head"><div class="wordmark compact-brand section-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div>
-    <button data-on="click:go-account" class="acct section-acct" type="button" aria-label="Аккаунт: фото, уведомления, настройки">✦</button></div>
+    <button data-on="click:go-account" class="acct section-acct" type="button" aria-label="Аккаунт: уведомления, настройки">✦</button></div>
 
   <!-- ВХОД: личный профиль или вход по почте -->
   <section class="view" id="v-hello">
@@ -185,7 +185,7 @@
   <!-- Четыре постоянных раздела; карточки используют прежние панели и данные. -->
   <section class="view" id="v-home">
     <div class="row hdr"><div class="grow"><div class="wordmark compact-brand" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon width="208" height="208"></canvas></span></span></div><span class="eyebrow" id="h-date"></span><h1 class="sr-only">Сегодня</h1></div>
-      <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — фото, настройки и управление">✦</button></div>
+      <button data-on="click:go-account" class="acct" id="h-acct" type="button" data-feature="account" aria-label="Аккаунт — настройки и управление">✦</button></div>
     <!-- Герой дня (по разбору референсов 19.09): большая Луна с настоящей фазой, под ней фаза и лунный день, полоска недели.
          Строки «имя · Луна сейчас» и даты полнолуния/новолуния сняты (решение владелицы 20.09). Тап — лунный день -->
     <button data-on="click:openWidget-lunar" class="home-hero" id="home-hero" type="button" aria-label="Луна сегодня: открыть лунный день">
@@ -240,17 +240,17 @@
     <button data-on="click:openWidget-natal" class="me-card" id="me-card" type="button" hidden></button>
     <div class="wids about-links list-rows"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты, дома, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнера</span></button><button data-on="click:openWidget-tests" class="wid" data-feature="tests" type="button" aria-label="Тесты"><i class="ico list"></i><b>Тесты</b><span id="tests-sub">Узнать себя через вопросы</span></button></div>
   </section>
-  <!-- АККАУНТ: открывается по кружку с фото в правом верхнем углу главной — фото, анкета, приложение, приватность, помощь, выход.
+  <!-- АККАУНТ: открывается по кружку с буквой имени в правом верхнем углу главной — анкета, приложение, приватность, помощь, выход.
        Чистка 20.09 (решение владелицы): сняты «Вход по почте», «Новое в приложении», «Геолокация», «Настройка контента», «Подсказки по приложению»
-       и «Оформление» — тема переключается значком рядом с фото в профиле (themeToggle), почта видна под датой рождения, привязать ее можно тут же -->
+       и «Оформление» — тема переключается значком на месте фото в профиле (themeToggle), почта видна под датой рождения, привязать ее можно тут же.
+       Фото участницы снято совсем (Марина, голос ЦА: «это не соцсеть, я его не загружу») — в кружке справа вверху первая буква имени -->
   <section class="view" id="v-account"><h1 class="sr-only">Аккаунт</h1>
     <div class="account-layout"><div class="account-col account-personal">
     <section class="account-group profile-block" id="ag-profile"><h2>Профиль</h2>
     <section class="profile-summary card">
-      <div class="profile-head"><div id="ac-photo"></div><div class="profile-id"><h2 id="ac-name"></h2><p id="profile-summary"></p><p id="profile-email" hidden></p></div><button data-on="click:themeToggle" class="acct theme-toggle" id="theme-toggle" type="button" aria-label="Переключить тему"></button></div>
-      <div class="profile-actions"><button data-on="click:openWidget-edit" class="btn ghost sm" data-feature="edit" type="button">Изменить мои данные</button><span id="ac-photo-actions"></span><button data-on="click:accountMailOpen" class="btn ghost sm" id="ac-mail-btn" type="button" hidden>Привязать почту</button></div>
+      <div class="profile-head"><button data-on="click:themeToggle" class="theme-toggle" id="theme-toggle" type="button" aria-label="Переключить тему"><span class="avatar theme-circle" id="theme-circle"></span><small id="theme-caption"></small></button><div class="profile-id"><h2 id="ac-name"></h2><p id="profile-summary"></p><p id="profile-email" hidden></p></div></div>
+      <div class="profile-actions"><button data-on="click:openWidget-edit" class="btn ghost sm" data-feature="edit" type="button">Изменить мои данные</button><button data-on="click:accountMailOpen" class="btn ghost sm" id="ac-mail-btn" type="button" hidden>Привязать почту</button></div>
       <div class="card ac-auth" id="ac-auth" hidden></div>
-      <p class="profile-note" id="ac-photo-note">Фото появится в кружке справа вверху</p>
     </section></section>
     <section class="account-group danger-zone" id="ag-manage"><h2>Управление аккаунтом</h2><div class="rows">
       <button data-on="click:logout" class="rowbtn" type="button"><i class="ico exit"></i>Выйти на этом устройстве</button>
@@ -366,15 +366,15 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=104"></script>
+<script src="/app/moon-logo.js?v=105"></script>
 
-<script type="module" src="/app/sky.js?v=104"></script>
+<script type="module" src="/app/sky.js?v=105"></script>
 
-<script src="/app/common.js?v=104"></script>
-<script src="/app/experience.js?v=104"></script>
-<script src="/app/app.js?v=104"></script>
-<script src="/app/tour.js?v=104"></script>
-<script src="/app/handlers.js?v=104"></script>
-<script src="/app/on.js?v=104"></script>
+<script src="/app/common.js?v=105"></script>
+<script src="/app/experience.js?v=105"></script>
+<script src="/app/app.js?v=105"></script>
+<script src="/app/tour.js?v=105"></script>
+<script src="/app/handlers.js?v=105"></script>
+<script src="/app/on.js?v=105"></script>
 </body>
 </html>

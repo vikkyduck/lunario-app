@@ -787,19 +787,12 @@ try {
       page.on('pageerror', e => errors.push(e.message));
       await page.goto(base + '/', { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('#v-home.on');
-      await page.waitForFunction(() => document.querySelector('#h-acct img')?.naturalWidth > 0);
-      /* «Аккаунт» больше не вкладка внизу: после перестройки навигации туда ведёт кружок с фото в шапке,
-         а нижние вкладки — «Сегодня», «Свериться с собой», «Дневник», «Обо мне». */
+      /* «Аккаунт» больше не вкладка внизу: после перестройки навигации туда ведёт кружок с буквой имени в шапке,
+         а нижние вкладки — «Сегодня», «Свериться с собой», «Дневник», «Обо мне». Фото участницы в интерфейсе нет (20.09) */
       await page.locator('#h-acct').click();
       await page.locator('#v-account.on').waitFor();
-      assert.ok(await page.getByRole('button', { name: 'Заменить фото', exact: true }).isVisible());
-      // Exercise the existing photo picker, resize/upload and avatar refresh.
-      const chooser = page.waitForEvent('filechooser');
-      await page.getByRole('button', { name: 'Заменить фото', exact: true }).click();
-      await (await chooser).setFiles({ name: 'test-photo.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
-      await page.waitForFunction(() => document.querySelector('#toast').textContent.includes('Фото сохранено'));
+      assert.ok(await page.locator('#theme-toggle').isVisible(), 'theme toggle sits where the photo used to be');
       await page.reload(); await page.waitForSelector('#v-home.on');
-      await page.waitForFunction(() => document.querySelector('#h-acct img')?.naturalWidth > 0);
       await page.locator('.app-nav [data-nav=history]').click();await page.locator('#v-history').getByRole('button', { name: 'Мои желания', exact: true }).click();
       await page.waitForFunction(() => document.querySelector('#m-wishes .wish-picture img')?.naturalWidth > 0);
       assert.ok((await page.locator('#m-wishes').innerText()).includes('Тест: поездка к морю'));
@@ -885,7 +878,7 @@ try {
       assert.deepEqual(await page.locator('#v-ask .wid b').allTextContents(),['Ответить себе на вопрос','Да / Нет','Руны','Таро']);
       console.log('PASS: all four main sections, all 32 emotion options, editable question chips, answer-to-diary flow, canonical News links, all restored cards, 320/390/844/1440 layouts.');
       assert.deepEqual(errors, []);
-      console.log('PASS: existing profile/wish photo uploads and reloads, habit/askesis navigation, saved notes, failed-request draft protection and visible feedback in the mobile UI.');
+      console.log('PASS: existing wish photo uploads and reloads, habit/askesis navigation, saved notes, failed-request draft protection and visible feedback in the mobile UI.');
       }
       }
     } finally { await browser.close(); }
