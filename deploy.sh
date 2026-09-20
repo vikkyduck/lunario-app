@@ -5,17 +5,17 @@ set -euo pipefail
 SERVER="${SERVER_USER:-root}@${SERVER_HOST:-5.129.198.180}"
 echo "==> проверка версии оболочки и справочника городов"
 node tools/bump-version.mjs >/dev/null || { echo "❌ версии ?v= расходятся — node tools/bump-version.mjs <N>"; exit 1; }
-# обязательные проверки перед выпуском — те же, что в CI (.github/workflows/check.yml); SKIP_CHECKS=1 только для срочной правки
+# обязательные проверки перед выпуском — один набор с CI (tools/check-all.mjs, аудит v98 F21); SKIP_CHECKS=1 только для срочной правки
 if [ "${SKIP_CHECKS:-}" != "1" ]; then
   echo "==> проверки перед выпуском (SKIP_CHECKS=1 — пропустить)"
-  for f in backend/*.mjs tools/*.mjs; do node --check "$f" || { echo "❌ синтаксис: $f"; exit 1; }; done
-  node tools/check-personal-features.mjs >/dev/null 2>&1 || { echo "❌ check-personal-features не прошёл — запустите node tools/check-personal-features.mjs"; exit 1; }
-  node tools/check-sync.mjs >/dev/null 2>&1 || { echo "❌ check-sync не прошёл — запустите node tools/check-sync.mjs"; exit 1; }
-  # те же проверки, что в CI (.github/workflows/check.yml): выпуск не должен уходить с красным CI
-  node tools/check-yo.mjs >/dev/null 2>&1 || { echo "❌ в приложении есть буква «ё» — node tools/check-yo.mjs"; exit 1; }
-  # все остальные проверки из tools/ — каждая своя тема; без Playwright UI-часть у них пропускается сама
-  for c in check-isolation check-entry-history check-daily-sets check-brand check-daylight check-design check-experience check-feature-recovery check-four-sections check-notifications check-repeat-practices check-restoration check-usability; do node tools/$c.mjs >/dev/null 2>&1 || { echo "❌ $c не прошёл — запустите node tools/$c.mjs"; exit 1; }; done
+  node tools/check-all.mjs || { echo "❌ проверки не прошли — выпуск остановлен (подробности выше)"; exit 1; }
 fi
+# выпуск собирается из зафиксированного коммита, а не из меняющейся рабочей копии (аудит v98 F22): незакоммиченные правки — стоп
+if [ -n "$(git status --porcelain --untracked-files=no)" ] && [ "${ALLOW_DIRTY:-}" != "1" ]; then
+  echo "❌ в рабочей копии есть незакоммиченные правки — сначала commit (ALLOW_DIRTY=1 — выпустить как есть)"; git status --short | head -20; exit 1
+fi
+RELEASE="$(git rev-parse --short HEAD)$( [ -n "$(git status --porcelain --untracked-files=no)" ] && echo '-dirty' )"
+echo "==> выпуск $RELEASE"
 # cities.db не в git: свежий клон без него не должен стереть серверный (rsync --delete)
 if ! ssh "$SERVER" 'test -s /opt/lunario-app/backend/cities.db' && [ ! -s backend/cities.db ]; then
   echo "❌ нет backend/cities.db ни локально, ни на сервере — соберите: node tools/build-cities.mjs <дампы GeoNames>"; exit 1
@@ -27,6 +27,8 @@ ssh "$SERVER" 'mkdir -p /opt/lunario-app/{site,backend,data} /opt/lunario-conten
 echo "==> site/ и backend/ → /opt/lunario-app"
 rsync -az --delete site/ "$SERVER:/opt/lunario-app/site/"
 rsync -az --delete --exclude cities.db --exclude "*.db-wal" --exclude "*.db-shm" backend/ "$SERVER:/opt/lunario-app/backend/"
+# идентификатор выпуска и манифест хешей всех выложенных файлов — по ним deploy-safe.sh узнает чужой выпуск (F22)
+ssh "$SERVER" "cd /opt/lunario-app && echo '$RELEASE' > RELEASE && find site backend -type f ! -name cities.db ! -name '*.db-wal' ! -name '*.db-shm' -print0 | sort -z | xargs -0 sha256sum > MANIFEST"
 # тексты и картинки — не код: они живут в /opt/lunario-content и выкладываются отдельно, ./обновить-тексты.sh
 echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app/backend/lunario-app.service /etc/systemd/system/lunario-app.service \

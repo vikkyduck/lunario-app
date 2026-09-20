@@ -93,12 +93,12 @@ export function createCabinetRoutes(deps) {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(url.searchParams.get('file') || '');
       if (!CE.BOOKS[file]) return json(res, 404, { ok: false, error: 'not_found' });
-      try { return json(res, 200, { file, ...CE.BOOKS[file], records: CE.bookRecords(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); }
+      try { return json(res, 200, { file, ...CE.BOOKS[file], version: CE.bookVersion(file), records: CE.bookRecords(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); }
     }
     if (p === '/api/cabinet/record') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
-      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add, u.email) : CE.bookRecordSave(String(b.file || ''), b, u.email); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : 400, r); }
-      if (req.method === 'DELETE') { const r = CE.bookRecordRemove(String(url.searchParams.get('file') || ''), url.searchParams.get('index'), u.email); return json(res, r.ok ? 200 : 400, r); }
+      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = b.add !== undefined ? CE.bookRecordAdd(String(b.file || ''), b.add, u.email) : CE.bookRecordSave(String(b.file || ''), b, u.email); if (r.ok) console.log(`[контент] ${u.email} ${b.add !== undefined ? 'добавил запись в' : 'изменил запись в'} ${b.file}`); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
+      if (req.method === 'DELETE') { const q = url.searchParams; const r = CE.bookRecordRemove(String(q.get('file') || ''), { index: q.get('index'), key: q.get('key'), version: q.get('version') || '' }, u.email); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
     }
     /* «Я помню» на себе: что сработало бы у этого сотрудника сегодня — строка дня, «Обо мне», любимый способ, вопрос по теме, вечерний пуш */
     /* база знаний — только своя: список документов и любой из них текстом и данными; чужие документы кабинет не открывает */

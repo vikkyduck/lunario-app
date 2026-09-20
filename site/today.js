@@ -256,6 +256,8 @@ function paintNum(n){
 /* ── «Что вас сегодня беспокоит?»: вопрос раскрывается в три способа получить ответ ── */
 function askErrorText(e){
   return e.code==='short_question' ? 'Напишите вопрос целиком, так вы потом вспомните, что вас волновало.'
+    : e.code==='open_question' ? 'Этот вопрос — не про «да» или «нет». Спросите руны или карты — или переформулируйте: «Стоит ли…?»'   /* аудит v98, F19 */
+    : e.code==='too_many' ? 'Вопросов за день уже сто — продолжим завтра'
     : 'Не получилось';
 }
 $('a-go').onclick=async()=>{
@@ -362,7 +364,8 @@ function answerFrom(a,day){ ANS.saved=a&&a.text?{id:a.id,day,text:a.text}:null; 
 async function saveAnswerText(t){
   t=(t||'').trim(); if(t.length<3){toast('Напишите хотя бы пару слов');return false;}
   if(ANS.saving)return false; ANS.saving=true; paintAnswerEverywhere();
-  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); ANS.draft=''; ANS.open=false; ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
+  ANS.op=ANS.op||opKey();   /* повтор после обрыва — с тем же ключом: сервер вернет ту же квитанцию (F02) */
+  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question,op:ANS.op})}); ANS.op=''; ANS.draft=''; ANS.open=false; ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
     toast(r.updated?'Ответ обновлен в дневнике':'Записано в дневник'); hap('ok'); if(DC.state&&DC.state.day===r.item.day){DC.state.answer={id:r.item.id,text:r.item.text}; if(DC.mode!=='steps')DC.answer=r.item.text;} XP.timeline.dirty=true; return true; }
   catch(e){ toast(ERR_SAVE_KEPT); ANS.draft=t; ANS.open=true; return false; }
   finally{ ANS.saving=false; paintAnswerEverywhere(); }

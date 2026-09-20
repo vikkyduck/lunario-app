@@ -1,5 +1,9 @@
 /* Карта дня, руна дня, вопрос «да/нет» и руны, расклад, натальная карта, нумерология, совместимость.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
+import { isDay } from '../util.mjs';
+/* открытый вопрос — начинается с вопросительного слова, на которое «да» или «нет» не отвечают; «как думаешь, стоит ли…» — все же про да/нет */
+const OPEN_Q = /^[«"'\s]*(как|что|почему|зачем|когда|где|куда|откуда|кто|кого|кому|кем|чем|чего|сколько|какой|какая|какое|какие|каким|какую|о чем)(?![а-я\u0451])/iu;   /* \b в JS не знает кириллицы — граница слова задана явно */
+const YESNO_LEAD = /^[«"'\s]*как\s+(думае|счита|по-твоему|по-вашему|вы\s+думаете|вы\s+считаете)/iu;
 export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track }) {
   return async function readingRoutes({ p, req, res, url, u, d }) {
     /* ── натальная карта: считается на лету по анкете, ничего не хранится ── */
@@ -42,6 +46,8 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
       if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
       if (db.prepare('SELECT COUNT(*) c FROM entries WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many' });
       const kind = b.kind === 'rune' ? 'rune' : 'yesno';
+      /* «Как…», «что…», «почему…» — не вопрос про да или нет (аудит v98, F19): ответ не тянется, экран предлагает руны, карты или другую формулировку */
+      if (kind === 'yesno' && OPEN_Q.test(q) && !YESNO_LEAD.test(q)) return json(res, 400, { ok: false, error: 'open_question' });
       const topic = topicOf(q);
       let title, body, extra = {}, stored = kind, data = '';
       if (kind === 'rune') {
@@ -58,11 +64,11 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
         const i = hash32(q) % 3;
         title = C.YN_VERDICTS[i]; body = C.YN_RIDERS[topic][i];
       }
-      db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+      const ins = db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
         .run(u.id, nowISO(), d, stored, seal(q), title, body, data);
       track(u, kind === 'rune' ? 'ask_rune' : 'ask_yesno', kind === 'rune' ? extra.layout : topic);
       const prev = db.prepare("SELECT title, day FROM entries WHERE user_id=? AND kind='yesno' AND day<? AND title<>? ORDER BY id DESC LIMIT 1").get(u.id, d, title);
-      return json(res, 200, { ok: true, kind, title, body, topic, ...extra, streak: touchStreak(u), memory: kind === 'yesno' && prev ? { title: prev.title, day: prev.day } : null });
+      return json(res, 200, { ok: true, kind, entry: Number(ins.lastInsertRowid), title, body, topic, ...extra, streak: touchStreak(u), memory: kind === 'yesno' && prev ? { title: prev.title, day: prev.day } : null });   /* entry — id результата: к нему привязывается мысль (F13) */
     }
     if (p === '/api/spread' && req.method === 'POST') {
       const b = await readBody(req);
@@ -74,11 +80,11 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
       const pos = C.LAYOUTS.tarot[L].pos;
       const cards = drawDistinct([...C.ARCANA], pos.length).map((a, i) => ({ pos: pos[i].name, ...cardPublic(a) }));
       db.prepare('INSERT INTO usage (user_id, day, spreads) VALUES (?,?,1) ON CONFLICT(user_id, day) DO UPDATE SET spreads = spreads + 1').run(u.id, d);
-      db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
+      const ins = db.prepare('INSERT INTO entries (user_id, ts, day, kind, question, title, body, data) VALUES (?,?,?,?,?,?,?,?)')
         .run(u.id, nowISO(), d, 'spread', seal(q), cards.map((c) => c.name).join(' · '), cards.map((c) => `${c.pos}: ${c.name} — ${c.keys}`).join(' '),
              JSON.stringify({ layout: L, cards: cards.map((c) => c.slug) }));
       track(u, 'ask_spread', L);
-      return json(res, 200, { ok: true, layout: L, cards, streak: touchStreak(u) });
+      return json(res, 200, { ok: true, entry: Number(ins.lastInsertRowid), layout: L, cards, streak: touchStreak(u) });
     }
     if (p === '/api/numerology' && req.method === 'GET') {
       if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
@@ -92,7 +98,7 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
     if (p === '/api/compat' && req.method === 'POST') {
       const b = await readBody(req);
       const other = clean(b.birth, 10);
-      if (!ISO_DAY.test(other)) return json(res, 400, { ok: false, error: 'bad_birth' });
+      if (!isDay(other)) return json(res, 400, { ok: false, error: 'bad_birth' });
       if (!u.birth) return json(res, 400, { ok: false, error: 'no_birth' });
       const a = signOf(u.birth), o = signOf(other);
       const seed = hash32([u.birth, other].sort().join('|'));

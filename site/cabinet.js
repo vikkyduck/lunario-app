@@ -534,17 +534,24 @@ function ctRecord(index) {
         ${field('Название', `<input id="rec-title" value="${esc(rec.title)}" maxlength="120">`)}
         ${rec.fields.map(([k, v], i) => field(esc(k) + (locked(k) ? ' · служебное' : ''), `<input data-rec-field="${i}" data-rec-key="${esc(k)}" value="${esc(v)}" ${locked(k) ? 'readonly class="dim"' : ''}>`)).join('')}
         ${field('Текст (разделы в [квадратных скобках], абзацы через пустую строку)', `<textarea id="rec-body" class="ta-code">${esc(rec.body)}</textarea>`)}
-        <div class="row"><button data-on="click:ctRecordSave-a0" data-a0="${rec.index}" class="btn gold fixed" type="button">Сохранить</button><button data-on="click:ctRecordDel-a0" data-a0="${rec.index}" class="btn sm warn fixed" type="button">Удалить запись</button><span class="hint" id="rec-msg"></span></div>
+        <div class="row"><button data-on="click:ctRecordSave-a0" data-a0="${esc(rec.key)}" class="btn gold fixed" type="button">Сохранить</button><button data-on="click:ctRecordDel-a0" data-a0="${esc(rec.key)}" class="btn sm warn fixed" type="button">Удалить запись</button><span class="hint" id="rec-msg"></span></div>
       </div></div>`);
 }
-async function ctRecordSave(index) {
+/* карточка уходит по ключу записи и версии файла, с которой ее открыли (аудит v98, F03): пока правили, кто-то удалил или добавил
+   запись — сервер отвечает conflict, и карточка не ложится поверх соседней; версия справочника — CT.records.version */
+const CONFLICT_MSG = 'Файл изменился, пока вы правили: откройте запись заново и повторите';
+async function ctRecordSave(key) {
   const fields = [...document.querySelectorAll('[data-rec-field]')].map((el) => [el.dataset.recKey, el.value]);
   const msg = $('rec-msg'); msg.textContent = 'Сохраняем…';
-  try { const r = await api('/cabinet/record', { method: 'POST', body: JSON.stringify({ file: CT.book, index: Number(index), title: $('rec-title').value, fields, body: $('rec-body').value }) });
+  try { const r = await api('/cabinet/record', { method: 'POST', body: JSON.stringify({ file: CT.book, key, version: CT.records?.version || '', title: $('rec-title').value, fields, body: $('rec-body').value }) });
     if (!r.ok) { msg.textContent = 'Не сохранилось: ' + r.error; return; } toast('Сохранено — уже в приложении'); closeModal(); ctCatalog(); }
-  catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); }
+  catch (e) { msg.textContent = e.code === 'conflict' ? CONFLICT_MSG : 'Не сохранилось: ' + (e.code || e.message); }
 }
-async function ctRecordDel(index) { if (!confirm('Удалить запись из файла? Вернуть можно будет только вручную.')) return; await api('/cabinet/record?file=' + encodeURIComponent(CT.book) + '&index=' + index, { method: 'DELETE' }); toast('Удалено'); closeModal(); ctCatalog(); }
+async function ctRecordDel(key) {
+  if (!confirm('Удалить запись из файла? Вернуть можно будет только из архива версий.')) return;
+  try { await api('/cabinet/record?file=' + encodeURIComponent(CT.book) + '&key=' + encodeURIComponent(key) + '&version=' + encodeURIComponent(CT.records?.version || ''), { method: 'DELETE' }); toast('Удалено'); closeModal(); ctCatalog(); }
+  catch (e) { const msg = $('rec-msg'); if (msg) msg.textContent = e.code === 'conflict' ? CONFLICT_MSG : 'Не удалилось: ' + (e.code || e.message); }
+}
 async function ctRecordAdd() { const r = await api('/cabinet/record', { method: 'POST', body: JSON.stringify({ file: CT.book, add: (CT.records?.records.length || 1) - 1 }) }); if (r.ok) { await ctCatalog(); ctRecord(r.index); } }
 const readAsDataUrl = (f) => new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(f); });
 async function ctRecordImage(key, input) {

@@ -19,7 +19,8 @@ import { initDailySets, dailySet } from './daily-sets.mjs';
 import { privateText } from './private-text.mjs';
 import { createPractices, parseRule, habitStreak } from './practices.mjs';
 import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
-import { MSK, MOSCOW, ISO_DAY, dayIn, addDays, clean, cleanText } from './util.mjs';
+import { MSK, MOSCOW, ISO_DAY, isDay, dayIn, addDays, clean, cleanText, countWord } from './util.mjs';
+import { createMoods } from './moods.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
@@ -373,24 +374,25 @@ function skyCached(tz) {
 }
 const testRate = new Map();
 const PUSH_DEVICES = 10;   /* сколько ячеек уведомлений держим у одного аккаунта */
-const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : String(k); } });
+/* Название настроения для человека — одно правило на все сводки (аудит v98, F26): свое слово, из каталога, иначе понятный запасной текст, не ключ */
+const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : 'настроение без названия'; } });
 const moodTone = (k) => { const m = C.moodInfo(k); return m ? m.tone : '0'; };
-/* Неделя по отметкам настроения — для «Итогов недели» и отчета по настроениям */
-function weekSummary(u) {
-  const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
-  const moods = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day>=? GROUP BY mood ORDER BY c DESC').all(u.id, since);
-  const days = db.prepare('SELECT COUNT(DISTINCT day) c FROM moods WHERE user_id=? AND day>=?').get(u.id, since).c;
-  const total = moods.reduce((s, m) => s + m.c, 0);
+const Moods = createMoods(db);
+/* Последние семь дней (не календарная неделя — та в week.mjs): все отметки по контракту moods.mjs;
+   вывод о характере дней — только при трех и больше днях наблюдения (аудит v98, F10) */
+function weekSummary(u, d) {
+  const since = addDays(d, -6);
+  const { stats: moods, days, total } = Moods.summary(u.id, since, d);
   let summary = '';
-  if (!total) summary = 'На этой неделе вы еще не отмечали состояние. Одна отметка в день — и через неделю здесь появится картина.';
+  if (!total) summary = 'За последние семь дней вы еще не отмечали состояние. Одна отметка в день — и через неделю здесь появится картина.';
   else {
     const top = moods[0];
     const share = Math.round((top.c / total) * 100);
-    summary = `Вы отмечались ${days} ${days === 1 ? 'день' : days < 5 ? 'дня' : 'дней'}. Чаще всего — ${MOOD_RU[top.mood]}: ${share}% отметок.`;
+    summary = `За последние семь дней вы отмечались ${countWord(days, 'день', 'дня', 'дней')}. Чаще всего — ${MOOD_RU[top.mood]}: ${share}% отметок.`;
     const plus = moods.filter((m) => moodTone(m.mood) === '+').reduce((s, m) => s + m.c, 0);
     const minus = moods.filter((m) => moodTone(m.mood) === '-').reduce((s, m) => s + m.c, 0);
-    if (plus / total >= 0.6) summary += ' Неделя выдалась ровной и теплой.';
-    else if (minus / total >= 0.6) summary += ' Неделя была непростой — это видно по отметкам.';
+    if (days >= 3 && plus / total >= 0.6) summary += ' Дни выдались ровными и теплыми.';
+    else if (days >= 3 && minus / total >= 0.6) summary += ' Дни были непростыми — это видно по отметкам.';
   }
   return { since, moods, days, total, summary };
 }
@@ -548,7 +550,7 @@ const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
 const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
 const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
-const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList });
+const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
 
 const server = createServer(async (req, res) => {
@@ -671,9 +673,11 @@ const server = createServer(async (req, res) => {
 
       if (p === '/api/preferences') {
         if (req.method === 'POST') {
-          const b = await readBody(req);
+          const raw = await readBody(req);
+          /* с клиента приходят только измененные поля, остальное — как сохранено (аудит v98, F16): выбор утра в одной вкладке не вернет прежнюю тему из другой */
+          const prev = preferences(u.preferences), b = { ...prev, ...(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) };
           if (!validPreferences(b)) return json(res,400,{error:'bad_preferences'});
-          const prev = preferences(u.preferences), known = new Set([...C.READING_TOPICS].map((t) => t.key));
+          const known = new Set([...C.READING_TOPICS].map((t) => t.key));
           const topics = b.topics ? [...new Set(b.topics.filter((k) => known.has(k)))] : (prev.topics || []);
           /* lunarViews — служебный счетчик, его ведет сервер по событию lunar_view; с клиента не принимается */
           /* tools — какие инструменты человек оставил на экранах; нет поля — стартовый набор из каталога (видимость, не данные) */
@@ -691,7 +695,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/profile' && req.method === 'POST') {
         const b = await readBody(req);
         const birth = clean(b.birth, 10);
-        if (!ISO_DAY.test(birth)) return json(res, 400, { ok: false, error: 'bad_birth' });
+        if (!isDay(birth)) return json(res, 400, { ok: false, error: 'bad_birth' });   /* настоящая дата, не только форма (аудит v98, F14) */
         if (b.consent !== true) return json(res, 400, { ok: false, error: 'no_consent' });
         const cityName = clean(b.city, 60);
         const geo = cityName ? cityByName(cityName) : null;   // координаты подставляются по названию

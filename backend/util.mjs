@@ -4,6 +4,9 @@ export const MSK = 'Europe/Moscow';
 /* Без координат в анкете считаем по Москве — как и все время в приложении */
 export const MOSCOW = { lat: 55.7558, lon: 37.6173 };
 export const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/* Настоящая календарная дата: форма ГГГГ-ММ-ДД и обратная сверка года, месяца и дня — «2026-02-31» не проходит,
+   29 февраля — только в високосный год (аудит v98, F14). Одна проверка на все маршруты с датами. */
+export const isDay = (s) => { if (!ISO_DAY.test(s || '')) return false; const [y, m, d] = s.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d)); return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d; };
 /* Календарный день ГГГГ-ММ-ДД в часовом поясе; без аргументов — «сегодня» по Москве, как у сервера */
 export const dayIn = (tz = MSK, ms = Date.now()) => new Date(ms).toLocaleDateString('sv-SE', { timeZone: tz });
 export const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);

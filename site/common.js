@@ -29,3 +29,13 @@ function toast(t) { const el = $('toast'); if (!el) return; el.textContent = t; 
 const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 const fmtDay = (d) => String(d || '').split('-').reverse().join('.');   /* 19.09.2026 */
 const fmtDayShort = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });   /* 19 сент. */
+
+/* Черновики на устройстве — один механизм на все поля (аудит v98, F06): по аккаунту, виду записи и ключу (дата, неделя, материал).
+   Восстанавливается, пока сохранение не подтверждено сервером; после подтверждения стирается. Ничего никуда не отправляет */
+const draftKey=(kind,id)=>`lun_draft_${(typeof S!=='undefined'&&S.user?.id)||0}_${kind}_${id}`;
+const draftGet=(kind,id)=>{ try{ return localStorage.getItem(draftKey(kind,id)); }catch(e){ return null; } };
+const draftSet=(kind,id,text)=>{ try{ if(text)localStorage.setItem(draftKey(kind,id),text); else localStorage.removeItem(draftKey(kind,id)); }catch(e){} };
+const draftClear=(kind,id)=>draftSet(kind,id,'');
+/* Ключ повторной операции (аудит v98, F02): один на попытку сохранения; повтор после обрыва уходит с тем же ключом — сервер отвечает
+   той же квитанцией и второй записи не создает. Новый ключ — только после подтвержденного сохранения */
+const opKey=()=>'op-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);

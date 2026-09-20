@@ -1,3 +1,4 @@
+import { isDay } from './util.mjs';
 export const DEFAULT_PREFERENCES = {theme:'dark', ritual:['card','mood','gratitude'], topics:[], topicsAll:false, lunarViews:0};
 /* Утро на «Сегодня»: какие плитки человек выбрал в ответ на «На что хочу обращать внимание каждое утро?». Нет выбора — Луна и вопрос дня */
 export const DEFAULT_MORNING = ['lunar', 'tone'];
@@ -25,7 +26,7 @@ export function validPreferences(value) {
 // One timeline over the original records. No copied journal or parallel source of truth.
 export function timeline(db, uid, query, open) {
   const offset = Math.max(0, Math.min(100000, Math.trunc(Number(query.get('offset'))) || 0));
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(query.get('day') || '') ? query.get('day') : '';
+  const day = isDay(query.get('day')) ? query.get('day') : '';
   const kind = query.get('kind') || '';
   const rows = db.prepare(`WITH timeline AS (
     SELECT 'journal' source, id, day, ts, CASE WHEN kind='' THEN 'journal' ELSE kind END kind, title, text body, '' data FROM journal WHERE user_id=?

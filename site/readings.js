@@ -57,46 +57,53 @@ const qLine = (q) => q ? `<p class="italic center mb-3">«${esc(q)}»</p>` : '';
 /* ══════════ Мысль к материалу (по обзору 19.09): карта, руна или расклад задают вопрос — и принимают ответ. Поле под «Вопросом себе»,
    «Сохранить мысль»; хранится отдельно от ответа на вопрос дня, с источником, вопросом и датой; повторное открытие — та же мысль
    и «Дополнить». Мысли за сегодня грузятся один раз (S.thoughts) ══════════ */
-const thoughtKey=(source,slug)=>`${source}:${slug}`;
-const TH={draft:{},edit:{},saving:{}};
-async function ensureThoughts(){
-  if(!S.day)return [];
-  if(S.thoughts&&S.thoughts.day===S.day.date)return S.thoughts.items;
-  try{ const r=await api('/thoughts'); S.thoughts={day:S.day.date,items:r.items||[]}; }catch(e){ S.thoughts={day:S.day.date,items:[]}; }
-  return S.thoughts.items;
+const thoughtKey=(source,slug,entry)=>entry?`${source}:${slug}:${entry}`:`${source}:${slug}`;
+const TH={edit:{},saving:{}};
+/* мысли по дням: сегодняшние — для форм, прошлые — чтобы у результата из истории была видна его мысль (аудит v98, F12, F13) */
+async function ensureThoughts(day){
+  day=day||S.day?.date; if(!day)return [];
+  S.thoughtsBy=S.thoughtsBy||{}; if(S.thoughtsBy[day])return S.thoughtsBy[day];
+  try{ const r=await api('/thoughts'+(day===S.day.date?'':'?day='+day)); S.thoughtsBy[day]=r.items||[]; }catch(e){ S.thoughtsBy[day]=[]; }
+  return S.thoughtsBy[day];
 }
-const thoughtOf=(source,slug)=>((S.thoughts&&S.thoughts.day===S.day?.date?S.thoughts.items:[])).find(t=>t.source===source&&t.slug===slug)||null;
-function thoughtHtml(source,slug,name,question){
-  const key=thoughtKey(source,slug), saved=thoughtOf(source,slug), editing=!saved||TH.edit[key];
-  const text=TH.draft[key]!==undefined?TH.draft[key]:(saved?saved.text:'');
-  return `<section class="thought" id="th-${esc(key)}" data-key="${esc(key)}">${editing
+const thoughtOf=(source,slug,entry,day)=>((S.thoughtsBy&&S.thoughtsBy[day||S.day?.date])||[]).find(t=>t.source===source&&t.slug===slug&&(t.entry||0)===(entry||0))||null;
+const thoughtDraft=(key)=>draftGet('thought',key)||'';
+/* entry — id результата (вопрос к рунам или картам): две одинаковые руны на разные вопросы — две разные мысли.
+   day — день результата: за сегодня форма, за прошлый день — только уже записанная мысль */
+function thoughtHtml(source,slug,name,question,entry=0,day=S.day?.date){
+  const key=thoughtKey(source,slug,entry), saved=thoughtOf(source,slug,entry,day), today=day===S.day?.date, editing=today&&(!saved||TH.edit[key]);
+  if(!today&&!saved)return '';
+  const text=editing?(thoughtDraft(key)||(saved?saved.text:'')):'';
+  return `<section class="thought" id="th-${esc(key)}" data-key="${esc(key)}" data-day="${esc(day||'')}">${editing
     ?`<p class="thought-q">${ui('thought.q','Что в этом относится к моей ситуации?')}</p>
        <div class="field"><textarea data-on="input:thoughtInput-a0-this" data-a0="${esc(key)}" maxlength="2000" rows="2" placeholder="Своими словами…">${esc(text)}</textarea></div>
-       <div class="answer-actions"><button data-on="click:thoughtSave-a0-a1-a2-a3" data-a0="${esc(source)}" data-a1="${esc(slug)}" data-a2="${esc(name)}" data-a3="${esc(question||'')}" class="btn sm" type="button" ${TH.saving[key]?'disabled':''}>${TH.saving[key]?'Сохраняем…':saved?'Обновить':ui('thought.save','Сохранить мысль')}</button>${saved?`<button data-on="click:thoughtCancel-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">Отмена</button>`:''}</div>`
+       <div class="answer-actions"><button data-on="click:thoughtSave-a0-a1-a2-a3-a4" data-a0="${esc(source)}" data-a1="${esc(slug)}" data-a2="${esc(name)}" data-a3="${esc(question||'')}" data-a4="${entry||0}" class="btn sm" type="button" ${TH.saving[key]?'disabled':''}>${TH.saving[key]?'Сохраняем…':saved?'Обновить':ui('thought.save','Сохранить мысль')}</button>${saved?`<button data-on="click:thoughtCancel-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">Отмена</button>`:''}</div>`
     :`<p class="thought-q">${ui('thought.mine','Моя мысль')}</p><p class="entry-text">${esc(saved.text)}</p>
-       <div class="answer-actions"><span class="saved-state">В дневнике · ${fmtDay(saved.day)}</span><button data-on="click:thoughtEdit-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">Дополнить</button><button data-on="click:openDay-a0" data-a0="${esc(saved.day)}" class="btn ghost sm" type="button">Открыть запись</button></div>`}
+       <div class="answer-actions"><span class="saved-state">В дневнике · ${fmtDay(saved.day)}</span>${today?`<button data-on="click:thoughtEdit-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">Дополнить</button>`:''}<button data-on="click:openDay-a0" data-a0="${esc(saved.day)}" class="btn ghost sm" type="button">Открыть запись</button></div>`}
   </section>`;
 }
-/* после отрисовки панели — подтянуть сохраненные мысли и перерисовать блоки на месте */
-async function paintThoughts(){
-  await ensureThoughts();
-  document.querySelectorAll('.thought[data-key]').forEach(el=>{ const [source,slug]=el.dataset.key.split(':'); const saved=thoughtOf(source,slug); if(!saved)return;
-    const name=el.querySelector('[data-a2]')?.dataset.a2||saved.name, q=el.querySelector('[data-a3]')?.dataset.a3||saved.question; el.outerHTML=thoughtHtml(source,slug,name,q); });
+const thoughtParts=(key)=>{ const [source,slug,entry]=key.split(':'); return [source,slug,Number(entry)||0]; };
+/* после отрисовки панели — подтянуть сохраненные мысли этого дня и перерисовать блоки на месте */
+async function paintThoughts(day){
+  day=day||S.day?.date; await ensureThoughts(day);
+  document.querySelectorAll(`.thought[data-key][data-day="${day}"]`).forEach(el=>{ const [source,slug,entry]=thoughtParts(el.dataset.key); const saved=thoughtOf(source,slug,entry,day); if(!saved)return;
+    const name=el.querySelector('[data-a2]')?.dataset.a2||saved.name, q=el.querySelector('[data-a3]')?.dataset.a3||saved.question; el.outerHTML=thoughtHtml(source,slug,name,q,entry,day); });
 }
-function thoughtInput(key,el){ TH.draft[key]=el.value; growTextarea(el); }
-function thoughtEdit(key){ TH.edit[key]=true; const el=$('th-'+key); const [source,slug]=key.split(':'); const saved=thoughtOf(source,slug); if(el&&saved){ el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question); $('th-'+key)?.querySelector('textarea')?.focus(); } }
-function thoughtCancel(key){ TH.edit[key]=false; delete TH.draft[key]; const el=$('th-'+key); const [source,slug]=key.split(':'); const saved=thoughtOf(source,slug); if(el&&saved)el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question); }
-async function thoughtSave(source,slug,name,question){
-  const key=thoughtKey(source,slug); if(TH.saving[key])return;
+function thoughtInput(key,el){ draftSet('thought',key,el.value); growTextarea(el); }   /* черновик — на устройстве, переживает перезагрузку (F06) */
+function thoughtEdit(key){ TH.edit[key]=true; const el=$('th-'+key); const [source,slug,entry]=thoughtParts(key); const saved=thoughtOf(source,slug,entry); if(el&&saved){ el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question,entry); $('th-'+key)?.querySelector('textarea')?.focus(); } }
+function thoughtCancel(key){ TH.edit[key]=false; draftClear('thought',key); const el=$('th-'+key); const [source,slug,entry]=thoughtParts(key); const saved=thoughtOf(source,slug,entry); if(el&&saved)el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question,entry); }
+async function thoughtSave(source,slug,name,question,entry){
+  entry=Number(entry)||0; const key=thoughtKey(source,slug,entry); if(TH.saving[key])return;
   const el=$('th-'+key), text=(el?.querySelector('textarea')?.value||'').trim();
   if(text.length<2){ toast('Напишите хотя бы пару слов'); return; }
-  TH.saving[key]=true; if(el)el.outerHTML=thoughtHtml(source,slug,name,question);
+  TH.saving[key]=true; if(el)el.outerHTML=thoughtHtml(source,slug,name,question,entry);
   try{
-    const r=await api('/thought',{method:'POST',body:JSON.stringify({source,slug,name,question,text})});
-    await ensureThoughts(); const items=S.thoughts.items.filter(t=>!(t.source===source&&t.slug===slug)); items.push(r.item); S.thoughts.items=items;
-    delete TH.draft[key]; TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
-  }catch(e){ toast(ERR_SAVE_KEPT); TH.draft[key]=text; }
-  finally{ TH.saving[key]=false; const el2=$('th-'+key); if(el2)el2.outerHTML=thoughtHtml(source,slug,name,question); }
+    const r=await api('/thought',{method:'POST',body:JSON.stringify({source,slug,name,question,text,entry})});
+    await ensureThoughts(); const items=S.thoughtsBy[S.day.date].filter(t=>!(t.source===source&&t.slug===slug&&(t.entry||0)===entry)); items.push(r.item); S.thoughtsBy[S.day.date]=items;
+    draftClear('thought',key); TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
+    if(typeof dayChanged==='function'){ const keep=S.thoughtsBy[S.day.date]; dayChanged(S.day.date); S.thoughtsBy[S.day.date]=keep; }
+  }catch(e){ toast(e.code==='too_many'?'Записей за день уже сто — мысль осталась в поле':ERR_SAVE_KEPT); draftSet('thought',key,text); }
+  finally{ TH.saving[key]=false; const el2=$('th-'+key); if(el2)el2.outerHTML=thoughtHtml(source,slug,name,question,entry); }
 }
 function cardDayHtml(c, day, compact){
   const id = regRes({ type: 'card', card: c, day });
@@ -104,7 +111,7 @@ function cardDayHtml(c, day, compact){
   return `<div class="center"><div class="title-gold">${esc(c.name)}</div>${c.keys ? `<div class="kw">${esc(keysLine(c.keys))}</div>` : ''}</div>
     ${(c.today || (s.advice && s.advice.length)) ? `<div class="card mt-3"><h3>Сегодня</h3>${c.today ? `<p class="today">${esc(c.today)}</p>` : paras((s.advice||[]).slice(0,1))}</div>` : ''}
     ${c.question ? `<section class="card-question"><h3>${ui('card.question','Вопрос себе')}</h3><p>${esc(c.question)}</p></section>` : ''}
-    ${!compact && day === S.day?.date ? thoughtHtml('card', c.slug, c.name, c.question || '') : ''}
+    ${!compact ? thoughtHtml('card', c.slug, c.name, c.question || '', 0, day) : ''}
     ${moreBlock((s.image && s.image.length ? `<h3>Образ карты</h3>${paras(s.image)}` : '') + sectionsHtml(c, ['spread', 'state', 'shadow'], CARD_SEC) + ((c.today || (s.advice||[]).length>1)?'<h3>Совет карты</h3>'+paras(c.today?s.advice:(s.advice||[]).slice(1)):'') , 'Прочитать подробнее')}
     ${actionsHtml(id)}`;
 }
@@ -184,7 +191,7 @@ async function openCard(){
     if (r.card && r.card.image) await preload(r.card.image);
     paintCard(); hap('ok');
     showFlipped(); paintThoughts();
-    setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); cardNudge(); }, 500);
+    setTimeout(() => { $('t-after').style.display = 'block'; $('t-after').classList.add('rise'); preparePending(); }, 500);
   }catch(e){ toast('Не получилось открыть карту'); }
   S.opening = false;
 }
@@ -221,7 +228,7 @@ function runesHtml(p){
         ${r.keyword ? `<div class="kw">${esc(r.keyword)}</div>` : ''}
         ${r.motto ? `<p class="mt-2 italic">${esc(r.motto)}</p>` : ''}
         <p class="mt-3 strong">${esc(r.answer || '')}</p>
-        ${p.day === S.day?.date ? thoughtHtml(p.q ? 'rune' : 'dayrune', r.slug, r.name, p.q || '') : ''}
+        ${thoughtHtml(p.q ? 'rune' : 'dayrune', r.slug, r.name, p.q || '', p.entry || 0, p.day)}
         <div class="left">${moreBlock(sectionsHtml(r, ['meaning', 'advice', 'state', 'interact'], RUNE_SEC))}</div>
         ${actionsHtml(id)}</div>`;
   }
@@ -233,6 +240,7 @@ function runesHtml(p){
           <p class="mt-2 t2">${esc(r.answer || '')}</p>
           ${moreBlock(sectionsHtml({ sections: { meaning: (s.meaning || []).slice(0, 1), advice: s.advice } }, ['meaning', 'advice'], RUNE_SEC), 'Подробнее')}
         </div></div>`; }).join('')}</div>
+      ${thoughtHtml('runes', p.layout || 'three', `${L.title}: ${runes.map(r => r.name).join(' · ')}`, p.q || '', p.entry || 0, p.day)}
       ${actionsHtml(id)}</div>`;
 }
 
@@ -249,6 +257,7 @@ function spreadHtml(p){
           ${sp[0] ? `<p class="mt-2">${esc(sp[0])}</p>` : ''}
           ${moreBlock((sp.length > 1 ? paras(sp.slice(1)) : '') + sectionsHtml(c, ['advice'], CARD_SEC), 'Подробнее')}
         </div></div>`; }).join('')}</div>
+      ${thoughtHtml('spread', p.layout || 'three', `${L.title}: ${cards.map(c => c.name).join(' · ')}`, p.q || '', p.entry || 0, p.day)}
       ${actionsHtml(id)}</div>`;
 }
 
@@ -256,7 +265,7 @@ function spreadHtml(p){
 function yesnoHtml(p){
   const id = regRes({ type: 'yesno', title: p.title, body: p.body, q: p.q, day: p.day });
   return `<div class="card rise center">${qLine(p.q)}<div class="big">${esc(p.title)}</div><p class="mt-3">${esc(p.body)}</p>${actionsHtml(id)}</div>` +
-    (p.memory ? `<div class="card rise memory" style="--i:1"><span class="eyebrow mb-2">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b class="strong">«${esc(p.memory.title)}»</b>, сегодня — <b class="strong">«${esc(p.title)}»</b>. Оба верны, каждый для своего момента: изменились обстоятельства.</p></div>` : '');
+    (p.memory ? `<div class="card rise memory" style="--i:1"><span class="eyebrow mb-2">Мы помним ваш прошлый вопрос</span><p>Раньше на похожий вопрос ответ был <b class="strong">«${esc(p.memory.title)}»</b>, сегодня — <b class="strong">«${esc(p.title)}»</b>. ${esc(ui('ask.memory','Что изменилось с тех пор — знаете только вы: это повод вернуться к вопросу и к своим обстоятельствам.'))}</p></div>` : '');   /* без выдуманных причин (аудит v98, F19) */
 }
 
 /* ── свериться: способ и расклад ── */
@@ -297,11 +306,12 @@ async function runAsk(mode, q, out, hint, layout){
   if (mode === 'spread') {
     const L = layout || 'three';
     const r = await api('/spread', { method: 'POST', body: JSON.stringify({ question: q, layout: L }) });
-    out.innerHTML = spreadHtml({ q, layout: r.layout, cards: r.cards.map(c => c.slug), live: r.cards, day: S.day.date });
+    out.innerHTML = spreadHtml({ q, layout: r.layout, cards: r.cards.map(c => c.slug), live: r.cards, day: S.day.date, entry: r.entry || 0 });
+    paintThoughts();
   } else {
     const L = mode === 'rune' ? (layout || 'one') : '';
     const r = await api('/ask', { method: 'POST', body: JSON.stringify({ question: q, kind: mode, layout: L }) });
-    out.innerHTML = r.kind === 'rune' ? runesHtml({ q, layout: r.layout, runes: r.runes.map(x => x.slug), live: r.runes, day: S.day.date })
+    out.innerHTML = r.kind === 'rune' ? runesHtml({ q, layout: r.layout, runes: r.runes.map(x => x.slug), live: r.runes, day: S.day.date, entry: r.entry || 0 })
       : yesnoHtml({ q, title: r.title, body: r.body, day: S.day.date, memory: r.memory });
     if (r.kind === 'rune') paintThoughts();
   }
@@ -338,14 +348,14 @@ async function loadEntries(more=false){
 function toggleEntry(n){
   const it = $('he-' + n), body = $('hb-' + n); if (!it) return;
   const open = !it.classList.contains('on'); it.classList.toggle('on', open); it.querySelector('.histhead').setAttribute('aria-expanded',open); hap();
-  if (open && !body.innerHTML) { body.innerHTML = entryHtml(S.entries[n]); preparePending(); }
+  if (open && !body.innerHTML) { body.innerHTML = entryHtml(S.entries[n]); preparePending(); paintThoughts(S.entries[n].day); }   /* результат из истории помнит свою мысль */
 }
 function entryHtml(i){
   const d = i.data || {};
   if (i.kind === 'card' && d.card) return cardDayHtml(cardBy(d.card) || { name: i.title, keys: i.body, sections: {} }, i.day, true);
   if (i.kind === 'yesno') return yesnoHtml({ q: i.question, title: i.title, body: i.body, day: i.day });
-  if ((i.kind === 'rune' || i.kind === 'runes' || i.kind === 'dayrune') && d.runes) return runesHtml({ q: i.question, layout: d.layout || 'one', runes: d.runes, day: i.day });
-  if (i.kind === 'spread' && d.cards) return spreadHtml({ q: i.question, layout: d.layout || 'three', cards: d.cards, day: i.day });
+  if ((i.kind === 'rune' || i.kind === 'runes' || i.kind === 'dayrune') && d.runes) return runesHtml({ q: i.question, layout: d.layout || 'one', runes: d.runes, day: i.day, entry: i.kind === 'dayrune' ? 0 : i.id });
+  if (i.kind === 'spread' && d.cards) return spreadHtml({ q: i.question, layout: d.layout || 'three', cards: d.cards, day: i.day, entry: i.id });
   return `<p>${esc(i.body || i.title)}</p>`;   /* записи, сделанные до появления кодов */
 }
 
@@ -542,12 +552,12 @@ function topicsRowHtml(){
 async function toggleTopic(key){
   const cur=new Set(topicsChosen());if(cur.has(key))cur.delete(key);else cur.add(key);
   const topics=topicList().map(t=>t.key).filter(k=>cur.has(k));
-  try{await savePreferences({...XP.prefs,topics});track('topics_set',topics.join(','));hap();}
+  try{await savePreferences({topics});track('topics_set',topics.join(','));hap();}
   catch{toast(ERR_SAVE);return;}
   paintLunarArticle();
 }
 async function setTopicsAll(on){
-  try{await savePreferences({...XP.prefs,topicsAll:!!on});track('topics_all',on?'on':'off');}
+  try{await savePreferences({topicsAll:!!on});track('topics_all',on?'on':'off');}
   catch{toast(ERR_SAVE);return;}
   XP.topicsShown=true;paintLunarArticle();
 }

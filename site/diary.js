@@ -1,14 +1,14 @@
 /* Лунарио — Вкладка «Дневник»: карточка дня, прошлые дни, настроения, неделя */
 /* ══════════ «Моя неделя: про что она» — воскресный экран Дневника: пять частей по фактам, без интерпретаций ══════════ */
-const WK={data:null,pick:''};
+const WK={data:null,pick:'',pending:''};
 const WK_DOW=['пн','вт','ср','чт','пт','сб','вс'];
 const WK_MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const wkDate=(d,month=true)=>{const [,m,dd]=d.split('-').map(Number);return month?`${dd} ${WK_MONTHS[m-1]}`:String(dd);};
 const wkRange=(a,b)=>a.slice(0,7)===b.slice(0,7)?`${wkDate(a,false)}–${wkDate(b)}`:`${wkDate(a)} – ${wkDate(b)}`;
-const WK_KIND={'':'запись',gratitude:'благодарность',answer:'ответ на вопрос дня'};
+const WK_KIND={'':'запись',gratitude:'благодарность',answer:'ответ на вопрос дня',thought:'мысль'};
 const WK_VERDICT=[['yes','Отозвалось'],['no','Не связано'],['unsure','Не уверена']];
 async function loadWeek(pick){
-  if(pick!==undefined)WK.pick=pick;
+  if(pick!==undefined)WK.pick=pick; if(WK.pending){WK.pick=WK.pending;WK.pending='';}   /* открыть неделю конкретного дня — из «Итога недели» в дне */
   const box=$('week-box');if(!box)return;if(!WK.data)box.innerHTML='<p class="hint" role="status">Собираем неделю…</p>';
   try{WK.data=await api('/week'+(WK.pick?'?week='+WK.pick:''));paintWeek();}
   catch(e){box.innerHTML='<p class="msg err">Неделя не загрузилась. <button data-on="click:loadWeek" class="btn ghost sm" type="button">Повторить</button></p>';}
@@ -17,11 +17,14 @@ function weekShift(n){const w=WK.data?.week;if(!w)return;loadWeek(new Date(Date.
 function paintWeek(){
   const w=WK.data,box=$('week-box');if(!w||!box)return;
   const nav=`<div class="week-nav"><button data-on="click:weekShift-a0" data-a0="-1" type="button" class="btn ghost sm">← прошлая</button><span class="eyebrow">${wkRange(w.week.start,w.week.end)}</span>${w.week.current?'<span></span>':'<button data-on="click:weekShift-a0" data-a0="1" type="button" class="btn ghost sm">следующая →</button>'}</div>`;
-  const quote=(f)=>`<blockquote class="week-quote"><small>${wkDate(f.day)} · ${WK_KIND[f.kind]||''}</small><p>${esc(f.text)}</p></blockquote>`;
+  const quote=(f)=>`<blockquote class="week-quote"><small>${wkDate(f.day)} · ${WK_KIND[f.kind]||''}${f.kind==='thought'&&f.name?' · '+esc(f.name):''}</small><p>${esc(f.text)}</p></blockquote>`;   /* мысль — с именем материала: видно, к чему она */
   const saved=w.saved.length?`<section class="card week-part"><h3>Что вы сохранили</h3>${w.saved.map(quote).join('')}</section>`:'';
   const carried=w.reflection.previous?`<section class="card week-part week-carried"><span class="eyebrow">С прошлой недели</span><p class="t2">${quoted(w.reflection.previous)}</p></section>`:'';
-  const reflect=`<section class="card week-part"><h3>${esc(w.reflection.question)}</h3><div class="field"><textarea data-on="input:growTextarea-this" id="wk-reflect" maxlength="2000" rows="2">${esc(w.reflection.text)}</textarea></div><div class="answer-actions"><button data-on="click:saveWeekReflection" class="btn sm" id="wk-reflect-save" type="button">Сохранить</button></div><p class="hint" id="wk-reflect-state" role="status"></p></section>`;
-  if(w.mode!=='full'){box.innerHTML=nav+carried+`<section class="card week-part"><p class="t2">${esc(w.text)}</p></section>`+saved+reflect;growTextarea($('wk-reflect'));return;}
+  /* черновик рефлексии живет на устройстве до подтвержденного сохранения (аудит v98, F06): закрыть панель и обновить страницу — текст на месте */
+  const draft=draftGet('week',w.week.start), reflectText=draft!==null?draft:w.reflection.text;
+  const reflect=`<section class="card week-part"><h3>${esc(w.reflection.question)}</h3><div class="field"><textarea data-on="input:wkReflectInput-this" id="wk-reflect" maxlength="2000" rows="2">${esc(reflectText)}</textarea></div><div class="answer-actions"><button data-on="click:saveWeekReflection" class="btn sm" id="wk-reflect-save" type="button">Сохранить</button></div><p class="hint" id="wk-reflect-state" role="status">${draft!==null&&draft!==w.reflection.text?'Черновик восстановлен — не сохранен':''}</p></section>`;
+  /* разделы — по наличию данных, а не по режиму (F08): неделя с одной мыслью или одной отметкой показывает ее, вступление говорит, сколько всего */
+  const intro=w.mode!=='full'?`<section class="card week-part"><p class="t2">${esc(w.text)}</p></section>`:'';
   const days=w.moods.days;
   const moods=`<section class="card week-part"><h3>Настроение недели</h3>${w.moods.count?`<div class="week-strip" aria-hidden="true">${days.map((d,i)=>`<div class="week-col${d.day>w.week.today?' future':''}"><span class="week-dow">${WK_DOW[i]}</span><span class="week-dot ${d.moods.length?'done':'none'}"></span></div>`).join('')}</div><div class="week-mood-list">${days.map((d,i)=>d.moods.length?`<p><b>${WK_DOW[i]}</b>${d.moods.map(esc).join(' · ')}</p>`:'').join('')}</div>${w.moods.top[0]?.count>1?`<p class="hint">Чаще всего — ${w.moods.top.filter(t=>t.count===w.moods.top[0].count).map(t=>esc(t.mood)).join(', ')}: ${w.moods.top[0].count} ${plural(w.moods.top[0].count,'день','дня','дней')} из ${w.moods.count}</p>`:`<p class="hint">${w.moods.count===1?'Отметка за один день':`Отметки за ${w.moods.count} ${plural(w.moods.count,'день','дня','дней')} — настроения не повторялись`}</p>`}`:'<p class="hint">Настроение на этой неделе не отмечали</p>'}</section>`;
   const echoes=`<section class="card week-part"><h3>Что отозвалось</h3>${w.echoes.length?w.echoes.map(e=>`<div class="week-echo" data-day="${e.day}"><small><button data-on="click:openDay-a0" data-a0="${e.day}" class="week-daylink" type="button">${wkDate(e.day)} →</button>${e.source?' · '+esc(e.source):''}</small><p><span class="week-when">Утром</span> ${esc(e.morning)}</p><p><span class="week-when">Вечером</span> ${esc(e.evening)}</p><div class="chips flow">${WK_VERDICT.map(([k,l])=>`<button data-on="click:weekEcho-a0-a1" data-a0="${e.day}" data-a1="${k}" type="button" class="chip${e.verdict===k?' on':''}" aria-pressed="${e.verdict===k}">${l}</button>`).join('')}</div></div>`).join(''):'<p class="hint">Пар «утро ↔ вечер» пока не набралось: для них нужны настрой утром и запись вечером</p>'}</section>`;
@@ -29,8 +32,11 @@ function paintWeek(){
   const habits=w.rhythm.habits.map(h=>`<div class="week-row"><div class="grow"><b>${esc(h.title)}</b><small>${h.due?`${h.done} из ${h.due} ${plural(h.due,'дня','дней','дней')}`:`${h.done} ${plural(h.done,'день','дня','дней')}`}</small></div>${dots(h.days,x=>!x?'none':x.done?'done':'due')}</div>`).join('');
   const askesis=w.rhythm.askesis.map(a=>`<div class="week-row"><div class="grow"><b>${esc(a.title)}</b><small>${a.days.length?`держусь — ${a.kept}${a.missed?` · сорвалась — ${a.missed}`:''}`:'отметок на этой неделе нет'}</small></div>${dots(a.days,x=>!x?'none':x.kept?'done':'missed')}</div>`).join('');
   const rhythm=habits||askesis?`<section class="card week-part"><h3>Ваш ритм</h3>${habits}${askesis}${w.rhythm.phrase?`<p class="hint week-phrase">${esc(w.rhythm.phrase)}</p>`:''}</section>`:'';
-  box.innerHTML=nav+carried+moods+saved+echoes+rhythm+reflect;growTextarea($('wk-reflect'));
+  box.innerHTML=nav+carried+intro+(w.mode==='full'||w.moods.count?moods:'')+saved+(w.mode==='full'||w.echoes.length?echoes:'')+rhythm+reflect;growTextarea($('wk-reflect'));
 }
+function wkReflectInput(el){ growTextarea(el); if(WK.data)draftSet('week',WK.data.week.start,el.value===WK.data.reflection.text?'':el.value); }
+/* неделя конкретного дня — из строки «Итог недели» в открытом дне */
+function openWeekAt(day){ WK.pending=day; if(!$('v-history')?.classList.contains('on'))go('history'); openWidget('week'); }
 /* отметка «отозвалось»: повторное нажатие снимает */
 async function weekEcho(day,verdict){
   const cur=WK.data?.echoes.find(e=>e.day===day);const next=cur&&cur.verdict===verdict?'':verdict;
@@ -41,7 +47,7 @@ async function weekEcho(day,verdict){
 async function saveWeekReflection(){
   if(saveWeekReflection.busy||!WK.data)return;saveWeekReflection.busy=true;const btn=$('wk-reflect-save');btn.disabled=true;
   try{const r=await api('/week/reflect',{method:'POST',body:JSON.stringify({week:WK.data.week.start,text:$('wk-reflect').value})});WK.data.reflection=r;
-    $('wk-reflect-state').textContent=r.text?'Сохранено ✦ Строка в дневнике под датой воскресенья':'Строка снята';hap('ok');XP.timeline.dirty=true;}
+    draftClear('week',WK.data.week.start); $('wk-reflect-state').textContent=r.text?'Сохранено ✦ Строка в дневнике под датой воскресенья':'Строка снята';hap('ok');XP.timeline.dirty=true;}
   catch(e){$('wk-reflect-state').textContent=ERR_SAVE_KEPT;}
   finally{saveWeekReflection.busy=false;btn.disabled=false;}
 }
@@ -83,7 +89,7 @@ async function loadDayCard(keepStep=false){
   const box=$('day-card'); if(!box)return;
   if(!DC.state)box.innerHTML='<p class="hint">Загружаем сегодняшний день…</p>';
   try{ const wasStep=DC.step, wasMode=DC.mode; DC.state=await api(DC.forDay?'/day?day='+DC.forDay:'/day'); dcFromState(); if(keepStep){DC.step=wasStep;DC.mode=wasMode;} if(DC.forDay&&!keepStep){DC.mode='steps';DC.step=0;} paintDayCard(); paintEveningSet(); }
-  catch(e){ box.innerHTML='<p class="hint">Не получилось загрузить день</p><button data-on="click:loadDayCard" class="btn ghost sm mt-3" type="button">Повторить</button>'; }
+  catch(e){ box.innerHTML=e.code==='not_editable'?`<p class="hint">${fmtDayWords(DC.forDay||'',true)} — только для чтения: поправить можно дни за последний год</p><button data-on="click:dcToday" class="btn ghost sm mt-3" type="button">К сегодняшнему дню →</button>`:'<p class="hint">Не получилось загрузить день</p><button data-on="click:loadDayCard" class="btn ghost sm mt-3" type="button">Повторить</button>'; }
 }
 /* Значения с сервера + черновик; записанный день без черновика открывается для чтения */
 function dcFromState(){
@@ -92,8 +98,10 @@ function dcFromState(){
   if(!DC.forDay)answerFrom(s.answer,s.day);   /* панель и карточка на «Сегодня» знают тот же ответ */
   DC.moods=new Set(s.moods.filter(m=>!m.startsWith('own:'))); DC.own=s.moods.filter(m=>m.startsWith('own:')).map(m=>m.slice(4)).join(', '); DC.ownOpen=!!DC.own;
   DC.habits=new Map(s.habits.map(h=>[h.id,h.today])); DC.askesis=new Map(s.askesis.map(a=>[a.id,{kept:a.kept,note:a.note}])); DC.touched={habits:new Set(),askesis:new Set()}; DC.echo=s.echo||'';
+  /* черновик — последнее намерение человека на этом устройстве, он главнее сервера за тот же день (аудит v98, F07): поле восстанавливается
+     по наличию ключа (пустая строка — тоже значение), выбранные настроения заменяют серверные, а не сливаются с ними */
   if(draft){
-    for(const k of ['text','gratitude','answer','own'])if(draft[k])DC[k]=draft[k]; if(draft.moods?.length)DC.moods=new Set([...DC.moods,...draft.moods]); if(draft.echo)DC.echo=draft.echo; DC.ownOpen=!!DC.own;
+    for(const k of ['text','gratitude','answer','own'])if(k in draft)DC[k]=draft[k]||''; if(Array.isArray(draft.moods))DC.moods=new Set(draft.moods); if('echo' in draft)DC.echo=draft.echo||''; DC.ownOpen=!!DC.own;
     for(const [id,done] of draft.habits||[]){ if(DC.habits.has(id)){DC.habits.set(id,done);DC.touched.habits.add(id);} }
     for(const [id,v] of draft.askesis||[]){ if(DC.askesis.has(id)&&v){DC.askesis.set(id,v);DC.touched.askesis.add(id);} }
     const i=dcSteps().findIndex(st=>st.key===draft.stepKey); DC.step=Math.max(0,i); DC.mode='steps'; DC.dirty=true;
@@ -194,20 +202,19 @@ async function saveDayCard(){
   const own=DC.own.split(',').map(x=>x.trim().replace(/\s+/g,'-').slice(0,24)).filter(Boolean).map(x=>'own:'+x);
   /* уходит только то, что было на экране и что трогали: скрытый шаг — ключа нет, сервер «не трогает»; привычки — только отмеченные в этой сессии,
      чтобы не стереть галочку, поставленную позже в самом инструменте */
-  const body={moods:[...DC.moods,...own],...(on.has('text')?{text:DC.text}:{}),...(DC.forDay?{day:DC.forDay}:{}),
+  const body={moods:[...DC.moods,...own],...(on.has('text')?{text:DC.text}:{}),...(DC.forDay?{day:DC.forDay}:{}),...(DC.state.set?{echo:DC.echo||''}:{}),   /* «отозвалось» — в той же операции; пустое снимает отметку */
     ...(on.has('gratitude')?{gratitude:DC.gratitude}:{}),...(on.has('answer')?{answer:DC.answer,question:DC.state.question}:{}),
     habits:[...DC.touched.habits].map(id=>({id,done:!!DC.habits.get(id)})),askesis:[...DC.touched.askesis].map(id=>{const v=DC.askesis.get(id)||{kept:null,note:''};return {id,...(v.kept===null?{}:{kept:v.kept}),note:v.note||''};})};
   try{
     const r=await api('/day',{method:'POST',body:JSON.stringify(body)});
-    if(DC.state.set&&DC.echo)api('/week/echo',{method:'POST',body:JSON.stringify({day:DC.state.day,verdict:DC.echo})}).catch(()=>{});   /* «отозвалось» — сразу вечером, не в воскресенье */
-    DC.state={...r,echo:DC.echo||r.echo||''}; dcClearDraft(); DC.dirty=false; DC.bridge=undefined; DC.touched={habits:new Set(),askesis:new Set()}; hap('done');
+    DC.state={...r}; dcClearDraft(); DC.dirty=false; DC.bridge=undefined; DC.touched={habits:new Set(),askesis:new Set()}; hap('done');
     if(!DC.forDay){ answerFrom(r.answer,r.day); ANS.draft=''; paintAnswerEverywhere(); if(S.day&&r.day===S.day.date)S.day.remembered=true; }
     if(!DC.forDay){ S.mood=DC.state.moods[0]||null; if(S.day&&r.saved.length)S.day.remembered=true; }
     if(DC.forDay===yesterdayC()){ S.yesterday=undefined; }
-    DC.firstSave=!DC.forDay&&!(S.daysTotal>0); loadDays();
+    DC.firstSave=!DC.forDay&&!(S.daysTotal>0); dayChanged(r.day,false);
     DC.mode=matchMedia('(prefers-reduced-motion: reduce)').matches?'done':'celebrate'; paintDayCard();
   }
-  catch(e){ const st=$('dc-state'); if(st)st.textContent=ERR_SAVE_KEPT; }
+  catch(e){ const st=$('dc-state'); if(st)st.textContent=e.code==='too_many'?'Записей за этот день уже сто — новые не сохраняются, текст остался в форме':ERR_SAVE_KEPT; }   /* лимит — честный отказ, черновик на месте (F15) */
   finally{ saveDayCard.busy=false; const b=$('dc-next'); if(b){b.disabled=false;b.textContent=DC.forDay?'Сохранить':'Запомнить этот день';} }
 }
 /* Дописать или поправить прошлый день — той же карточкой по шагам: «Вчера не записали» утром на «Сегодня», «Изменить» в открытом дне */
@@ -254,13 +261,13 @@ async function dcPickPhoto(){
     const r=await fetch(`${API}/day/photo?thumb=${ph.thumb.size}&w=${ph.w}&h=${ph.h}`,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/octet-stream'},body:new Blob([ph.thumb,ph.full])});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.ok)throw Object.assign(new Error(j.error||'err'),{status:r.status,code:j.error});
-    DC.state.photo=j.photo; XP.timeline.dirty=true; hap('done'); toast('Фото дня добавлено ✦');
+    DC.state.photo=j.photo; dayChanged(DC.state.day,false); hap('done'); toast('Фото дня добавлено ✦');
     const box=$('dc-photo'); if(box)box.outerHTML=dcPhotoHtml();
   }catch(e){ toast(e.status===413||e.code==='too_big'?'Фото слишком большое — попробуйте другое':e.code==='too_often'?'Слишком много фото за сутки':'Не получилось загрузить фото'); }
   finally{ dcPickPhoto.busy=false; const b=$('dc-cam'); if(b)b.disabled=false; }
 }
 async function dcRemovePhoto(){
-  try{ await api('/day/photo',{method:'DELETE'}); DC.state.photo=null; XP.timeline.dirty=true; hap(); const box=$('dc-photo'); if(box)box.outerHTML=dcPhotoHtml(); }
+  try{ await api('/day/photo',{method:'DELETE'}); DC.state.photo=null; dayChanged(DC.state.day,false); hap(); const box=$('dc-photo'); if(box)box.outerHTML=dcPhotoHtml(); }
   catch(e){ toast('Не получилось убрать фото'); }
 }
 /* Праздник: луна разгорается, искры разлетаются — и день показывается как текст */
@@ -338,7 +345,7 @@ async function toggleEveningStep(key,forceOn){
   if(key==='mood')return;
   const isOn=stepOn(key); if(forceOn&&isOn)return;
   { const tk=TOOL_OF[key]||key, tools=toolsVisible(); if(isOn)tools.delete(tk);else tools.add(tk); const list=toolCatalog().map(t=>t.key).filter(k=>tools.has(k));
-    try{ await savePreferences({...XP.prefs,tools:list}); applyTools(); track(isOn?'tools_remove':'tools_add',key+':evening'); }catch(e){ toast(ERR_SAVE); return; } }
+    try{ await savePreferences({tools:list}); applyTools(); track(isOn?'tools_remove':'tools_add',key+':evening'); }catch(e){ toast(ERR_SAVE); return; } }
   const nowOn=stepOn(key); toast(nowOn?`${STEP_NAME[key]} — в вашем вечере`:'Убрано из вечера');
   paintEveningSet(); if(DC.mode==='steps'){ const cur=(dcSteps()[DC.step]||{}).key; paintDayCard(); if(cur){const i=dcSteps().findIndex(st=>st.key===cur); if(i>=0){DC.step=i;paintDayCard();}} }
 }
@@ -348,15 +355,28 @@ function eveningStepToggle(key){ toggleEveningStep(key); }
    (решение владелицы 20.09). Вопрос — только если на него нет ответа (ответ показывает его сам) */
 const lunarLine=(s)=>s.lunar&&s.lunar.n?`${s.lunar.n}-й лунный день${s.lunar.title?` · ${esc(s.lunar.title)}`:''}`:'';
 const morningHtml=(s)=>s.set||s.lunar?`<div class="dc-morning">${s.set?`Утром<b>${quoted(s.set)}</b>${s.question&&!s.answer?esc(s.question):''}`:''}${lunarLine(s)?`<span class="dc-lunar">☾ ${lunarLine(s)}</span>`:''}</div>`:'';
-/* записи прозой; editDay — в открытом дне у каждой есть «×» (удалить именно эту) */
-const dayProseHtml=(s,editDay='')=>[s.text?['Вечером',s.text.text,'','text']:null,s.gratitude?['Благодарность',s.gratitude.text,'','gratitude']:null,s.answer?['Ответ на вопрос дня',s.answer.text,s.answer.title||s.question||'','answer']:null,
-  ...((s.thoughts||[]).map(t=>[t.name||'Мысль',t.text,t.question||'','thought:'+t.id]))]   /* мысли к карте, руне, раскладу — с именем материала и его вопросом */
-  .filter(Boolean).map(([label,text,q,what])=>`<p class="dc-read"><small>${label}${editDay?`<button data-on="click:dayRemove-a0-a1" data-a0="${editDay}" data-a1="${what}" class="dc-x" type="button" aria-label="Удалить">×</button>`:''}</small>${q?`<span class="q">${esc(q)}</span>`:''}${esc(text)}</p>`).join('');
+/* записи прозой — все записи дня, каждая со своим id (аудит v98, F01, F17): в открытом дне у каждой «×» удаляет именно ее.
+   Итог недели (weekly) лежит под воскресеньем и ведет в «Мою неделю» */
+const dayProseHtml=(s,editDay='')=>{
+  const list=[];
+  for(const t of (s.texts||(s.text?[s.text]:[])))list.push(['Вечером',t.text,'','text:'+t.id]);
+  for(const g of (s.gratitudes||(s.gratitude?[s.gratitude]:[])))list.push(['Благодарность',g.text,'','gratitude:'+g.id]);
+  for(const a of (s.answers||(s.answer?[s.answer]:[])))list.push(['Ответ на вопрос дня',a.text,a.title||s.question||'','answer:'+a.id]);
+  for(const t of (s.thoughts||[]))list.push([t.name||'Мысль',t.text,t.question||'','thought:'+t.id]);   /* мысли к карте, руне, раскладу — с именем материала и его вопросом */
+  if(s.weekly)list.push(['Итог недели',s.weekly.text,'','weekly:'+s.weekly.id,`<button data-on="click:openWeekAt-a0" data-a0="${s.day}" class="week-daylink" type="button">Неделя →</button>`]);
+  return list.map(([label,text,q,what,extra])=>`<p class="dc-read"><small>${label}${extra||''}${editDay?`<button data-on="click:dayRemove-a0-a1" data-a0="${editDay}" data-a1="${what}" class="dc-x" type="button" aria-label="Удалить">×</button>`:''}</small>${q?`<span class="q">${esc(q)}</span>`:''}${esc(text)}</p>`).join('');
+};
 async function dayRemove(day,what){
-  const names={text:'запись',gratitude:'благодарность',answer:'ответ на вопрос дня',moods:'настроение'};
-  if(!confirm(`Удалить ${names[what]||'это'} за ${fmtDayWords(day)}? Вернуть будет нельзя.`))return;
-  try{ await api(`/day?day=${day}&what=${what}`,{method:'DELETE'}); hap(); toast('Удалено'); XP.timeline.dirty=true; if(day===yesterdayC())S.yesterday=undefined; loadDays(); if(S.day&&day===S.day.date)loadDayCard(); else openDay(day); }
+  const names={text:'запись',gratitude:'благодарность',answer:'ответ на вопрос дня',moods:'настроение',thought:'мысль',weekly:'итог недели'};
+  if(!confirm(`Удалить ${names[String(what).split(':')[0]]||'это'} за ${fmtDayWords(day)}? Вернуть будет нельзя.`))return;
+  try{ await api(`/day?day=${day}&what=${what}`,{method:'DELETE'}); hap(); toast('Удалено'); dayChanged(day); if(!(S.day&&day===S.day.date))openDay(day); }
   catch(e){ toast('Не получилось удалить'); }
+}
+/* Одна точка обновления после записи, правки или удаления в дне (аудит v98, F25): список дней, «вчера» на «Сегодня», лента, неделя,
+   мысли за день — и карточка дня, если она про этот день (reloadCard=false — когда ответ сервера уже лег в DC.state) */
+function dayChanged(day,reloadCard=true){
+  XP.timeline.dirty=true; WK.data=null; if(day===yesterdayC())S.yesterday=undefined; if(S.thoughtsBy)delete S.thoughtsBy[day];
+  loadDays(); if(reloadCard&&DC.state&&DC.state.day===day)loadDayCard(true);
 }
 /* листать дни свайпом в открытом дне */
 (()=>{ let x0=null,y0=null; document.addEventListener('touchstart',(e)=>{ const t=e.target.closest('#dayview-box'); if(!t||!e.touches[0]){x0=null;return;} x0=e.touches[0].clientX; y0=e.touches[0].clientY; },{passive:true});
@@ -417,13 +437,14 @@ async function openDay(day){
   openWidget('dayview',fmtDayWords(day,true)); const box=$('dayview-box'); box.innerHTML='<p class="hint">Загружаем…</p>'; track('day_open');
   try{
     const v=await api('/day/view?day='+day); const moods=v.moods.map(m=>MOOD_LABEL[m]||m.replace(/^own:/,''));
-    const empty=!v.text&&!v.gratitude&&!v.answer&&!moods.length&&!v.habits.length&&!v.askesis.length&&!v.photo;
+    const empty=!(v.texts||[]).length&&!(v.gratitudes||[]).length&&!(v.answers||[]).length&&!(v.thoughts||[]).length&&!moods.length&&!v.habits.length&&!v.askesis.length&&!v.photo;
+    const canEdit=v.editable!==false;   /* старше года — только чтение, и это сказано заранее, без «Повторить» (аудит v98, F18) */
     const prev=addDaysC(day,-1), next=addDaysC(day,1), canNext=next<=S.day.date;
-    box.innerHTML=`<div class="dayview" data-day="${day}">${moods.length?`<div class="dc-moods">${moods.map(m=>`<i>${esc(m)}</i>`).join('')}${v.moods.length?`<button data-on="click:dayRemove-a0-a1" data-a0="${day}" data-a1="moods" class="dc-x" type="button" aria-label="Убрать настроение">×</button>`:''}</div>`:''}
+    box.innerHTML=`<div class="dayview" data-day="${day}">${moods.length?`<div class="dc-moods">${moods.map(m=>`<i>${esc(m)}</i>`).join('')}${v.moods.length&&canEdit?`<button data-on="click:dayRemove-a0-a1" data-a0="${day}" data-a1="moods" class="dc-x" type="button" aria-label="Убрать настроение">×</button>`:''}</div>`:''}
       ${photoFullHtml(v)}${morningHtml(v)}
-      ${dayProseHtml(v,day)}
+      ${dayProseHtml(v,canEdit?day:'')}
       ${empty?'<p class="hint mt-3">Записей не было</p>':''}<div class="dc-bridge" id="dv-bridge" hidden></div>
-      <div class="dc-done-actions mt-3"><button data-on="click:dcFor-a0" data-a0="${day}" class="btn ghost sm" type="button">${empty?'Записать этот день':'Изменить'}</button></div>
+      <div class="dc-done-actions mt-3">${canEdit?`<button data-on="click:dcFor-a0" data-a0="${day}" class="btn ghost sm" type="button">${empty?'Записать этот день':'Изменить'}</button>`:`<p class="hint">Только чтение: поправить можно дни начиная с ${fmtDayWords(v.editableFrom||'')}</p>`}</div>
       <nav class="day-nav" aria-label="Соседние дни"><button data-on="click:openDay-a0" data-a0="${prev}" class="btn ghost sm" type="button">‹ ${fmtDayWords(prev)}</button><button data-on="click:openDay-a0" data-a0="${next}" class="btn ghost sm" type="button"${canNext?'':' hidden'}>${next===S.day.date?'сегодня':fmtDayWords(next)} ›</button></nav></div>`;
     api('/day/bridge?day='+day).then(r=>{ const b=r.item, el=$('dv-bridge'); if(!b||!el)return; el.innerHTML=bridgeHtml(b,day); el.hidden=false; }).catch(()=>{});
   }catch(e){ box.innerHTML='<p class="hint">Не получилось загрузить этот день.</p>'; }
@@ -554,7 +575,8 @@ const ownMood = (key) => typeof key === 'string' && key.startsWith('own:') ? key
 /* пять быстрых настроений известны и до каталога — иначе на карточке дня мелькает ключ вроде quick:calm */
 const QUICK_FALLBACK={'quick:well':'Хорошо','quick:calm':'Спокойно','quick:tired':'Устала','quick:anxious':'Тревожно','quick:heavy':'Тяжело'};
 function moodInfo(key){ const quick=quickMoods().find(m=>m.key===key);if(quick)return quick; if(!CAT&&QUICK_FALLBACK[key])return {key,label:QUICK_FALLBACK[key],family:key==='quick:anxious'?'fear':key==='quick:well'?'joy':key==='quick:calm'?'trust':'sadness',tone:key==='quick:well'||key==='quick:calm'?'+':'-'}; if(key==='displeasure') return {key,label:'неудовольствие',family:'disgust',tone:'-'}; if (ownMood(key)) return { key, label: ownMood(key), family: 'own', tone: '0' }; const k = (CAT?.legacyMoods || {})[key] || key; return moodList().find(m => m.key === k) || null; }
-const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : String(k); } });
+/* название настроения — одно правило на все сводки (аудит v98, F26): из каталога или свое слово, иначе понятный запасной текст, не ключ */
+const MOOD_LABEL = new Proxy({}, { get: (_, k) => { const m = moodInfo(k); return m ? m.label : 'настроение без названия'; } });
 const moodFace = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return 'anticipation'; return m.family === 'dyad' ? DYAD_FACE[m.key] || 'joy' : m.family; };
 const moodColor = (key) => { const m = moodInfo(key); if (!m || m.family === 'own') return '#e9c77e'; const fam = m.family === 'dyad' ? moodFace(key) : m.family; return (moodFams()[fam] || ['', '#b9b2cf'])[1]; };
 const moodUiColor = key => `var(--emotion-${moodInfo(key)?.family==='own'?'own':moodFace(key)},${moodColor(key)})`;

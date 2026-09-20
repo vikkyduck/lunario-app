@@ -1,6 +1,14 @@
 /* Настроение, дневник, желания и фото, лента записей, отчет по настроениям.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
-export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList }) {
+import { createHash } from 'node:crypto';
+import { addDays } from '../util.mjs';
+export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList, Moods }) {
+  /* Квитанции операций (аудит v98, F02): клиент дает записи свой ключ op; ответ сохраняется, и повтор с тем же ключом и телом
+     возвращает его, не создавая вторую запись; тот же ключ с другим телом — конфликт. Квитанции старше недели стираются */
+  const opOf = (b) => typeof b.op === 'string' && /^[\w.-]{8,64}$/.test(b.op) ? b.op : '';
+  const receipt = (uid, op, hash) => db.prepare('SELECT payload_hash, response_json FROM sync_receipts WHERE user_id = ? AND operation_id = ?').get(uid, op);
+  const remember = (uid, op, hash, out) => { db.prepare('INSERT OR REPLACE INTO sync_receipts (user_id, operation_id, payload_hash, response_json, created_at) VALUES (?,?,?,?,?)').run(uid, op, hash, JSON.stringify(out), nowISO());
+    db.prepare('DELETE FROM sync_receipts WHERE created_at < ?').run(new Date(Date.now() - 7 * 864e5).toISOString()); };
   return async function journalRoutes({ p, req, res, url, u, d }) {
     if (p === '/api/mood' && req.method === 'POST') {
       const b = await readBody(req);
@@ -11,8 +19,7 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
       db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);   /* карточка дня показывает все отмеченные */
       track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* свое слово — личный текст, в аналитику не идет */
       const month = d.slice(0, 7);
-      const stats = db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, month + '%');
-      return json(res, 200, { ok: true, mood, stats, streak: touchStreak(u) });
+      return json(res, 200, { ok: true, mood, stats: Moods.summary(u.id, month + '-01', month + '-31').stats, streak: touchStreak(u) });
     }
     /* Дневник: обычная запись, благодарность («кому и за что я благодарна сегодня») или ответ на вопрос дня.
        Все лежит в одной ленте, вид записи подписан. */
@@ -29,22 +36,26 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
         const b = await readBody(req);
         const text = cleanText(b.text, 2000);
         if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
-        if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many' });
         const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
         const title = clean(b.title, 300);
+        const op = opOf(b), hash = op ? createHash('sha256').update(JSON.stringify({ text, kind, title })).digest('hex') : '';
+        if (op) { const rc = receipt(u.id, op, hash); if (rc) return rc.payload_hash === hash ? json(res, 200, { ...JSON.parse(rc.response_json), repeated: true }) : json(res, 409, { ok: false, error: 'op_conflict' }); }
+        const done = (out) => { if (op) remember(u.id, op, hash, out); return json(res, 200, out); };
         /* ответ на вопрос дня — один на день: повторная отправка обновляет его, как и карточка дня в Дневнике */
         if (kind === 'answer') {
           const prev = db.prepare("SELECT id FROM journal WHERE user_id = ? AND day = ? AND kind = 'answer' ORDER BY id DESC LIMIT 1").get(u.id, d);
-          if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(title), prev.id, u.id); return json(res, 200, { ok: true, updated: true, item: { id: prev.id, day: d, text, kind, title } }); }
+          if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(title), prev.id, u.id); return done({ ok: true, updated: true, item: { id: prev.id, day: d, text, kind, title } }); }
         }
+        if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many', limit: DAILY_WRITES });
         const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
         track(u, kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add', '');
-        return json(res, 200, { ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });
+        return done({ ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });
       }
-      const kind = url.searchParams.get('kind');
-      const rows = kind ? db.prepare('SELECT id, day, text, kind, title FROM journal WHERE user_id=? AND kind=? ORDER BY id DESC LIMIT 60').all(u.id, kind)
-        : db.prepare('SELECT id, day, text, kind, title FROM journal WHERE user_id=? ORDER BY id DESC LIMIT 60').all(u.id);
-      return json(res, 200, { items: rows.map((r) => ({ ...r, text: open_(r.text), title: open_(r.title || '') })), today: !!(kind && rows.find((r) => r.day === d)) });
+      /* лента записей страницами: before — id последней показанной, next — с чего продолжать (аудит v98, F17) */
+      const kind = url.searchParams.get('kind'), before = Math.max(0, Math.trunc(Number(url.searchParams.get('before'))) || 0), limit = Math.min(100, Math.max(1, Math.trunc(Number(url.searchParams.get('limit'))) || 60));
+      const rows = db.prepare(`SELECT id, day, text, kind, title FROM journal WHERE user_id=? AND (?='' OR kind=?) AND (?=0 OR id<?) ORDER BY id DESC LIMIT ?`).all(u.id, kind || '', kind || '', before, before, limit + 1);
+      const page = rows.slice(0, limit);
+      return json(res, 200, { items: page.map((r) => ({ ...r, text: open_(r.text), title: open_(r.title || '') })), next: rows.length > limit ? page[page.length - 1].id : null, today: !!(kind && page.find((r) => r.day === d)) });
     }
     /* Фото у желания — картинка для визуализации. Уменьшается в телефоне, хранится как есть, отдается только хозяйке. */
     if (p === '/api/wishes/photo') {
@@ -95,20 +106,16 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
     }
     if (p === '/api/entries' && req.method === 'GET')
       return json(res, 200, entryPage(db,u.id,url.searchParams,open_));
-    /* Отчет по настроениям: неделя по дням, месяц по долям, итог словами */
+    /* Отчет по настроениям: последние 7 дней по дням (все отметки, главная — первая), месяц по долям всех отметок, итог словами.
+       Читает тот же контракт moods.mjs, что карточка дня и неделя (аудит v98, F10) */
     if (p === '/api/mood/report' && req.method === 'GET') {
-      const w = weekSummary(u);
-      const week = [];
-      for (let i = 6; i >= 0; i--) {
-        const day = new Date(Date.parse(d) - i * 864e5).toISOString().slice(0, 10);
-        const row = db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, day);
-        week.push({ day, mood: row ? row.mood : '' });
-      }
-      const month = d.slice(0, 7);
-      const stats = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day LIKE ? GROUP BY mood ORDER BY c DESC').all(u.id, month + '%');
-      const total = db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ?').get(u.id).c;
-      const monthEntries=db.prepare('SELECT day,mood FROM moods WHERE user_id=? AND day LIKE ? ORDER BY day').all(u.id,month+'%');
-      return json(res, 200, { week, month: { key: month, stats, entries:monthEntries, days: stats.reduce((s, m) => s + m.c, 0) }, total, summary: w.summary });
+      const w = weekSummary(u, d);
+      const byWeek = Moods.byDay(u.id, addDays(d, -6), d);
+      const week = []; for (let i = 6; i >= 0; i--) { const day = addDays(d, -i); const list = byWeek.get(day) || []; week.push({ day, mood: list[0] || '', moods: list }); }
+      const month = d.slice(0, 7), m = Moods.summary(u.id, month + '-01', month + '-31');
+      const total = db.prepare('SELECT COUNT(*) c FROM (SELECT day FROM moods WHERE user_id = ? UNION SELECT day FROM mood_marks WHERE user_id = ?)').get(u.id, u.id).c;
+      const monthEntries = [...m.byDay].sort((a, b) => a[0].localeCompare(b[0])).map(([day, list]) => ({ day, mood: list[0], moods: list }));
+      return json(res, 200, { week, month: { key: month, stats: m.stats, entries: monthEntries, days: m.days, marks: m.total }, total, summary: w.summary });
     }
     return false;
   };

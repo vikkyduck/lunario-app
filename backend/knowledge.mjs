@@ -16,6 +16,7 @@
      portrait       — «Портрет»: выжимка — с какого дня здесь, серия, любимый способ, тема месяца, настроения за 90 дней, первая карта
    text(doc) отдает документ связным текстом — для промпта ИИ. Почты и служебных id в текстах нет. */
 import { addDays, plural } from './util.mjs';
+import { createMoods } from './moods.mjs';
 
 export const RECENT_DAYS = 120;
 export const DOC_TITLES = { profile: 'Обо мне', readings: 'Тесты и совместимости', recent: 'Последние записи', portrait: 'Портрет' };
@@ -45,8 +46,9 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
   const userById = db.prepare('SELECT * FROM users WHERE id = ?');
   const cardName = (slug) => { const a = [...C.ARCANA].find((c) => c.slug === slug); return a ? a.name : ''; };
   const runeName = (slug) => { const r = [...C.RUNES].find((x) => x.slug === slug); return r ? r.name : ''; };
+  const Moods = createMoods(db);
   const moodWord = (k) => String(MOOD_RU[k] || k);
-  const moodsOf = (uid, d) => { const marks = db.prepare('SELECT mood FROM mood_marks WHERE user_id = ? AND day = ? ORDER BY rowid').all(uid, d).map((m) => m.mood); if (marks.length) return marks; const m = db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(uid, d); return m ? [m.mood] : []; };
+  const moodsOf = (uid, d) => Moods.ofDay(uid, d);   /* один контракт чтения настроений — moods.mjs (аудит v98, F10) */
 
   /* ── «Обо мне» ── */
   function buildProfile(u, d) {
@@ -100,7 +102,7 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
       else if (r.kind === 'gratitude') rec.gratitude = text;
       else if (r.kind === 'answer') rec.answer = { question: title, text };
       else if (r.kind === 'weekly') rec.weekly = text;
-      else if (r.kind === 'thought') { const meta = parse(title) || {}; (rec.thoughts ||= []).push({ about: meta.kind || '', name: meta.name || '', question: meta.question || '', text }); }
+      else if (r.kind === 'thought') { const meta = parse(title) || {}; (rec.thoughts ||= []).push({ about: meta.source || '', name: meta.name || '', question: meta.question || '', entry: Number(meta.entry) || 0, text }); }
     }
     for (const r of db.prepare('SELECT kind, question, title, body, data FROM entries WHERE user_id = ? AND day = ? ORDER BY id').all(uid, day)) {
       const data = parse(r.data) || {};

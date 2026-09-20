@@ -523,6 +523,93 @@ try {
     assert.equal((await askOwner.raw('/day','POST',{day:'2020-01-01',text:'x'})).status,400,'days older than a year are not editable');
     console.log('PASS: a past day can be written and corrected within a year; deleting a block works; the streak stays.'); }
 
+  // ── Аудит v98 (F01–F19): удаление одной записи, повтор без дубля, отклик в составе дня, честный лимит, мысль к результату,
+  //    открытый вопрос, настоящие даты, частичные настройки, все отметки настроения в отчете и выгрузке, старый день только для чтения ──
+  { const aud = account(); const me = await aud.json('/me'), d0 = me.day.date, uid = me.user.id;
+    await aud.json('/profile', 'POST', { name: 'Аудит', birth: '1991-03-03', city: 'Москва', consent: true });
+    /* F02: тот же ключ операции — тот же ответ, второй благодарности нет; тот же ключ с другим текстом — конфликт */
+    const op = 'op-check-' + Date.now().toString(36);
+    const g1 = await aud.json('/journal', 'POST', { text: 'Маме — за звонок', kind: 'gratitude', op });
+    const g2 = await aud.json('/journal', 'POST', { text: 'Маме — за звонок', kind: 'gratitude', op });
+    assert.equal(g2.item.id, g1.item.id, 'repeat with the same op returns the same item'); assert.equal(g2.repeated, true);
+    assert.equal(qaDB.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND kind = 'gratitude'").get(uid).c, 1, 'one gratitude after a repeated save');
+    assert.equal((await aud.raw('/journal', 'POST', { text: 'Другой текст', kind: 'gratitude', op })).status, 409, 'same op with another body is a conflict');
+    /* F01, F17: две записи одного вида за день видны обе; удаляется одна по id, первая остается и входит в выгрузку; лента — страницами */
+    await aud.json('/journal', 'POST', { text: 'Первая запись дня' }); await aud.json('/journal', 'POST', { text: 'Вторая запись дня' });
+    const st = await aud.json('/day'); assert.equal(st.texts.length, 2, 'both entries of the day are served'); assert.equal(st.text.text, 'Вторая запись дня', 'the cell for editing is the latest one');
+    assert.equal((await aud.json(`/day?day=${d0}&what=text:${st.texts[1].id}`, 'DELETE')).removed, 1, 'one entry is deleted by id');
+    const view = await aud.json('/day/view?day=' + d0); assert.deepEqual(view.texts.map((t) => t.text), ['Первая запись дня'], 'the other entry survives');
+    assert.ok((await aud.json('/data/export')).journal.some((j) => j.text === 'Первая запись дня'), 'and is in the export');
+    const page = await aud.json('/journal?limit=1'); assert.equal(page.items.length, 1); assert.ok(page.next, 'journal pages have a continuation');
+    assert.ok((await aud.json('/journal?limit=1&before=' + page.next)).items[0].id < page.items[0].id, 'before= continues from the last shown id');
+    /* F05: «отозвалось» — в той же операции дня; пустая строка снимает; мусор — отказ */
+    assert.equal((await aud.json('/day', 'POST', { moods: ['joy', 'trust'], echo: 'yes' })).echo, 'yes', 'echo is saved with the day');
+    assert.equal((await aud.json('/day', 'POST', { echo: '' })).echo, '', 'an empty echo clears the mark');
+    assert.equal((await aud.raw('/day', 'POST', { echo: 'maybe' })).status, 400, 'an unknown verdict is refused');
+    /* F10, F26: две отметки за день одинаково видны в дне, отчете и выгрузке; одна отметка не превращается в вывод о неделе; ключи не попадают в текст */
+    assert.deepEqual((await aud.json('/day')).moods, ['joy', 'trust']);
+    const rep = await aud.json('/mood/report'); const todayRow = rep.week.find((w) => w.day === d0);
+    assert.deepEqual(todayRow.moods, ['joy', 'trust'], 'the report week row carries every mark'); assert.equal(rep.month.marks >= 2, true);
+    assert.ok(!/ровным|непрост/.test(rep.summary), 'one observed day gives no verdict about the week: ' + rep.summary); assert.ok(!/\bjoy\b|\btrust\b/.test(rep.summary), 'no raw keys in the summary');
+    const ex = await aud.json('/data/export'); const exDay = ex.moods.find((m) => m.day === d0); assert.deepEqual(exDay.marks, ['joy', 'trust'], 'export carries all marks'); assert.ok(Array.isArray(ex.limits) && ex.limits.length, 'export names what it does not contain');
+    /* F13, F12: мысль привязана к результату — две одинаковые руны на два вопроса дают две мысли; повтор к тому же результату обновляет только ее; расклад тоже принимает мысль */
+    const a1 = await aud.json('/ask', 'POST', { question: 'Стоит ли мне менять работу сейчас?', kind: 'rune' });
+    const a2 = await aud.json('/ask', 'POST', { question: 'Получится ли переезд в этом году?', kind: 'rune' });
+    assert.ok(a1.entry > 0 && a2.entry > a1.entry, 'asks return their result id');
+    await aud.json('/thought', 'POST', { source: 'rune', slug: 'fehu', name: 'Феху', question: 'Стоит ли мне менять работу сейчас?', text: 'Про работу', entry: a1.entry });
+    await aud.json('/thought', 'POST', { source: 'rune', slug: 'fehu', name: 'Феху', question: 'Получится ли переезд в этом году?', text: 'Про переезд', entry: a2.entry });
+    const upd = await aud.json('/thought', 'POST', { source: 'rune', slug: 'fehu', name: 'Феху', question: 'Стоит ли мне менять работу сейчас?', text: 'Про работу — дополнила', entry: a1.entry });
+    assert.equal(upd.updated, true);
+    const th = (await aud.json('/thoughts')).items.filter((t) => t.slug === 'fehu'); assert.equal(th.length, 2, 'same rune, two questions — two thoughts');
+    assert.deepEqual(th.map((t) => t.text).sort(), ['Про переезд', 'Про работу — дополнила']);
+    const sp = await aud.json('/spread', 'POST', { question: 'Что мне важно понять про отношения?', layout: 'three' });
+    assert.ok((await aud.json('/thought', 'POST', { source: 'spread', slug: 'three', name: 'Три карты', question: 'Что мне важно понять про отношения?', text: 'Мысль к раскладу', entry: sp.entry })).item.entry === sp.entry, 'a spread takes a thought bound to its result');
+    assert.equal((await aud.json('/thought', 'POST', { source: 'runes', slug: 'three', name: 'Три руны', text: 'Чужой id не привязывается', entry: 99999999 })).item.entry, 0, 'a foreign result id is dropped');
+    const exTh = (await aud.json('/data/export')).journal.find((j) => j.kind === 'thought' && j.text === 'Мысль к раскладу'); assert.equal(exTh.thought.name, 'Три карты', 'export keeps the thought source'); assert.equal(exTh.title, '');
+    /* F19: «как…» — не вопрос про да/нет; «как думаешь, стоит ли…» — да/нет */
+    assert.equal((await aud.raw('/ask', 'POST', { question: 'Как спокойно подготовиться к разговору?', kind: 'yesno' })).status, 400, 'an open question gets no yes/no');
+    assert.equal((await aud.raw('/ask', 'POST', { question: 'Как спокойно подготовиться к разговору?', kind: 'yesno' }).then((r) => r.json())).error, 'open_question');
+    assert.equal((await aud.raw('/ask', 'POST', { question: 'Как думаешь, стоит ли мне идти на этот разговор?', kind: 'yesno' })).status, 200);
+    assert.equal((await aud.raw('/ask', 'POST', { question: 'Как спокойно подготовиться к разговору?', kind: 'rune' })).status, 200, 'runes take open questions');
+    /* F14: настоящие календарные даты */
+    for (const bad of ['2026-02-31', '2026-04-31', '2025-02-29']) { assert.equal((await aud.raw('/day/view?day=' + bad)).status, 400, bad + ' is refused'); assert.equal((await aud.raw('/day', 'POST', { day: bad, text: 'x' })).status, 400); assert.equal((await aud.raw('/week/echo', 'POST', { day: bad, verdict: 'yes' })).status, 400); }
+    assert.equal((await aud.raw('/day/view?day=2024-02-29')).status, 200, 'a leap day is a real date');
+    assert.equal((await aud.raw('/profile', 'POST', { name: 'Аудит', birth: '1990-02-30', city: 'Москва', consent: true })).status, 400, 'birth must be a real date');
+    /* F18: старый день — чтение с причиной, а не бесполезный повтор */
+    const old = await aud.json('/day/view?day=2024-01-01'); assert.equal(old.editable, false); assert.ok(old.editableFrom > '2024-01-01', 'the view says from which day editing is possible');
+    const oldEdit = await aud.raw('/day?day=2024-01-01'); assert.equal(oldEdit.status, 400); assert.equal((await oldEdit.json()).error, 'not_editable');
+    /* F16: уходят только измененные поля — тема из одной «вкладки» не затирается выбором утра из другой */
+    await aud.json('/preferences', 'POST', { theme: 'light' }); const pr = await aud.json('/preferences', 'POST', { morning: ['lunar'] });
+    assert.equal(pr.preferences.theme, 'light', 'a partial save keeps the other fields'); assert.deepEqual(pr.preferences.morning, ['lunar']);
+    assert.equal((await aud.raw('/preferences', 'POST', { theme: 'neon' })).status, 400, 'the merged object is still validated');
+    /* F15: лимит строк за день — явный отказ до записи, ничего не сохраняется; правка существующей записи работает */
+    let limit = 0; for (let i = 0; i < 150 && !limit; i++) { const r = await aud.raw('/journal', 'POST', { text: 'Благодарность номер ' + i, kind: 'gratitude' }); if (r.status === 429) limit = (await r.json()).limit; else assert.equal(r.status, 200); }
+    assert.ok(limit > 0, 'the limit is reached and named');
+    const before = qaDB.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(uid, d0).c;
+    const full = await aud.raw('/day', 'POST', { answer: 'Новый ответ сверх лимита', question: 'Вопрос' }); assert.equal(full.status, 429, 'the day card refuses a new line over the limit'); assert.equal((await full.json()).error, 'too_many');
+    assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(uid, d0).c, before, 'nothing was written');
+    assert.equal((await aud.json('/day', 'POST', { text: 'Первая запись дня — поправлена' })).text.text, 'Первая запись дня — поправлена', 'editing an existing entry still works at the limit');
+    console.log('PASS: audit v98 — delete one entry by id, repeat without a duplicate, echo inside the day, honest limit, thought per result, open questions, real dates, partial preferences, all mood marks everywhere, old days read-only.'); }
+
+  // ── Аудит v98 (F08, F03, F04): неделя видит мысль и фото; карточка справочника — по ключу и версии; архив не перезаписывается ──
+  { const w = account(); const me = await w.json('/me'), d0 = me.day.date;
+    await w.json('/thought', 'POST', { source: 'card', slug: 'sun', name: 'Солнце', question: '', text: 'Мысль к карте — единственный момент недели' });
+    const wk = await w.json('/week'); assert.notEqual(wk.mode, 'empty', 'a week with one thought is not empty'); assert.equal(wk.moments, 1);
+    assert.ok(wk.saved.some((f) => f.kind === 'thought' && f.name === 'Солнце'), 'the thought is a fragment with its material: ' + JSON.stringify(wk.saved));
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2000, 7)]);
+    await fetch(`${base}/api/day/photo?thumb=${jpeg.length}&w=100&h=100`, { method: 'PUT', headers: { Cookie: w.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': w.ip }, body: Buffer.concat([jpeg, jpeg]) });
+    assert.equal((await w.json('/week')).counts.photos, 1, 'a day photo counts as a moment');
+    const CE = await import(pathToFileURL(join(fixture, 'backend/content-edit.mjs')).href);
+    const recs = CE.bookRecords('руны.txt'), r0 = recs[0], v0 = r0.version; assert.ok(v0 && recs.every((r) => r.version === v0));
+    const n0 = CE.versions('руны.txt').length;
+    assert.equal(CE.bookRecordSave('руны.txt', { key: r0.key, version: v0, title: r0.title, fields: r0.fields, body: r0.body + '\n\nПроверка правки.' }, 'test').ok, true, 'a record saves by key and version');
+    assert.equal(CE.bookRecordSave('руны.txt', { key: r0.key, version: v0, title: r0.title, fields: r0.fields, body: r0.body }, 'test').error, 'conflict', 'a stale version is a conflict, not an overwrite');
+    assert.equal(CE.bookRecordSave('руны.txt', { key: 'нет-такой-руны', title: 'x' }, 'test').error, 'not_found');
+    assert.equal(CE.bookRecords('руны.txt').find((r) => r.key === r0.key).body.endsWith('Проверка правки.'), true, 'the right record changed');
+    for (let i = 0; i < 3; i++) CE.writeFile('руны.txt', CE.readContent('руны.txt'), 'test');   /* три записи подряд внутри одной секунды */
+    const vs = CE.versions('руны.txt'); assert.equal(vs.length, n0 + 4, 'every save leaves its own archive version'); assert.equal(new Set(vs.map((x) => x.id)).size, vs.length); assert.ok(vs.every((x) => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(x.ts)), 'version time parses: ' + vs[0].ts);
+    console.log('PASS: audit v98 — a week counts thoughts and photos; catalog records save by key and version with conflicts; archive names are unique.'); }
+
   // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
   { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);
     const put = (who, thumb, full, q = '') => fetch(`${base}/api/day/photo?thumb=${thumb.length}&w=1280&h=960${q}`, { method: 'PUT', headers: { Cookie: who.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': who.ip }, body: Buffer.concat([thumb, full]) });
@@ -874,7 +961,7 @@ try {
         }
       }
       // Every surviving feature card opens the actual widget pane.
-      for(const [view,key] of [['home','card'],['history','mood'],['ask','worry'],['home','day'],['home','tone'],['history','askesis'],['history','wishes'],['history','habits'],['history','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','compat'],['about','tests'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['ask','hentries'],['history','journal'],['history','week'],['account','edit'],['account','remind'],['account','support']]) {
+      for(const [view,key] of [['home','card'],['history','mood'],['ask','worry'],['home','day'],['home','tone'],['history','askesis'],['history','wishes'],['history','habits'],['history','gratitude'],['about','natal'],['about','year'],['about','birthnum'],['about','compat'],['home','lunar'],['home','sky'],['history','hmood'],['history','wishes'],['ask','hentries'],['history','journal'],['history','week'],['account','edit'],['account','remind'],['account','support']]) {
         await page.evaluate(v=>go(v),view);
         await page.locator(`#v-${view} [data-feature="${key}"]`).click();
         await page.waitForFunction(k=>document.querySelector(':is(#wg-body,#practice-body) #w-'+k)!==null,key);

@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=109"></script>
+<script src="/app/boot.js?v=110"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=109">
-<link rel="stylesheet" href="/app/app.css?v=109">
-<link rel="stylesheet" href="/app/frame.css?v=109">
+<link rel="stylesheet" href="/app/theme.css?v=110">
+<link rel="stylesheet" href="/app/app.css?v=110">
+<link rel="stylesheet" href="/app/frame.css?v=110">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -238,7 +238,7 @@
   <section class="view" id="v-about"><h1 data-ui="about.title">Обо мне</h1><p class="section-caption" id="ab-sub">Мой профиль</p>
     <!-- экран начинается с человека, а не с меню (по разбору референсов 19.09): имя, натальная Луна, лунный день рождения; тап — в натальную карту -->
     <button data-on="click:openWidget-natal" class="me-card" id="me-card" type="button" hidden></button>
-    <div class="wids about-links list-rows"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты, дома, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнера</span></button><button data-on="click:openWidget-tests" class="wid" data-feature="tests" type="button" aria-label="Тесты"><i class="ico list"></i><b>Тесты</b><span id="tests-sub">Узнать себя через вопросы</span></button></div>
+    <div class="wids about-links list-rows"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты, дома, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнера</span></button></div>
     <!-- аккаунт — отсюда: кружок справа вверху теперь переключает тему (решение владелицы 20.09) -->
     <div class="wids about-links list-rows account-link"><button data-on="click:go-account" class="wid" data-feature="account" type="button" aria-label="Аккаунт"><i class="ico person"></i><b>Аккаунт</b><span>Уведомления, почта, выход</span></button></div>
   </section>
@@ -346,7 +346,6 @@
     </div>
   </div>
   <div class="wpane" id="w-natal"><div id="natal-box"><p class="hint">Считаем…</p></div></div>
-  <div class="wpane" id="w-tests"><div class="list" id="tests-box"><p class="hint">Тесты готовятся и появятся здесь.</p></div></div>
   <div class="wpane" id="w-support"><div id="sup-box"><p class="hint">Загружаем…</p></div></div>
   <div class="wpane" id="w-appinfo"><p>Лунарио — пространство, где можно услышать себя: замечать настроение, записывать мысли и смотреть на вопрос иначе.</p><p class="material-note" data-material-note></p><button data-on="click:openWidget-terms" class="btn ghost sm" type="button">Условия использования</button></div>
   <div class="wpane" id="w-terms"><p>Карты, руны, астрологические и нумерологические интерпретации — материалы для размышления. Решения о своих действиях принимаете вы.</p><p class="material-note" data-material-note></p><p>Записи сохраняются, когда вы нажимаете кнопку сохранения. Напоминания включаются по вашему выбору. Скачать свои данные и управлять аккаунтом можно в «Аккаунте» — кружок с фото в правом верхнем углу главной.</p><p class="material-note"><a href="/politika" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/soglasie" target="_blank" rel="noopener">Обработка персональных данных</a></p></div>
@@ -370,22 +369,22 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=109"></script>
+<script src="/app/moon-logo.js?v=110"></script>
 
-<script type="module" src="/app/sky.js?v=109"></script>
+<script type="module" src="/app/sky.js?v=110"></script>
 
-<script src="/app/common.js?v=109"></script>
-<script src="/app/experience.js?v=109"></script>
-<script src="/app/app.js?v=109"></script>
-<script src="/app/today.js?v=109"></script>
-<script src="/app/diary.js?v=109"></script>
-<script src="/app/readings.js?v=109"></script>
-<script src="/app/practices.js?v=109"></script>
-<script src="/app/about.js?v=109"></script>
-<script src="/app/account.js?v=109"></script>
-<script src="/app/tour.js?v=109"></script>
-<script src="/app/handlers.js?v=109"></script>
-<script src="/app/on.js?v=109"></script>
-<script src="/app/start.js?v=109"></script>
+<script src="/app/common.js?v=110"></script>
+<script src="/app/experience.js?v=110"></script>
+<script src="/app/app.js?v=110"></script>
+<script src="/app/today.js?v=110"></script>
+<script src="/app/diary.js?v=110"></script>
+<script src="/app/readings.js?v=110"></script>
+<script src="/app/practices.js?v=110"></script>
+<script src="/app/about.js?v=110"></script>
+<script src="/app/account.js?v=110"></script>
+<script src="/app/tour.js?v=110"></script>
+<script src="/app/handlers.js?v=110"></script>
+<script src="/app/on.js?v=110"></script>
+<script src="/app/start.js?v=110"></script>
 </body>
 </html>

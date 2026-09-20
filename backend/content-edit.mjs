@@ -5,6 +5,7 @@
    Читаем и пишем только сам файл в папке контента; приложение перечитывает его само (watch в content.mjs). */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync, copyFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
+import { createHash } from 'node:crypto';
 import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
 import * as C from './content.mjs';
 
@@ -51,21 +52,27 @@ const path = (name) => { if (!/^[\wа-яА-Я.-]+\.txt$/u.test(name) || name.inc
 const read = (name) => readFileSync(path(name), 'utf8');
 
 /* ── архив версий (решение владелицы 19.09): перед каждой записью прежний файл уезжает в архив/<файл>/<время>__<кто>.txt,
-   любую версию можно вернуть — текущая при этом тоже уходит в архив. Картинки — в архив/картинки/<папка>/ ── */
+   любую версию можно вернуть — текущая при этом тоже уходит в архив. Картинки — в архив/картинки/<папка>/.
+   Имя версии — до миллисекунды и с номером при совпадении: два сохранения подряд не затирают друг друга (аудит v98, F04).
+   Сам файл пишется во временный и подменяется атомарно: обрыв посередине не оставит половину справочника. ── */
 const ARCHIVE = () => join(CONTENT_DIR, 'архив');
-const stamp = (d = new Date()) => d.toISOString().replace(/\.\d+Z$/, '').replace(/:/g, '-');
+const stamp = (d = new Date()) => d.toISOString().replace(/Z$/, '').replace(/:/g, '-');
 const who = (by) => String(by || '').replace(/[^\w.@-]/g, '').slice(0, 60) || 'кабинет';
+const uniqueName = (dir, base, ext) => { let id = base + ext; for (let n = 2; existsSync(join(dir, id)); n++) id = `${base}-${n}${ext}`; return id; };
+/* время из имени версии: 2026-09-20T10-11-12.345-2 → 2026-09-20T10:11:12.345Z */
+const tsOf = (s) => String(s || '').replace(/T(\d\d)-(\d\d)-(\d\d)(\.\d+)?(-\d+)?$/, 'T$1:$2:$3$4') + 'Z';
 function archive(name, by) {
   const src = path(name); if (!existsSync(src)) return '';
   const dir = join(ARCHIVE(), name); if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const id = `${stamp()}__${who(by)}.txt`; copyFileSync(src, join(dir, id)); return id;
+  const id = uniqueName(dir, `${stamp()}__${who(by)}`, '.txt'); copyFileSync(src, join(dir, id)); return id;
 }
-export function writeFile(name, text, by) { archive(name, by); writeFileSync(path(name), noYo(text), 'utf8'); }
+function writeAtomic(file, text) { const tmp = `${file}.tmp-${process.pid}-${Date.now().toString(36)}`; writeFileSync(tmp, text, 'utf8'); renameSync(tmp, file); }
+export function writeFile(name, text, by) { archive(name, by); writeAtomic(path(name), noYo(text)); }
 const write = writeFile;
 export function versions(name) {
   const dir = join(ARCHIVE(), name); if (!existsSync(dir)) return [];
   return readdirSync(dir).filter((f) => f.endsWith('.txt')).sort().reverse().map((f) => { const m = f.match(/^(.+?)__(.+)\.txt$/); const st = statSync(join(dir, f));
-    return { id: f, ts: m ? m[1].replace(/T(\d\d)-(\d\d)-(\d\d)$/, 'T$1:$2:$3') + 'Z' : '', by: m ? m[2] : '', size: st.size }; });
+    return { id: f, ts: m ? tsOf(m[1]) : '', by: m ? m[2] : '', size: st.size }; });
 }
 export function versionText(name, id) { const f = join(ARCHIVE(), name, basename(String(id))); return existsSync(f) ? readFileSync(f, 'utf8') : null; }
 export function restore(name, id, by) {
@@ -76,11 +83,11 @@ export function restore(name, id, by) {
 export function archiveImage(dir, file, by) {
   const src = join(CONTENT_DIR, 'картинки', dir, file); if (!existsSync(src)) return '';
   const adir = join(ARCHIVE(), 'картинки', dir); if (!existsSync(adir)) mkdirSync(adir, { recursive: true });
-  const id = `${file.replace(/\.[^.]+$/, '')}__${stamp()}__${who(by)}${extname(file)}`; copyFileSync(src, join(adir, id)); return id;
+  const id = uniqueName(adir, `${file.replace(/\.[^.]+$/, '')}__${stamp()}__${who(by)}`, extname(file)); copyFileSync(src, join(adir, id)); return id;
 }
 export function imageVersions(dir, base) {
   const adir = join(ARCHIVE(), 'картинки', dir); if (!existsSync(adir)) return [];
-  return readdirSync(adir).filter((f) => f.startsWith(base + '__')).sort().reverse().map((f) => { const m = f.match(/__(.+?)__(.+)\.[^.]+$/); return { id: f, ts: m ? m[1].replace(/T(\d\d)-(\d\d)-(\d\d)$/, 'T$1:$2:$3') + 'Z' : '', by: m ? m[2] : '' }; });
+  return readdirSync(adir).filter((f) => f.startsWith(base + '__')).sort().reverse().map((f) => { const m = f.match(/__(.+?)__(.+?)(?:-\d+)?\.[^.]+$/); return { id: f, ts: m ? tsOf(m[1]) : '', by: m ? m[2] : '' }; });
 }
 export function imageArchivePath(dir, id) { const f = join(ARCHIVE(), 'картинки', dir, basename(String(id))); return existsSync(f) ? f : null; }
 
@@ -109,17 +116,25 @@ export function serializeBook({ preamble, records, sep = '\n\n', preSep = sep })
   return (preamble ? preamble + preSep : '') + records.map((r) => `=== ${r.title}\n${r.fields.map(([k, v]) => `${k}: ${v}`).join('\n')}${r.fields.length ? '\n' : ''}\n${r.body}`.replace(/\s+$/, '')).join(sep) + '\n';
 }
 const keyOf = (name, r) => { const k = BOOKS[name]?.key; const f = k ? r.fields.find(([n]) => n === k) : null; return f ? f[1] : r.title; };
+/* версия справочника — отпечаток текста файла: карточка сохраняется по ключу записи и версии, с которой ее открыли;
+   файл изменился (кто-то удалил или добавил запись) — конфликт, а не запись поверх соседней карточки (аудит v98, F03) */
+export const bookVersion = (name) => createHash('sha1').update(read(name)).digest('hex').slice(0, 12);
 export function bookRecords(name) {
   if (!BOOKS[name]) throw new Error('not_book');
-  const { records } = parseBook(read(name));
-  return records.map((r, i) => ({ index: i, key: keyOf(name, r), title: r.title, fields: r.fields, body: r.body,
+  const text = read(name), version = createHash('sha1').update(text).digest('hex').slice(0, 12);
+  const { records } = parseBook(text);
+  return records.map((r, i) => ({ index: i, key: keyOf(name, r), version, title: r.title, fields: r.fields, body: r.body,
     image: (r.fields.find(([n]) => n === 'картинка') || [])[1] || '' }));
 }
-export function bookRecordSave(name, { index, title, fields, body }, by) {
+/* запись ищется по ключу (код, число или название); index — только для старых вызовов без ключа */
+const locate = (name, book, { key, index }) => { if (key !== undefined && key !== null && String(key) !== '') { const i = book.records.findIndex((r) => keyOf(name, r) === String(key)); return i; } const i = Number(index); return i >= 0 && i < book.records.length ? i : -1; };
+export function bookRecordSave(name, { index, key, version, title, fields, body }, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
-  const book = parseBook(read(name));
-  const i = Number(index);
-  if (!(i >= 0 && i < book.records.length)) return { ok: false, error: 'not_found' };
+  const text = read(name);
+  if (version && version !== createHash('sha1').update(text).digest('hex').slice(0, 12)) return { ok: false, error: 'conflict' };
+  const book = parseBook(text);
+  const i = locate(name, book, { key, index });
+  if (i < 0) return { ok: false, error: 'not_found' };
   const t = String(title || '').trim(); if (!t) return { ok: false, error: 'no_title' };
   const fl = (Array.isArray(fields) ? fields : []).map(([k, v]) => [String(k || '').trim().replace(/[:|]/g, ''), String(v || '').trim().replace(/\n/g, ' ')]).filter(([k]) => k);
   book.records[i] = { title: t, fields: fl, body: String(body || '').replace(/\r/g, '').trim() };
@@ -135,10 +150,12 @@ export function bookRecordAdd(name, after, by) {
   write(name, serializeBook(book), by);
   return { ok: true, index: Math.min(book.records.length - 1, (Number(after) || 0) + 1) };
 }
-export function bookRecordRemove(name, index, by) {
+export function bookRecordRemove(name, { index, key, version } = {}, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
-  const book = parseBook(read(name)); const i = Number(index);
-  if (!(i >= 0 && i < book.records.length)) return { ok: false, error: 'not_found' };
+  const text = read(name);
+  if (version && version !== createHash('sha1').update(text).digest('hex').slice(0, 12)) return { ok: false, error: 'conflict' };
+  const book = parseBook(text); const i = locate(name, book, { key, index });
+  if (i < 0) return { ok: false, error: 'not_found' };
   book.records.splice(i, 1); write(name, serializeBook(book), by); return { ok: true };
 }
 

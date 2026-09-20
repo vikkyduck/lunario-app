@@ -57,11 +57,13 @@ function paintAppearance(){
   const box=$('appearance-box'); if(!box)return;
   box.innerHTML=`<div class="theme-options">${THEME_OPTIONS.map(([key,label])=>`<button data-on="click:saveTheme-a0" data-a0="${key}" type="button" class="theme-option ${key}" aria-pressed="${XP.prefs.theme===key}"><span aria-hidden="true">Aa</span>${label}</button>`).join('')}</div>`;
 }
+/* Единственный путь сохранения настроек (аудит v98, F16): уходят только измененные поля, сервер объединяет их с сохраненными —
+   тема из одной вкладки и утро из другой не затирают друг друга; одно и то же поле — побеждает последнее действие */
 async function savePreferences(value){const r=await api('/preferences',{method:'POST',body:JSON.stringify(value)});XP.prefs=r.preferences;return r;}
 async function saveTheme(theme){
   if(saveTheme.busy)return;saveTheme.busy=true;
   applyTheme(theme); hap?.();   /* сразу на экране, сохранение — следом */
-  try{await savePreferences({...XP.prefs,theme});}
+  try{await savePreferences({theme});}
   catch{applyTheme(XP.prefs.theme);toast(ERR_SAVE);}
   finally{saveTheme.busy=false;paintAppearance();}
 }
@@ -124,7 +126,7 @@ async function toggleMorning(key){
   const morning=MORNING.map(m=>m[0]).filter(k=>set.has(k));
   XP.prefs={...XP.prefs,morning};paintMorning();hap();
   const seq=toggleMorning.seq=(toggleMorning.seq||0)+1;
-  try{const r=await api('/preferences',{method:'POST',body:JSON.stringify(XP.prefs)});if(seq!==toggleMorning.seq)return;XP.prefs=r.preferences;track(set.has(key)?'morning_add':'morning_remove',key);}
+  try{const r=await api('/preferences',{method:'POST',body:JSON.stringify({morning})});if(seq!==toggleMorning.seq)return;XP.prefs=r.preferences;track(set.has(key)?'morning_add':'morning_remove',key);}
   catch{if(seq!==toggleMorning.seq)return;XP.prefs={...XP.prefs,morning:was};paintMorning();toast(ERR_SAVE);return;}
   if(set.has(key)&&THEME_SOURCE[key]){
     const src=MORNING.map(m=>m[0]).find(k=>THEME_SOURCE[k]&&set.has(k));   /* первый выбранный источник по порядку карта → руна → планеты */

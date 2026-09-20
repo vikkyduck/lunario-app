@@ -9,6 +9,7 @@
    · аскеза живет до даты, а не «на N дней», и отметка — это наблюдение парой слов, а не галочка.
 
    Возвращает true: запрос обработан, ответ отправлен. */
+import { isDay } from '../util.mjs';
 export function createPracticeRoutes(deps) {
   const { db, json, readBody, clean, cleanText, seal, open_, ISO_DAY, nowISO, track, touchStreak,
     habitList, askesisList, parseRule, habitStreak, validEndDate } = deps;
@@ -38,7 +39,7 @@ export function createPracticeRoutes(deps) {
         if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
         db.prepare('UPDATE habits SET title = ?, rule = ?, rule_text = ? WHERE id = ?').run(seal(title), parseRule(ruleText), ruleText, h.id);
       } else {
-        const day = ISO_DAY.test(b.day || '') && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
+        const day = isDay(b.day) && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
         if (db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day)) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
         else {
           db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u); track(u, 'habit_mark', day === d ? 'today' : 'past');

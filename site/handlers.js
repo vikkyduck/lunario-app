@@ -29,7 +29,6 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "openWidget-week": function (event) { openWidget('week') },
   "openWidget-edit": function (event) { openWidget('edit') },
   "openWidget-natal": function (event) { openWidget('natal') },
-  "openWidget-tests": function (event) { openWidget('tests') },
   "openWidget-year": function (event) { openWidget('year') },
   "openWidget-birthnum": function (event) { openWidget('birthnum') },
   "openWidget-compat": function (event) { openWidget('compat') },

@@ -4,10 +4,10 @@ const gratQ = () => 'Кому и за что я благодарна сегод�
 async function loadGratitude(){
   const box = $('gr-box'); box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
-  try { const r = await api('/journal?kind=gratitude'); S.grat = r; paintGratitude(); }
+  try { const r = await api('/journal?kind=gratitude'); S.grat = r; paintGratitude(); }   /* r.next — с какой записи продолжать (F17) */
   catch (e) { box.innerHTML = LOAD_ERR; }
 }
-let gratitudeEdit=null,gratitudeDraft='',gratitudeSaving=false;
+let gratitudeEdit=null,gratitudeDraft='',gratitudeSaving=false,gratitudeOp='';
 function editGratitude(id){
   const item=S.grat.items.find(i=>i.id===id); if(!item)return;
   gratitudeEdit=id;gratitudeDraft=item.text;paintGratitude();$('gr-text').focus();
@@ -23,21 +23,29 @@ function paintGratitude(){
       <div class="form-actions"><button data-on="click:saveGratitude" type="button" class="btn sm" ${gratitudeSaving?'disabled':''}>${gratitudeSaving?'Сохраняем…':'Сохранить'}</button>
       ${todayItem?`<button data-on="click:gratitudeEdit-null-gratitudeDraft-paintGratitude" type="button" class="btn ghost sm">Отмена</button>`:''}</div>`}</div>
     ${todayItem && !editing?actionsHtml(id):''}
-    ${r.items.filter(i=>i.id!==todayItem?.id).length?moreBlock(r.items.filter(i=>i.id!==todayItem?.id).slice(0,30).map(i=>`<div class="item"><small>${fmtDay(i.day)}</small><p class="entry-text">${esc(i.text)}</p></div>`).join(''),'Прошлые благодарности'):''}`;
+    ${r.items.filter(i=>i.id!==todayItem?.id).length?moreBlock(r.items.filter(i=>i.id!==todayItem?.id).map(i=>`<div class="item"><small>${fmtDay(i.day)}</small><p class="entry-text">${esc(i.text)}</p></div>`).join('')+(r.next?`<button data-on="click:loadGratitudeMore" class="btn ghost sm mt-2" type="button" ${gratitudeMore.busy?'disabled':''}>Показать раньше</button>`:''),'Прошлые благодарности'):''}`;
   gratitudeHomeStatus(!!todayItem);
   paintRem('gratitude');preparePending();
+}
+/* продолжение ленты — страницей от последней показанной записи (аудит v98, F17) */
+const gratitudeMore={busy:false};
+async function loadGratitudeMore(){
+  if(gratitudeMore.busy||!S.grat?.next)return; gratitudeMore.busy=true;
+  try{ const r=await api('/journal?kind=gratitude&before='+S.grat.next); S.grat.items=[...S.grat.items,...r.items]; S.grat.next=r.next??null; }
+  catch(e){ toast('Не загрузилось'); }
+  finally{ gratitudeMore.busy=false; paintGratitude(); const d=$('gr-box')?.querySelector('details'); if(d)d.open=true; }
 }
 async function saveGratitude(){
   const text=($('gr-text')?.value||'').trim();if(text.length<3){toast('Напишите хотя бы пару слов');return;}
   if(gratitudeSaving)return;gratitudeSaving=true;
   const button=$('gr-box').querySelector('button[data-on="click:saveGratitude"]');button.disabled=true;button.textContent='Сохраняем…';
   try {
-    const edit=gratitudeEdit;
-    const r=await api('/journal',{method:edit?'PATCH':'POST',body:JSON.stringify({id:edit,text,kind:'gratitude',title:gratQ()})});
+    const edit=gratitudeEdit; if(!edit)gratitudeOp=gratitudeOp||opKey();   /* повтор после обрыва — тот же ключ, вторая запись не появится (F02) */
+    const r=await api('/journal',{method:edit?'PATCH':'POST',body:JSON.stringify({id:edit,text,kind:'gratitude',title:gratQ(),...(edit?{}:{op:gratitudeOp})})}); gratitudeOp='';
     const item={...(S.grat.items.find(i=>i.id===edit)||{}),...r.item,kind:'gratitude',title:gratQ()};
     S.grat.items=[item,...S.grat.items.filter(i=>i.id!==item.id)];
     gratitudeEdit=null;gratitudeDraft='';toast('Запись сохранена');hap('ok');paintGratitude();
-  } catch(e){toast(ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
+  } catch(e){toast(e.code==='too_many'?'Записей за день уже сто — текст остался в поле':ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
   finally{gratitudeSaving=false;}
 }
 

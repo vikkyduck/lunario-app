@@ -20,7 +20,7 @@ const MONTHS = ['января', 'февраля', 'марта', 'апреля', 
 const fmtDay = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}` : String(d || ''); };
 const fmtWhen = (iso) => { const t = new Date(iso); return isNaN(t) ? '' : `${fmtDay(iso.slice(0, 10))}, ${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')} UTC`; };
 const KIND = { yesno: '«Да / Нет»', rune: 'Руна', runes: 'Расклад рун', spread: 'Расклад Таро', card: 'Карта дня', dayrune: 'Руна дня' };
-const JOURNAL_KIND = { gratitude: 'благодарность', answer: 'ответ на вопрос дня', weekly: 'итог недели' };
+const JOURNAL_KIND = { gratitude: 'благодарность', answer: 'ответ на вопрос дня', weekly: 'итог недели', thought: 'мысль к материалу' };
 const ECHO = { yes: 'отозвалось', no: 'не связано', unsure: 'не уверена' };
 const THEME = { dark: 'ночная', light: 'светлая', system: 'как в системе' };
 const FREQ = { daily: 'каждый день', weekly: 'раз в неделю', events: 'по событиям на небе' };
@@ -184,7 +184,9 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   const journal = [...(data.journal || [])].sort((a, b) => (b.day || '').localeCompare(a.day || '') || b.id - a.id);
   flow.section('Дневник', 'Записи', journal.length ? plural(journal.length, 'запись', 'записи', 'записей') : '');
   if (!journal.length) flow.empty('Записей пока не было.');
-  for (const j of journal) flow.card({ meta: [fmtDay(j.day), JOURNAL_KIND[j.kind]].filter(Boolean).join(' · '), title: j.kind === 'answer' && j.title ? j.title : '', text: j.text });
+  /* у мысли к материалу — источник: имя карты, руны или расклада и вопрос, к которому она записана (аудит v98, F11) */
+  const thoughtTitle = (j) => j.thought ? [j.thought.name, j.thought.question].filter(Boolean).join(' · ') : '';
+  for (const j of journal) flow.card({ meta: [fmtDay(j.day), JOURNAL_KIND[j.kind]].filter(Boolean).join(' · '), title: j.kind === 'answer' && j.title ? j.title : j.kind === 'thought' ? thoughtTitle(j) : '', text: j.text });
 
   /* ── желания ── */
   const wishes = data.wishes || [];
@@ -216,7 +218,10 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   const moods = [...(data.moods || [])].sort((a, b) => (b.day || '').localeCompare(a.day || ''));
   flow.section('Дневник', 'Настроение по дням', moods.length ? plural(moods.length, 'отметка', 'отметки', 'отметок') : '');
   if (!moods.length) flow.empty('Настроение пока не отмечалось.');
-  else flow.bullets(moods.map((m) => `${fmtDay(m.day)} — ${moodName(m.mood)}`), { size: 10 });
+  else flow.bullets(moods.map((m) => `${fmtDay(m.day)} — ${(m.marks && m.marks.length ? m.marks : [m.mood]).map(moodName).join(', ')}`), { size: 10 });   /* все отметки дня, не только главная */
+  /* фото дня в PDF нет — сказано явно, вместе с числом снимков */
+  const photos = data.dayPhotos || [];
+  if (photos.length) flow.kv('Фото дня', `${plural(photos.length, 'снимок', 'снимка', 'снимков')} — в приложении, по дням; в этот файл фото не входят`);
 
   /* ── вопросы и ответы ── */
   const entries = [...(data.entries || [])].sort((a, b) => (b.day || '').localeCompare(a.day || '') || b.id - a.id);

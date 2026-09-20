@@ -498,7 +498,6 @@ window.__lunScheduleState = (states, reason) => {
   if (reason === 'denied') toast('Уведомления для Лунарио выключены — их можно разрешить в Настройках телефона');
 };
 /* После карты обновляем ту же строку уведомлений у заголовка. */
-function cardNudge(){}
 /* «Напоминания» в аккаунте: все функции одним списком */
 async function paintAllReminders(){
   const box = $('rem-all'); box.innerHTML = LOADING;

@@ -3,41 +3,46 @@
    с разными kind; настроения — mood_marks (несколько за день) плюс «главное» в moods для старых экранов и отчетов;
    привычки — habit_marks; аскеза — askesis_days (держусь / сорвалась, заметка). Ничего не разбирается и не режется:
    текст хранится целиком, предложением самого человека.
-   Пустая ячейка при сохранении = «не менять»: случайно стереть запись нельзя. Зависимости — явным объектом, как у createKnowledge. */
+   Пустая ячейка при сохранении = «не менять»: случайно стереть запись нельзя. Зависимости — явным объектом, как у createKnowledge.
+   Записей одного вида за день может быть несколько (старые версии писали отдельной панелью): экран получает их все списком
+   (texts, gratitudes, answers), а «ячейка» для правки — последнюю; удаляется одна запись по ее id (аудит v98, F01, F17). */
 import { transaction } from './sync.mjs';
-import { addDays } from './util.mjs';
+import { addDays, isDay } from './util.mjs';
+import { VERDICTS } from './week.mjs';
+import { createMoods } from './moods.mjs';
 
 export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten = null, questionOf, morningOf = () => null, themeTitle = (k) => k, lunarOf = () => null, dailyWrites = 100 }) {
   const KINDS = { text: '', gratitude: 'gratitude', answer: 'answer' };
   const latest = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id DESC LIMIT 1').get(uid, d, kind);
   const cell = (row) => row ? { id: row.id, text: open(row.text), title: open(row.title || '') } : null;
+  const allOf = (uid, d, kind) => db.prepare('SELECT id, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = ? ORDER BY id').all(uid, d, kind).map(cell);
   const moodOk = (m) => /^own:[^\s|]{1,24}$/u.test(m) || !!C.moodInfo(m);
-  const moodsOf = (uid, d) => {
-    const marks = db.prepare('SELECT mood FROM mood_marks WHERE user_id = ? AND day = ? ORDER BY rowid').all(uid, d).map((m) => m.mood);
-    if (marks.length) return marks;
-    const main = db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(uid, d);
-    return main ? [main.mood] : [];
-  };
+  const Moods = createMoods(db);
+  const moodsOf = (uid, d) => Moods.ofDay(uid, d);
   /* утро дня, как оно выпало: настрой, вопрос и тема — из daily_sets; для прошлых дней ничего не тянется заново */
   const morningStored = (uid, d) => { const r = db.prepare('SELECT text, question, theme FROM daily_sets WHERE user_id = ? AND day = ?').get(uid, d); return r && r.text ? { set: r.text, question: r.question || '', theme: themeTitle(r.theme || '') } : null; };
   const echoOf = (uid, d) => (db.prepare('SELECT verdict FROM week_echoes WHERE user_id = ? AND day = ?').get(uid, d) || {}).verdict || '';
-  /* Мысль к материалу (карта, руна, расклад): journal kind='thought', в title — источник JSON {source, slug, name, question}.
-     Одна на материал в день: повторная отправка обновляет, не плодит; ответ на вопрос дня — отдельная строка (kind='answer') */
-  const THOUGHT_SOURCES = ['card', 'dayrune', 'rune', 'spread'];
+  /* Мысль к материалу (карта, руна, расклад): journal kind='thought', в title — источник JSON {source, slug, name, question, entry}.
+     Карта и руна дня — одна мысль в день; вопрос к рунам или картам — мысль привязана к конкретному результату (entry — id в entries):
+     две Феху на два вопроса — две мысли (аудит v98, F13). Повторная отправка к тому же результату обновляет, не плодит */
+  const THOUGHT_SOURCES = ['card', 'dayrune', 'rune', 'runes', 'spread'];
   const thoughtMeta = (row) => { try { const m = JSON.parse(open(row.title || '')); return m && typeof m === 'object' ? m : {}; } catch { return {}; } };
   const thoughtsOf = (uid, d) => db.prepare("SELECT id, day, text, title FROM journal WHERE user_id = ? AND day = ? AND kind = 'thought' ORDER BY id").all(uid, d)
-    .map((r) => { const m = thoughtMeta(r); return { id: r.id, day: r.day, text: open(r.text), source: m.source || '', slug: m.slug || '', name: m.name || '', question: m.question || '' }; });
+    .map((r) => { const m = thoughtMeta(r); return { id: r.id, day: r.day, text: open(r.text), source: m.source || '', slug: m.slug || '', name: m.name || '', question: m.question || '', entry: Number(m.entry) || 0 }; });
   function thoughtSave(u, d, b) {
     const source = THOUGHT_SOURCES.includes(b.source) ? b.source : '';
     const slug = clean(b.slug, 60), name = clean(b.name, 120), question = clean(b.question, 300), text = cleanText(b.text, 2000);
     if (!source || !slug) return { ok: false, error: 'bad_source' };
     if (text.length < 2) return { ok: false, error: 'short' };
-    const meta = JSON.stringify({ source, slug, name, question });
-    const prev = thoughtsOf(u.id, d).find((t) => t.source === source && t.slug === slug);
-    if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(meta), prev.id, u.id); track(u, 'thought_save', source + ':update'); return { ok: true, updated: true, item: { ...prev, text, name, question } }; }
+    /* результат — свой: чужой или несуществующий id не привязывается */
+    const entry = Number(b.entry) > 0 && db.prepare('SELECT 1 FROM entries WHERE id = ? AND user_id = ?').get(Number(b.entry), u.id) ? Number(b.entry) : 0;
+    const meta = JSON.stringify({ source, slug, name, question, ...(entry ? { entry } : {}) });
+    const prev = thoughtsOf(u.id, d).find((t) => t.source === source && t.slug === slug && (t.entry || 0) === entry);
+    if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(meta), prev.id, u.id); track(u, 'thought_save', source + ':update'); return { ok: true, updated: true, item: { ...prev, text, name, question, entry } }; }
+    if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= dailyWrites) return { ok: false, error: 'too_many', limit: dailyWrites };
     const r = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), 'thought', seal(meta));
     track(u, 'thought_save', source); touchStreak(u);
-    return { ok: true, item: { id: Number(r.lastInsertRowid), day: d, text, source, slug, name, question } };
+    return { ok: true, item: { id: Number(r.lastInsertRowid), day: d, text, source, slug, name, question, entry } };
   }
   const photoMeta = (uid, d) => db.prepare('SELECT ts, w, h FROM day_photos WHERE user_id = ? AND day = ?').get(uid, d) || null;
 
@@ -48,19 +53,26 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     return {
       day: d, today, question: today ? questionOf(u, d) : (m ? m.question : ''), set: m ? m.set : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d), lunar: lunarOf(u, d),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')), thoughts: thoughtsOf(u.id, d),
-      moods: moodsOf(u.id, d),
+      ...entriesOf(u.id, d), moods: moodsOf(u.id, d),
       habits: habitList(u.id, d).map((h) => ({ id: h.id, title: h.title, due: h.due, today: h.today, rule: h.rule })),
       askesis: askesisList(u.id, d).active.map((a) => { const n = kept.get(a.id); return { id: a.id, title: a.title, done: a.done, total: a.total, left: a.left, kept: n ? !!n.kept : null, note: n ? open(n.note || '') : '' }; }),
     };
   }
 
+  /* все записи дня по видам — экран показывает каждую, удаляет по одной; итог недели (kind='weekly') лежит под воскресеньем */
+  const entriesOf = (uid, d) => ({ texts: allOf(uid, d, ''), gratitudes: allOf(uid, d, 'gratitude'), answers: allOf(uid, d, 'answer'), weekly: cell(latest(uid, d, 'weekly')) });
+  /* Правка задним числом — до года назад (day-routes); день старше отдается только для чтения, и экран знает это заранее (аудит v98, F18) */
+  const EDIT_DAYS = 366;
+  const editableFrom = (today) => addDays(today, -EDIT_DAYS);
+  const editable = (d, today) => d <= today && d >= editableFrom(today);
   /* Прошлый день целиком — для чтения: утро (настрой, вопрос, тема), записи, настроение, «отозвалось», привычки и аскеза за день */
-  function view(u, d) {
+  function view(u, d, today = d) {
     const m = morningStored(u.id, d);
     return {
       day: d, set: m ? m.set : '', question: m ? m.question : '', theme: m ? m.theme : '', echo: echoOf(u.id, d), photo: photoMeta(u.id, d), lunar: lunarOf(u, d),
+      editable: editable(d, today), editableFrom: editableFrom(today),
       text: cell(latest(u.id, d, '')), gratitude: cell(latest(u.id, d, 'gratitude')), answer: cell(latest(u.id, d, 'answer')), thoughts: thoughtsOf(u.id, d),
-      moods: moodsOf(u.id, d),
+      ...entriesOf(u.id, d), moods: moodsOf(u.id, d),
       habits: db.prepare('SELECT h.title FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? AND m.day = ? ORDER BY h.id').all(u.id, d).map((r) => open(r.title)),   /* названия хранятся зашифрованными — как в habitList */
       askesis: db.prepare('SELECT a.title, n.kept, n.note FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ? AND n.day = ? ORDER BY a.id').all(u.id, d).map((r) => ({ title: open(r.title), kept: !!r.kept, note: open(r.note || '') })),
     };
@@ -83,23 +95,28 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, lunarTitle: ld ? ld.title || '' : '', empty: dayWritten ? !dayWritten(uid, d) : !text && !moods.length && !ph };   /* пусто — по тому же правилу, что пуш и «Сегодня» */
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
-  function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {
-    const total = db.prepare(`SELECT COUNT(*) c FROM (SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' AND day < ? UNION SELECT day FROM moods WHERE user_id = ? AND day < ?)`).get(u.id, d, u.id, d).c;   /* записанных дней до сегодня — по нему предлагаются шаги вечера */
-    if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u, addDays(d, -i))); return { items: out, next: null, total }; }
-    const cut = before && /^\d{4}-\d{2}-\d{2}$/.test(before) ? before : d;
-    const found = db.prepare(`SELECT day FROM (
-      SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' UNION SELECT day FROM moods WHERE user_id = ? UNION SELECT day FROM mood_marks WHERE user_id = ?
+  /* откуда берутся «дни с записями» — один перечень источников для списка и для счетчика (аудит v98, F08) */
+  const DAY_SOURCES = `SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' UNION SELECT day FROM moods WHERE user_id = ? UNION SELECT day FROM mood_marks WHERE user_id = ?
       UNION SELECT m.day FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? UNION SELECT n.day FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ?
-      UNION SELECT day FROM day_photos WHERE user_id = ?)
-      WHERE day < ? ORDER BY day DESC LIMIT ?`).all(u.id, u.id, u.id, u.id, u.id, u.id, cut, limit + 1).map((r) => r.day);
+      UNION SELECT day FROM day_photos WHERE user_id = ?`;
+  function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {
+    const total = db.prepare(`SELECT COUNT(*) c FROM (${DAY_SOURCES}) WHERE day < ?`).get(u.id, u.id, u.id, u.id, u.id, u.id, d).c;   /* записанных дней до сегодня — по нему предлагаются шаги вечера */
+    if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u, addDays(d, -i))); return { items: out, next: null, total }; }
+    const cut = isDay(before) ? before : d;
+    const found = db.prepare(`SELECT day FROM (${DAY_SOURCES}) WHERE day < ? ORDER BY day DESC LIMIT ?`).all(u.id, u.id, u.id, u.id, u.id, u.id, cut, limit + 1).map((r) => r.day);
     const page = found.slice(0, limit);
     return { items: page.map((x) => summary(u, x)), next: found.length > limit ? page[page.length - 1] : null, total };
   }
 
   /* Сохранение: все в одной транзакции — либо весь день записан, либо ничего (повтор с телефона безопасен).
+     Дневной лимит строк проверяется до записи: сверх него — явный отказ too_many, ничего не пишется, текст остается в форме (аудит v98, F15).
+     «Отозвалось» (echo) — в той же операции, а не отдельным запросом; пустая строка снимает отметку (F05).
      События и серия — после COMMIT: аналитика не должна отменять сохраненный день. */
   function save(u, d, b, { today = true } = {}) {
     const filled = [], events = [], emit = (t, x = '') => events.push([t, x]);
+    const fresh = Object.entries(KINDS).filter(([field, kind]) => b[field] !== undefined && b[field] !== null && cleanText(b[field], 2000) && !latest(u.id, d, kind)).length;
+    if (fresh && db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c + fresh > dailyWrites) return { ok: false, error: 'too_many', limit: dailyWrites };
+    if (b.echo !== undefined && b.echo !== null && !(typeof b.echo === 'string' && (b.echo === '' || VERDICTS.includes(b.echo)))) return { ok: false, error: 'bad_echo' };
     transaction(db, () => {
       for (const [field, kind] of Object.entries(KINDS)) {
         if (b[field] === undefined || b[field] === null) continue;
@@ -107,9 +124,13 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
         const row = latest(u.id, d, kind);
         const title = kind === 'answer' ? clean(b.question || (today ? questionOf(u, d) : (morningStored(u.id, d) || {}).question || ''), 300) : '';
         if (row) { if (open(row.text) !== text) db.prepare('UPDATE journal SET text = ? WHERE id = ? AND user_id = ?').run(seal(text), row.id, u.id); }
-        else if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= dailyWrites) continue;   /* тот же дневной лимит, что у «Записать мысль» */
         else { db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title)); emit(kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add'); }
         filled.push(field);
+      }
+      if (typeof b.echo === 'string' && b.echo !== echoOf(u.id, d)) {
+        if (b.echo) db.prepare('INSERT INTO week_echoes (user_id, day, verdict, ts) VALUES (?,?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET verdict = excluded.verdict, ts = excluded.ts').run(u.id, d, b.echo, nowISO());
+        else db.prepare('DELETE FROM week_echoes WHERE user_id = ? AND day = ?').run(u.id, d);
+        emit('week_echo', b.echo || 'clear');
       }
       if (Array.isArray(b.moods)) {
         const moods = [...new Set(b.moods.map((m) => clean(m, 30)).filter(moodOk))].slice(0, 12);
@@ -145,10 +166,18 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     if (filled.length) { if (today) touchStreak(u); track(u, 'day_save', [filled.join('|'), today ? '' : 'past'].filter(Boolean).join(' @')); }
     return { ok: true, saved: filled, ...state(u, d, { today }) };
   }
-  /* Убрать из дня: запись / благодарность / ответ (все строки этого вида за день) или настроение; фото — своим маршрутом */
+  /* Убрать из дня одну запись: «text:12» — запись с этим id (и только ее); «text» без id — последнюю показанную;
+     все записи вида за день — только явным «text:all». Настроение — все отметки дня; фото — своим маршрутом */
   function remove(u, d, what) {
-    const kind = { text: '', gratitude: 'gratitude', answer: 'answer' }[what];
-    if (kind !== undefined) { const r = db.prepare('DELETE FROM journal WHERE user_id = ? AND day = ? AND kind = ?').run(u.id, d, kind); track(u, 'day_remove', what); return { ok: true, removed: r.changes }; }
+    const m = /^(text|gratitude|answer|weekly)(?::(\d+|all))?$/.exec(what || '');
+    if (m) {
+      const kind = m[1] === 'text' ? '' : m[1], pick = m[2] || '';
+      let r;
+      if (pick === 'all') r = db.prepare('DELETE FROM journal WHERE user_id = ? AND day = ? AND kind = ?').run(u.id, d, kind);
+      else if (pick) r = db.prepare('DELETE FROM journal WHERE user_id = ? AND day = ? AND kind = ? AND id = ?').run(u.id, d, kind, Number(pick));
+      else { const last = latest(u.id, d, kind); r = last ? db.prepare('DELETE FROM journal WHERE id = ? AND user_id = ?').run(last.id, u.id) : { changes: 0 }; }
+      track(u, 'day_remove', m[1] + (pick === 'all' ? ':all' : '')); return { ok: true, removed: r.changes };
+    }
     if (/^thought:\d+$/.test(what || '')) { const r = db.prepare("DELETE FROM journal WHERE user_id = ? AND day = ? AND kind = 'thought' AND id = ?").run(u.id, d, Number(what.slice(8))); track(u, 'day_remove', 'thought'); return { ok: true, removed: r.changes }; }
     if (what === 'moods') { db.prepare('DELETE FROM mood_marks WHERE user_id = ? AND day = ?').run(u.id, d); const r = db.prepare('DELETE FROM moods WHERE user_id = ? AND day = ?').run(u.id, d); track(u, 'day_remove', what); return { ok: true, removed: r.changes }; }
     return { ok: false, error: 'bad_what' };
@@ -177,5 +206,5 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     return bytes ? { bytes, ts: row.ts } : null;
   }
   function photoDelete(u, d) { const r = db.prepare('DELETE FROM day_photos WHERE user_id = ? AND day = ?').run(u.id, d); return { ok: true, removed: r.changes > 0 }; }
-  return { state, save, remove, view, days, photoPut, photoGet, photoDelete, thoughtsOf, thoughtSave };
+  return { state, save, remove, view, days, photoPut, photoGet, photoDelete, thoughtsOf, thoughtSave, editable, editableFrom, EDIT_DAYS };
 }

@@ -28,3 +28,4 @@ mobile/ios/build/
 
 # локальные настройки Claude Code
 .claude/
+.deploy-snapshot

@@ -141,12 +141,6 @@
   "view": "about",
   "group": "Обо мне"
  },
- "tests": {
-  "sec": "Обо мне",
-  "title": "Тесты",
-  "view": "about",
-  "group": "Обо мне"
- },
  "remind": {
   "sec": "Аккаунт",
   "title": "Уведомления",

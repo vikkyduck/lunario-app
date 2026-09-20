@@ -84,7 +84,7 @@ function tourSkip(){ if (Tour.i < 0) return; tourFinish(Tour.i === Tour.steps.le
 function tourFinish(how){
   track('tour_' + how, String(Tour.i + 1)); Tour.i = -1; Tour.el = null; if (Tour.root) Tour.root.hidden = true;
   try { localStorage.setItem(tourKey(), String(TOUR_V)); } catch {}
-  if (!(Number(XP.prefs?.tour) >= TOUR_V)) savePreferences({ ...XP.prefs, tour: TOUR_V }).catch(() => {});
+  if (!(Number(XP.prefs?.tour) >= TOUR_V)) savePreferences({ tour: TOUR_V }).catch(() => {});
   paintTourRow();
 }
 function tourKeys(e){

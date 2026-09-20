@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { campaignList, campaignUsers, slaMetrics, ticketQueue, TICKET_STATUS } from './workspace.mjs';
 import * as C from './content.mjs';
 import { preferences } from './experience.mjs';
-import { MSK, dayIn, addDays } from './util.mjs';
+import { MSK, dayIn, addDays, isDay } from './util.mjs';
 import { CORE_EVENTS, EVENT_NAMES, FEATURE_EVENTS } from './events.mjs';
 
 let db, DATA_DIR = '';
@@ -34,7 +34,7 @@ const hourMSK = (ts) => Number(HOUR_MSK.format(new Date(ts)).slice(0, 2));
 const wdMSK = (ts) => WD_MSK.format(new Date(ts));
 
 export function periodOf(q) {
-  const to = /^\d{4}-\d{2}-\d{2}$/.test(q.to || '') ? q.to : dayMSK();
+  const to = isDay(q.to) ? q.to : dayMSK();
   const m = /^(\d{1,3})d$/.exec(q.period || '');
   const days = m ? Math.min(365, Math.max(1, Number(m[1]))) : 7;
   const preset = q.period === 'month' ? 'month' : `${days}d`;

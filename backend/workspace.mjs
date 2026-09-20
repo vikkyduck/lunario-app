@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { MSK, dayIn, cleanText as clean } from './util.mjs';   /* тексты материалов многострочные */
+import { MSK, dayIn, isDay, cleanText as clean } from './util.mjs';   /* тексты материалов многострочные */
 import { noYo } from './content.mjs';
 import { FEATURE_GROUPS } from './features.mjs';
 
@@ -64,7 +64,6 @@ const now = () => new Date().toISOString();
 const dayMSK = (d = new Date()) => dayIn(MSK, d.getTime());
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
-const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 const mask = (e) => String(e || '').replace(/^(.).*(@.*)$/, '$1***$2');
 
 /* ── UTM: первый источник знакомства, записывается один раз ── */

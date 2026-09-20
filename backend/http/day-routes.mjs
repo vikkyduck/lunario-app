@@ -9,8 +9,9 @@ function readRaw(req, max) {
     req.on('error', (e) => { if (!done) { done = true; reject(e); } });
   });
 }
+import { isDay } from '../util.mjs';
 export function createDayRoutes({ json, readBody, day, bridge }) {
-  const ISO = /^\d{4}-\d{2}-\d{2}$/;
+  const ISO = { test: isDay };   /* настоящая календарная дата, не только форма (аудит v98, F14) */
   return async function dayRoutes({ p, req, res, url, u, d }) {
     /* фото дня: PUT — тело «миниатюра + полное» подряд (длина миниатюры в ?thumb=), только за сегодня; GET — по дню и размеру; DELETE — за сегодня */
     if (p === '/api/day/photo') {
@@ -34,23 +35,26 @@ export function createDayRoutes({ json, readBody, day, bridge }) {
     if (req.method === 'GET') {
       /* прошлые дни: список одной строкой (calendar — последние n дней, иначе страницей по дням с записями), открытый день, «мост» из прошлого */
       if (p === '/api/days') { const q = url.searchParams; return json(res, 200, day.days(u, d, { calendar: Math.min(31, Number(q.get('calendar')) || 0), before: q.get('before') || '', limit: Math.min(60, Number(q.get('limit')) || 30) })); }
-      if (p === '/api/day/view') { const x = url.searchParams.get('day') || ''; if (!ISO.test(x) || x > d) return json(res, 400, { ok: false, error: 'bad_day' }); return json(res, 200, day.view(u, x)); }
+      if (p === '/api/day/view') { const x = url.searchParams.get('day') || ''; if (!ISO.test(x) || x > d) return json(res, 400, { ok: false, error: 'bad_day' }); return json(res, 200, day.view(u, x, d)); }   /* с editable: старый день — только чтение, и экран знает это заранее */
       if (p === '/api/thoughts') { const x = url.searchParams.get('day') || d; return json(res, 200, { items: day.thoughtsOf(u.id, ISO.test(x) && x <= d ? x : d) }); }   /* мысли к материалам за день */
       if (p === '/api/day/bridge') { const x = url.searchParams.get('day') || ''; return json(res, 200, { item: bridge(u, ISO.test(x) && x <= d ? x : d) }); }   /* «Я помню» (memory.mjs) и для открытого прошлого дня */
     }
     /* мысль к карте, руне или раскладу — одна на материал в день, повтор обновляет */
-    if (p === '/api/thought' && req.method === 'POST') { const b = await readBody(req); const r = day.thoughtSave(u, d, b); return json(res, r.ok ? 200 : 400, r); }
+    if (p === '/api/thought' && req.method === 'POST') { const b = await readBody(req); const r = day.thoughtSave(u, d, b); return json(res, r.ok ? 200 : r.error === 'too_many' ? 429 : 400, r); }
     if (p !== '/api/day') return false;
-    /* день можно дописать и поправить задним числом — до года назад; сегодняшний — как прежде */
-    const past = (x) => ISO.test(x || '') && x < d && x >= new Date(Date.parse(d + 'T12:00:00Z') - 366 * 864e5).toISOString().slice(0, 10);
-    if (req.method === 'GET') { const x = url.searchParams.get('day') || ''; if (x && x !== d && !past(x)) return json(res, 400, { ok: false, error: 'bad_day' }); return json(res, 200, day.state(u, x && x !== d ? x : d, { today: !x || x === d })); }
+    /* день можно дописать и поправить задним числом — до года назад (day.editable); сегодняшний — как прежде.
+       Старше — not_editable с датой, от которой правка возможна: экран показывает чтение, а не «Повторить» (аудит v98, F18) */
+    const past = (x) => ISO.test(x || '') && x < d && day.editable(x, d);
+    const refuse = (x) => json(res, 400, { ok: false, error: ISO.test(x || '') && x < d ? 'not_editable' : 'bad_day', editableFrom: day.editableFrom(d) });
+    if (req.method === 'GET') { const x = url.searchParams.get('day') || ''; if (x && x !== d && !past(x)) return refuse(x); return json(res, 200, day.state(u, x && x !== d ? x : d, { today: !x || x === d })); }
     if (req.method === 'POST') {
       const b = await readBody(req);
       if (!b || typeof b !== 'object') return json(res, 400, { ok: false, error: 'bad_body' });
-      const x = typeof b.day === 'string' ? b.day : ''; if (x && x !== d && !past(x)) return json(res, 400, { ok: false, error: 'bad_day' });
-      return json(res, 200, day.save(u, x && x !== d ? x : d, b, { today: !x || x === d }));
+      const x = typeof b.day === 'string' ? b.day : ''; if (x && x !== d && !past(x)) return refuse(x);
+      const r = day.save(u, x && x !== d ? x : d, b, { today: !x || x === d });
+      return json(res, r.ok ? 200 : r.error === 'too_many' ? 429 : 400, r);   /* лимит — явный отказ, не «сохранено» (F15) */
     }
-    if (req.method === 'DELETE') { const x = url.searchParams.get('day') || d; if (x !== d && !past(x)) return json(res, 400, { ok: false, error: 'bad_day' }); const r = day.remove(u, x, url.searchParams.get('what') || ''); return json(res, r.ok ? 200 : 400, r); }
+    if (req.method === 'DELETE') { const x = url.searchParams.get('day') || d; if (x !== d && !past(x)) return refuse(x); const r = day.remove(u, x, url.searchParams.get('what') || ''); return json(res, r.ok ? 200 : 400, r); }
     return false;
   };
 }

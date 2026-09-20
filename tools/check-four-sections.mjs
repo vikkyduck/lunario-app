@@ -25,7 +25,7 @@ export async function checkFourSections({browser,base,owner}){
     assert.equal(await page.locator('#tone-box .practice-question').innerText(),initialDay.question);
     assert.equal(await page.locator('#tone-box > .hint').innerText(),initialDay.set.statement);
     await close();assert.equal(await page.evaluate(()=>document.activeElement.dataset.feature),'tone');assert.equal(await page.locator('#h-set-question').count(),0,'no duplicate question link in the hero');
-    const routes={home:['card','dayrune','day','tone','lunar','sky'],ask:['worry','hentries'],history:['journal','mood','gratitude','habits','askesis','wishes','hmood','week'],about:['natal','year','birthnum','compat','tests'],account:['remind','support','edit','invite']};
+    const routes={home:['card','dayrune','day','tone','lunar','sky'],ask:['worry','hentries'],history:['journal','mood','gratitude','habits','askesis','wishes','hmood','week'],about:['natal','year','birthnum','compat'],account:['remind','support','edit','invite']};
     for(const [view,keys] of Object.entries(routes))for(const key of keys){
       await page.evaluate(v=>go(v),view);
       const root=page.locator(`#v-${view} [data-feature="${key}"]`);assert.equal(await root.count(),1,key+' canonical entry');
