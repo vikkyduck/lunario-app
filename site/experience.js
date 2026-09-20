@@ -1,6 +1,7 @@
 /* Reading, persistent preferences and full practice pages share the existing data and widgets. */
 /* Настройки приходят из /api/me (умолчания — в backend/experience.mjs); до этого форма пустая */
 const XP={prefs:{theme:'dark',ritual:[],topics:[],topicsAll:false,lunarViews:0},topicsShown:false,scroll:{},page:null,returnView:'home',returnFocus:null,wishPhoto:'',timeline:{dirty:false}};   /* timeline.dirty — записи менялись, «Прошлые дни» перечитать */
+registerReset(()=>{ XP.timeline.dirty=true; });   /* после сброса аккаунта лента перечитывается (F05) */
 /* Практики ритуала: подпись кнопки «следующий шаг»; название и раздел — из реестра FEATURES */
 function activeView(){return document.querySelector('.view.on')?.id.slice(2)||'home';}
 /* что прокручивается: в корпусе телефона на компьютере (html.framed) — .wrap, на самом телефоне — окно */

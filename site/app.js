@@ -1,5 +1,8 @@
 /* Лунарио — Ядро: состояние, навигация, панели, старт. Остальное — по вкладкам: today.js, diary.js, readings.js, practices.js, about.js, account.js; старт — start.js. Все файлы — обычные скрипты в одном окне, функции зовут друг друга по имени. */
 let S = { user:null, day:null, mood:null, mode:'yesno', flipped:false, num:null };
+/* сброс состояния аккаунта на устройстве (F05): загруженные записи и производные экраны; нумерология живет с анкетой — только при выходе */
+registerReset(()=>{ S.grat=null; S.thoughtsBy={}; S.entries=null; S.moodReport=null; S.yesterday=undefined; S.memory=null; S.mood=null; });
+registerReset(()=>{ S.num=null; },{profile:true});
 /* iOS-оболочка: класс выставлен скриптом в head. Сообщения к нативному слою идут
    через мост WebKit; try/catch закрывает и его отсутствие (обычный браузер). */
 const IOS_SHELL = document.documentElement.className.indexOf('ios-shell') !== -1;

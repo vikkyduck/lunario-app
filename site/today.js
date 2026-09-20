@@ -32,7 +32,7 @@ function hidePushNote(){ if (S.pushLast) { try { localStorage.setItem('lun_push_
 /* «Вчера вечером: „…“» — строка на «Сегодня» с первой фразой вчерашней записи; тап открывает день. Дневник возвращает слова утром */
 async function paintYesterday(){
   const box=$('home-yesterday'); if(!box||!S.user?.onboarded)return;
-  if(S.yesterday===undefined){ try{ const r=await api('/days?calendar=1'); S.yesterday=(r.items||[])[0]||null; S.daysTotal=r.total||0; window.tourMaybe?.(); }catch(e){ S.yesterday=null; } }
+  if(S.yesterday===undefined){ try{ const c=ctx(); const r=await api('/days?calendar=1'); if(!c.alive())return; S.yesterday=(r.items||[])[0]||null; S.daysTotal=r.total||0; window.tourMaybe?.(); }catch(e){ if(e.code==='cancelled')return; S.yesterday=null; } }
   const y=S.yesterday; if(!y){ box.hidden=true; box.innerHTML=''; return; }
   if(y.empty){ if(new Date().getHours()<12){ box.innerHTML=row('Вчера','Не записали','Дописать →','click:dcFor-a0',`data-a0="${y.day}"`); box.hidden=false; } else { box.hidden=true; box.innerHTML=''; } return; }
   const moods=y.moods.map(m=>(MOOD_LABEL[m]||m.replace(/^own:/,'')).toLowerCase());
@@ -196,7 +196,7 @@ async function pickMood(id){
 }
 async function loadNumerology(){
   if (S.num) { paintNum(S.num); return; }
-  try{ S.num = await api('/numerology'); paintNum(S.num); }
+  try{ const c=ctx(); const num=await api('/numerology'); if(!c.alive())return; S.num=num; paintNum(S.num); }
   catch(e){ /* нумерология не загрузилась — разделы «Обо мне» покажут пустые поля */ }
 }
 /* ── личный год: иллюстрация, планета и энергия, короткая строка и открытка; описание — блоками ровно как в файле ── */
@@ -346,7 +346,7 @@ const obAuthIdle = () => `<button data-on="click:auth-step-email-paintAuth" clas
 /* all — отозвать сессии на всех устройствах: если телефон потерян или код входа попал не в те руки */
 async function logout(all){
   if(!confirm(all?'Выйти на всех устройствах? Везде понадобится заново войти по коду; записи останутся в аккаунте.':'Выйти на этом устройстве? Записи останутся в аккаунте и вернутся при следующем входе.')) return;
-  resetLocalAccount();   /* черновики и память предложений этого аккаунта — с устройства (политика выхода, R06) */
+  resetLocalAccount();   /* черновики, память предложений и состояние с анкетой — с устройства (политика выхода, R06); живые запросы отменены (F05) */
   await api(all?'/auth/logout-all':'/auth/logout',{method:'POST'});
   location.reload();
 }
@@ -355,21 +355,24 @@ async function logout(all){
 /* Ответ на вопрос дня — один на день и одно состояние ANS, где бы его ни писали: панель «Вопрос дня», карточка действия
    на «Сегодня» или шаг дневника. Все три читают ANS и после сохранения обновляют друг друга через paintAnswerEverywhere() */
 const ANS={draft:'',saving:false,saved:null,loadedFor:'',open:false};
+registerReset(()=>{ ANS.saved=null; ANS.draft=''; ANS.loadedFor=''; ANS.open=false; });   /* сброс аккаунта на устройстве (F05) */
 async function ensureAnswer(){
   if(!S.day)return; if(ANS.saved&&ANS.saved.day!==S.day.date){ANS.saved=null;ANS.loadedFor='';}
   if(!ANS.draft){ const dr=draftGet('answer',S.day.date); if(dr!==null){ ANS.draft=dr; ANS.open=!!dr; } }   /* несохраненный ответ живет на устройстве (R07) */
   if(ANS.loadedFor===S.day.date)return;
-  try{ const gen=S.gen; const st=await api('/day'); if(gen!==S.gen)return; ANS.loadedFor=S.day.date; ANS.saved=st.answer?{id:st.answer.id,day:st.day,text:st.answer.text}:null; }catch(e){}
+  try{ const c=ctx(), day=S.day.date; const st=await api('/day'); if(!c.alive()||S.day?.date!==day)return; ANS.loadedFor=day; ANS.saved=st.answer?{id:st.answer.id,day:st.day,text:st.answer.text}:null; }catch(e){}
 }
 function answerFrom(a,day){ ANS.saved=a&&a.text?{id:a.id,day,text:a.text}:null; ANS.loadedFor=day; }   /* карточка дня уже знает ответ — панели не спрашивают заново */
 /* сохранить ответ из любого места; textarea остается с текстом при ошибке */
 async function saveAnswerText(t){
   t=(t||'').trim(); if(t.length<3){toast('Напишите хотя бы пару слов');return false;}
   if(ANS.saving)return false; ANS.saving=true; paintAnswerEverywhere();
-  /* ответ на вопрос дня — один на день, повтор обновляет его: ключ операции здесь не нужен, дубля быть не может */
-  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); ANS.draft=''; ANS.open=false; draftClear('answer',S.day.date); ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
+  /* ответ на вопрос дня — один на день, повтор обновляет его: ключ операции здесь не нужен, дубля быть не может.
+     День и контекст берутся до await (F05): поздний ответ после сброса не рисуется, черновик снимается у того дня, за который отвечали */
+  const c=ctx(), day=S.day.date;
+  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); if(!c.alive())return true; draftClear('answer',day); if(S.day?.date!==day)return true; ANS.draft=''; ANS.open=false; ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
     toast(r.updated?'Ответ обновлен в дневнике':'Записано в дневник'); hap('ok'); if(DC.state&&DC.state.day===r.item.day){DC.state.answer={id:r.item.id,text:r.item.text}; if(DC.mode!=='steps')DC.answer=r.item.text;} XP.timeline.dirty=true; return true; }
-  catch(e){ toast(ERR_SAVE_KEPT); ANS.draft=t; ANS.open=true; return false; }
+  catch(e){ if(e.code==='cancelled')return false; toast(ERR_SAVE_KEPT); ANS.draft=t; ANS.open=true; return false; }
   finally{ ANS.saving=false; paintAnswerEverywhere(); }
 }
 function paintAnswerEverywhere(){ if(wgOpen==='tone')paintTone(); paintHomeAction(); }

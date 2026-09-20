@@ -65,7 +65,41 @@ export async function checkRegressions({ browser, base, owner }) {
     await page.fill('#wk-reflect', ''); await page.evaluate(() => wkReflectInput(document.getElementById('wk-reflect')));
     await page.evaluate(() => { closeWidget(); openWidget('week'); }); await page.waitForSelector('#wk-reflect');
     assert.equal(await page.inputValue('#wk-reflect'), '', 'a cleared draft stays empty on reopen (R07)');
+    /* F05 (ревью v114): задержанный ответ /habits и /askesis после очистки истории не возвращает удаленное — один контекст запросов, а не список.
+       Ответ снимается с сервера до очистки (в нем удаленная запись) и отдается странице после нее — как поздний ответ в сети */
+    for (const [path, widget, state, title] of [['/habits', 'habits', 'HB', 'Привычка до очистки'], ['/askesis', 'askesis', 'AS', 'Аскеза до очистки']]) {
+      if (path === '/habits') await owner.json('/habits', 'POST', { title, rule: 'каждый день' });
+      else await owner.json('/askesis', 'POST', { title, until: new Date(Date.parse(today + 'T12:00:00Z') + 5 * 864e5).toISOString().slice(0, 10) });
+      let release; const held = new Promise((r) => { release = r; });
+      await page.route('**/api' + path, async (route) => { if (route.request().method() !== 'GET') return route.continue(); const stale = await route.fetch(); await held; try { await route.fulfill({ response: stale }); } catch { /* запрос уже отменен страницей */ } });
+      const pendingGet = page.waitForRequest((r) => r.url().endsWith('/api' + path) && r.method() === 'GET');
+      await page.evaluate((w) => { closeWidget(); go('history'); openWidget(w); }, widget);
+      await pendingGet; await page.waitForTimeout(150);   /* запрос ушел и держится на ответе — теперь очистка */
+      await page.evaluate(() => wipe('data')); await page.waitForFunction(() => !Object.keys(localStorage).some((k) => k.startsWith('lun_draft_')));
+      release(); await page.waitForTimeout(400); await page.unroute('**/api' + path);
+      /* HB и AS объявлены через let — не свойства window, читаются по имени */
+      assert.equal(await page.evaluate((st) => { const v = (0, eval)(st); return v === null || (Array.isArray(v) ? v.length === 0 : (v.active || []).length === 0); }, state), true, `${state} stays empty after the delayed response (F05)`);
+      assert.ok(!(await page.locator(`#${widget === 'habits' ? 'hb-box' : 'as-box'}`).innerText()).includes(title), 'the deleted item is not on the screen');
+      await page.evaluate((w) => (w === 'habits' ? loadHabits() : loadAskesis()), widget);
+      await page.waitForFunction((st) => (0, eval)(st) !== null, state);
+      assert.equal(await page.evaluate((st) => { const v = (0, eval)(st); return Array.isArray(v) ? v.length : v.active.length; }, state), 0, 'a fresh load after clearing is empty');
+    }
+    /* F05: сохранение итога недели захватывает неделю до await — быстрый переход на прошлую неделю до ответа не меняет ее текст и не стирает ее черновик */
+    await page.evaluate(() => { closeWidget(); go('history'); openWidget('week'); }); await page.waitForSelector('#wk-reflect');
+    const cur = await page.evaluate(() => WK.data.week.start), prevStart = await page.evaluate(() => WK.data.week.previous);
+    await page.evaluate((p) => draftSet('week', p, 'Черновик прошлой недели'), prevStart);
+    let releaseW; const heldW = new Promise((r) => { releaseW = r; });
+    await page.route('**/api/week/reflect', async (route) => { await heldW; try { await route.continue(); } catch {} });
+    await page.fill('#wk-reflect', 'Итог текущей недели'); await page.click('#wk-reflect-save');
+    await page.evaluate(() => weekShift(-1)); await page.waitForFunction((p) => WK.data && WK.data.week.start === p, prevStart);
+    assert.equal(await page.inputValue('#wk-reflect'), 'Черновик прошлой недели', 'the previous week opens with its own draft');
+    releaseW(); await page.waitForFunction(() => !saveWeekReflection.busy); await page.unroute('**/api/week/reflect');
+    assert.equal(await page.evaluate(() => WK.data.reflection.text), '', 'the current week text did not land in the previous week (F05)');
+    assert.equal(await page.evaluate((p) => draftGet('week', p), prevStart), 'Черновик прошлой недели', 'the previous week draft is intact');
+    assert.equal(await page.inputValue('#wk-reflect'), 'Черновик прошлой недели');
+    assert.equal((await owner.json('/week?week=' + cur)).reflection.text, 'Итог текущей недели', 'the save itself reached the right week');
+    assert.equal(await page.evaluate((c) => draftGet('week', c), cur), null, 'the saved week draft is cleared');
     assert.deepEqual(errors, [], 'no page errors during the regressions');
-    console.log('PASS: browser regressions — cross-screen gratitude edit, deleted answer, lost response + edit, cancelled card pick, drafts after history clearing.');
+    console.log('PASS: browser regressions — cross-screen gratitude edit, deleted answer, lost response + edit, cancelled card pick, drafts after history clearing, delayed loads after clearing, week switch during a save (F05).');
   } finally { await ctx.close(); }
 }

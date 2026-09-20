@@ -4,8 +4,8 @@ const gratQ = () => 'Кому и за что я благодарна сегод�
 async function loadGratitude(){
   const box = $('gr-box'); box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
-  try { const gen = S.gen; const r = await api('/journal?kind=gratitude'); if (gen !== S.gen) return; S.grat = r; paintGratitude(); }   /* r.next — с какой записи продолжать (F17) */
-  catch (e) { box.innerHTML = LOAD_ERR; }
+  try { const c = ctx(); const r = await api('/journal?kind=gratitude'); if (!c.alive()) return; S.grat = r; paintGratitude(); }   /* r.next — с какой записи продолжать (F17); поздний ответ не рисуем (F05) */
+  catch (e) { if (e.code === 'cancelled') return; box.innerHTML = LOAD_ERR; }
 }
 let gratitudeEdit=null,gratitudeDraft='',gratitudeSaving=false,gratitudeOp='';
 function editGratitude(id){
@@ -31,14 +31,15 @@ function paintGratitude(){
 const gratitudeMore={busy:false};
 async function loadGratitudeMore(){
   if(gratitudeMore.busy||!S.grat?.next)return; gratitudeMore.busy=true;
-  try{ const r=await api('/journal?kind=gratitude&before='+S.grat.next); S.grat.items=[...S.grat.items,...r.items]; S.grat.next=r.next??null; }
-  catch(e){ toast('Не загрузилось'); }
+  try{ const c=ctx(); const r=await api('/journal?kind=gratitude&before='+S.grat.next); if(!c.alive()||!S.grat)return; S.grat.items=[...S.grat.items,...r.items]; S.grat.next=r.next??null; }
+  catch(e){ if(e.code==='cancelled')return; toast('Не загрузилось'); }
   finally{ gratitudeMore.busy=false; paintGratitude(); const d=$('gr-box')?.querySelector('details'); if(d)d.open=true; }
 }
 async function saveGratitude(){
   const text=($('gr-text')?.value||'').trim();if(text.length<3){toast('Напишите хотя бы пару слов');return;}
   if(gratitudeSaving)return;gratitudeSaving=true;
   const button=$('gr-box').querySelector('button[data-on="click:saveGratitude"]');button.disabled=true;button.textContent='Сохраняем…';
+  const c=ctx();   /* контекст — до await (F05): после сброса аккаунта поздний ответ не рисуется */
   try {
     const edit=gratitudeEdit; if(!edit)gratitudeOp=gratitudeOp||opKey();   /* повтор после обрыва — тот же ключ, вторая запись не появится (F02) */
     let r;
@@ -48,24 +49,26 @@ async function saveGratitude(){
       if(e.code==='op_conflict'&&e.body?.item){ const u=await api('/journal',{method:'PATCH',body:JSON.stringify({id:e.body.item.id,text})}); r={...u,item:{...e.body.item,...u.item}}; }
       else throw e;
     }
+    if(!c.alive())return;
     gratitudeOp='';
     if(r.repeated&&r.removed){ toast('Эта запись уже была удалена'); gratitudeEdit=null;gratitudeDraft=''; await loadGratitude(); return; }
     const item={...(S.grat.items.find(i=>i.id===(edit||r.item.id))||{}),...r.item,kind:'gratitude',title:gratQ()};
     S.grat.items=[item,...S.grat.items.filter(i=>i.id!==item.id)];
     if(typeof DC!=='undefined'&&DC.state&&DC.state.day===item.day){ DC.state.gratitude={id:item.id,text:item.text}; if(!DC.touched.fields.has('gratitude'))DC.gratitude=item.text; }   /* карточка дня знает свежий текст (R01) */
     gratitudeEdit=null;gratitudeDraft='';toast('Запись сохранена');hap('ok');paintGratitude();
-  } catch(e){toast(e.code==='too_many'?'Записей за день уже сто — текст остался в поле':ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
+  } catch(e){if(e.code==='cancelled')return; toast(e.code==='too_many'?'Записей за день уже сто — текст остался в поле':e.code==='unreadable'?'Эта запись не читается — ее нельзя переписать':ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
   finally{gratitudeSaving=false;}
 }
 
 /* ══════════ Дневник привычек: своя регулярность, карточка дня, награды за 30 · 60 · 90 · 180 · 365 ══════════ */
 let HB = null, hbEditing = null;
+registerReset(() => { HB = null; hbEditing = null; });   /* сброс аккаунта на устройстве (F05): привычки перечитываются */
 const RULE_CHIPS = ['каждый день', 'по будням', 'по выходным', 'через день', 'раз в неделю', '3 раза в неделю', 'раз в месяц'];
 async function loadHabits(){
   const box = $('hb-box'); if (!HB) box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
-  try { const r = await api('/habits'); HB = r.items; paintHabits(); }
-  catch (e) { box.innerHTML = LOAD_ERR; }
+  try { const c = ctx(); const r = await api('/habits'); if (!c.alive()) return; HB = r.items; paintHabits(); }   /* поздний ответ после сброса не рисуем (F05) */
+  catch (e) { if (e.code === 'cancelled') return; box.innerHTML = LOAD_ERR; }
 }
 let habitView='today',habitFormOpen=false,habitDraft={title:'',rule:''};
 const habitBusy=new Set(),habitEditDrafts={};
@@ -139,11 +142,12 @@ async function habitRemove(id){
 
 /* ══════════ Взять аскезу: отказ до выбранной даты, счет дней, заметки по желанию ══════════ */
 let AS = null, askForm = {};
+registerReset(() => { AS = null; askForm = {}; });   /* сброс аккаунта на устройстве (F05): раньше AS оставалась — удаленная аскеза жила на экране */
 async function loadAskesis(){
   const box = $('as-box'); if (!AS) box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
-  try { AS = await api('/askesis'); paintAskesis(); }
-  catch (e) { box.innerHTML = LOAD_ERR; }
+  try { const c = ctx(); const r = await api('/askesis'); if (!c.alive()) return; AS = r; paintAskesis(); }
+  catch (e) { if (e.code === 'cancelled') return; box.innerHTML = LOAD_ERR; }
 }
 const askNoteDrafts={},askNoteOpen={};
 function toggleAskPanel(event,summary,key){

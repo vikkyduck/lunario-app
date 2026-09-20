@@ -80,7 +80,7 @@ async function copyInvite(where, text){
 }
 async function loadInvite(){
   try{
-    const i = await api('/invite');
+    const c = ctx(); const i = await api('/invite'); if (!c.alive()) return;
     const names = (i.broughtNames || []).join(', '), rest = i.brought - (i.broughtNames || []).length;
     const brought = i.brought ? `<p class="hint mt-3">По вашей ссылке пришли: ${i.brought}${names ? ` — ${esc(names)}${rest > 0 ? ` и еще ${rest} без имени` : ''}` : ''}</p>` : '<p class="hint mt-3">По вашей ссылке пока никто не приходил — здесь появятся имена.</p>';
     $('inv-box').innerHTML = `

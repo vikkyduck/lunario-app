@@ -6,13 +6,23 @@ const DEVICE_TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().
 /* Сервер перезапускается при выкладке на пару секунд — чтение не падает, а пробует еще раз (502/503/504 или обрыв связи).
    Только для GET: повтор записи мог бы продублировать ее. Сессия истекла — страница перезагружается и показывает вход. */
 const RETRY_STATUS = new Set([502, 503, 504]), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+/* Контекст запросов аккаунта (ревью v114, F05): ответ применяется, только если поколение не сменилось; сброс (выход, очистка истории)
+   отменяет все живые запросы самим браузером, а поколение защищает те, что уже пришли. Одна форма на все загрузчики и сохранения:
+   const c = ctx() — до await, if (!c.alive()) return — после. api() отдает fetch сигнал контекста, отмена — ошибка с code 'cancelled',
+   по аналогии с отменой выбора карт: обработчики на нее молчат */
+const CTX = { gen: 0, ac: new AbortController() };
+const ctx = () => { const gen = CTX.gen; return { gen, signal: CTX.ac.signal, alive: (g = gen) => g === CTX.gen }; };
+function resetRequests(){ CTX.ac.abort(); CTX.ac = new AbortController(); CTX.gen++; }
+const cancelledError = () => Object.assign(new Error('cancelled'), { code: 'cancelled' });
 const api = async (path, opts) => {
   const init = Object.assign({ headers: { 'Content-Type': 'application/json', 'X-Tz': DEVICE_TZ } }, opts);   /* «сегодня» считается по поясу устройства */
+  if (!init.signal) init.signal = CTX.ac.signal;
   const canRetry = !init.method || init.method === 'GET';
   let r;
   for (let attempt = 0; ; attempt++) {
+    if (init.signal.aborted) throw cancelledError();
     try { r = await fetch(API + path, init); }
-    catch (e) { if (canRetry && attempt < 2 && navigator.onLine !== false) { await wait(1200 * (attempt + 1)); continue; } throw e; }
+    catch (e) { if (e && e.name === 'AbortError') throw cancelledError(); if (canRetry && attempt < 2 && navigator.onLine !== false) { await wait(1200 * (attempt + 1)); continue; } throw e; }
     if (canRetry && RETRY_STATUS.has(r.status) && attempt < 2) { await wait(1200 * (attempt + 1)); continue; }
     break;
   }
@@ -37,18 +47,19 @@ const draftKey=(kind,id)=>`lun_draft_${(typeof S!=='undefined'&&S.user?.id)||0}_
 const draftGet=(kind,id)=>{ try{ return localStorage.getItem(draftKey(kind,id)); }catch(e){ return null; } };
 const draftSet=(kind,id,text)=>{ try{ localStorage.setItem(draftKey(kind,id),String(text??'')); }catch(e){} };
 const draftClear=(kind,id)=>{ try{ localStorage.removeItem(draftKey(kind,id)); }catch(e){} };
-/* Единый сброс данных аккаунта на устройстве (R06): после «Очистить историю» и при выходе — черновики этого аккаунта, память
-   предложений, загруженные записи и производные экраны. S.gen растет: поздний ответ старого запроса уже не рисуется.
+/* Единый сброс данных аккаунта на устройстве (R06, ревью v114 F05): после «Очистить историю» и при выходе — черновики этого аккаунта,
+   память предложений, загруженные записи и производные экраны. Сначала resetRequests(): живые запросы отменяются, поздний ответ
+   не рисуется. Состояния модулей не перечислены здесь списком — каждый файл вкладки регистрирует свой сброс рядом со своими
+   переменными (registerReset), а profile:true помечает то, что живет с анкетой (нумерология, натальная карта): при очистке истории
+   анкета остается — такие сбросы зовутся только при выходе (resetLocalAccount({ profile: false }) — очистка истории).
    Политика выхода: черновики этого аккаунта на устройстве стираются — следующий человек за тем же телефоном их не увидит */
-function resetLocalAccount(){
+const RESETS=[];
+function registerReset(fn,{profile=false}={}){ RESETS.push({fn,profile}); }
+function resetLocalAccount({profile=true}={}){
+  resetRequests();
   const uid=(typeof S!=='undefined'&&S.user?.id)||0;
   try{ const gone=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&(k.startsWith(`lun_draft_${uid}_`)||k===`lun_dc_draft_${uid}`||k===`lun_tool_offer_${uid}`))gone.push(k); } gone.forEach(k=>localStorage.removeItem(k)); }catch(e){}
-  if(typeof S!=='undefined'){ S.gen=(S.gen||0)+1; S.grat=null; S.thoughtsBy={}; S.entries=null; S.moodReport=null; S.yesterday=undefined; S.memory=null; }
-  if(typeof ANS!=='undefined'){ ANS.saved=null; ANS.draft=''; ANS.loadedFor=''; ANS.open=false; }
-  if(typeof DC!=='undefined'){ DC.state=null; DC.forDay=null; DC.bridge=undefined; DC.dirty=false; DC.touched={habits:new Set(),askesis:new Set(),fields:new Set()}; }
-  if(typeof WK!=='undefined')WK.data=null;
-  if(typeof HB!=='undefined')HB=null;
-  if(typeof XP!=='undefined'&&XP.timeline)XP.timeline.dirty=true;
+  for(const r of RESETS){ if(!profile&&r.profile)continue; try{ r.fn(); }catch(e){ /* сброс одного модуля не должен мешать остальным */ } }
 }
 /* Ключ повторной операции (аудит v98, F02): один на попытку сохранения; повтор после обрыва уходит с тем же ключом — сервер отвечает
    той же квитанцией и второй записи не создает. Новый ключ — только после подтвержденного сохранения */

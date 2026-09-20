@@ -1,6 +1,7 @@
 /* Лунарио — Вкладка «Дневник»: карточка дня, прошлые дни, настроения, неделя */
 /* ══════════ «Моя неделя: про что она» — воскресный экран Дневника: пять частей по фактам, без интерпретаций ══════════ */
 const WK={data:null,pick:'',pending:''};
+registerReset(()=>{ WK.data=null; WK.pick=''; WK.pending=''; });   /* сброс аккаунта на устройстве (F05) */
 const WK_DOW=['пн','вт','ср','чт','пт','сб','вс'];
 const WK_MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const wkDate=(d,month=true)=>{const [,m,dd]=d.split('-').map(Number);return month?`${dd} ${WK_MONTHS[m-1]}`:String(dd);};
@@ -10,8 +11,8 @@ const WK_VERDICT=[['yes','Отозвалось'],['no','Не связано'],['
 async function loadWeek(pick){
   if(pick!==undefined)WK.pick=pick; if(WK.pending){WK.pick=WK.pending;WK.pending='';}   /* открыть неделю конкретного дня — из «Итога недели» в дне */
   const box=$('week-box');if(!box)return;if(!WK.data)box.innerHTML='<p class="hint" role="status">Собираем неделю…</p>';
-  try{const gen=S.gen; const w=await api('/week'+(WK.pick?'?week='+WK.pick:'')); if(gen!==S.gen)return; WK.data=w;paintWeek();}
-  catch(e){box.innerHTML='<p class="msg err">Неделя не загрузилась. <button data-on="click:loadWeek" class="btn ghost sm" type="button">Повторить</button></p>';}
+  try{const c=ctx(), pick=WK.pick; const w=await api('/week'+(pick?'?week='+pick:'')); if(!c.alive()||WK.pick!==pick)return; WK.data=w;paintWeek();}   /* поздний ответ или уже другая неделя — не рисуем (F05) */
+  catch(e){if(e.code==='cancelled')return; box.innerHTML='<p class="msg err">Неделя не загрузилась. <button data-on="click:loadWeek" class="btn ghost sm" type="button">Повторить</button></p>';}
 }
 function weekShift(n){const w=WK.data?.week;if(!w)return;loadWeek(new Date(Date.parse(w.start+'T12:00:00Z')+Number(n)*7*864e5).toISOString().slice(0,10));}
 function paintWeek(){
@@ -44,12 +45,15 @@ async function weekEcho(day,verdict){
     document.querySelectorAll(`.week-echo[data-day="${day}"] .chip`).forEach(b=>{const on=b.dataset.a1===r.verdict;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});hap('ok');}
   catch(e){toast('Не получилось отметить');}
 }
+/* неделя и контекст берутся до await (F05): пока ответ шел, человек мог перейти на другую неделю — ее текст и черновик не трогаются */
 async function saveWeekReflection(){
   if(saveWeekReflection.busy||!WK.data)return;saveWeekReflection.busy=true;const btn=$('wk-reflect-save');btn.disabled=true;
-  try{const r=await api('/week/reflect',{method:'POST',body:JSON.stringify({week:WK.data.week.start,text:$('wk-reflect').value})});WK.data.reflection=r;
-    draftClear('week',WK.data.week.start); $('wk-reflect-state').textContent=r.text?'Сохранено ✦ Строка в дневнике под датой воскресенья':'Строка снята';hap('ok');XP.timeline.dirty=true;}
-  catch(e){$('wk-reflect-state').textContent=ERR_SAVE_KEPT;}
-  finally{saveWeekReflection.busy=false;btn.disabled=false;}
+  const week=WK.data.week.start, c=ctx();
+  try{const r=await api('/week/reflect',{method:'POST',body:JSON.stringify({week,text:$('wk-reflect').value})}); if(!c.alive())return;
+    draftClear('week',week); XP.timeline.dirty=true;
+    if(WK.data?.week.start===week){ WK.data.reflection=r; const st=$('wk-reflect-state'); if(st)st.textContent=r.text?'Сохранено ✦ Строка в дневнике под датой воскресенья':'Строка снята'; hap('ok'); }}
+  catch(e){if(e.code==='cancelled')return; const st=$('wk-reflect-state'); if(st)st.textContent=ERR_SAVE_KEPT;}
+  finally{saveWeekReflection.busy=false;const b=$('wk-reflect-save'); if(b)b.disabled=false;}
 }
 /* «Моя неделя» — кнопкой у «Прошлых дней» (плитка «Неделя собралась» по воскресеньям снята, решение владелицы 20.09) */
 
@@ -59,6 +63,7 @@ async function saveWeekReflection(){
 /* touched.fields — какие поля человек трогал в этой сессии: на сервер уходят только они (повторный аудит v112, R01): благодарность,
    поправленная в своей панели, не перезапишется старым текстом из карточки дня */
 const DC={state:null,forDay:null,mode:'steps',step:0,text:'',gratitude:'',answer:'',moods:new Set(),own:'',ownOpen:false,habits:new Map(),askesis:new Map(),touched:{habits:new Set(),askesis:new Set(),fields:new Set()},echo:'',bridge:undefined,dirty:false};
+registerReset(()=>{ DC.state=null; DC.forDay=null; DC.bridge=undefined; DC.dirty=false; DC.touched={habits:new Set(),askesis:new Set(),fields:new Set()}; });   /* сброс аккаунта на устройстве (F05) */
 const addDaysC=(d,n)=>new Date(Date.parse(d+'T12:00:00Z')+n*864e5).toISOString().slice(0,10);
 const yesterdayC=()=>S.day?addDaysC(S.day.date,-1):'';
 /* Шаги вечера. База — «пара строк» и настроение, у всех и всегда. Остальное — инструменты: благодарность, привычки, аскеза
@@ -90,8 +95,8 @@ const dcWritten=(s)=>!!(s&&(s.text||s.gratitude||s.answer||s.moods.length));
 async function loadDayCard(keepStep=false){
   const box=$('day-card'); if(!box)return;
   if(!DC.state)box.innerHTML='<p class="hint">Загружаем сегодняшний день…</p>';
-  try{ const wasStep=DC.step, wasMode=DC.mode, gen=S.gen; const st=await api(DC.forDay?'/day?day='+DC.forDay:'/day'); if(gen!==S.gen)return; DC.state=st; dcFromState(); if(keepStep){DC.step=wasStep;DC.mode=wasMode;} if(DC.forDay&&!keepStep){DC.mode='steps';DC.step=0;} paintDayCard(); paintEveningSet(); }
-  catch(e){ box.innerHTML=e.code==='not_editable'?`<p class="hint">${fmtDayWords(DC.forDay||'',true)} — только для чтения: поправить можно дни за последний год</p><button data-on="click:dcToday" class="btn ghost sm mt-3" type="button">К сегодняшнему дню →</button>`:'<p class="hint">Не получилось загрузить день</p><button data-on="click:loadDayCard" class="btn ghost sm mt-3" type="button">Повторить</button>'; }
+  try{ const wasStep=DC.step, wasMode=DC.mode, c=ctx(), forDay=DC.forDay; const st=await api(forDay?'/day?day='+forDay:'/day'); if(!c.alive()||DC.forDay!==forDay)return; DC.state=st; dcFromState(); if(keepStep){DC.step=wasStep;DC.mode=wasMode;} if(DC.forDay&&!keepStep){DC.mode='steps';DC.step=0;} paintDayCard(); paintEveningSet(); }   /* поздний ответ или уже другой день — не рисуем (F05) */
+  catch(e){ if(e.code==='cancelled')return; box.innerHTML=e.code==='not_editable'?`<p class="hint">${fmtDayWords(DC.forDay||'',true)} — только для чтения: поправить можно дни за последний год</p><button data-on="click:dcToday" class="btn ghost sm mt-3" type="button">К сегодняшнему дню →</button>`:'<p class="hint">Не получилось загрузить день</p><button data-on="click:loadDayCard" class="btn ghost sm mt-3" type="button">Повторить</button>'; }
 }
 /* Значения с сервера + черновик; записанный день без черновика открывается для чтения */
 function dcFromState(){
@@ -210,8 +215,11 @@ async function saveDayCard(){
   const body={...(f.has('moods')?{moods:[...DC.moods,...own]}:{}),...(f.has('text')&&on.has('text')?{text:DC.text}:{}),...(DC.forDay?{day:DC.forDay}:{}),...(f.has('echo')&&DC.state.set?{echo:DC.echo||''}:{}),   /* «отозвалось» — в той же операции; пустое снимает отметку */
     ...(f.has('gratitude')&&on.has('gratitude')?{gratitude:DC.gratitude}:{}),...(f.has('answer')&&on.has('answer')?{answer:DC.answer,question:DC.state.question}:{}),
     habits:[...DC.touched.habits].map(id=>({id,done:!!DC.habits.get(id)})),askesis:[...DC.touched.askesis].map(id=>{const v=DC.askesis.get(id)||{kept:null,note:''};return {id,...(v.kept===null?{}:{kept:v.kept}),note:v.note||''};})};
+  const day=DC.state.day, c=ctx();   /* день и контекст — до await (F05): пока сохраняли, могли открыть другой день или сбросить аккаунт */
   try{
     const r=await api('/day',{method:'POST',body:JSON.stringify(body)});
+    if(!c.alive())return;
+    if(!DC.state||DC.state.day!==day){ dayChanged(r.day,false); return; }   /* карточка уже показывает другой день — его не трогаем, только лента узнает о записи */
     DC.state={...r}; dcClearDraft(); DC.dirty=false; DC.bridge=undefined; DC.touched={habits:new Set(),askesis:new Set(),fields:new Set()}; hap('done');
     if(!DC.forDay){ answerFrom(r.answer,r.day); ANS.draft=''; paintAnswerEverywhere(); if(S.day&&r.day===S.day.date)S.day.remembered=true; }
     if(!DC.forDay){ S.mood=DC.state.moods[0]||null; if(S.day&&r.saved.length)S.day.remembered=true; }
@@ -219,7 +227,7 @@ async function saveDayCard(){
     DC.firstSave=!DC.forDay&&!(S.daysTotal>0); dayChanged(r.day,false);
     DC.mode=matchMedia('(prefers-reduced-motion: reduce)').matches?'done':'celebrate'; paintDayCard();
   }
-  catch(e){ const st=$('dc-state'); if(st)st.textContent=e.code==='too_many'?'Записей за этот день уже сто — новые не сохраняются, текст остался в форме':ERR_SAVE_KEPT; }   /* лимит — честный отказ, черновик на месте (F15) */
+  catch(e){ if(e.code==='cancelled')return; const st=$('dc-state'); if(st)st.textContent=e.code==='too_many'?'Записей за этот день уже сто — новые не сохраняются, текст остался в форме':e.code==='unreadable'?'Эта запись не читается — ее нельзя переписать, обратитесь в поддержку':ERR_SAVE_KEPT; }   /* лимит — честный отказ, черновик на месте (F15); нечитаемая запись не перезаписывается (F14) */
   finally{ saveDayCard.busy=false; const b=$('dc-next'); if(b){b.disabled=false;b.textContent=DC.forDay?'Сохранить':'Запомнить этот день';} }
 }
 /* Дописать или поправить прошлый день — той же карточкой по шагам: «Вчера не записали» утром на «Сегодня», «Изменить» в открытом дне */
@@ -395,7 +403,7 @@ const daysAgo=(d,base=S.day.date)=>{const n=Math.round((Date.parse(base+'T12:00:
 const bridgeHtml=(b)=>esc(b.text).replace(/«([^»]+)»/g,'«<b>$1</b>»');
 async function loadBridge(){
   const box=$('dc-bridge'); if(!box)return;
-  if(DC.bridge===undefined){ try{ DC.bridge=(await api(DC.forDay?'/day/bridge?day='+DC.forDay:'/day/bridge')).item||null; }catch(e){ DC.bridge=null; } }
+  if(DC.bridge===undefined){ try{ const c=ctx(), forDay=DC.forDay; const r=await api(forDay?'/day/bridge?day='+forDay:'/day/bridge'); if(!c.alive()||DC.forDay!==forDay)return; DC.bridge=r.item||null; }catch(e){ if(e.code==='cancelled')return; DC.bridge=null; } }
   const b=DC.bridge; if(!$('dc-bridge'))return;
   if(!b)return;
   $('dc-bridge').innerHTML=bridgeHtml(b);
@@ -414,13 +422,13 @@ const dayRowHtml=(x)=>{
 async function loadDays(){
   const list=$('days-list'); if(!list)return;
   try{
-    const r=await api('/days?calendar=14'); const items=r.items; S.daysTotal=r.total||0;
+    const c=ctx(); const r=await api('/days?calendar=14'); if(!c.alive())return; const items=r.items; S.daysTotal=r.total||0;
     const today=DC.state?{day:DC.state.day,moods:DC.state.moods}:{day:S.day.date,moods:S.mood?[S.mood]:[]};
     S.daysStrip=[...items].reverse().concat([today]);
     const rows=items.slice(0,3); const any=items.some(x=>!x.empty);
     list.innerHTML=any?rows.map(dayRowHtml).join(''):`<p class="hint">Пока пусто</p>`;
     $('days-all').hidden=!any;
-  }catch(e){ list.innerHTML='<p class="hint">Прошлые дни не загрузились.</p>'; }
+  }catch(e){ if(e.code==='cancelled')return; list.innerHTML='<p class="hint">Прошлые дни не загрузились.</p>'; }
 }
 async function loadAllDays(more=false){
   const box=$('days-box'); if(!box)return;
@@ -428,7 +436,7 @@ async function loadAllDays(more=false){
   try{
     if(!CAT) await loadCatalog();   /* названия настроений — из каталога; без него в списке мелькали бы ключи вроде quick:anxious */
     const q=new URLSearchParams({limit:'30'}); if(more&&loadAllDays.next)q.set('before',loadAllDays.next);
-    const r=await api('/days?'+q); loadAllDays.next=r.next||'';
+    const c=ctx(); const r=await api('/days?'+q); if(!c.alive())return; loadAllDays.next=r.next||'';
     const monthOf=(d)=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}).replace(' г.','');
     let month=more?loadAllDays.month||'':'';   /* месяц — подписью, когда сменился: числа без месяца в длинном списке не читаются */
     const rows=r.items.map(x=>{const m=monthOf(x.day);const head=m!==month?`<p class="hint days-month">${m[0].toUpperCase()+m.slice(1)}</p>`:'';month=m;return head+dayRowHtml(x);}).join('');
@@ -436,7 +444,7 @@ async function loadAllDays(more=false){
     const strip=(S.daysStrip||[]).map((x,k,arr)=>`<i class="t-${moodTone(x.moods[0])}${k===arr.length-1?' today':''}" title="${fmtDayWords(x.day,true)}"></i>`).join('');
     if(!more)box.innerHTML=`${strip?`<div class="days-strip">${strip}</div>`:''}<p class="hint">${r.total?`${r.total} ${plural(r.total,'день','дня','дней')}`:'Пока пусто'}</p><div class="days-list" id="days-all-list">${rows}</div><button data-on="click:loadAllDays-true" class="btn ghost" id="days-more" type="button"${r.next?'':' hidden'}>Показать еще</button>`;
     else { $('days-all-list').insertAdjacentHTML('beforeend',rows); $('days-more').hidden=!r.next; }
-  }catch(e){ box.innerHTML='<p class="hint">Не получилось загрузить.</p>'; }
+  }catch(e){ if(e.code==='cancelled')return; box.innerHTML='<p class="hint">Не получилось загрузить.</p>'; }
 }
 /* Открытый день — читается как текст: утро, записи, настроение, практики */
 async function openDay(day){
@@ -456,7 +464,7 @@ async function openDay(day){
     api('/day/bridge?day='+day).then(r=>{ const b=r.item, el=$('dv-bridge'); if(!b||!el)return; el.innerHTML=bridgeHtml(b,day); el.hidden=false; }).catch(()=>{});
   }catch(e){ box.innerHTML='<p class="hint">Не получилось загрузить этот день.</p>'; }
 }
-const loadWishes=()=>api('/wishes').then(renderWishes).catch(()=>{});
+const loadWishes=()=>{ const c=ctx(); return api('/wishes').then((r)=>{ if(c.alive())renderWishes(r); }).catch(()=>{}); };   /* поздний ответ после сброса не рисуем (F05) */
 function loadAbout(){
   const u=S.user; loadNumerology();
   $('ab-sub').textContent=[u.name,u.sign].filter(Boolean).join(' · ')||'Мой профиль';
@@ -475,7 +483,7 @@ async function paintMeCard(){
     box.hidden=false; const sub=$('ab-sub'); if(sub) sub.hidden=true;   /* имя и знак под заголовком — теперь в карточке */
   };
   paint(natalCache);
-  if(!natalCache){ try{ natalCache=await api('/natal?quiet=1'); paint(natalCache); }catch(e){ /* карточка остается с датой и городом */ } }
+  if(!natalCache){ try{ const c=ctx(); const n=await api('/natal?quiet=1'); if(!c.alive())return; natalCache=n; paint(natalCache); }catch(e){ /* карточка остается с датой и городом */ } }
 }
 function loadAccount(){
   const u=S.user; paintAvatar();
@@ -525,7 +533,7 @@ async function wipe(what){
   try{ await api('/'+(isAcc?'account':'data'),{method:'DELETE',...(code?{body:JSON.stringify({code})}:{})}); }
   catch(e){ toast(isAcc?authErrorText(e,'del'):'Не получилось очистить историю'); return; }
   if(isAcc){ location.reload(); return; }
-  resetLocalAccount();   /* черновики, загруженные записи и производные экраны этого аккаунта — тоже (R06) */
+  resetLocalAccount({profile:false});   /* черновики, загруженные записи и производные экраны этого аккаунта — тоже (R06); анкета остается, живые запросы отменены (F05) */
   toast('История очищена'); loadHistory(); loadDayCard();
 }
 
@@ -556,8 +564,8 @@ const MONTHS_RU = ['январь', 'февраль', 'март', 'апрель',
 const monthName = (key) => { const [y, m] = key.split('-'); return MONTHS_RU[Number(m) - 1] + ' ' + y; };
 async function loadMoodReport(){
   const box = $('mr-box'); box.innerHTML = '<p class="hint">Считаем…</p>';
-  try { S.moodReport = await api('/mood/report'); paintMoodReport(); track('moodreport_view'); }
-  catch (e) { box.innerHTML = LOAD_ERR; }
+  try { const c = ctx(); const r = await api('/mood/report'); if (!c.alive()) return; S.moodReport = r; paintMoodReport(); track('moodreport_view'); }
+  catch (e) { if (e.code === 'cancelled') return; box.innerHTML = LOAD_ERR; }
 }
 function paintMoodReport(){
   const r = S.moodReport, box = $('mr-box'), total = r.month.days;

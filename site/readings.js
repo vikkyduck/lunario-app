@@ -63,7 +63,7 @@ const TH={edit:{},saving:{}};
 async function ensureThoughts(day){
   day=day||S.day?.date; if(!day)return [];
   S.thoughtsBy=S.thoughtsBy||{}; if(S.thoughtsBy[day])return S.thoughtsBy[day];
-  try{ const r=await api('/thoughts'+(day===S.day.date?'':'?day='+day)); S.thoughtsBy[day]=r.items||[]; }catch(e){ S.thoughtsBy[day]=[]; }
+  try{ const c=ctx(); const r=await api('/thoughts'+(day===S.day.date?'':'?day='+day)); if(!c.alive())return []; S.thoughtsBy[day]=r.items||[]; }catch(e){ if(e.code==='cancelled')return []; S.thoughtsBy[day]=[]; }
   return S.thoughtsBy[day];
 }
 const thoughtOf=(source,slug,entry,day)=>((S.thoughtsBy&&S.thoughtsBy[day||S.day?.date])||[]).find(t=>t.source===source&&t.slug===slug&&(t.entry||0)===(entry||0))||null;
@@ -101,12 +101,14 @@ async function thoughtSave(source,slug,name,question,entry){
   const el=$('th-'+key), text=(el?.querySelector('textarea')?.value||'').trim();
   if(text.length<2){ toast('Напишите хотя бы пару слов'); return; }
   TH.saving[key]=true; if(el)el.outerHTML=thoughtHtml(source,slug,name,question,entry);
+  const c=ctx(), day=S.day.date, dkey=thoughtDraftKey(key);   /* день и контекст — до await (F05) */
   try{
     const r=await api('/thought',{method:'POST',body:JSON.stringify({source,slug,name,question,text,entry})});
-    await ensureThoughts(); const items=S.thoughtsBy[S.day.date].filter(t=>!(t.source===source&&t.slug===slug&&(t.entry||0)===entry)); items.push(r.item); S.thoughtsBy[S.day.date]=items;
-    draftClear('thought',thoughtDraftKey(key)); TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
-    if(typeof dayChanged==='function'){ const keep=S.thoughtsBy[S.day.date]; dayChanged(S.day.date); S.thoughtsBy[S.day.date]=keep; }
-  }catch(e){ toast(e.code==='too_many'?'Записей за день уже сто — мысль осталась в поле':ERR_SAVE_KEPT); draftSet('thought',thoughtDraftKey(key),text); }
+    if(!c.alive())return;
+    await ensureThoughts(day); const items=(S.thoughtsBy[day]||[]).filter(t=>!(t.source===source&&t.slug===slug&&(t.entry||0)===entry)); items.push(r.item); S.thoughtsBy[day]=items;
+    draftClear('thought',dkey); TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
+    if(typeof dayChanged==='function'){ const keep=S.thoughtsBy[day]; dayChanged(day); S.thoughtsBy[day]=keep; }
+  }catch(e){ if(e.code==='cancelled')return; toast(e.code==='too_many'?'Записей за день уже сто — мысль осталась в поле':ERR_SAVE_KEPT); draftSet('thought',dkey,text); }
   finally{ TH.saving[key]=false; const el2=$('th-'+key); if(el2)el2.outerHTML=thoughtHtml(source,slug,name,question,entry); }
 }
 function cardDayHtml(c, day, compact){
@@ -342,8 +344,8 @@ async function loadEntries(more=false){
   try{
     const query=new URLSearchParams({kind:entriesView.kind});
     if(more&&entriesView.next)query.set('before',entriesView.next);
-    const gen=S.gen; const r=await api('/entries?'+query);await loadCatalog().catch(()=>{});
-    if(request!==entriesView.request||gen!==S.gen)return;
+    const c=ctx(); const r=await api('/entries?'+query);await loadCatalog().catch(()=>{});
+    if(request!==entriesView.request||!c.alive())return;
     S.entries=more?[...(S.entries||[]),...r.items]:r.items;entriesView.next=r.next??null;
     box.innerHTML=S.entries.map((i,n)=>`<div class="item hist" id="he-${n}"><button data-on="click:toggleEntry-a0" data-a0="${n}" class="histhead" type="button" aria-expanded="false" aria-controls="hb-${n}"><span><b>${esc(i.question||i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question&&i.title.length<=48?' · '+esc(i.title):''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
       || `<p class="hint">${entriesView.kind==='questions'?'Здесь появятся ваши вопросы и ответы. Карты дня доступны в соседней вкладке.':entriesView.kind==='card'?'Вы еще не открывали карту дня.':'Записей пока нет.'}</p>`;

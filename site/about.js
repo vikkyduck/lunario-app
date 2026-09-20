@@ -1,6 +1,7 @@
 /* Лунарио — «Обо мне»: натальная карта */
 /* ── натальная карта: расчет на сервере, здесь только вывод ── */
 let natalCache = null;
+registerReset(() => { natalCache = null; }, { profile: true });   /* живет с анкетой: сбрасывается при выходе, не при очистке истории (F05) */
 /* ── руна дня: одна на день, тянется на сервере при первом открытии и дальше показывается та же ── */
 async function loadDayRune(){
   const box=$('dayrune-box');if(!box||S.preview)return;
@@ -25,7 +26,7 @@ const zodiacGlyph = (i) => Number.isInteger(i) ? `<svg class="zsym" aria-hidden=
 async function loadNatal(){
   const box = $('natal-box');
   try{
-    const c = natalCache || (natalCache = await api('/natal'));
+    const c = natalCache || await (async () => { const k = ctx(); const n = await api('/natal'); if (!k.alive()) throw cancelledError(); return (natalCache = n); })();
     const dms = (p) => `${zodiacGlyph(p.signIndex)} ${p.deg}°${String(p.min).padStart(2,'0')}′`;
     const planets = c.planets.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.retro ? '<span title="ретроградная">R</span>' : ''}</td></tr>`).join('');
     const points = c.points && c.points.length ? `<h3 class="mt-4">Точки</h3><table class="nt"><thead><tr><th>Точка</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${c.points.map((p) => `<tr><td>${p.symbol} ${esc(p.name)}${p.note ? `<br><small>${esc(p.note)}</small>` : ''}</td><td>${dms(p)} <small>${esc(p.signOf)}</small></td><td>${p.house ? p.house : '—'}</td><td>${p.key === 'node' || p.key === 'snode' ? (p.retro ? '<span title="ретроградный">R</span>' : '<span title="директный">D</span>') : ''}</td></tr>`).join('')}</tbody></table>` : '';
@@ -45,5 +46,5 @@ async function loadNatal(){
       <h3 class="mt-4">Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
       ${points}${houses}${aspects}
       ${block('Планеты в знаках и домах', inSigns)}${block('Асцендент и точки', inPoints)}${block('Что значат аспекты', inAspects)}`;   /* строка с датой, координатами и UTC и сноска о точности эфемерид сняты (решение владелицы 20.09) */
-  }catch(e){ box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без нее карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
+  }catch(e){ if(e.code==='cancelled')return; box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без нее карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
 }
