@@ -13,8 +13,7 @@ import { CORE_EVENTS, EVENT_NAMES, FEATURE_EVENTS } from './events.mjs';
 
 let db, DATA_DIR = '';
 export function initReports(database, dataDir) {
-  db = database; DATA_DIR = dataDir || '';
-  db.exec('CREATE TABLE IF NOT EXISTS cabinet_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_by TEXT DEFAULT \'\', updated_at TEXT DEFAULT \'\')');
+  db = database; DATA_DIR = dataDir || '';   /* таблица cabinet_settings — в миграциях schema.mjs (шаг 22, F12) */
 }
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);

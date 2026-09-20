@@ -1397,6 +1397,26 @@ try {
     fs14.writeFileSync(keyPath, keyBytes);
     log = ''; await start(); assert.equal((await guarded.json('/journal')).items[0].text, 'Запись под настоящим ключом', 'the real key restored — the server starts and reads');
     console.log('PASS: F14 — a replaced or lost key on a non-empty base stops the server before it writes anything.'); }
+
+  // ── F12 (ревью v114): весь DDL — в миграциях; база без users.data_rev или knowledge.rev отклоняется до приема запросов с конкретной диагностикой ──
+  { const fsS = await import('node:fs'); const dbPath = join(fixture, 'data/app.db');
+    const noDdl = fsS.readdirSync(join(repo, 'backend')).filter((f) => f.endsWith('.mjs') && f !== 'schema.mjs').filter((f) => /CREATE TABLE|ALTER TABLE|CREATE INDEX/.test(fsS.readFileSync(join(repo, 'backend', f), 'utf8')));
+    assert.deepEqual(noDdl, [], 'no module creates tables on its own — all DDL lives in schema.mjs');
+    await stop();
+    const snap = new DatabaseSync(dbPath); snap.exec('PRAGMA wal_checkpoint(TRUNCATE)'); snap.close();
+    fsS.copyFileSync(dbPath, dbPath + '.ok');
+    for (const [table, col] of [['users', 'data_rev'], ['knowledge', 'rev']]) {
+      fsS.copyFileSync(dbPath + '.ok', dbPath);
+      const bad = new DatabaseSync(dbPath);
+      const cols = bad.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name).filter((c) => c !== col).join(', ');
+      bad.exec(`CREATE TABLE ${table}_bad AS SELECT ${cols} FROM ${table}; DROP TABLE ${table}; ALTER TABLE ${table}_bad RENAME TO ${table};`);
+      bad.close();
+      log = ''; await assert.rejects(start(), /схема базы неполная/, `a base without ${table}.${col} does not start`);
+      assert.match(log, new RegExp(`${table}\\.${col}`), `the log names ${table}.${col}: ` + log.slice(-200));
+    }
+    fsS.copyFileSync(dbPath + '.ok', dbPath); fsS.rmSync(dbPath + '.ok');
+    log = ''; await start(); assert.equal((await (await fetch(base + '/api/health')).json()).ok, true, 'the intact base starts again');
+    console.log('PASS: F12 — all DDL lives in the migrations; a base missing users.data_rev or knowledge.rev is refused before listening, with the column named.'); }
 } finally {
   await stop();
   await rm(fixture, { recursive: true, force: true });

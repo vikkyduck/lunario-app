@@ -7,9 +7,10 @@
    user_version = 0 и проходит все шаги без вреда — колонка уже есть, значит, пропускаем.
    После миграций verifySchema() проверяет обязательные колонки; только потом слушается порт.
 
-   Таблицы кабинетов, напоминаний, очереди пушей, установок дня и полок создают свои модули
-   (cabinet, workspace, reminders, daily-sets, knowledge): у них CREATE TABLE IF NOT EXISTS без истории,
-   и их использует еще и отдельный процесс send-daily. Все, что касается users и личных таблиц, — здесь. */
+   Весь DDL — здесь (ревью v114, F12): таблицы кабинетов, напоминаний, очереди пушей, установок дня и базы знаний раньше
+   создавали свои модули (cabinet, workspace, reminders, daily-sets, knowledge, reports) при инициализации — теперь они только
+   связывают зависимости, а их таблицы, колонки и индексы пришли в общую историю шагом 22. Отдельные процессы (send-daily,
+   поток отчетов) работают на базе, которую уже провел сервер, и проверяют ее verifySchema() перед работой. */
 
 const columns = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
 /* ALTER TABLE ADD COLUMN, если колонки еще нет — безопасно и для баз, где она появилась раньше */
@@ -217,16 +218,106 @@ export const MIGRATIONS = [
     addColumn(db, 'habits', 'start_day', "TEXT DEFAULT ''"); addColumn(db, 'habits', 'tz', "TEXT DEFAULT ''");
     db.exec("UPDATE habits SET start_day = substr(created_at, 1, 10) WHERE start_day = ''");
   } },
+  /* Таблицы модулей — в общей истории (ревью v114, F12): те же CREATE TABLE IF NOT EXISTS, что раньше делали cabinet.mjs,
+     workspace.mjs, reminders.mjs, reports.mjs, daily-sets.mjs и knowledge.mjs при старте, — безопасны для существующих баз;
+     колонки, которые модули добавляли через try/catch или PRAGMA, — через addColumn (только если нет). Модули больше ничего не создают */
+  { v: 22, name: 'таблицы модулей — в общей истории', up(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS staff (
+        email TEXT PRIMARY KEY, name TEXT DEFAULT '', roles TEXT DEFAULT '[]',
+        added_by TEXT DEFAULT '', created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS costs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, month TEXT NOT NULL, name TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0, kind TEXT NOT NULL DEFAULT 'fixed', ts TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS errors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, day TEXT NOT NULL,
+        path TEXT DEFAULT '', message TEXT DEFAULT ''
+      );
+      CREATE INDEX IF NOT EXISTS idx_errors_day ON errors (day);
+      CREATE TABLE IF NOT EXISTS cabinet_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_by TEXT DEFAULT '', updated_at TEXT DEFAULT '');
+      CREATE TABLE IF NOT EXISTS reminders (
+        user_id INTEGER NOT NULL, feature TEXT NOT NULL, enabled INTEGER DEFAULT 0,
+        time TEXT DEFAULT '09:00', freq TEXT DEFAULT 'daily', weekday INTEGER DEFAULT 7, tz TEXT DEFAULT '',
+        next_at TEXT DEFAULT '', last_at TEXT DEFAULT '', PRIMARY KEY (user_id, feature)
+      );
+      CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders (enabled, next_at);
+      CREATE TABLE IF NOT EXISTS push_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL,
+        feature TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, url TEXT DEFAULT ''
+      );
+      CREATE TABLE IF NOT EXISTS push_shown (item_id INTEGER NOT NULL, endpoint TEXT NOT NULL, PRIMARY KEY (item_id, endpoint));
+      CREATE TABLE IF NOT EXISTS campaigns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, source TEXT DEFAULT '', medium TEXT DEFAULT '', campaign TEXT DEFAULT '',
+        content TEXT DEFAULT '', term TEXT DEFAULT '', placement TEXT DEFAULT '', promise TEXT DEFAULT '', cost REAL DEFAULT 0,
+        start_day TEXT DEFAULT '', end_day TEXT DEFAULT '', url TEXT DEFAULT '', created_by TEXT DEFAULT '', created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS materials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL DEFAULT 'note', section TEXT DEFAULT 'Мой день', title TEXT DEFAULT '',
+        text TEXT DEFAULT '', image TEXT DEFAULT '', show_day TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'draft',
+        created_by TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS materials_versions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, material_id INTEGER NOT NULL, json TEXT NOT NULL, by TEXT DEFAULT '', ts TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, file TEXT NOT NULL, type TEXT DEFAULT '', size INTEGER DEFAULT 0,
+        uploaded_by TEXT DEFAULT '', created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS ai_providers (
+        provider TEXT PRIMARY KEY, key_enc TEXT DEFAULT '', model TEXT DEFAULT '', extra TEXT DEFAULT '', enabled INTEGER DEFAULT 1,
+        check_ok INTEGER, check_note TEXT DEFAULT '', checked_at TEXT DEFAULT '', updated_by TEXT DEFAULT '', updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, text TEXT DEFAULT '', role TEXT NOT NULL DEFAULT 'content',
+        status TEXT NOT NULL DEFAULT 'new', priority TEXT NOT NULL DEFAULT 'normal', due_day TEXT DEFAULT '',
+        created_by TEXT DEFAULT '', assignee TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, done_at TEXT DEFAULT ''
+      );
+      CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, subject TEXT DEFAULT '', topic TEXT DEFAULT 'Прочее', feature TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'new', priority TEXT NOT NULL DEFAULT 'normal', created_at TEXT NOT NULL,
+        first_reply_at TEXT DEFAULT '', resolved_at TEXT DEFAULT '', last_at TEXT NOT NULL, last_by TEXT DEFAULT 'user'
+      );
+      CREATE INDEX IF NOT EXISTS idx_tickets_user ON tickets (user_id);
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL, who TEXT NOT NULL, author TEXT DEFAULT '', text TEXT NOT NULL,
+        ts TEXT NOT NULL, read_user INTEGER DEFAULT 0, read_support INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_ticket ON messages (ticket_id);
+      CREATE TABLE IF NOT EXISTS knowledge (
+        user_id INTEGER NOT NULL, doc TEXT NOT NULL, json TEXT NOT NULL, updated_at TEXT NOT NULL, day TEXT NOT NULL,
+        PRIMARY KEY (user_id, doc)
+      );
+      CREATE TABLE IF NOT EXISTS compat_checks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL, day TEXT NOT NULL,
+        other_birth TEXT NOT NULL, total INTEGER NOT NULL, rings TEXT NOT NULL, you TEXT NOT NULL, other TEXT NOT NULL, text TEXT NOT NULL
+      );`);
+    addColumn(db, 'push_queue', 'endpoint', "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, 'media', 'archived', 'INTEGER DEFAULT 0'); addColumn(db, 'media', 'archived_at', "TEXT DEFAULT ''");
+    addColumn(db, 'knowledge', 'rev', 'INTEGER DEFAULT 0');
+    for (const col of ['text_key', 'text', 'question', 'theme']) addColumn(db, 'daily_sets', col, "TEXT NOT NULL DEFAULT ''");
+  } },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
-/* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера */
-const REQUIRED = {
-  users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref'],
+/* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера (и отдельными процессами перед работой).
+   Границы у миграций и проверки одни (F12): все, от чего зависят операции, — здесь, включая users.data_rev и knowledge.rev */
+export const REQUIRED = {
+  users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref', 'data_rev'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
   entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text', 'start_day', 'tz'], wishes: ['photo', 'photo_ts'],
   events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],
+  daily_sets: ['user_id', 'day', 'idx', 'text_key', 'text', 'question', 'theme'],
+  moods: ['user_id', 'day', 'mood'], mood_marks: ['user_id', 'day', 'mood'], week_echoes: ['user_id', 'day', 'verdict'], day_photos: ['user_id', 'day', 'thumb', 'full'],
+  knowledge: ['user_id', 'doc', 'json', 'updated_at', 'day', 'rev'], compat_checks: ['user_id', 'other_birth', 'rings', 'text'],
+  staff: ['email', 'roles'], costs: ['month', 'name', 'amount'], errors: ['ts', 'day', 'path', 'message'], cabinet_settings: ['key', 'value'],
+  reminders: ['user_id', 'feature', 'enabled', 'time', 'freq', 'weekday', 'tz', 'next_at'], push_queue: ['user_id', 'feature', 'title', 'body', 'endpoint'], push_shown: ['item_id', 'endpoint'],
+  campaigns: ['name', 'source', 'created_at'], materials: ['kind', 'section', 'status'], materials_versions: ['material_id', 'json'], media: ['name', 'file', 'archived', 'archived_at'],
+  ai_providers: ['provider', 'key_enc'], tasks: ['title', 'role', 'status'], tickets: ['user_id', 'status', 'last_at'], messages: ['ticket_id', 'who', 'text'],
 };
+export const REQUIRED_INDEXES = ['idx_users_email', 'idx_sessions_user', 'idx_entries_user', 'idx_events_day', 'idx_events_user', 'idx_journal_user', 'idx_journal_user_day', 'idx_wishes_user',
+  'idx_habits_user', 'idx_askesis_user', 'idx_events_user_ts', 'idx_receipts_created', 'idx_errors_day', 'idx_reminders_due', 'idx_tickets_user', 'idx_messages_ticket'];
 
 /* Провести базу до текущей версии. Возвращает номер версии; бросает ошибку, если шаг не прошел. */
 export function migrate(db, log = console.log) {
@@ -256,7 +347,8 @@ export function verifySchema(db) {
     if (!have.length) { missing.push(`${table} (таблицы нет)`); continue; }
     for (const c of cols) if (!have.includes(c)) missing.push(`${table}.${c}`);
   }
-  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_users_email'").get() === undefined) missing.push('индекс idx_users_email');
+  const have = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all().map((r) => r.name));
+  for (const idx of REQUIRED_INDEXES) if (!have.has(idx)) missing.push('индекс ' + idx);
   if (missing.length) throw new Error('схема базы неполная: ' + missing.join(', '));
   return true;
 }

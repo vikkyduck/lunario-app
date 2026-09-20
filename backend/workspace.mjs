@@ -14,48 +14,7 @@ let db, seal = (s) => s, open_ = (s) => s, UPLOADS = '';
 export function initWorkspace(database, dataDir, sealFn, openFn) {
   db = database; seal = sealFn; open_ = openFn; UPLOADS = join(dataDir, 'uploads');
   if (!existsSync(UPLOADS)) mkdirSync(UPLOADS, { recursive: true });
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS campaigns (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, source TEXT DEFAULT '', medium TEXT DEFAULT '', campaign TEXT DEFAULT '',
-      content TEXT DEFAULT '', term TEXT DEFAULT '', placement TEXT DEFAULT '', promise TEXT DEFAULT '', cost REAL DEFAULT 0,
-      start_day TEXT DEFAULT '', end_day TEXT DEFAULT '', url TEXT DEFAULT '', created_by TEXT DEFAULT '', created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS materials (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL DEFAULT 'note', section TEXT DEFAULT 'Мой день', title TEXT DEFAULT '',
-      text TEXT DEFAULT '', image TEXT DEFAULT '', show_day TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'draft',
-      created_by TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS materials_versions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, material_id INTEGER NOT NULL, json TEXT NOT NULL, by TEXT DEFAULT '', ts TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS media (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, file TEXT NOT NULL, type TEXT DEFAULT '', size INTEGER DEFAULT 0,
-      uploaded_by TEXT DEFAULT '', created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS ai_providers (
-      provider TEXT PRIMARY KEY, key_enc TEXT DEFAULT '', model TEXT DEFAULT '', extra TEXT DEFAULT '', enabled INTEGER DEFAULT 1,
-      check_ok INTEGER, check_note TEXT DEFAULT '', checked_at TEXT DEFAULT '', updated_by TEXT DEFAULT '', updated_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS tasks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, text TEXT DEFAULT '', role TEXT NOT NULL DEFAULT 'content',
-      status TEXT NOT NULL DEFAULT 'new', priority TEXT NOT NULL DEFAULT 'normal', due_day TEXT DEFAULT '',
-      created_by TEXT DEFAULT '', assignee TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, done_at TEXT DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS tickets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, subject TEXT DEFAULT '', topic TEXT DEFAULT 'Прочее', feature TEXT DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'new', priority TEXT NOT NULL DEFAULT 'normal', created_at TEXT NOT NULL,
-      first_reply_at TEXT DEFAULT '', resolved_at TEXT DEFAULT '', last_at TEXT NOT NULL, last_by TEXT DEFAULT 'user'
-    );
-    CREATE INDEX IF NOT EXISTS idx_tickets_user ON tickets (user_id);
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL, who TEXT NOT NULL, author TEXT DEFAULT '', text TEXT NOT NULL,
-      ts TEXT NOT NULL, read_user INTEGER DEFAULT 0, read_support INTEGER DEFAULT 0
-    );
-    CREATE INDEX IF NOT EXISTS idx_messages_ticket ON messages (ticket_id);
-  `);
-  const mcols = db.prepare('PRAGMA table_info(media)').all().map((c) => c.name);
-  if (!mcols.includes('archived')) db.exec("ALTER TABLE media ADD COLUMN archived INTEGER DEFAULT 0");
-  if (!mcols.includes('archived_at')) db.exec("ALTER TABLE media ADD COLUMN archived_at TEXT DEFAULT ''");
+  /* таблицы кабинетов — в миграциях schema.mjs (шаг 22, F12): модуль только связывает базу, ключ и папку загрузок */
   if (!existsSync(join(UPLOADS, 'archive'))) mkdirSync(join(UPLOADS, 'archive'), { recursive: true });
   /* колонки users.utm_* и first_ref (первый источник человека) добавляет миграция в schema.mjs */
 }

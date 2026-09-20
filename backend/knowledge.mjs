@@ -36,16 +36,10 @@ const parse = (t) => { try { return t ? JSON.parse(t) : null; } catch { return n
 const weekStart = (d) => { const dt = new Date(d + 'T12:00:00Z'); return addDays(d, -((dt.getUTCDay() + 6) % 7)); };
 
 export function createKnowledge({ db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory, lunarOf, nowISO, dataRev = () => 0 }) {
-  db.exec(`CREATE TABLE IF NOT EXISTS knowledge (
-    user_id INTEGER NOT NULL, doc TEXT NOT NULL, json TEXT NOT NULL, updated_at TEXT NOT NULL, day TEXT NOT NULL,
-    PRIMARY KEY (user_id, doc));
-  CREATE TABLE IF NOT EXISTS compat_checks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL, day TEXT NOT NULL,
-    other_birth TEXT NOT NULL, total INTEGER NOT NULL, rings TEXT NOT NULL, you TEXT NOT NULL, other TEXT NOT NULL, text TEXT NOT NULL);`);
-  /* rev — ревизия личных данных, с которой собран документ (users.data_rev, R08): изменилась — документ пересобирается при чтении.
+  /* таблицы knowledge (с колонкой rev) и compat_checks — в миграциях schema.mjs (шаг 22, F12): модуль ничего не создает.
+     rev — ревизия личных данных, с которой собран документ (users.data_rev, R08): изменилась — документ пересобирается при чтении.
      Ревизия поднимается в той же транзакции, что и сама запись (mutation.mjs, ревью v114 F04), поэтому документ, собранный под
      ревизией N, видит все данные ревизии N — гонки «старые данные под новой ревизией» нет */
-  try { db.exec('ALTER TABLE knowledge ADD COLUMN rev INTEGER DEFAULT 0'); } catch { /* колонка уже есть */ }
   const put = db.prepare('INSERT INTO knowledge (user_id, doc, json, updated_at, day, rev) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id, doc) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at, day = excluded.day, rev = excluded.rev');
   const getDoc = db.prepare('SELECT json, updated_at, day, rev FROM knowledge WHERE user_id = ? AND doc = ?');
   const listDocs = db.prepare('SELECT doc, updated_at, day, LENGTH(json) size FROM knowledge WHERE user_id = ? ORDER BY doc');

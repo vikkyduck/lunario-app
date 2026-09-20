@@ -12,6 +12,7 @@ import * as C from './content.mjs';
 import { createMorning } from './morning.mjs';
 import { dayIn } from './util.mjs';
 import { userDay } from './clock.mjs';
+import { verifySchema } from './schema.mjs';
 
 const DATA_DIR = process.env.DATA_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
 export function initScheduledReminders(db, dataDir = DATA_DIR) {
@@ -24,6 +25,7 @@ export function initScheduledReminders(db, dataDir = DATA_DIR) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
   db.exec('PRAGMA busy_timeout=5000');
+  verifySchema(db);   /* базу ведет сервер (миграции — только в нем, F12): неполная схема — понятная ошибка, а не падение на первом запросе */
   initScheduledReminders(db);
   const stat = await runDue(vapidKeys(DATA_DIR));
   if (stat.due) console.log(`Напоминания: подошло ${stat.due}, в очередь ${stat.queued}, отправлено ${stat.sent}, отписались ${stat.gone}, не дошло ${stat.failed}`);

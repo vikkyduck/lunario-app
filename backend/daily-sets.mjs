@@ -2,12 +2,9 @@ import { createHash, randomInt } from 'node:crypto';
 
 export const setKey = text => createHash('sha256').update(String(text).normalize('NFC').trim().replace(/\s+/g, ' ')).digest('hex');
 
+/* таблица daily_sets и ее колонки text_key/text/question/theme — в миграциях schema.mjs (шаги 1 и 22, F12); здесь — только перенос
+   прежних строк «по индексу» в пары с текстом (данные, не схема) */
 export function initDailySets(db, legacySets = []) {
-  db.exec('CREATE TABLE IF NOT EXISTS daily_sets (user_id INTEGER NOT NULL, day TEXT NOT NULL, idx INTEGER NOT NULL, PRIMARY KEY(user_id, day))');
-  const cols = db.prepare('PRAGMA table_info(daily_sets)').all().map(c => c.name);
-  for (const col of ['text_key', 'text', 'question', 'theme']) {
-    if (!cols.includes(col)) db.exec(`ALTER TABLE daily_sets ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
-  }
   // Preserve already issued phrases when migrating the former index-only history.
   const update = db.prepare('UPDATE daily_sets SET text_key=?, text=?, question=? WHERE user_id=? AND day=?');
   for (const row of db.prepare("SELECT * FROM daily_sets WHERE text_key='' ").all()) {

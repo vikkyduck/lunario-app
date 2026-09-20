@@ -9,10 +9,12 @@ import { join } from 'node:path';
 import { privateText } from './private-text.mjs';
 import { initWorkspace } from './workspace.mjs';
 import { initReports, overview, report } from './reports.mjs';
+import { verifySchema } from './schema.mjs';
 
 const { dataDir } = workerData;
 const db = new DatabaseSync(join(dataDir, 'app.db'));
 db.exec('PRAGMA busy_timeout = 5000');
+verifySchema(db);   /* схему ведет основной процесс (F12): здесь только проверка, что она полная */
 const { seal, open } = privateText(dataDir, { create: false });   // ключ уже создан основным процессом
 initWorkspace(db, dataDir, seal, open);   // таблицы уже есть — только привязка модуля к базе
 initReports(db, dataDir);

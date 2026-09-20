@@ -27,21 +27,7 @@ const FREQS = ['daily', 'weekdays', 'weekly'];
 let db = null, hooks = {};
 export function initReminders(database, h = {}) {
   db = database; hooks = h;   // habitList/askesisList из сервера — чтобы тексты считались одинаково
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS reminders (
-      user_id INTEGER NOT NULL, feature TEXT NOT NULL, enabled INTEGER DEFAULT 0,
-      time TEXT DEFAULT '09:00', freq TEXT DEFAULT 'daily', weekday INTEGER DEFAULT 7, tz TEXT DEFAULT '',
-      next_at TEXT DEFAULT '', last_at TEXT DEFAULT '', PRIMARY KEY (user_id, feature)
-    );
-    CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders (enabled, next_at);
-    CREATE TABLE IF NOT EXISTS push_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL,
-      feature TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, url TEXT DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS push_shown (item_id INTEGER NOT NULL, endpoint TEXT NOT NULL, PRIMARY KEY (item_id, endpoint));
-  `);
-  if (!db.prepare('PRAGMA table_info(push_queue)').all().some(c => c.name === 'endpoint'))
-    db.exec("ALTER TABLE push_queue ADD COLUMN endpoint TEXT NOT NULL DEFAULT ''");
+  /* таблицы reminders, push_queue (с endpoint), push_shown — в миграциях schema.mjs (шаг 22, F12): модуль ничего не создает */
   /* Раньше было одно напоминание — о карте дня в 9 утра для всех, кто подписался.
      Переносим его в новую систему один раз, чтобы у людей ничего не пропало. */
   if (!db.prepare('SELECT COUNT(*) c FROM reminders').get().c) {
