@@ -950,7 +950,11 @@ try {
   assert.throws(() => decryptBuffer(enc, 'другой-пароль'), /authenticate|state/, 'A wrong password does not decrypt');
   const tarBuf = decryptBuffer(enc, 'пароль-копий');
   assert.ok(tarBuf.includes(Buffer.from('secret.key')) && tarBuf.includes(Buffer.from('.db.gz')), 'The key travels inside the encrypted archive');
-  console.log('PASS: backups are encrypted with a separate secret and the app key no longer sits beside the database.');
+  /* F03: копии старше 30 дней убираются по дате в имени, даже если их меньше четырнадцати (старые копии хранят квитанции с открытым текстом) */
+  await writeFile(join(bkDir, 'app-2020-01-01.db.gz.enc'), 'x'); await writeFile(join(bkDir, 'content-2020-01-01.tar.gz'), 'x');
+  const swept = B.sweep(); assert.ok(swept.includes('app-2020-01-01.db.gz.enc') && swept.includes('content-2020-01-01.tar.gz'), 'copies older than 30 days are removed: ' + swept.join(', '));
+  assert.ok(!B.list().items.some((i) => i.name.includes('2020-01-01')) && B.list().items.length >= 2, 'fresh copies stay');
+  console.log('PASS: backups are encrypted with a separate secret and the app key no longer sits beside the database; copies older than 30 days are swept.');
 
   // ── Схема: версия базы записана, повторный запуск ничего не меняет, health её показывает ──
   const { SCHEMA_VERSION } = await import(pathToFileURL(join(fixture, 'backend/schema.mjs')).href);
@@ -1111,6 +1115,41 @@ try {
   assert.equal((await (await fetch(base + '/api/health')).json()).ok, true);
   migrated.close();
   console.log('PASS: legacy token_hash schema migrates without losing later columns or their values; migrations are versioned, idempotent on restart and safe for a rolled-back release.');
+
+  // ── F03 (ревью v114): настоящая база v19 с квитанциями старой формы — после обновления открытого текста в них нет,
+  //    распознанная квитанция стала ссылкой на запись, нераспознанная удалена, повтор успешной операции не создает дубль ──
+  await stop();
+  await rm(join(fixture, 'data'), { recursive: true, force: true }); await mkdir(join(fixture, 'data'));
+  { const Schema = await import(pathToFileURL(join(fixture, 'backend/schema.mjs')).href);
+    const v19 = new DatabaseSync(join(fixture, 'data/app.db'));
+    for (const m of Schema.MIGRATIONS.filter((x) => x.v <= 19)) { v19.exec('BEGIN'); m.up(v19); v19.exec(`PRAGMA user_version = ${m.v}`); v19.exec('COMMIT'); }
+    assert.equal(v19.prepare('PRAGMA user_version').get().user_version, 19);
+    const ts = new Date().toISOString();
+    v19.prepare("INSERT INTO users (id, created_at, last_seen, name, onboarded) VALUES (7, ?, ?, 'Квитанции', 1)").run(ts, ts);
+    v19.prepare("INSERT INTO journal (id, user_id, ts, day, text, kind, title) VALUES (1, 7, ?, '2026-09-01', 'enc1:notreal', 'gratitude', '')").run(ts);
+    const put = v19.prepare('INSERT INTO sync_receipts (user_id, operation_id, payload_hash, response_json, created_at) VALUES (7, ?, ?, ?, ?)');
+    put.run('op-old-format', 'h1', '{"ok":true,"item":{"id":1,"day":"2026-09-01","text":"MARKER-секрет","kind":"gratitude","title":""},"streak":3}', ts);
+    put.run('op-old-updated', 'h2', '{"ok":true,"updated":true,"item":{"id":1,"text":"MARKER-еще"}}', ts);
+    put.run('op-new-format', 'h3', '{"table":"journal","id":1}', ts);
+    put.run('op-refused', 'h4', '{"table":"wishes","id":0,"refused":"too_many"}', ts);
+    put.run('op-garbage', 'h5', 'not json {MARKER', ts);
+    v19.close(); }
+  await start();
+  { const m20 = new DatabaseSync(join(fixture, 'data/app.db'));
+    assert.equal(m20.prepare("SELECT COUNT(*) c FROM sync_receipts WHERE response_json LIKE '%MARKER%'").get().c, 0, 'no open text is left in receipts after the migration');
+    assert.deepEqual(JSON.parse(m20.prepare("SELECT response_json FROM sync_receipts WHERE operation_id = 'op-old-format'").get().response_json), { table: 'journal', id: 1, updated: false }, 'a recognised old receipt became a reference');
+    assert.deepEqual(JSON.parse(m20.prepare("SELECT response_json FROM sync_receipts WHERE operation_id = 'op-old-updated'").get().response_json), { table: 'journal', id: 1, updated: true });
+    assert.equal(m20.prepare("SELECT response_json FROM sync_receipts WHERE operation_id = 'op-new-format'").get().response_json, '{"table":"journal","id":1}', 'a v114 receipt is untouched');
+    for (const op of ['op-refused', 'op-garbage']) assert.equal(m20.prepare('SELECT COUNT(*) c FROM sync_receipts WHERE operation_id = ?').get(op).c, 0, op + ' is dropped: unrecognised or a refusal is not a receipt');
+    assert.equal(m20.prepare('PRAGMA user_version').get().user_version, SCHEMA_VERSION);
+    /* повтор успешной операции на обновленной базе — тот же результат, а не вторая запись */
+    const rp = account(); const rpId = (await rp.json('/me')).user.id, rop = 'op-after-migrate';
+    const first = await rp.json('/journal', 'POST', { text: 'Повтор после обновления', kind: 'gratitude', op: rop });
+    const again = await rp.json('/journal', 'POST', { text: 'Повтор после обновления', kind: 'gratitude', op: rop });
+    assert.equal(again.repeated, true); assert.equal(again.item.id, first.item.id);
+    assert.equal(m20.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND kind = 'gratitude'").get(rpId).c, 1, 'one gratitude after a repeat on the migrated base');
+    m20.close(); }
+  console.log('PASS: F03 — receipts of the v110–v113 form are reduced to references by migration 20, unrecognised and refusal receipts are dropped, repeats stay honest.');
 } finally {
   await stop();
   await rm(fixture, { recursive: true, force: true });

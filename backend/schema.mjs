@@ -192,6 +192,24 @@ export const MIGRATIONS = [
   /* Ревизия личных данных (повторный аудит v112, R08): растет при каждой записи, правке и удалении; база знаний хранит ревизию,
      с которой собран документ, и пересобирает его при чтении, если данные с тех пор менялись — «удаленный текст остается в сводке» невозможно */
   { v: 19, name: 'ревизия личных данных для базы знаний', up: (db) => db.exec('ALTER TABLE users ADD COLUMN data_rev INTEGER DEFAULT 0') },
+  /* Квитанции v110–v113 хранили весь ответ сервера — то есть текст благодарности открытым, рядом с зашифрованным журналом
+     (ревью v114, F03). Здесь они приводятся к форме v114: только ссылка на запись { table, id, updated }. Политика:
+     нераспознанная квитанция удаляется; повтор такой операции после этого — новая запись (квитанции живут 7 дней, и
+     ближайшие клиенты обновление переживут без повторов). Квитанция отказа ({ id: 0, refused }) — тоже не квитанция (F06) */
+  { v: 20, name: 'квитанции без личного текста', up(db) {
+    const rows = db.prepare('SELECT user_id, operation_id, response_json FROM sync_receipts').all();
+    const put = db.prepare('UPDATE sync_receipts SET response_json = ? WHERE user_id = ? AND operation_id = ?');
+    const del = db.prepare('DELETE FROM sync_receipts WHERE user_id = ? AND operation_id = ?');
+    let fixed = 0, dropped = 0;
+    for (const r of rows) {
+      let j = null; try { j = JSON.parse(r.response_json); } catch { /* мусор — удаляется ниже */ }
+      const ref = j && typeof j === 'object' ? j : null;
+      if (ref && ref.table && Number(ref.id) > 0 && !ref.refused && !('item' in ref)) continue;   /* уже ссылка v114 */
+      if (ref && ref.item && Number(ref.item.id) > 0) { put.run(JSON.stringify({ table: 'journal', id: Number(ref.item.id), updated: !!ref.updated }), r.user_id, r.operation_id); fixed++; continue; }
+      del.run(r.user_id, r.operation_id); dropped++;
+    }
+    if (fixed || dropped) console.log(`квитанции: приведено к ссылке ${fixed}, удалено нераспознанных ${dropped}`);
+  } },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 

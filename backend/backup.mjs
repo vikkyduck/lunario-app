@@ -16,6 +16,9 @@ import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const KEEP = 14;
+/* Копии старше этого срока убираются независимо от числа (ревью v114, F03): копии до v115 хранят квитанции операций
+   с открытым текстом благодарностей — их жизнь ограничена месяцем, даже если ночные копии почему-то не снимались */
+const MAX_AGE_DAYS = 30;
 const NAME = /^(app-\d{4}-\d{2}-\d{2}(?:-\d{6})?\.db\.gz(?:\.enc)?|content-\d{4}-\d{2}-\d{2}(?:-\d{6})?\.tar\.gz(?:\.enc)?)$/;
 const mb = (b) => Math.round(b / 1048576 * 10) / 10;
 let warnedPlain = false;
@@ -98,15 +101,21 @@ export function createBackup({ dataDir, contentDir, backupDir, secret = process.
         out.files.push(`content-${stamp}.tar.gz.enc`);
       } else out.files.push(`content-${stamp}.tar.gz`);
     }
-    for (const kind of ['app-', 'content-']) {   // старше четырнадцати — убираем
-      const old = readdirSync(backupDir).filter((n) => n.startsWith(kind) && NAME.test(n)).sort().reverse().slice(KEEP);
-      for (const n of old) unlinkSync(join(backupDir, n));
-    }
+    sweep();
     return out;
+  }
+  /* старше четырнадцати по счету или старше MAX_AGE_DAYS по дате в имени — убираем */
+  function sweep() {
+    const edge = new Date(Date.now() - MAX_AGE_DAYS * 864e5).toISOString().slice(0, 10), gone = [];
+    for (const kind of ['app-', 'content-']) {
+      const all = readdirSync(backupDir).filter((n) => n.startsWith(kind) && NAME.test(n)).sort().reverse();
+      for (const n of [...all.slice(KEEP), ...all.filter((x) => x.slice(kind.length, kind.length + 10) < edge)]) { try { unlinkSync(join(backupDir, n)); gone.push(n); } catch { /* уже нет */ } }
+    }
+    return gone;
   }
 
   const file = (name) => (NAME.test(String(name || '')) && existsSync(join(backupDir, name)) ? join(backupDir, name) : null);
-  return { list, run, file, dir: backupDir };
+  return { list, run, file, sweep, dir: backupDir, KEEP, MAX_AGE_DAYS };
 }
 
 /* Запуск из cron: node backend/backup.mjs — пути берутся из окружения, как у сервера */
