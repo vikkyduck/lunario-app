@@ -67,17 +67,19 @@ async function ensureThoughts(day){
   return S.thoughtsBy[day];
 }
 const thoughtOf=(source,slug,entry,day)=>((S.thoughtsBy&&S.thoughtsBy[day||S.day?.date])||[]).find(t=>t.source===source&&t.slug===slug&&(t.entry||0)===(entry||0))||null;
-const thoughtDraft=(key)=>draftGet('thought',key)||'';
+/* ключ черновика мысли — с датой (R07): та же карта в другой день не подхватит вчерашний несохраненный текст */
+const thoughtDraftKey=(key)=>`${S.day?.date||''}:${key}`;
+const thoughtDraft=(key)=>draftGet('thought',thoughtDraftKey(key));
 /* entry — id результата (вопрос к рунам или картам): две одинаковые руны на разные вопросы — две разные мысли.
    day — день результата: за сегодня форма, за прошлый день — только уже записанная мысль */
 function thoughtHtml(source,slug,name,question,entry=0,day=S.day?.date){
   const key=thoughtKey(source,slug,entry), saved=thoughtOf(source,slug,entry,day), today=day===S.day?.date, editing=today&&(!saved||TH.edit[key]);
   if(!today&&!saved)return '';
-  const text=editing?(thoughtDraft(key)||(saved?saved.text:'')):'';
+  const dr=editing?thoughtDraft(key):null, text=editing?(dr!==null?dr:(saved?saved.text:'')):'';   /* null — черновика нет; '' — очищено намеренно */
   return `<section class="thought" id="th-${esc(key)}" data-key="${esc(key)}" data-day="${esc(day||'')}">${editing
     ?`<p class="thought-q">${ui('thought.q','Что в этом относится к моей ситуации?')}</p>
        <div class="field"><textarea data-on="input:thoughtInput-a0-this" data-a0="${esc(key)}" maxlength="2000" rows="2" placeholder="Своими словами…">${esc(text)}</textarea></div>
-       <div class="answer-actions"><button data-on="click:thoughtSave-a0-a1-a2-a3-a4" data-a0="${esc(source)}" data-a1="${esc(slug)}" data-a2="${esc(name)}" data-a3="${esc(question||'')}" data-a4="${entry||0}" class="btn sm" type="button" ${TH.saving[key]?'disabled':''}>${TH.saving[key]?'Сохраняем…':saved?'Обновить':ui('thought.save','Сохранить мысль')}</button>${saved?`<button data-on="click:thoughtCancel-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">Отмена</button>`:''}</div>`
+       <div class="answer-actions"><button data-on="click:thoughtSave-a0-a1-a2-a3-a4" data-a0="${esc(source)}" data-a1="${esc(slug)}" data-a2="${esc(name)}" data-a3="${esc(question||'')}" data-a4="${entry||0}" class="btn sm" type="button" ${TH.saving[key]?'disabled':''}>${TH.saving[key]?'Сохраняем…':saved?'Обновить':ui('thought.save','Сохранить мысль')}</button>${saved?`<button data-on="click:thoughtCancel-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">Отмена</button>`:`<button data-on="click:thoughtNotMe-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">${esc(ui('thought.notme','Сегодня это не про меня'))}</button>`}</div>`
     :`<p class="thought-q">${ui('thought.mine','Моя мысль')}</p><p class="entry-text">${esc(saved.text)}</p>
        <div class="answer-actions"><span class="saved-state">В дневнике · ${fmtDay(saved.day)}</span>${today?`<button data-on="click:thoughtEdit-a0" data-a0="${esc(key)}" class="btn ghost sm" type="button">Дополнить</button>`:''}<button data-on="click:openDay-a0" data-a0="${esc(saved.day)}" class="btn ghost sm" type="button">Открыть запись</button></div>`}
   </section>`;
@@ -89,9 +91,11 @@ async function paintThoughts(day){
   document.querySelectorAll(`.thought[data-key][data-day="${day}"]`).forEach(el=>{ const [source,slug,entry]=thoughtParts(el.dataset.key); const saved=thoughtOf(source,slug,entry,day); if(!saved)return;
     const name=el.querySelector('[data-a2]')?.dataset.a2||saved.name, q=el.querySelector('[data-a3]')?.dataset.a3||saved.question; el.outerHTML=thoughtHtml(source,slug,name,q,entry,day); });
 }
-function thoughtInput(key,el){ draftSet('thought',key,el.value); growTextarea(el); }   /* черновик — на устройстве, переживает перезагрузку (F06) */
+function thoughtInput(key,el){ draftSet('thought',thoughtDraftKey(key),el.value); growTextarea(el); }   /* черновик — на устройстве, переживает перезагрузку (F06) */
+/* место ответу «не относится ко мне» (R17): материал — образ, а не факт о человеке; такая мысль тоже записывается в день */
+function thoughtNotMe(key){ const el=$('th-'+key)?.querySelector('textarea'); if(!el)return; el.value=ui('thought.notme','Сегодня это не про меня'); thoughtInput(key,el); el.focus(); }
 function thoughtEdit(key){ TH.edit[key]=true; const el=$('th-'+key); const [source,slug,entry]=thoughtParts(key); const saved=thoughtOf(source,slug,entry); if(el&&saved){ el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question,entry); $('th-'+key)?.querySelector('textarea')?.focus(); } }
-function thoughtCancel(key){ TH.edit[key]=false; draftClear('thought',key); const el=$('th-'+key); const [source,slug,entry]=thoughtParts(key); const saved=thoughtOf(source,slug,entry); if(el&&saved)el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question,entry); }
+function thoughtCancel(key){ TH.edit[key]=false; draftClear('thought',thoughtDraftKey(key)); const el=$('th-'+key); const [source,slug,entry]=thoughtParts(key); const saved=thoughtOf(source,slug,entry); if(el&&saved)el.outerHTML=thoughtHtml(source,slug,saved.name,saved.question,entry); }
 async function thoughtSave(source,slug,name,question,entry){
   entry=Number(entry)||0; const key=thoughtKey(source,slug,entry); if(TH.saving[key])return;
   const el=$('th-'+key), text=(el?.querySelector('textarea')?.value||'').trim();
@@ -100,9 +104,9 @@ async function thoughtSave(source,slug,name,question,entry){
   try{
     const r=await api('/thought',{method:'POST',body:JSON.stringify({source,slug,name,question,text,entry})});
     await ensureThoughts(); const items=S.thoughtsBy[S.day.date].filter(t=>!(t.source===source&&t.slug===slug&&(t.entry||0)===entry)); items.push(r.item); S.thoughtsBy[S.day.date]=items;
-    draftClear('thought',key); TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
+    draftClear('thought',thoughtDraftKey(key)); TH.edit[key]=false; toast(r.updated?'Мысль обновлена':'Записано в дневник'); hap('ok'); S.daysTotal=S.daysTotal||0;
     if(typeof dayChanged==='function'){ const keep=S.thoughtsBy[S.day.date]; dayChanged(S.day.date); S.thoughtsBy[S.day.date]=keep; }
-  }catch(e){ toast(e.code==='too_many'?'Записей за день уже сто — мысль осталась в поле':ERR_SAVE_KEPT); draftSet('thought',key,text); }
+  }catch(e){ toast(e.code==='too_many'?'Записей за день уже сто — мысль осталась в поле':ERR_SAVE_KEPT); draftSet('thought',thoughtDraftKey(key),text); }
   finally{ TH.saving[key]=false; const el2=$('th-'+key); if(el2)el2.outerHTML=thoughtHtml(source,slug,name,question,entry); }
 }
 function cardDayHtml(c, day, compact){
@@ -135,11 +139,15 @@ function fitFans(box){
   box.querySelectorAll('.picker.tarot .fan').forEach(fan=>{ const cards=[...fan.children]; if(cards.length<2)return; const w=cards[0].getBoundingClientRect().width||46, avail=fan.clientWidth-12; const step=Math.min(w*.62,(avail-w)/(cards.length-1)); fan.style.setProperty('--ml',(step-w).toFixed(1)+'px'); });
 }
 function pickCards(box,kind,need,{scroll=false}={}){
+  cancelPick();   /* новый выбор завершает незавершенный старый */
   const total=kind==='tarot'?(Object.keys(CAT?.cards||{}).length||22):(Object.keys(CAT?.runes||{}).length||24);
   box.innerHTML=pickerHtml(kind,need,total); box.style.display='block';
   requestAnimationFrame(()=>{ fitFans(box); if(scroll)box.scrollIntoView({behavior:'smooth',block:'center'}); });
-  return new Promise((res)=>{ PICK={need,chosen:[],res}; });
+  return new Promise((res,rej)=>{ PICK={need,chosen:[],res,rej}; });
 }
+/* Ожидание выбора карт завершается явно (повторный аудит v112, R11): закрыли панель, перерисовали экран, начали новый вопрос —
+   обещание отклоняется с code «cancelled», вызвавший сценарий снимает «занято» в своем finally, и кнопка снова работает */
+function cancelPick(){ if(!PICK)return; const p=PICK; PICK=null; p.rej(Object.assign(new Error('cancelled'),{code:'cancelled'})); }
 function pickerTap(i){
   if(!PICK)return; i=+i;
   const el=document.querySelector(`#picker .fan-card[data-a0="${i}"]`); if(!el||PICK.chosen.includes(i))return;
@@ -334,8 +342,8 @@ async function loadEntries(more=false){
   try{
     const query=new URLSearchParams({kind:entriesView.kind});
     if(more&&entriesView.next)query.set('before',entriesView.next);
-    const r=await api('/entries?'+query);await loadCatalog().catch(()=>{});
-    if(request!==entriesView.request)return;
+    const gen=S.gen; const r=await api('/entries?'+query);await loadCatalog().catch(()=>{});
+    if(request!==entriesView.request||gen!==S.gen)return;
     S.entries=more?[...(S.entries||[]),...r.items]:r.items;entriesView.next=r.next??null;
     box.innerHTML=S.entries.map((i,n)=>`<div class="item hist" id="he-${n}"><button data-on="click:toggleEntry-a0" data-a0="${n}" class="histhead" type="button" aria-expanded="false" aria-controls="hb-${n}"><span><b>${esc(i.question||i.title)}</b><small>${fmtDay(i.day)} · ${esc(kindLabel(i))}${i.question&&i.title.length<=48?' · '+esc(i.title):''}</small></span>${CHEV}</button><div class="histbody" id="hb-${n}"></div></div>`).join('')
       || `<p class="hint">${entriesView.kind==='questions'?'Здесь появятся ваши вопросы и ответы. Карты дня доступны в соседней вкладке.':entriesView.kind==='card'?'Вы еще не открывали карту дня.':'Записей пока нет.'}</p>`;
@@ -556,7 +564,7 @@ function paintLunarWidget(){
   const tabs=days.length>1?`<div class="chips flow ln-today" role="group" aria-label="Лунные дни этих суток">${days.map(x=>`<button data-on="click:lunarSelect-a0" data-a0="${x.n}" type="button" class="chip${x.n===n?' on':''}" aria-pressed="${x.n===n}">${lunarChipLabel(x)}</button>`).join('')}</div>`:'';
   const id=regRes({type:'lunar',get l(){return lunarInfoFor(n);},day:S.day.date});   /* открытка берет карточку дня в момент сборки — когда справочник уже загружен */
   box.innerHTML=`${tabs}<div class="lunar-heading"><h3>${ordinal(n)} лунный день</h3>${info.title?`<p class="practice-question">${esc(info.title)}</p>`:''}<p>${esc(when)}</p></div>
-    ${info.advice?`<div class="card practice-card"><h3>Рекомендация</h3><p>${esc(info.advice)}</p></div>`:''}
+    ${info.advice?`<div class="card practice-card"><h3>Рекомендация</h3><p>${esc(info.advice)}</p><p class="hint mt-2">${esc(ui('material.frame','Это образ дня, а не факт о вас: что из этого вы правда замечаете сегодня — а что совсем не про вас?'))}</p></div>`:''}
     <div id="ln-art"><p class="hint">Загружаем главу справочника…</p></div>${actionsHtml(id)}
     <details class="lunar-library"><summary>Все 30 лунных дней</summary><div id="ln-days"></div><div id="ln-preview"></div><div id="ln-ref"></div></details>`;
   XP.lunarSeenAtOpen=(XP.prefs.lunarViews||0)>=1;   /* ряд тем — со второго открытия: смотрим счетчик до того, как засчитать это открытие */
@@ -838,7 +846,7 @@ const HUB_OPTS=[['rune','rune','Руна','one'],['runes3','rune','Три рун
 const hubDraft={text:'',topic:null,kind:'rune',touched:false};
 const hubReady=(q)=>q.length>=10&&/\s/.test(q);   /* тот же порог, что на сервере: ответ приходит на конкретный вопрос, а не на слово */
 function renderHub(){
-  const w=$('t-worry');if(!w)return;
+  const w=$('t-worry');if(!w)return; cancelPick();
   if(!hubDraft.touched&&S.memory?.favorite)hubDraft.kind=S.memory.favorite;   /* любимый способ уже выбран — приложение знает, как человеку удобно (memory.mjs) */
   w.innerHTML=`<div class="card hubq"><p>Темы</p><div class="chips flow" id="hub-chips">${HUB_TOPICS.map(([label],i)=>`<button data-on="click:hubTopic-a0" data-a0="${i}" type="button" class="chip${hubDraft.topic===i?' on':''}" aria-pressed="${hubDraft.topic===i}">${label}</button>`).join('')}</div>
     <div class="field"><label for="hub-q">Что именно сейчас не дает покоя?</label><textarea data-on="input:hubDraft-text-value-hubCheck" id="hub-q" maxlength="300" placeholder="Опишите своими словами…">${esc(hubDraft.text)}</textarea><p class="hint" id="hub-hint" role="status"></p></div>
@@ -859,6 +867,6 @@ async function hubAsk(){
   const out=$('hub-res'),button=$('hub-go');hubAsk.busy=true;button.disabled=true;button.textContent='Получаем ответ…';out.hidden=false;out.innerHTML='<p class="msg">Смотрим…</p>';
   const opt=HUB_OPTS.find(o=>o[0]===hubDraft.kind);track('worry_pick',hubDraft.kind);
   try{await runAsk(opt[1]==='rune'?'rune':'spread',q,out,null,opt[3]);out.scrollIntoView({behavior:'smooth',block:'start'});}
-  catch(e){out.innerHTML=`<p class="msg err">${askErrorText(e)}</p>`;}
+  catch(e){ if(e.code==='cancelled'){out.hidden=true;out.innerHTML='';} else out.innerHTML=`<p class="msg err">${askErrorText(e)}</p>`; }
   finally{hubAsk.busy=false;button.disabled=false;button.textContent='Получить ответ';}
 }

@@ -67,7 +67,16 @@ function archive(name, by) {
   const id = uniqueName(dir, `${stamp()}__${who(by)}`, '.txt'); copyFileSync(src, join(dir, id)); return id;
 }
 function writeAtomic(file, text) { const tmp = `${file}.tmp-${process.pid}-${Date.now().toString(36)}`; writeFileSync(tmp, text, 'utf8'); renameSync(tmp, file); }
-export function writeFile(name, text, by) { archive(name, by); writeAtomic(path(name), noYo(text)); }
+/* Версия файла — отпечаток его текста. Единственный низкоуровневый способ записи (R03): expected — версия, которую редактор
+   читал; не совпала с текущей — conflict, файл не трогается. null — осознанный пропуск проверки (нет прочитанной версии:
+   загрузка целиком новой копии текстов). Все редакторы — книги, таблицы, сырой файл, откат версии — идут через этот путь */
+const versionOf = (text) => createHash('sha1').update(text).digest('hex').slice(0, 12);
+export const fileVersion = (name) => existsSync(path(name)) ? versionOf(read(name)) : '';
+export function writeFile(name, text, by, expected) {
+  if (expected === undefined) throw new Error('writeFile: нужна прочитанная версия (или null — осознанно без проверки)');
+  if (expected !== null && expected !== fileVersion(name)) return { ok: false, error: 'conflict', version: fileVersion(name) };
+  archive(name, by); writeAtomic(path(name), noYo(text)); return { ok: true, version: fileVersion(name) };
+}
 const write = writeFile;
 export function versions(name) {
   const dir = join(ARCHIVE(), name); if (!existsSync(dir)) return [];
@@ -75,9 +84,9 @@ export function versions(name) {
     return { id: f, ts: m ? tsOf(m[1]) : '', by: m ? m[2] : '', size: st.size }; });
 }
 export function versionText(name, id) { const f = join(ARCHIVE(), name, basename(String(id))); return existsSync(f) ? readFileSync(f, 'utf8') : null; }
-export function restore(name, id, by) {
+export function restore(name, id, by, expected = null) {
   const text = versionText(name, id); if (text === null) return { ok: false, error: 'not_found' };
-  writeFile(name, text, by); return { ok: true };
+  return writeFile(name, text, by, expected);
 }
 /* картинка: старый файл — в архив с меткой времени, список и возврат — по записи */
 export function archiveImage(dir, file, by) {
@@ -116,12 +125,12 @@ export function serializeBook({ preamble, records, sep = '\n\n', preSep = sep })
   return (preamble ? preamble + preSep : '') + records.map((r) => `=== ${r.title}\n${r.fields.map(([k, v]) => `${k}: ${v}`).join('\n')}${r.fields.length ? '\n' : ''}\n${r.body}`.replace(/\s+$/, '')).join(sep) + '\n';
 }
 const keyOf = (name, r) => { const k = BOOKS[name]?.key; const f = k ? r.fields.find(([n]) => n === k) : null; return f ? f[1] : r.title; };
-/* версия справочника — отпечаток текста файла: карточка сохраняется по ключу записи и версии, с которой ее открыли;
+/* версия справочника — та же fileVersion: карточка сохраняется по ключу записи и версии, с которой ее открыли;
    файл изменился (кто-то удалил или добавил запись) — конфликт, а не запись поверх соседней карточки (аудит v98, F03) */
-export const bookVersion = (name) => createHash('sha1').update(read(name)).digest('hex').slice(0, 12);
+export const bookVersion = fileVersion;
 export function bookRecords(name) {
   if (!BOOKS[name]) throw new Error('not_book');
-  const text = read(name), version = createHash('sha1').update(text).digest('hex').slice(0, 12);
+  const text = read(name), version = versionOf(text);
   const { records } = parseBook(text);
   return records.map((r, i) => ({ index: i, key: keyOf(name, r), version, title: r.title, fields: r.fields, body: r.body,
     image: (r.fields.find(([n]) => n === 'картинка') || [])[1] || '' }));
@@ -130,51 +139,53 @@ export function bookRecords(name) {
 const locate = (name, book, { key, index }) => { if (key !== undefined && key !== null && String(key) !== '') { const i = book.records.findIndex((r) => keyOf(name, r) === String(key)); return i; } const i = Number(index); return i >= 0 && i < book.records.length ? i : -1; };
 export function bookRecordSave(name, { index, key, version, title, fields, body }, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
-  const text = read(name);
-  if (version && version !== createHash('sha1').update(text).digest('hex').slice(0, 12)) return { ok: false, error: 'conflict' };
+  const text = read(name), cur = versionOf(text);
+  if (version && version !== cur) return { ok: false, error: 'conflict', version: cur };
   const book = parseBook(text);
   const i = locate(name, book, { key, index });
   if (i < 0) return { ok: false, error: 'not_found' };
   const t = String(title || '').trim(); if (!t) return { ok: false, error: 'no_title' };
   const fl = (Array.isArray(fields) ? fields : []).map(([k, v]) => [String(k || '').trim().replace(/[:|]/g, ''), String(v || '').trim().replace(/\n/g, ' ')]).filter(([k]) => k);
   book.records[i] = { title: t, fields: fl, body: String(body || '').replace(/\r/g, '').trim() };
-  write(name, serializeBook(book), by);
-  return { ok: true };
+  return write(name, serializeBook(book), by, cur);
 }
 export function bookRecordAdd(name, after, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
-  const book = parseBook(read(name));
+  const text = read(name), book = parseBook(text);
   const sample = book.records[Math.min(book.records.length - 1, Math.max(0, Number(after) || 0))];
   const rec = { title: 'Новая запись', fields: (sample ? sample.fields : []).map(([k]) => [k, '']), body: '' };
   book.records.splice(Math.min(book.records.length, (Number(after) || 0) + 1), 0, rec);
-  write(name, serializeBook(book), by);
-  return { ok: true, index: Math.min(book.records.length - 1, (Number(after) || 0) + 1) };
+  const w = write(name, serializeBook(book), by, versionOf(text)); if (!w.ok) return w;
+  return { ok: true, index: Math.min(book.records.length - 1, (Number(after) || 0) + 1), version: w.version };
 }
 export function bookRecordRemove(name, { index, key, version } = {}, by) {
   if (!BOOKS[name]) return { ok: false, error: 'not_book' };
-  const text = read(name);
-  if (version && version !== createHash('sha1').update(text).digest('hex').slice(0, 12)) return { ok: false, error: 'conflict' };
+  const text = read(name), cur = versionOf(text);
+  if (version && version !== cur) return { ok: false, error: 'conflict', version: cur };
   const book = parseBook(text); const i = locate(name, book, { key, index });
   if (i < 0) return { ok: false, error: 'not_found' };
-  book.records.splice(i, 1); write(name, serializeBook(book), by); return { ok: true };
+  book.records.splice(i, 1); return write(name, serializeBook(book), by, cur);
 }
 
 /* ── таблица ── */
 export function tableRows(name) {
   if (!TABLES[name]) throw new Error('not_table');
-  const lines = read(name).split('\n');
+  const text = read(name), lines = text.split('\n');
   const notes = [], rows = [];
   for (const l of lines) { if (!l.trim()) continue; if (l.trim().startsWith('#')) { notes.push(l); continue; } rows.push(l.split('|').map((c) => c.trim())); }
-  return { cols: TABLES[name].cols, notes: notes.join('\n'), rows };
+  return { cols: TABLES[name].cols, notes: notes.join('\n'), rows, version: versionOf(text) };
 }
-export function tableSave(name, rows, by) {
+/* таблица сохраняется целиком, поэтому версия обязательна: вторая вкладка с прежней версией получит conflict, а не затрет строку первой (R03) */
+export function tableSave(name, rows, by, version) {
   if (!TABLES[name]) return { ok: false, error: 'not_table' };
   if (!Array.isArray(rows)) return { ok: false, error: 'bad_rows' };
-  const notes = read(name).split('\n').filter((l) => l.trim().startsWith('#'));
+  const text = read(name), cur = versionOf(text);
+  if (version !== cur) return { ok: false, error: version ? 'conflict' : 'no_version', version: cur };
+  const notes = text.split('\n').filter((l) => l.trim().startsWith('#'));
   const clean = rows.map((r) => (Array.isArray(r) ? r : []).map((c) => String(c ?? '').replace(/[|\n\r]/g, ' ').trim())).filter((r) => r.some(Boolean));
   const body = clean.map((r) => r.join(' | ')).join('\n');
-  write(name, (notes.length ? notes.join('\n') + '\n\n' : '') + body + '\n', by);
-  return { ok: true, rows: clean.length };
+  const w = write(name, (notes.length ? notes.join('\n') + '\n\n' : '') + body + '\n', by, cur); if (!w.ok) return w;
+  return { ok: true, rows: clean.length, version: w.version };
 }
 
 /* ── Файлы контента списком и целиком (страница «Тексты» и вкладка «Файлы целиком») ── */
@@ -184,7 +195,8 @@ export const contentFiles = () => readdirSync(CONTENT_DIR).filter((f) => f.endsW
   return { name, lines, size: text.length, mtime: statSync(join(CONTENT_DIR, name)).mtime.toISOString().slice(0, 16).replace('T', ' ') };
 });
 export const readContent = (name) => read(name);
-export const writeContent = (name, text, by) => writeFile(name, text, by);   /* прежняя версия — в архив, без «е с точками» */
+export const contentRead = (name) => { const text = read(name); return { text, version: versionOf(text) }; };
+export const writeContent = (name, text, by, expected) => writeFile(name, text, by, expected);   /* прежняя версия — в архив, без «е с точками»; expected — версия, с которой правили */
 
 /* ── Картинки к записям каталогов: какие наборы есть и как заменить картинку у записи ── */
 export const CONTENT_IMAGE_SETS = {
@@ -210,7 +222,7 @@ export function contentImagePut({ kind, key, type, data, by }) {
   if (oldName) archiveImage(IMAGE_DIRS[kind], oldName, by);   /* прежняя картинка — в архив, вернуть можно из записи */
   writeFileSync(join(dir, name), buf);
   if (oldName && oldName !== name) {   /* новое расширение — переписываем имя в текстовом файле, старый файл убираем */
-    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name), by); } catch { /* текст не тронули — картинка все равно на месте */ }
+    try { const txt = readContent(set.file); if (txt.includes(oldName)) writeContent(set.file, txt.split(oldName).join(name), by, versionOf(txt)); } catch { /* текст не тронули — картинка все равно на месте */ }
     try { unlinkSync(join(dir, oldName)); } catch {}
   } else if (!oldName) {
     return { ok: true, name, note: 'В текстовом файле у записи нет поля «картинка» — впишите имя файла: ' + name };

@@ -462,21 +462,23 @@ async function costDel(id) { if (!confirm('Убрать строку расхо�
 async function editFile(name) {
   openModal('<p class="empty">Открываем…</p>');
   try {
-    const f = await api('/cabinet/content?file=' + encodeURIComponent(name));
+    const f = await api('/cabinet/content?file=' + encodeURIComponent(name)); CT.fileVersion = f.version || '';
     openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 class="mt-6">${esc(name)}</h2></div><div class="row"><button data-on="click:saveFile-a0" data-a0="${esc(name)}" class="btn gold fixed">Сохранить и опубликовать</button><button data-on="click:closeModal" class="btn sm fixed">Закрыть</button></div></div>
       <textarea id="f-text" class="mt-12" spellcheck="true">${esc(f.text)}</textarea><p class="note" id="f-msg">Формат описан в «ПРОЧТИ-МЕНЯ.txt». После сохранения приложение перечитает файл само.</p>`);
   } catch (e) { openModal(`<p class="msg err">Не получилось открыть: ${esc(e.code || e.message)}</p>`); }
 }
 async function saveFile(name) {
   const msg = $('f-msg');
-  try { await api('/cabinet/content?file=' + encodeURIComponent(name), { method: 'POST', body: JSON.stringify({ text: $('f-text').value }) }); toast('Сохранено — уже в приложении'); closeModal(); openPage('content'); }
-  catch (e) { msg.className = 'msg err'; msg.textContent = 'Не сохранилось: ' + (e.code || e.message); }
+  try { await api('/cabinet/content?file=' + encodeURIComponent(name), { method: 'POST', body: JSON.stringify({ text: $('f-text').value, version: CT.fileVersion }) }); toast('Сохранено — уже в приложении'); closeModal(); openPage('content'); }
+  catch (e) { msg.className = 'msg err'; msg.textContent = e.code === 'conflict' ? CT_CONFLICT : 'Не сохранилось: ' + (e.code || e.message); }
 }
 
 
 /* ══════════ «Контент» — одна страница (решение владелицы 19.09): Каталоги · Темы дня · Пуши · Публикации · Картинки · Тексты.
    Раньше это были три раздела меню и сырые файлы; теперь — записи, строки, картинки к записям и к функциям, пакетная загрузка. ══════════ */
-const CT = { tab: 'catalog', book: '', map: null, records: null, tables: {}, media: null, materials: null };
+const CT = { tab: 'catalog', book: '', map: null, records: null, tables: {}, media: null, materials: null, fileVersion: '', currentVersion: '' };
+/* файл изменился, пока правили (другая вкладка, коллега): сервер ответил conflict, ничего не затерто; правки остаются на экране (R03) */
+const CT_CONFLICT = 'Файл изменился, пока вы правили — ваши строки остались на экране: скопируйте нужное, откройте файл заново и повторите';
 const CT_TABS = [['catalog', 'Каталоги'], ['themes', 'Темы дня'], ['push', 'Пуши'], ['memory', 'Память'], ['materials', 'Публикации'], ['media', 'Картинки'], ['files', 'Тексты']];
 async function renderContent() {
   const box = $('report');
@@ -611,7 +613,7 @@ async function ctSetImg(i, input) {
 function ctSetImgClear(i) { const row = CT.tables['настрой.txt'].rows[i]; if (row) row[3] = ''; ctThemesRepaint(); }
 function ctSetDel(i) { CT.tables['настрой.txt'].rows.splice(i, 1); ctThemesRepaint(); }
 function ctSetAdd(key) { CT.tables['настрой.txt'].rows.push([key, '', '', '']); ctThemesRepaint(); }
-async function ctSetSave() { const msg = $('ct-set-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'настрой.txt', rows: CT.tables['настрой.txt'].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+async function ctSetSave() { const msg = $('ct-set-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'настрой.txt', rows: CT.tables['настрой.txt'].rows, version: CT.tables['настрой.txt'].version }) }); if (r.ok && r.version) CT.tables['настрой.txt'].version = r.version; msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = e.code === 'conflict' ? CT_CONFLICT : 'Не сохранилось: ' + (e.code || e.message); } }
 
 /* ── Пуши: утро, вечер (варианты по дням), неделя, пробное — тексты напоминаний ── */
 async function ctPush() {
@@ -629,7 +631,7 @@ function ctPushRepaint() {
 function ctPushCell(i, j, v) { CT.tables['напоминания.txt'].rows[i][j] = v; }
 function ctPushDel(i) { CT.tables['напоминания.txt'].rows.splice(i, 1); ctPushRepaint(); }
 function ctPushAddEvening() { const rows = CT.tables['напоминания.txt'].rows; const n = rows.filter((r) => /^evening(-\d+)?$/.test(r[0])).length; rows.push([n ? `evening-${n + 1}` : 'evening', '', '']); ctPushRepaint(); }
-async function ctPushSave() { const msg = $('ct-push-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'напоминания.txt', rows: CT.tables['напоминания.txt'].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+async function ctPushSave() { const msg = $('ct-push-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file: 'напоминания.txt', rows: CT.tables['напоминания.txt'].rows, version: CT.tables['напоминания.txt'].version }) }); if (r.ok && r.version) CT.tables['напоминания.txt'].version = r.version; msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = e.code === 'conflict' ? CT_CONFLICT : 'Не сохранилось: ' + (e.code || e.message); } }
 
 /* ── Память («Я помню»): приложение вспоминает человека одной фразой. Правила — в коде (memory.mjs), слова — здесь.
       Пустой текст выключает правило. «Проверить на себе» показывает, что сработало бы у вас сегодня ── */
@@ -681,7 +683,7 @@ function ctMemoryRepaint() {
 function ctMemoryCell(file, i, j, v) { CT.tables[file].rows[i][j] = v; }
 function ctMemoryDel(file, i) { CT.tables[file].rows.splice(i, 1); ctMemoryRepaint(); }
 function ctMemoryAddQ() { CT.tables['вопросы-по-темам.txt'].rows.push(['work', '']); ctMemoryRepaint(); }
-async function ctMemorySave(file) { const msg = document.getElementById('ct-memory-msg-' + file); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file, rows: CT.tables[file].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+async function ctMemorySave(file) { const msg = document.getElementById('ct-memory-msg-' + file); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file, rows: CT.tables[file].rows, version: CT.tables[file].version }) }); if (r.ok && r.version) CT.tables[file].version = r.version; msg.textContent = r.ok ? `Сохранено — ${r.rows} строк, уже в приложении` : 'Не сохранилось'; if (r.ok) toast('Сохранено'); } catch (e) { msg.textContent = e.code === 'conflict' ? CT_CONFLICT : 'Не сохранилось: ' + (e.code || e.message); } }
 async function ctKnowledge() {
   const box = $('ct-knowledge'); box.innerHTML = '<p class="hint">Смотрим…</p>';
   try { await api('/knowledge/rebuild', { method: 'POST' }); const r = await api('/cabinet/knowledge-self');
@@ -730,7 +732,7 @@ async function ctTable(file) {
 function ctTableCell(file, i, j, v) { CT.tables[file].rows[i][j] = v; }
 function ctTableDel(file, i) { CT.tables[file].rows.splice(i, 1); CT.tablePaint(); }
 function ctTableAdd(file) { CT.tables[file].rows.push(CT.tables[file].cols.map(() => '')); CT.tablePaint(); }
-async function ctTableSave(file) { const msg = $('ct-table-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file, rows: CT.tables[file].rows }) }); msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено — уже в приложении'); } catch (e) { msg.textContent = 'Не сохранилось: ' + (e.code || e.message); } }
+async function ctTableSave(file) { const msg = $('ct-table-msg'); msg.textContent = 'Сохраняем…'; try { const r = await api('/cabinet/table', { method: 'POST', body: JSON.stringify({ file, rows: CT.tables[file].rows, version: CT.tables[file].version }) }); if (r.ok && r.version) CT.tables[file].version = r.version; msg.textContent = r.ok ? `Сохранено — ${r.rows} строк` : 'Не сохранилось'; if (r.ok) toast('Сохранено — уже в приложении'); } catch (e) { msg.textContent = e.code === 'conflict' ? CT_CONFLICT : 'Не сохранилось: ' + (e.code || e.message); } }
 
 /* ── Картинка из библиотеки — к функции или на карту/руну/день ── */
 async function mediaAttach(id) {
@@ -768,14 +770,14 @@ async function ctOpenHit(file, kind, index) {
 
 /* ── история версий файла: список с датой и автором, посмотреть, откатить ── */
 async function ctHistory(file) {
-  const r = await api('/cabinet/versions?file=' + encodeURIComponent(file));
+  const r = await api('/cabinet/versions?file=' + encodeURIComponent(file)); CT.currentVersion = r.version || '';
   openModal(`<div class="head"><div><span class="eyebrow">Архив правок</span><h2 class="mt-6">${esc(file)}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
     <p class="hint mt-8">Перед каждым сохранением прежний файл уходит в архив. «Вернуть» ставит выбранную версию на место — текущая тоже сохранится в архиве.</p>
     <div class="tbl mt-10"><div class="scroll"><table><thead><tr><th>Когда</th><th>Кто</th><th>Размер</th><th></th></tr></thead><tbody>${r.items.map((v) => `<tr><td>${fmtTs(v.ts)}</td><td>${esc(v.by)}</td><td>${(v.size / 1024).toFixed(1)} КБ</td><td class="row gap-6"><button data-on="click:ctVersionView-a0-a1" data-a0="${esc(file)}" data-a1="${esc(v.id)}" class="btn sm" type="button">Посмотреть</button><button data-on="click:ctVersionRestore-a0-a1" data-a0="${esc(file)}" data-a1="${esc(v.id)}" class="btn gold sm" type="button">Вернуть</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Правок из кабинета еще не было</td></tr>'}</tbody></table></div></div>
     <pre id="ct-version-text" class="hint mono-box mt-10"></pre>`);
 }
 async function ctVersionView(file, id) { const r = await api('/cabinet/versions?file=' + encodeURIComponent(file) + '&id=' + encodeURIComponent(id)); $('ct-version-text').textContent = r.text || ''; }
-async function ctVersionRestore(file, id) { if (!confirm('Вернуть эту версию файла? Текущая уйдет в архив.')) return; const r = await api('/cabinet/versions', { method: 'POST', body: JSON.stringify({ file, id }) }); if (r.ok) { toast('Версия возвращена — уже в приложении'); closeModal(); ctPaint(); } else toast('Не получилось: ' + r.error); }
+async function ctVersionRestore(file, id) { if (!confirm('Вернуть эту версию файла? Текущая уйдет в архив.')) return; const r = await api('/cabinet/versions', { method: 'POST', body: JSON.stringify({ file, id, version: CT.currentVersion }) }).catch((e) => ({ ok: false, error: e.code === 'conflict' ? CT_CONFLICT : e.code })); if (r.ok) { toast('Версия возвращена — уже в приложении'); closeModal(); ctPaint(); } else toast('Не получилось: ' + r.error); }
 /* история картинки записи */
 async function ctImageHistory(kind, base, key) {
   const r = await api('/cabinet/image-versions?kind=' + encodeURIComponent(kind) + '&base=' + encodeURIComponent(base));

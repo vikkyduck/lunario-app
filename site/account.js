@@ -92,12 +92,12 @@ async function loadInvite(){
 async function addWish(){
   const t=$('w-text').value.trim(); if(t.length<3){ toast('Сформулируйте чуть подробнее'); return; }
   if(addWish.saving) return; addWish.saving=true;$('wish-save').disabled=true;
-  const photo=XP.wishPhoto;
+  const photo=XP.wishPhoto; addWish.op=addWish.op||opKey();   /* повтор после потерянного ответа — то же желание, не второе (R05) */
   try {
-    const r=await api('/wishes',{method:'POST',body:JSON.stringify({text:t,photo})});
+    const r=await api('/wishes',{method:'POST',body:JSON.stringify({text:t,photo,op:addWish.op})}); addWish.op='';
     if(XP.wishPhoto===photo){XP.wishPhoto='';paintWishDraft();}
     if($('w-text').value.trim()===t) $('w-text').value='';
-    renderWishes(r); hap('done'); toast('Желание сохранено');
+    renderWishes(r); hap('done'); toast(r.repeated?(r.removed?'Это желание уже было удалено':'Желание уже сохранено'):'Желание сохранено');
   } catch(e){ toast(ERR_SAVE_KEPT); }
   finally { addWish.saving=false;$('wish-save').disabled=false; }
 }
@@ -145,8 +145,9 @@ async function compat(){
     $('m-cres').innerHTML=`<div class="big">${r.total}%</div>
       <p class="serif center strong">${r.you} и ${r.other}</p>
       <div class="split">
-      ${r.rings.map(([n,v])=>`<div class="ring"><svg width="54" height="54" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle class="v" cx="28" cy="28" r="24" fill="none" stroke="#d9b868" stroke-width="4" stroke-linecap="round" data-p="${v}"/></svg><span class="val">${v}%</span><span class="lbl">${n}</span></div>`).join('')}
-      </div><p class="mt-3">${r.text}</p>
+      ${r.rings.map(([n,v,why])=>`<div class="ring"><svg width="54" height="54" viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="4"/><circle class="v" cx="28" cy="28" r="24" fill="none" stroke="#d9b868" stroke-width="4" stroke-linecap="round" data-p="${v}"/></svg><span class="val">${v}%</span><span class="lbl">${n}</span>${why?`<small class="hint">${esc(why)}</small>`:''}</div>`).join('')}
+      </div><p class="mt-3">${esc(r.text)}</p>
+      ${r.method?`<p class="hint mt-2">${esc(r.method)}</p>`:''}${r.question?`<p class="practice-question mt-3">${esc(r.question)}</p>`:''}
       <div class="compat-invite mt-4"><span class="eyebrow">Позвать в Лунарио</span><p class="hint mt-2">Отправьте партнеру или подруге ссылку: по ней открывается приложение, внутри — как поставить его на телефон.</p>${inviteButtonsHtml('compat', { shareLabel: 'Отправить ссылку' })}</div>`;
     setTimeout(()=>document.querySelectorAll('#m-cres circle.v').forEach((c,i)=>{ c.style.transitionDelay=i*90+'ms'; c.style.strokeDashoffset=151-151*(+c.dataset.p)/100; }),60);
     hap('done');

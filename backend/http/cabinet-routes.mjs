@@ -71,14 +71,15 @@ export function createCabinetRoutes(deps) {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const name = String(url.searchParams.get('file') || '');
       if (!CE.contentFiles().some((f) => f.name === name)) return json(res, 404, { ok: false, error: 'not_found' });
-      if (req.method === 'GET') return json(res, 200, { name, text: CE.readContent(name) });
+      if (req.method === 'GET') return json(res, 200, { name, ...CE.contentRead(name) });
       if (req.method === 'POST') {
         const b = await readBody(req);
         const text = String(b.text || '');
         if (text.length > 200000) return json(res, 400, { ok: false, error: 'too_long' });
-        CE.writeContent(name, text, u.email);   // папка под наблюдением — тексты перечитаются сами; прежняя версия — в архив
+        const r = CE.writeContent(name, text, u.email, String(b.version || ''));   // папка под наблюдением — тексты перечитаются сами; прежняя версия — в архив; чужая правка — conflict (R03)
+        if (!r.ok) return json(res, r.error === 'conflict' ? 409 : 400, r);
         console.log(`[контент] ${u.email} сохранил ${name} (${text.length} симв.)`);
-        return json(res, 200, { ok: true });
+        return json(res, 200, r);
       }
     }
     /* тексты записями и строками (content-edit.mjs): книги — карты, руны, лунные дни, личный год; таблицы — настрой, пуши, темы… */
@@ -108,7 +109,7 @@ export function createCabinetRoutes(deps) {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(req.method === 'GET' ? url.searchParams.get('file') || '' : '');
       if (req.method === 'GET') { if (!CE.TABLES[file]) return json(res, 404, { ok: false, error: 'not_found' }); try { return json(res, 200, { file, title: CE.TABLES[file].title, ...CE.tableRows(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
-      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = CE.tableSave(String(b.file || ''), b.rows, u.email); if (r.ok) console.log(`[контент] ${u.email} сохранил таблицу ${b.file} (${r.rows} строк)`); return json(res, r.ok ? 200 : 400, r); }
+      if (req.method === 'POST') { const b = await readBody(req, 600 * 1024); const r = CE.tableSave(String(b.file || ''), b.rows, u.email, String(b.version || '')); if (r.ok) console.log(`[контент] ${u.email} сохранил таблицу ${b.file} (${r.rows} строк)`); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
     }
     /* поиск по всем текстам: записи книг и строки таблиц */
     if (p === '/api/cabinet/search') {
@@ -123,8 +124,8 @@ export function createCabinetRoutes(deps) {
     if (p === '/api/cabinet/versions') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });
       const file = String(url.searchParams.get('file') || '');
-      if (req.method === 'GET') { const id = url.searchParams.get('id'); if (id) { const t = CE.versionText(file, id); return t === null ? json(res, 404, { ok: false }) : json(res, 200, { ok: true, text: t }); } try { return json(res, 200, { file, items: CE.versions(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
-      if (req.method === 'POST') { const b = await readBody(req); const r = CE.restore(String(b.file || ''), String(b.id || ''), u.email); if (r.ok) console.log(`[контент] ${u.email} откатил ${b.file} к ${b.id}`); return json(res, r.ok ? 200 : 400, r); }
+      if (req.method === 'GET') { const id = url.searchParams.get('id'); if (id) { const t = CE.versionText(file, id); return t === null ? json(res, 404, { ok: false }) : json(res, 200, { ok: true, text: t }); } try { return json(res, 200, { file, version: CE.fileVersion(file), items: CE.versions(file) }); } catch (e) { return json(res, 400, { ok: false, error: e.message }); } }
+      if (req.method === 'POST') { const b = await readBody(req); const r = CE.restore(String(b.file || ''), String(b.id || ''), u.email, b.version ? String(b.version) : null); if (r.ok) console.log(`[контент] ${u.email} откатил ${b.file} к ${b.id}`); return json(res, r.ok ? 200 : r.error === 'conflict' ? 409 : 400, r); }
     }
     if (p === '/api/cabinet/image-versions') {
       if (!allowed('content')) return json(res, 403, { ok: false, error: 'no_access' });

@@ -39,9 +39,14 @@ export function createPracticeRoutes(deps) {
         if (title.length < 2) return json(res, 400, { ok: false, error: 'short' });
         db.prepare('UPDATE habits SET title = ?, rule = ?, rule_text = ? WHERE id = ?').run(seal(title), parseRule(ruleText), ruleText, h.id);
       } else {
-        const day = isDay(b.day) && b.day <= d && Date.parse(d) - Date.parse(b.day) <= 6 * 864e5 ? b.day : d;
-        if (db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day)) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
-        else {
+        /* день — только если передан и настоящий, не старше недели и не в будущем; иначе ошибка, а не отметка за сегодня (R13).
+           done — желаемое состояние: два одинаковых запроса оставляют то же, что и один; без done — переключение (старые вызовы) (R05) */
+        let day = d;
+        if (b.day !== undefined && b.day !== null && b.day !== '') { if (!isDay(b.day) || b.day > d || Date.parse(d) - Date.parse(b.day) > 6 * 864e5) return json(res, 400, { ok: false, error: 'bad_day' }); day = b.day; }
+        const has = !!db.prepare('SELECT 1 FROM habit_marks WHERE habit_id = ? AND day = ?').get(h.id, day);
+        const want = typeof b.done === 'boolean' ? b.done : !has;
+        if (!want && has) db.prepare('DELETE FROM habit_marks WHERE habit_id = ? AND day = ?').run(h.id, day);
+        else if (want && !has) {
           db.prepare('INSERT INTO habit_marks (habit_id, day) VALUES (?,?)').run(h.id, day); if (day === d) touchStreak(u); track(u, 'habit_mark', day === d ? 'today' : 'past');
         }
       }

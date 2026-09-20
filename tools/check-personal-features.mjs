@@ -606,9 +606,85 @@ try {
     assert.equal(CE.bookRecordSave('руны.txt', { key: r0.key, version: v0, title: r0.title, fields: r0.fields, body: r0.body }, 'test').error, 'conflict', 'a stale version is a conflict, not an overwrite');
     assert.equal(CE.bookRecordSave('руны.txt', { key: 'нет-такой-руны', title: 'x' }, 'test').error, 'not_found');
     assert.equal(CE.bookRecords('руны.txt').find((r) => r.key === r0.key).body.endsWith('Проверка правки.'), true, 'the right record changed');
-    for (let i = 0; i < 3; i++) CE.writeFile('руны.txt', CE.readContent('руны.txt'), 'test');   /* три записи подряд внутри одной секунды */
+    for (let i = 0; i < 3; i++) assert.equal(CE.writeFile('руны.txt', CE.readContent('руны.txt'), 'test', CE.fileVersion('руны.txt')).ok, true);   /* три записи подряд внутри одной секунды, каждая — с прочитанной версией */
     const vs = CE.versions('руны.txt'); assert.equal(vs.length, n0 + 4, 'every save leaves its own archive version'); assert.equal(new Set(vs.map((x) => x.id)).size, vs.length); assert.ok(vs.every((x) => /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z$/.test(x.ts)), 'version time parses: ' + vs[0].ts);
     console.log('PASS: audit v98 — a week counts thoughts and photos; catalog records save by key and version with conflicts; archive names are unique.'); }
+
+  // ── Повторный аудит v112: квитанции без текста (R02), уточнение после обрыва (R04), желания и привычки (R05, R13), свежесть базы знаний (R08),
+  //    портрет и все отметки (R09), совместимость в выгрузке (R10), итог недели в архиве (R12), лунный день записи (R18), таблицы по версии (R03) ──
+  { const rq = account(); const me = await rq.json('/me'), d0 = me.day.date, uid = me.user.id;
+    await rq.json('/profile', 'POST', { name: 'Повтор', birth: '1992-05-05', city: 'Москва', consent: true });
+    /* R02: в квитанции нет личного текста; повтор после удаления не «сохраняет» удаленное */
+    const op = 'op-recheck-' + Date.now().toString(36);
+    const g = await rq.json('/journal', 'POST', { text: 'Секретная благодарность подруге', kind: 'gratitude', op });
+    const rc = qaDB.prepare('SELECT response_json, payload_hash FROM sync_receipts WHERE user_id = ? AND operation_id = ?').get(uid, op);
+    assert.ok(rc && !rc.response_json.includes('Секретная') && !rc.response_json.includes('подруге'), 'the receipt holds a reference, not the text: ' + rc.response_json);
+    assert.equal(JSON.parse(rc.response_json).id, g.item.id);
+    const again = await rq.json('/journal', 'POST', { text: 'Секретная благодарность подруге', kind: 'gratitude', op }); assert.equal(again.repeated, true); assert.equal(again.item.id, g.item.id, 'a plain repeat returns the living record');
+    await rq.json(`/day?day=${d0}&what=gratitude:${g.item.id}`, 'DELETE');
+    const after = await rq.json('/journal', 'POST', { text: 'Секретная благодарность подруге', kind: 'gratitude', op });
+    assert.equal(after.repeated, true); assert.equal(after.removed, true); assert.equal(after.item, null, 'a repeat after deletion says the record is gone');
+    assert.equal(qaDB.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND kind = 'gratitude'").get(uid).c, 0, 'and recreates nothing');
+    /* R04: тот же ключ с другим текстом — конфликт с найденной записью, и правка по ней оставляет одну запись */
+    const op2 = 'op-edit-' + Date.now().toString(36);
+    const first = await rq.json('/journal', 'POST', { text: 'Первый вариант текста', kind: 'gratitude', op: op2 });
+    const conflict = await rq.raw('/journal', 'POST', { text: 'Уточненный вариант текста', kind: 'gratitude', op: op2 }); assert.equal(conflict.status, 409);
+    const cb = await conflict.json(); assert.equal(cb.item && cb.item.id, first.item.id, 'the conflict names the record found by the key');
+    await rq.json('/journal', 'PATCH', { id: cb.item.id, text: 'Уточненный вариант текста' });
+    assert.deepEqual((await rq.json('/journal?kind=gratitude')).items.map((i) => i.text), ['Уточненный вариант текста'], 'one record with the last text');
+    /* R05: желание с ключом операции; привычка — желаемое состояние; R13: неверная дата — ошибка, не «сегодня» */
+    const wop = 'op-wish-' + Date.now().toString(36);
+    await rq.json('/wishes', 'POST', { text: 'Поездка к морю', op: wop }); const w2 = await rq.json('/wishes', 'POST', { text: 'Поездка к морю', op: wop });
+    assert.equal(w2.repeated, true); assert.equal(w2.items.filter((w) => w.text === 'Поездка к морю').length, 1, 'a repeated wish creation gives one wish');
+    const hb = (await rq.json('/habits', 'POST', { title: 'Прогулка', rule: 'каждый день' })).items[0];
+    await rq.json('/habits', 'PATCH', { id: hb.id, done: true }); const twice = await rq.json('/habits', 'PATCH', { id: hb.id, done: true });
+    assert.equal(twice.items.find((h) => h.id === hb.id).today, true, 'done=true twice keeps the habit done (R05)');
+    assert.equal((await rq.raw('/habits', 'PATCH', { id: hb.id, day: '2026-02-31' })).status, 400, 'an impossible habit date is refused (R13)');
+    assert.equal((await rq.raw('/habits', 'PATCH', { id: hb.id, day: new Date(Date.parse(d0 + 'T12:00:00Z') + 864e5).toISOString().slice(0, 10) })).status, 400, 'a future date is refused');
+    assert.equal((await rq.json('/habits')).items.find((h) => h.id === hb.id).today, true, 'and today\'s mark is untouched');
+    /* R08: база знаний видит запись и ее удаление без ручной пересборки */
+    await rq.json('/knowledge?doc=recent');
+    const j = await rq.json('/journal', 'POST', { text: 'Запись, которая должна попасть в базу знаний сразу' });
+    const rec1 = (await rq.json('/knowledge?doc=recent')).data.days.find((x) => x.day === d0);
+    assert.ok(rec1 && rec1.text === 'Запись, которая должна попасть в базу знаний сразу', 'recent reflects a new entry on the next read (R08): ' + JSON.stringify(rec1));
+    await rq.json(`/day?day=${d0}&what=text:${j.item.id}`, 'DELETE');
+    const rec2 = (await rq.json('/knowledge?doc=recent')).data.days.find((x) => x.day === d0);
+    assert.ok(!rec2 || rec2.text === undefined, 'a deleted entry leaves the recent document: ' + JSON.stringify(rec2));
+    assert.ok((await rq.json('/knowledge/text?doc=recent')).text.includes('Запись, которая') === false);
+    /* R09: портрет считает все отметки дня */
+    await rq.json('/day', 'POST', { moods: ['joy', 'trust'] });
+    const portrait = (await rq.json('/knowledge?doc=portrait')).data;
+    assert.deepEqual(portrait.moods90.map((m) => m.mood.toLowerCase()).sort(), ['доверие', 'радость'], 'the portrait keeps both marks of the day (R09): ' + JSON.stringify(portrait.moods90));
+    assert.equal(portrait.moodDays90, 1); assert.equal(portrait.moodMarks90, 2);
+    /* R10: совместимость — в выгрузке, и у каждой таблицы истории названо, где она в выгрузке */
+    await rq.json('/compat', 'POST', { birth: '1991-11-11' });
+    const ex = await rq.json('/data/export'); assert.equal(ex.compat.length, 1); assert.equal(ex.compat[0].other_birth, '1991-11-11'); assert.ok(ex.compat[0].rings.length === 4 && ex.compat[0].text);
+    const { PERSONAL_DATA: PD } = await import(pathToFileURL(join(fixture, 'backend/account-data.mjs')).href);
+    for (const row of PD.filter((r) => r.on === 'history')) { assert.ok('exported' in row, `${row.table}: where it is exported is named`); if (row.exported) assert.ok(Array.isArray(ex[row.exported]), `${row.table} → export.${row.exported}`); }
+    const { personalExportPdf: pdfFn } = await import(pathToFileURL(join(fixture, 'backend/personal-export-pdf.mjs')).href);
+    assert.ok(pdfFn(ex, {}).length > 1000, 'the PDF builds with the compatibility section');
+    /* R16: кольца совместимости выводятся из названных правил, метод и вопрос — рядом */
+    const cmp = await rq.json('/compat', 'POST', { birth: '1991-11-11' });
+    assert.ok(cmp.rings.every((r) => r.length === 3 && /по (стихиям|крестам|углу|притяжению)/.test(r[2])), 'every ring names its rule: ' + JSON.stringify(cmp.rings));
+    assert.ok(cmp.method && cmp.question);
+    /* R12: день только с итогом недели — в архиве и не пустой */
+    const old = new Date(Date.parse(d0 + 'T12:00:00Z') - 20 * 864e5).toISOString().slice(0, 10);
+    const wk = await rq.json('/week/reflect', 'POST', { week: old, text: 'Итог давней недели без других записей' });
+    const days = await rq.json('/days?limit=60'); const row = days.items.find((x) => x.day === wk.day);
+    assert.ok(row && !row.empty && row.text.startsWith('Итог давней недели'), 'a weekly-only day is listed in the archive (R12): ' + JSON.stringify(row));
+    assert.equal((await rq.json('/day/view?day=' + wk.day)).weekly.text, 'Итог давней недели без других записей');
+    /* R18: лунный день записи — фиксированный момент, с переходом при смене за сутки */
+    const view = await rq.json('/day/view?day=' + wk.day); assert.ok(view.lunar && view.lunar.at === '21:00' && 'nFrom' in view.lunar, 'the record lunar day carries its moment: ' + JSON.stringify(view.lunar));
+    /* R03: таблица сохраняется по версии; сырой файл — тоже; откат — тоже */
+    const CE2 = await import(pathToFileURL(join(fixture, 'backend/content-edit.mjs')).href);
+    const t0 = CE2.tableRows('привычки.txt'); assert.ok(t0.version);
+    assert.equal(CE2.tableSave('привычки.txt', [...t0.rows, ['Проверка первой вкладки']], 'a', t0.version).ok, true);
+    const t1 = CE2.tableSave('привычки.txt', [...t0.rows, ['Проверка второй вкладки']], 'b', t0.version); assert.equal(t1.error, 'conflict', 'the second tab with the old version gets a conflict, the first edit stays');
+    assert.ok(CE2.tableRows('привычки.txt').rows.some((r) => r[0] === 'Проверка первой вкладки'));
+    assert.equal(CE2.tableSave('привычки.txt', t0.rows, 'c').error, 'no_version', 'a table save without a version is refused');
+    const raw = CE2.contentRead('привычки.txt'); assert.equal(CE2.writeContent('привычки.txt', raw.text, 'd', 'stale').error, 'conflict'); assert.equal(CE2.writeContent('привычки.txt', raw.text, 'd', raw.version).ok, true);
+    assert.throws(() => CE2.writeFile('привычки.txt', 'x', 'e'), /версия/, 'the low-level write demands a version');
+    console.log('PASS: audit v112 — receipts without text and honest repeats, edit after a lost response, wishes and habits repeat safely, invalid habit dates refused, knowledge base fresh within the day, portrait counts every mark, compatibility exported with a named basis, weekly-only days in the archive, record lunar day fixed, tables and raw files save by version.'); }
 
   // ── Фото дня: байты уходят без JSON, хранятся зашифрованными, отдаются только своему человеку; не-JPEG и лишний размер отбрасываются ──
   { const jpeg = (n) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 7)]);
@@ -852,7 +928,7 @@ try {
   assert.equal((await (await fetch(base + '/api/health')).json()).schema, SCHEMA_VERSION);
   qaDB.close();
   console.log('PASS: arbitrary askesis date, optional notes, free habit rhythm, no streak awards, weekly reminder settings and message content, dated gratitude and daily-question diary entries.');
-  if (process.argv.includes('--ui-recovery') || process.argv.includes('--ui-restoration') || process.argv.includes('--ui') || process.argv.includes('--ui-repeat') || process.argv.includes('--ui-experience') || process.argv.includes('--ui-design') || process.argv.includes('--ui-regression') || process.argv.includes('--ui-brand')) {
+  if (process.argv.includes('--ui-recovery') || process.argv.includes('--ui-restoration') || process.argv.includes('--ui') || process.argv.includes('--ui-repeat') || process.argv.includes('--ui-experience') || process.argv.includes('--ui-design') || process.argv.includes('--ui-regression') || process.argv.includes('--ui-brand')) {   /* --ui-regression — обязательный набор из check-all (R15) */
     // Optional Playwright checks use the same real backend and isolated database.
     const { chromium } = createRequire(import.meta.url)('playwright');
     const browser = await chromium.launch({ headless: true,
@@ -863,7 +939,8 @@ try {
       if(process.argv.includes('--ui-brand')){const {checkBrand}=await import('./check-brand.mjs');await checkBrand({browser,base,owner});}
       if(process.argv.includes('--ui')||process.argv.includes('--ui-design')){const designOwner=account();await designOwner.json('/me');await designOwner.json('/profile','POST',{name:'Анна',birth:'1990-01-01',city:'Москва',consent:true});const {checkDesign}=await import('./check-design.mjs');await checkDesign({browser,base,owner:designOwner});}
       if(process.argv.includes('--ui')||process.argv.includes('--ui-experience')){const xpOwner=account();await xpOwner.json('/me');await xpOwner.json('/profile','POST',{name:'Новый интерфейс',birth:'1990-01-01',city:'Москва',consent:true});const {checkExperience}=await import('./check-experience.mjs');await checkExperience({browser,base,owner:xpOwner});}
-      if(!process.argv.includes('--ui-recovery')&&!process.argv.includes('--ui-restoration')&&!process.argv.includes('--ui-experience')&&!process.argv.includes('--ui-design')&&!process.argv.includes('--ui-brand')){
+      if(process.argv.includes('--ui')||process.argv.includes('--ui-regression')){const rgOwner=account();await rgOwner.json('/me');await rgOwner.json('/profile','POST',{name:'Регрессии',birth:'1990-01-01',city:'Москва',consent:true});const {checkRegressions}=await import('./check-regressions.mjs');await checkRegressions({browser,base,owner:rgOwner});}
+      if(!process.argv.includes('--ui-recovery')&&!process.argv.includes('--ui-restoration')&&!process.argv.includes('--ui-experience')&&!process.argv.includes('--ui-design')&&!process.argv.includes('--ui-brand')&&!process.argv.includes('--ui-regression')){
       const repeatOwner=account();await repeatOwner.json('/me');await repeatOwner.json('/profile','POST',{name:'Повторные действия',birth:'1990-01-01',city:'Москва',consent:true});
       const {checkRepeatPractices}=await import('./check-repeat-practices.mjs');await checkRepeatPractices({browser,base,owner:repeatOwner});
       if(!process.argv.includes('--ui-repeat')){

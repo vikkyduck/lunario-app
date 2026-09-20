@@ -78,7 +78,7 @@ export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistor
       return json(res, 200, { ok: true, devices: gone });
     }
     /* «Очистить историю» и «Удалить аккаунт» — одна политика на все личные таблицы (account-data.mjs) */
-    if (p === '/api/data' && req.method === 'DELETE') { clearHistory(db, u); return json(res, 200, { ok: true }); }
+    if (p === '/api/data' && req.method === 'DELETE') { clearHistory(db, u); db.prepare('UPDATE users SET data_rev = data_rev + 1 WHERE id = ?').run(u.id); return json(res, 200, { ok: true }); }   /* производные документы пересоберутся пустыми (R08) */
     /* Удаление необратимо, поэтому у аккаунта с почтой оно подтверждается отдельным кодом из письма:
        одной кнопки на чужом или забытом устройстве мало. Аккаунту без почты подтверждать нечем — там только кнопка. */
     if (p === '/api/account/delete-code' && req.method === 'POST') {

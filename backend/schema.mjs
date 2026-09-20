@@ -189,6 +189,9 @@ export const MIGRATIONS = [
     thumb BLOB NOT NULL, full BLOB NOT NULL, PRIMARY KEY (user_id, day))`) },
   /* «Полки» (снимок только на сегодня, никем не читались) заменены базой знаний — knowledge.mjs создает свои таблицы сам */
   { v: 18, name: 'база знаний вместо полок', up: (db) => db.exec('DROP TABLE IF EXISTS shelves') },
+  /* Ревизия личных данных (повторный аудит v112, R08): растет при каждой записи, правке и удалении; база знаний хранит ревизию,
+     с которой собран документ, и пересобирает его при чтении, если данные с тех пор менялись — «удаленный текст остается в сводке» невозможно */
+  { v: 19, name: 'ревизия личных данных для базы знаний', up: (db) => db.exec('ALTER TABLE users ADD COLUMN data_rev INTEGER DEFAULT 0') },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 

@@ -21,4 +21,4 @@ if ! cmp -s "$TMP" "$SNAP"; then
 fi
 rm -f "$TMP"
 echo "✅ Прод совпадает со снимком ($(head -1 "$SNAP")) — чужой работы не затрем."
-bash deploy.sh
+EXPECT_RELEASE="$(head -1 "$SNAP")" bash deploy.sh   # deploy.sh сверит идентификатор еще раз под замком, прямо перед заменой файлов (R14)

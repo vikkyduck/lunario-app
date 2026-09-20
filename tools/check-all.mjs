@@ -4,6 +4,7 @@
    явно: UI-часть (Playwright) пропускается с пометкой, а не молча «проходит».   node tools/check-all.mjs [--quick] */
 import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -29,9 +30,14 @@ const CHECKS = ['check-yo', 'check-features', 'check-daily-sets', 'check-entry-h
   ...(quick ? [] : ['check-personal-features', 'check-sync', 'check-isolation'])];
 for (const c of CHECKS) step(c, run([`tools/${c}.mjs`]));
 
-/* 4. чего в этом окружении нет — сказано явно */
-let ui = false; try { await import('playwright'); ui = true; } catch { /* нет браузера */ }
-console.log(ui ? 'ℹ️ Playwright есть: UI-проверки — node tools/check-personal-features.mjs --ui' : '⚠️ UI-проверки пропущены: Playwright не установлен (мобильная навигация, диктовка и доставка уведомлений здесь не проверяются)');
+/* 4. регрессии в браузере — обязательная часть набора (повторный аудит v112, R15): правка между экранами, потерянный ответ,
+   удаление и повторное открытие, отмена выбора карт, очистка с черновиком. Без Playwright это не «пройдено», а провал —
+   кроме явного ALLOW_NO_UI=1 (тогда прогон честно назван неполным) */
+let ui = false; try { createRequire(import.meta.url)('playwright'); ui = true; } catch { /* нет браузера */ }
+if (ui) step('регрессии в браузере (Playwright)', run(['tools/check-personal-features.mjs', '--ui-regression']));
+else if (process.env.ALLOW_NO_UI === '1') console.log('⚠️ регрессии в браузере пропущены (ALLOW_NO_UI=1) — прогон неполный');
+else { results.push(['регрессии в браузере (Playwright)', 'FAIL']); console.log('❌ регрессии в браузере не выполнены: Playwright не установлен — npm install && npx playwright install chromium (ALLOW_NO_UI=1 — осознанно пропустить, прогон будет неполным)'); }
+console.log(ui ? 'ℹ️ полный UI-прогон: node tools/check-personal-features.mjs --ui' : '⚠️ полный UI-прогон недоступен без Playwright (мобильная навигация, диктовка, доставка уведомлений)');
 const failed = results.filter(([, s]) => s === 'FAIL');
 console.log(`\n${failed.length ? '❌' : '✅'} итог: ${results.length - failed.length} из ${results.length} проверок прошли${failed.length ? `; не прошли: ${failed.map(([n]) => n).join(', ')}` : ''}${quick ? ' (--quick: без интеграционных)' : ''}`);
 process.exit(failed.length ? 1 : 0);

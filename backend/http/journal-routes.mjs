@@ -1,14 +1,10 @@
 /* Настроение, дневник, желания и фото, лента записей, отчет по настроениям.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
-import { createHash } from 'node:crypto';
 import { addDays } from '../util.mjs';
-export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList, Moods }) {
-  /* Квитанции операций (аудит v98, F02): клиент дает записи свой ключ op; ответ сохраняется, и повтор с тем же ключом и телом
-     возвращает его, не создавая вторую запись; тот же ключ с другим телом — конфликт. Квитанции старше недели стираются */
-  const opOf = (b) => typeof b.op === 'string' && /^[\w.-]{8,64}$/.test(b.op) ? b.op : '';
-  const receipt = (uid, op, hash) => db.prepare('SELECT payload_hash, response_json FROM sync_receipts WHERE user_id = ? AND operation_id = ?').get(uid, op);
-  const remember = (uid, op, hash, out) => { db.prepare('INSERT OR REPLACE INTO sync_receipts (user_id, operation_id, payload_hash, response_json, created_at) VALUES (?,?,?,?,?)').run(uid, op, hash, JSON.stringify(out), nowISO());
-    db.prepare('DELETE FROM sync_receipts WHERE created_at < ?').run(new Date(Date.now() - 7 * 864e5).toISOString()); };
+export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList, Moods, Receipts }) {
+  /* Квитанции операций — receipts.mjs: ключ op от клиента, в квитанции только ссылка на запись (без текста); повтор отдает запись
+     в актуальном виде или говорит, что она удалена; другой текст с тем же ключом — конфликт с найденной записью (R02, R04) */
+  const journalItem = (ref) => { const row = ref && ref.id ? db.prepare('SELECT id, day, text, kind, title FROM journal WHERE id = ? AND user_id = ?').get(ref.id, ref.uid) : null; return row ? { id: row.id, day: row.day, text: open_(row.text), kind: row.kind, title: open_(row.title || '') } : null; };
   return async function journalRoutes({ p, req, res, url, u, d }) {
     if (p === '/api/mood' && req.method === 'POST') {
       const b = await readBody(req);
@@ -38,18 +34,20 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
         if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
         const kind = ['gratitude', 'answer'].includes(b.kind) ? b.kind : '';
         const title = clean(b.title, 300);
-        const op = opOf(b), hash = op ? createHash('sha256').update(JSON.stringify({ text, kind, title })).digest('hex') : '';
-        if (op) { const rc = receipt(u.id, op, hash); if (rc) return rc.payload_hash === hash ? json(res, 200, { ...JSON.parse(rc.response_json), repeated: true }) : json(res, 409, { ok: false, error: 'op_conflict' }); }
-        const done = (out) => { if (op) remember(u.id, op, hash, out); return json(res, 200, out); };
         /* ответ на вопрос дня — один на день: повторная отправка обновляет его, как и карточка дня в Дневнике */
-        if (kind === 'answer') {
-          const prev = db.prepare("SELECT id FROM journal WHERE user_id = ? AND day = ? AND kind = 'answer' ORDER BY id DESC LIMIT 1").get(u.id, d);
-          if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(title), prev.id, u.id); return done({ ok: true, updated: true, item: { id: prev.id, day: d, text, kind, title } }); }
-        }
-        if (db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many', limit: DAILY_WRITES });
-        const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
-        track(u, kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add', '');
-        return done({ ok: true, streak: touchStreak(u), item: { id: Number(inserted.lastInsertRowid), day: d, text, kind, title } });
+        const prev = kind === 'answer' ? db.prepare("SELECT id FROM journal WHERE user_id = ? AND day = ? AND kind = 'answer' ORDER BY id DESC LIMIT 1").get(u.id, d) : null;
+        if (!prev && db.prepare('SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day = ?').get(u.id, d).c >= DAILY_WRITES) return json(res, 429, { ok: false, error: 'too_many', limit: DAILY_WRITES });
+        const r = Receipts.run(u.id, b, { text, kind, title }, {
+          load: (ref) => journalItem({ ...ref, uid: u.id }),
+          write: () => {
+            if (prev) { db.prepare('UPDATE journal SET text = ?, title = ? WHERE id = ? AND user_id = ?').run(seal(text), seal(title), prev.id, u.id); return { ref: { table: 'journal', id: prev.id, updated: true }, out: { ok: true, updated: true, item: { id: prev.id, day: d, text, kind, title } } }; }
+            const inserted = db.prepare('INSERT INTO journal (user_id, ts, day, text, kind, title) VALUES (?,?,?,?,?,?)').run(u.id, nowISO(), d, seal(text), kind, seal(title));
+            track(u, kind === 'gratitude' ? 'gratitude_add' : kind === 'answer' ? 'answer_add' : 'journal_add', '');
+            const id = Number(inserted.lastInsertRowid);
+            return { ref: { table: 'journal', id }, out: { ok: true, streak: touchStreak(u), item: { id, day: d, text, kind, title } } };
+          },
+        });
+        return json(res, r.status, r.out);
       }
       /* лента записей страницами: before — id последней показанной, next — с чего продолжать (аудит v98, F17) */
       const kind = url.searchParams.get('kind'), before = Math.max(0, Math.trunc(Number(url.searchParams.get('before'))) || 0), limit = Math.min(100, Math.max(1, Math.trunc(Number(url.searchParams.get('limit'))) || 60));
@@ -93,11 +91,21 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
         const b = await readBody(req, 1024 * 1024);
         const text = clean(b.text, 200);
         if (text.length < 3) return json(res, 400, { ok: false, error: 'short' });
-        if (db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(u.id).c >= WISHES_MAX) return json(res, 429, { ok: false, error: 'too_many' });
         const photo=b.photo ? dataUrlOk(b.photo,600*1024) : '';
         if (b.photo && !photo) return json(res,400,{error:'bad_photo'});
-        db.prepare('INSERT INTO wishes (user_id, ts, text, photo, photo_ts) VALUES (?,?,?,?,?)').run(u.id, nowISO(), seal(text),photo,photo?nowISO():'');
-        track(u, 'wish_add', photo ? 'photo' : '');
+        /* тот же ключ op после потерянного ответа — то же желание, а не второе (R05); квитанция хранит только id */
+        const r = Receipts.run(u.id, b, { text, photo: photo ? photo.length : 0 }, {
+          load: (ref) => db.prepare('SELECT id FROM wishes WHERE id = ? AND user_id = ?').get(ref.id || 0, u.id) || null,
+          write: () => {
+            if (db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(u.id).c >= WISHES_MAX) return { ref: { table: 'wishes', id: 0, refused: 'too_many' }, out: { ok: false, error: 'too_many' } };
+            const ins = db.prepare('INSERT INTO wishes (user_id, ts, text, photo, photo_ts) VALUES (?,?,?,?,?)').run(u.id, nowISO(), seal(text),photo,photo?nowISO():'');
+            track(u, 'wish_add', photo ? 'photo' : '');
+            return { ref: { table: 'wishes', id: Number(ins.lastInsertRowid) }, out: { ok: true } };
+          },
+        });
+        if (r.out.error === 'too_many') return json(res, 429, r.out);
+        if (r.status !== 200) return json(res, r.status, r.out);
+        return json(res, 200, { items: wishList(u.id), ...(r.out.repeated ? { repeated: true, removed: !!r.out.removed } : {}) });
       } else if (req.method === 'PATCH') {
         const b = await readBody(req);
         db.prepare('UPDATE wishes SET done = CASE done WHEN 1 THEN 0 ELSE 1 END, done_ts = ? WHERE id = ? AND user_id = ?').run(nowISO(), Number(b.id) || 0, u.id);

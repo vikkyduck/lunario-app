@@ -153,6 +153,7 @@ function paintHomeArt(){
 function closeWidget(e){
   if (e && e.target !== $('wg')) return;
   if (!wgOpen) return;
+  if(typeof cancelPick==='function')cancelPick();   /* незавершенный выбор карт не оставит кнопку «занятой» (R11) */
   if(wgOpen==='support'){rememberSupportDraft();supStop();}
   if(wgOpen==='mood'&&$('v-history')?.classList.contains('on'))loadDayCard();   /* оттенки выбраны в круге — карточка дня показывает их сразу */
   $('wg-store').appendChild($('w-'+wgOpen)); wgOpen = null;

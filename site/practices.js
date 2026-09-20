@@ -4,7 +4,7 @@ const gratQ = () => 'Кому и за что я благодарна сегод�
 async function loadGratitude(){
   const box = $('gr-box'); box.innerHTML = LOADING;
   await loadCatalog().catch(() => {});
-  try { const r = await api('/journal?kind=gratitude'); S.grat = r; paintGratitude(); }   /* r.next — с какой записи продолжать (F17) */
+  try { const gen = S.gen; const r = await api('/journal?kind=gratitude'); if (gen !== S.gen) return; S.grat = r; paintGratitude(); }   /* r.next — с какой записи продолжать (F17) */
   catch (e) { box.innerHTML = LOAD_ERR; }
 }
 let gratitudeEdit=null,gratitudeDraft='',gratitudeSaving=false,gratitudeOp='';
@@ -41,9 +41,18 @@ async function saveGratitude(){
   const button=$('gr-box').querySelector('button[data-on="click:saveGratitude"]');button.disabled=true;button.textContent='Сохраняем…';
   try {
     const edit=gratitudeEdit; if(!edit)gratitudeOp=gratitudeOp||opKey();   /* повтор после обрыва — тот же ключ, вторая запись не появится (F02) */
-    const r=await api('/journal',{method:edit?'PATCH':'POST',body:JSON.stringify({id:edit,text,kind:'gratitude',title:gratQ(),...(edit?{}:{op:gratitudeOp})})}); gratitudeOp='';
-    const item={...(S.grat.items.find(i=>i.id===edit)||{}),...r.item,kind:'gratitude',title:gratQ()};
+    let r;
+    try{ r=await api('/journal',{method:edit?'PATCH':'POST',body:JSON.stringify({id:edit,text,kind:'gratitude',title:gratQ(),...(edit?{}:{op:gratitudeOp})})}); }
+    catch(e){
+      /* ответ прошлой попытки потерялся, а текст уточнили: сервер нашел ту запись по ключу — правим ее, второй не будет (R04) */
+      if(e.code==='op_conflict'&&e.body?.item){ const u=await api('/journal',{method:'PATCH',body:JSON.stringify({id:e.body.item.id,text})}); r={...u,item:{...e.body.item,...u.item}}; }
+      else throw e;
+    }
+    gratitudeOp='';
+    if(r.repeated&&r.removed){ toast('Эта запись уже была удалена'); gratitudeEdit=null;gratitudeDraft=''; await loadGratitude(); return; }
+    const item={...(S.grat.items.find(i=>i.id===(edit||r.item.id))||{}),...r.item,kind:'gratitude',title:gratQ()};
     S.grat.items=[item,...S.grat.items.filter(i=>i.id!==item.id)];
+    if(typeof DC!=='undefined'&&DC.state&&DC.state.day===item.day){ DC.state.gratitude={id:item.id,text:item.text}; if(!DC.touched.fields.has('gratitude'))DC.gratitude=item.text; }   /* карточка дня знает свежий текст (R01) */
     gratitudeEdit=null;gratitudeDraft='';toast('Запись сохранена');hap('ok');paintGratitude();
   } catch(e){toast(e.code==='too_many'?'Записей за день уже сто — текст остался в поле':ERR_SAVE_KEPT);button.disabled=false;button.textContent='Сохранить';}
   finally{gratitudeSaving=false;}
@@ -116,8 +125,10 @@ async function habitSave(id){
 }
 async function habitMark(id, day){
   if(habitBusy.has(id))return;habitBusy.add(id);
+  /* желаемое состояние, а не «переключить» (R05): повтор запроса после неясного результата не снимет отметку */
+  const h=(HB||[]).find(x=>x.id===Number(id)), cur=day?!!h?.week?.find(w=>w.day===day)?.done:!!h?.today;
   try {
-    const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day }) }); HB = r.items; hap('ok'); paintHabits();
+    const r = await api('/habits', { method: 'PATCH', body: JSON.stringify({ id, day, done: !cur }) }); HB = r.items; hap('ok'); paintHabits();
   } catch (e) { toast('Не получилось отметить'); }
   finally{habitBusy.delete(id);document.querySelectorAll('[data-habit="'+id+'"] .hb-check').forEach(b=>b.disabled=false);}
 }

@@ -10,6 +10,7 @@ import { transaction } from './sync.mjs';
 import { addDays, isDay } from './util.mjs';
 import { VERDICTS } from './week.mjs';
 import { createMoods } from './moods.mjs';
+import { countActiveDays, activeDays } from './day-sources.mjs';
 
 export function createDay({ db, seal, open, sealBytes = null, openBytes = null, C, habitList, askesisList, track, touchStreak, nowISO, cleanText, clean, dayWritten = null, questionOf, morningOf = () => null, themeTitle = (k) => k, lunarOf = () => null, dailyWrites = 100 }) {
   const KINDS = { text: '', gratitude: 'gratitude', answer: 'answer' };
@@ -81,9 +82,10 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
   /* Сводка дня одной строкой — для списка «Прошлые дни»: первая запись, настроение, что еще записано, лунный день с названием (строка показывает только его — решение владелицы 20.09) */
   function summary(u, d) {
     const uid = u.id;
-    const rows = db.prepare("SELECT kind, text FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' ORDER BY id DESC").all(uid, d);
-    const first = rows.find((r) => r.kind === '') || rows.find((r) => r.kind === 'gratitude') || rows.find((r) => r.kind === 'answer') || rows.find((r) => r.kind === 'thought');
+    const rows = db.prepare("SELECT kind, text FROM journal WHERE user_id = ? AND day = ? ORDER BY id DESC").all(uid, d);
+    const first = rows.find((r) => r.kind === '') || rows.find((r) => r.kind === 'gratitude') || rows.find((r) => r.kind === 'answer') || rows.find((r) => r.kind === 'thought') || rows.find((r) => r.kind === 'weekly');
     const kinds = [];
+    if (rows.some((r) => r.kind === 'weekly')) kinds.push('weekly');   /* итог недели под воскресеньем — виден в архиве и без других записей (R12) */
     if (rows.some((r) => r.kind === 'thought')) kinds.push('thought');
     if (rows.some((r) => r.kind === 'gratitude')) kinds.push('gratitude');
     if (rows.some((r) => r.kind === 'answer')) kinds.push('answer');
@@ -92,18 +94,15 @@ export function createDay({ db, seal, open, sealBytes = null, openBytes = null, 
     const moods = moodsOf(uid, d), m = morningStored(uid, d), ph = photoMeta(uid, d);
     const text = first ? open(first.text).replace(/\s+/g, ' ').trim().slice(0, 140) : '';
     const ld = lunarOf(u, d);
-    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, lunarTitle: ld ? ld.title || '' : '', empty: dayWritten ? !dayWritten(uid, d) : !text && !moods.length && !ph };   /* пусто — по тому же правилу, что пуш и «Сегодня» */
+    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, lunarFrom: ld ? ld.nFrom || 0 : 0, lunarTitle: ld ? ld.title || '' : '', empty: (dayWritten ? !dayWritten(uid, d) : !moods.length && !ph) && !text };   /* «записан» — по правилу пуша и «Сегодня» (day-sources.mjs); текст любого вида — не пусто */
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
-  /* откуда берутся «дни с записями» — один перечень источников для списка и для счетчика (аудит v98, F08) */
-  const DAY_SOURCES = `SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' UNION SELECT day FROM moods WHERE user_id = ? UNION SELECT day FROM mood_marks WHERE user_id = ?
-      UNION SELECT m.day FROM habit_marks m JOIN habits h ON h.id = m.habit_id WHERE h.user_id = ? UNION SELECT n.day FROM askesis_days n JOIN askesis a ON a.id = n.askesis_id WHERE a.user_id = ?
-      UNION SELECT day FROM day_photos WHERE user_id = ?`;
+  /* «дни с записями» — политика DAY_ACTIVE из day-sources.mjs: одна и та же для архива, страниц и счетчика (аудит v98 F08, v112 R12) */
   function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {
-    const total = db.prepare(`SELECT COUNT(*) c FROM (${DAY_SOURCES}) WHERE day < ?`).get(u.id, u.id, u.id, u.id, u.id, u.id, d).c;   /* записанных дней до сегодня — по нему предлагаются шаги вечера */
+    const total = countActiveDays(db, u.id, d);   /* дней с записями до сегодня — по нему предлагаются шаги вечера */
     if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u, addDays(d, -i))); return { items: out, next: null, total }; }
     const cut = isDay(before) ? before : d;
-    const found = db.prepare(`SELECT day FROM (${DAY_SOURCES}) WHERE day < ? ORDER BY day DESC LIMIT ?`).all(u.id, u.id, u.id, u.id, u.id, u.id, cut, limit + 1).map((r) => r.day);
+    const found = activeDays(db, u.id, cut, limit + 1);
     const page = found.slice(0, limit);
     return { items: page.map((x) => summary(u, x)), next: found.length > limit ? page[page.length - 1] : null, total };
   }

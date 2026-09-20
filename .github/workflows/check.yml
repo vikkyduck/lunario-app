@@ -16,5 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      - name: Playwright — регрессии в браузере входят в обязательный набор (аудит v112, R15)
+        run: npm ci && npx playwright install --with-deps chromium
       - name: Один набор проверок — тот же, что перед выпуском (tools/check-all.mjs)
         run: node tools/check-all.mjs

@@ -72,7 +72,7 @@ async function paintHomeAction(){
   box.hidden=false; requestAnimationFrame(()=>{ const t=$('ha-a'); if(t)growTextarea(t); });
 }
 function haEdit(){ ANS.open=true; paintHomeAction().then(()=>$('ha-a')?.focus({preventScroll:true})); }
-function haCancel(){ ANS.open=false; ANS.draft=''; paintHomeAction(); }
+function haCancel(){ ANS.open=false; ANS.draft=''; draftClear('answer',S.day.date); paintHomeAction(); }
 function haSave(){ saveAnswerText($('ha-a')?.value); }
 /* Под настроем дня: расписание включено, а сюда уведомления не приходят — одна строка и одно нажатие */
 function paintPushNudge(){
@@ -267,7 +267,7 @@ $('a-go').onclick=async()=>{
   try{
     await runAsk(S.mode,q,$('a-result'),$('a-hint'),S.layout);
     $('a-result').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(e){ showMsg(msg, askErrorText(e), true); }
+  }catch(e){ if(e.code!=='cancelled')showMsg(msg, askErrorText(e), true); }   /* закрыли выбор карт — просто тишина, кнопка снова работает (R11) */
   checkQ();
 };
 
@@ -346,7 +346,7 @@ const obAuthIdle = () => `<button data-on="click:auth-step-email-paintAuth" clas
 /* all — отозвать сессии на всех устройствах: если телефон потерян или код входа попал не в те руки */
 async function logout(all){
   if(!confirm(all?'Выйти на всех устройствах? Везде понадобится заново войти по коду; записи останутся в аккаунте.':'Выйти на этом устройстве? Записи останутся в аккаунте и вернутся при следующем входе.')) return;
-  try{ localStorage.removeItem(dcDraftKey()); localStorage.removeItem(offerKey()); }catch(e){}   /* черновик дня и память предложений — этого аккаунта */
+  resetLocalAccount();   /* черновики и память предложений этого аккаунта — с устройства (политика выхода, R06) */
   await api(all?'/auth/logout-all':'/auth/logout',{method:'POST'});
   location.reload();
 }
@@ -357,16 +357,17 @@ async function logout(all){
 const ANS={draft:'',saving:false,saved:null,loadedFor:'',open:false};
 async function ensureAnswer(){
   if(!S.day)return; if(ANS.saved&&ANS.saved.day!==S.day.date){ANS.saved=null;ANS.loadedFor='';}
+  if(!ANS.draft){ const dr=draftGet('answer',S.day.date); if(dr!==null){ ANS.draft=dr; ANS.open=!!dr; } }   /* несохраненный ответ живет на устройстве (R07) */
   if(ANS.loadedFor===S.day.date)return;
-  try{ const st=await api('/day'); ANS.loadedFor=S.day.date; if(st.answer&&!ANS.draft)ANS.saved={id:st.answer.id,day:st.day,text:st.answer.text}; }catch(e){}
+  try{ const gen=S.gen; const st=await api('/day'); if(gen!==S.gen)return; ANS.loadedFor=S.day.date; ANS.saved=st.answer?{id:st.answer.id,day:st.day,text:st.answer.text}:null; }catch(e){}
 }
 function answerFrom(a,day){ ANS.saved=a&&a.text?{id:a.id,day,text:a.text}:null; ANS.loadedFor=day; }   /* карточка дня уже знает ответ — панели не спрашивают заново */
 /* сохранить ответ из любого места; textarea остается с текстом при ошибке */
 async function saveAnswerText(t){
   t=(t||'').trim(); if(t.length<3){toast('Напишите хотя бы пару слов');return false;}
   if(ANS.saving)return false; ANS.saving=true; paintAnswerEverywhere();
-  ANS.op=ANS.op||opKey();   /* повтор после обрыва — с тем же ключом: сервер вернет ту же квитанцию (F02) */
-  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question,op:ANS.op})}); ANS.op=''; ANS.draft=''; ANS.open=false; ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
+  /* ответ на вопрос дня — один на день, повтор обновляет его: ключ операции здесь не нужен, дубля быть не может */
+  try{ const r=await api('/journal',{method:'POST',body:JSON.stringify({text:t,kind:'answer',title:S.day.question})}); ANS.draft=''; ANS.open=false; draftClear('answer',S.day.date); ANS.saved={id:r.item.id,day:r.item.day,text:r.item.text};
     toast(r.updated?'Ответ обновлен в дневнике':'Записано в дневник'); hap('ok'); if(DC.state&&DC.state.day===r.item.day){DC.state.answer={id:r.item.id,text:r.item.text}; if(DC.mode!=='steps')DC.answer=r.item.text;} XP.timeline.dirty=true; return true; }
   catch(e){ toast(ERR_SAVE_KEPT); ANS.draft=t; ANS.open=true; return false; }
   finally{ ANS.saving=false; paintAnswerEverywhere(); }
@@ -383,5 +384,5 @@ function paintTone(){
   requestAnimationFrame(()=>growTextarea($('tone-a')));
 }
 async function loadTone(){ paintTone(); await ensureAnswer(); paintTone(); }
-function answerInput(el){ ANS.draft=el.value; growTextarea(el); }
+function answerInput(el){ ANS.draft=el.value; draftSet('answer',S.day.date,el.value); growTextarea(el); }
 function saveAnswer(){ saveAnswerText($('tone-a')?.value); }

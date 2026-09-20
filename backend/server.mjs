@@ -21,6 +21,7 @@ import { createPractices, parseRule, habitStreak } from './practices.mjs';
 import { CONTENT_DIR, IMAGE_DIRS, noYo } from './content.mjs';
 import { MSK, MOSCOW, ISO_DAY, isDay, dayIn, addDays, clean, cleanText, countWord } from './util.mjs';
 import { createMoods } from './moods.mjs';
+import { createReceipts } from './receipts.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
@@ -164,6 +165,11 @@ function rememberTz(u, req) {
 
 /* Событие продукта: только тип, короткая деталь и возрастная когорта — без личных текстов */
 const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), today(), u.id, type, String(detail || '').slice(0, 60), ageBand(u.birth));
+/* Ревизия личных данных (R08): любая запись, правка или удаление через API поднимает users.data_rev — база знаний сверяет ее при чтении.
+   Вызывается в маршрутизаторе для всех не-GET запросов к личным данным (см. DATA_PATHS ниже) и после очистки истории */
+const touchData = (uid) => db.prepare('UPDATE users SET data_rev = data_rev + 1 WHERE id = ?').run(uid);
+const dataRev = (uid) => (db.prepare('SELECT data_rev FROM users WHERE id = ?').get(uid) || {}).data_rev || 0;
+const DATA_PATHS = /^\/api\/(day|day\/photo|thought|journal|mood|wishes|wishes\/photo|habits|askesis(?:\/[\w-]+)?|week\/echo|week\/reflect|card|dayrune|ask|spread|compat|profile|photo|data)$/;
 function ageBand(birth) {
   if (!ISO_DAY.test(String(birth || ''))) return '';
   const b = new Date(birth + 'T00:00:00Z'), now = new Date();
@@ -396,6 +402,7 @@ const PUSH_DEVICES = 10;   /* сколько ячеек уведомлений �
 const MOOD_RU = new Proxy({}, { get: (_, k) => { if (String(k).startsWith('own:')) return String(k).slice(4); const m = C.moodInfo(k); return m ? m.label : 'настроение без названия'; } });
 const moodTone = (k) => { const m = C.moodInfo(k); return m ? m.tone : '0'; };
 const Moods = createMoods(db);
+const Receipts = createReceipts(db, nowISO);
 /* Последние семь дней (не календарная неделя — та в week.mjs): все отметки по контракту moods.mjs;
    вывод о характере дней — только при трех и больше днях наблюдения (аудит v98, F10) */
 function weekSummary(u, d) {
@@ -516,13 +523,24 @@ function natalFor(u) {
   } catch { chart.lunarBirth = null; }
   return chart;
 }
-/* лунный день на вечер этой даты — по месту из анкеты; в записи дня, в строке прошлых дней и в базе знаний */
-const lunarOf = (u, d) => { try { const ld = lunarDay(Date.parse(d + 'T18:00:00Z'), u?.lat ?? MOSCOW.lat, u?.lon ?? MOSCOW.lon); return ld ? { n: ld.n, title: (C.LUNAR_DAYS[ld.n - 1] || [''])[0] } : null; } catch { return null; } };
+/* Лунный день записи — один контракт для карточки дня, строки прошлых дней и базы знаний (повторный аудит v112, R18):
+   момент — 21:00 по поясу человека, вечер, когда день записывается (на «Сегодня» — текущий момент, там лунный день сменяется
+   на глазах). Если за сутки лунный день сменился, подпись показывает переход: nFrom — лунный день утра (09:00), n — вечера.
+   Прошлая запись от времени повторного открытия не зависит: момент фиксирован датой */
+const lunarOf = (u, d) => {
+  try {
+    const tz = u?.tz || MSK, lat = u?.lat ?? MOSCOW.lat, lon = u?.lon ?? MOSCOW.lon;
+    const at = (hm) => { const local = `${d}T${hm}:00`; return Date.parse(local + 'Z') - tzOffsetMinutes(tz, local) * 60000; };
+    const ev = lunarDay(at('21:00'), lat, lon); if (!ev) return null;
+    const mo = lunarDay(at('09:00'), lat, lon);
+    return { n: ev.n, title: (C.LUNAR_DAYS[ev.n - 1] || [''])[0], nFrom: mo && mo.n !== ev.n ? mo.n : 0, at: '21:00' };
+  } catch { return null; }
+};
 /* «Я помню» — память о человеке одной фразой: строка на карточке дня, вопрос дня по теме, любимый способ ответа, вечерний пуш, «Обо мне» */
 const Memory = createMemory({ db, open: open_, C, questionOf: (u, d) => dayPack(u, d).question, topicOf, MOOD_RU, habitList, askesisList });
 /* База знаний — папка документов о человеке, собранная из журнала (knowledge.mjs): ее читают ИИ, выгрузка и «на себе» в кабинете, экраны — нет */
 const natalMeanings = (chart) => natalMeaningsOf(chart, C.natalTexts());   /* значения и резюме карты — одни и те же для экрана и базы знаний */
-const Knowledge = createKnowledge({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal: natalFor, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory: Memory, lunarOf, nowISO });
+const Knowledge = createKnowledge({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal: natalFor, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory: Memory, lunarOf, nowISO , dataRev });
 /* раз в сутки по поясу человека документы пересобираются — по одному человеку за такт, не задерживая запросы; свежие (за сегодня) не трогаются */
 function knowledgeDaily() {
   try { const stale = Knowledge.staleUsers((u) => userDay(u)); let i = 0;
@@ -568,7 +586,7 @@ const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
 const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
 const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track });
-const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods });
+const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods, Receipts });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
 
 const server = createServer(async (req, res) => {
@@ -728,6 +746,7 @@ const server = createServer(async (req, res) => {
       }
 
       /* ── остальные маршруты — по модулям в backend/http/: вход и аккаунт, гадания, дневник, уведомления, практики, день, неделя ── */
+      if (req.method !== 'GET' && DATA_PATHS.test(p)) touchData(u.id);   /* личные данные меняются — производные документы узнают об этом (R08) */
       if (await authRoutes({ p, req, res, url, u, d })) return;
       if (await readingRoutes({ p, req, res, url, u, d })) return;
       if (await journalRoutes({ p, req, res, url, u, d })) return;

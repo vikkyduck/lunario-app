@@ -18,7 +18,7 @@ const api = async (path, opts) => {
   }
   const j = await r.json().catch(() => ({}));
   if (r.status === 401 && path !== '/me') { location.reload(); throw Object.assign(new Error('no_session'), { code: 'no_session', status: 401 }); }
-  if (!r.ok) throw Object.assign(new Error(j.error || 'err'), { code: j.error, status: r.status });
+  if (!r.ok) throw Object.assign(new Error(j.error || 'err'), { code: j.error, status: r.status, body: j });   /* body — что нашел сервер (например, запись по ключу операции при конфликте) */
   if (opts?.method && opts.method !== 'GET' && typeof XP !== 'undefined') XP.timeline.dirty = true;
   return j;
 };
@@ -33,9 +33,23 @@ const fmtDayShort = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU',
 /* Черновики на устройстве — один механизм на все поля (аудит v98, F06): по аккаунту, виду записи и ключу (дата, неделя, материал).
    Восстанавливается, пока сохранение не подтверждено сервером; после подтверждения стирается. Ничего никуда не отправляет */
 const draftKey=(kind,id)=>`lun_draft_${(typeof S!=='undefined'&&S.user?.id)||0}_${kind}_${id}`;
+/* null — черновика нет; '' — есть, и он пустой: человек очистил поле, это его намерение (R07). Убирает черновик только draftClear */
 const draftGet=(kind,id)=>{ try{ return localStorage.getItem(draftKey(kind,id)); }catch(e){ return null; } };
-const draftSet=(kind,id,text)=>{ try{ if(text)localStorage.setItem(draftKey(kind,id),text); else localStorage.removeItem(draftKey(kind,id)); }catch(e){} };
-const draftClear=(kind,id)=>draftSet(kind,id,'');
+const draftSet=(kind,id,text)=>{ try{ localStorage.setItem(draftKey(kind,id),String(text??'')); }catch(e){} };
+const draftClear=(kind,id)=>{ try{ localStorage.removeItem(draftKey(kind,id)); }catch(e){} };
+/* Единый сброс данных аккаунта на устройстве (R06): после «Очистить историю» и при выходе — черновики этого аккаунта, память
+   предложений, загруженные записи и производные экраны. S.gen растет: поздний ответ старого запроса уже не рисуется.
+   Политика выхода: черновики этого аккаунта на устройстве стираются — следующий человек за тем же телефоном их не увидит */
+function resetLocalAccount(){
+  const uid=(typeof S!=='undefined'&&S.user?.id)||0;
+  try{ const gone=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&(k.startsWith(`lun_draft_${uid}_`)||k===`lun_dc_draft_${uid}`||k===`lun_tool_offer_${uid}`))gone.push(k); } gone.forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  if(typeof S!=='undefined'){ S.gen=(S.gen||0)+1; S.grat=null; S.thoughtsBy={}; S.entries=null; S.moodReport=null; S.yesterday=undefined; S.memory=null; }
+  if(typeof ANS!=='undefined'){ ANS.saved=null; ANS.draft=''; ANS.loadedFor=''; ANS.open=false; }
+  if(typeof DC!=='undefined'){ DC.state=null; DC.forDay=null; DC.bridge=undefined; DC.dirty=false; DC.touched={habits:new Set(),askesis:new Set(),fields:new Set()}; }
+  if(typeof WK!=='undefined')WK.data=null;
+  if(typeof HB!=='undefined')HB=null;
+  if(typeof XP!=='undefined'&&XP.timeline)XP.timeline.dirty=true;
+}
 /* Ключ повторной операции (аудит v98, F02): один на попытку сохранения; повтор после обрыва уходит с тем же ключом — сервер отвечает
    той же квитанцией и второй записи не создает. Новый ключ — только после подтвержденного сохранения */
 const opKey=()=>'op-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10);

@@ -229,6 +229,10 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   if (!entries.length) flow.empty('Обращений пока не было.');
   for (const e of entries) flow.card({ meta: [fmtDay(e.day), KIND[e.kind] || e.kind].filter(Boolean).join(' · '), title: e.question || (e.title || ''), answer: e.question ? (e.title || '') : '', text: e.body || '' });
 
+  /* ── совместимость ── */
+  const compat = [...(data.compat || [])].sort((a, b) => (b.day || '').localeCompare(a.day || '') || b.id - a.id);
+  if (compat.length) { flow.section('Обо мне', 'Совместимость', plural(compat.length, 'расчет', 'расчета', 'расчетов')); for (const c of compat) flow.card({ meta: `${fmtDay(c.day)} · ${c.you} и ${c.other} · партнер ${fmtDay(c.other_birth)}`, title: `${c.total}% — ${(c.rings || []).map((r) => `${r[0]} ${r[1]}%`).join(', ')}`, text: c.text || '' }); }
+
   /* ── установки дня ── */
   const sets = [...(data.dailySets || [])].sort((a, b) => (b.day || '').localeCompare(a.day || ''));
   flow.section('Сегодня', 'Настрой дня', sets.length ? plural(sets.length, 'день', 'дня', 'дней') : '');

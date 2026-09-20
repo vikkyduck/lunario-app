@@ -17,6 +17,7 @@
    text(doc) отдает документ связным текстом — для промпта ИИ. Почты и служебных id в текстах нет. */
 import { addDays, plural } from './util.mjs';
 import { createMoods } from './moods.mjs';
+import { countActiveDays } from './day-sources.mjs';
 
 export const RECENT_DAYS = 120;
 export const DOC_TITLES = { profile: 'Обо мне', readings: 'Тесты и совместимости', recent: 'Последние записи', portrait: 'Портрет' };
@@ -33,15 +34,17 @@ const parse = (t) => { try { return t ? JSON.parse(t) : null; } catch { return n
 /* начало недели (понедельник) для группировки настроений */
 const weekStart = (d) => { const dt = new Date(d + 'T12:00:00Z'); return addDays(d, -((dt.getUTCDay() + 6) % 7)); };
 
-export function createKnowledge({ db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory, lunarOf, nowISO }) {
+export function createKnowledge({ db, seal, open, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory, lunarOf, nowISO, dataRev = () => 0 }) {
   db.exec(`CREATE TABLE IF NOT EXISTS knowledge (
     user_id INTEGER NOT NULL, doc TEXT NOT NULL, json TEXT NOT NULL, updated_at TEXT NOT NULL, day TEXT NOT NULL,
     PRIMARY KEY (user_id, doc));
   CREATE TABLE IF NOT EXISTS compat_checks (
     id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL, day TEXT NOT NULL,
     other_birth TEXT NOT NULL, total INTEGER NOT NULL, rings TEXT NOT NULL, you TEXT NOT NULL, other TEXT NOT NULL, text TEXT NOT NULL);`);
-  const put = db.prepare('INSERT INTO knowledge (user_id, doc, json, updated_at, day) VALUES (?,?,?,?,?) ON CONFLICT(user_id, doc) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at, day = excluded.day');
-  const getDoc = db.prepare('SELECT json, updated_at, day FROM knowledge WHERE user_id = ? AND doc = ?');
+  /* rev — ревизия личных данных, с которой собран документ (users.data_rev, R08): изменилась — документ пересобирается при чтении */
+  try { db.exec('ALTER TABLE knowledge ADD COLUMN rev INTEGER DEFAULT 0'); } catch { /* колонка уже есть */ }
+  const put = db.prepare('INSERT INTO knowledge (user_id, doc, json, updated_at, day, rev) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id, doc) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at, day = excluded.day, rev = excluded.rev');
+  const getDoc = db.prepare('SELECT json, updated_at, day, rev FROM knowledge WHERE user_id = ? AND doc = ?');
   const listDocs = db.prepare('SELECT doc, updated_at, day, LENGTH(json) size FROM knowledge WHERE user_id = ? ORDER BY doc');
   const userById = db.prepare('SELECT * FROM users WHERE id = ?');
   const cardName = (slug) => { const a = [...C.ARCANA].find((c) => c.slug === slug); return a ? a.name : ''; };
@@ -171,11 +174,13 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
   function buildPortrait(u, d) {
     const uid = u.id, since = String(u.created_at || '').slice(0, 10);
     const first = db.prepare("SELECT day, title FROM entries WHERE user_id = ? AND kind = 'card' ORDER BY id ASC LIMIT 1").get(uid);
-    const moods90 = {}; let moodTotal = 0;
-    for (const r of db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day >= ? GROUP BY mood ORDER BY c DESC').all(uid, addDays(d, -90))) { moods90[moodWord(r.mood)] = r.c; moodTotal += r.c; }
+    /* настроения за 90 дней — все отметки по общему контракту moods.mjs, знаменатель — все отметки, рядом число дней наблюдения (R09) */
+    const m90 = Moods.summary(uid, addDays(d, -90), d);
+    const moods90 = {}; let moodTotal = m90.total;
+    for (const r of m90.stats) moods90[moodWord(r.mood)] = (moods90[moodWord(r.mood)] || 0) + r.c;
     const topics = {}; for (const r of db.prepare("SELECT question FROM entries WHERE user_id = ? AND kind NOT IN ('card','dayrune') AND question <> '' ORDER BY id DESC LIMIT 200").all(uid)) { const q = open(r.question); const t = q ? topicOf(q) : ''; if (t) topics[TOPIC_RU[t] || t] = (topics[TOPIC_RU[t] || t] || 0) + 1; }
     const cards = {}; for (const r of db.prepare("SELECT title FROM entries WHERE user_id = ? AND kind = 'card'").all(uid)) cards[r.title] = (cards[r.title] || 0) + 1;
-    const counts = { days: db.prepare("SELECT COUNT(*) c FROM (SELECT day FROM journal WHERE user_id = ? AND kind <> 'weekly' UNION SELECT day FROM moods WHERE user_id = ?)").get(uid, uid).c,
+    const counts = { days: countActiveDays(db, uid),   /* дни с любой отметкой — та же политика, что у архива «Прошлые дни» (day-sources.mjs) */
       notes: db.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND kind = ''").get(uid).c, gratitudes: db.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND kind = 'gratitude'").get(uid).c,
       asks: db.prepare("SELECT COUNT(*) c FROM entries WHERE user_id = ? AND kind NOT IN ('card','dayrune')").get(uid).c, cards: db.prepare("SELECT COUNT(*) c FROM entries WHERE user_id = ? AND kind = 'card'").get(uid).c,
       wishes: db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ?').get(uid).c, wishesDone: db.prepare('SELECT COUNT(*) c FROM wishes WHERE user_id = ? AND done = 1').get(uid).c };
@@ -183,7 +188,7 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     const fav = memory ? memory.favorite(u) : null, main = memory ? memory.mainTopic(uid, d) : '';
     return {
       since, streak: u.streak || 0, firstCard: first ? { day: first.day, name: first.title } : null, counts,
-      moods90: Object.entries(moods90).map(([mood, n]) => ({ mood, n, share: moodTotal ? Math.round(n / moodTotal * 100) : 0 })),
+      moods90: Object.entries(moods90).map(([mood, n]) => ({ mood, n, share: moodTotal ? Math.round(n / moodTotal * 100) : 0 })), moodDays90: m90.days, moodMarks90: moodTotal,
       topics: Object.entries(topics).sort((a, b) => b[1] - a[1]).map(([topic, n]) => ({ topic, n })), mainTopic: main ? (TOPIC_RU[main] || main) : '',
       favoriteMethod: fav ? FAV[fav] || fav : '', frequentCards: Object.entries(cards).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, n]) => ({ name, n })),
       habits: habitList(uid, d).map((h) => ({ title: h.title, streak: h.streak, total: h.total })),
@@ -201,7 +206,7 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     return out;
   }
 
-  const save = (uid, doc, data, d) => put.run(uid, doc, seal(JSON.stringify(data)), nowISO(), d);
+  const save = (uid, doc, data, d) => put.run(uid, doc, seal(JSON.stringify(data)), nowISO(), d, dataRev(uid));
   /* пересобрать документы человека; which — какие (по умолчанию все, месяцы — только новые и за последний год) */
   function rebuild(uOrId, d, which = null) {
     const u = typeof uOrId === 'object' ? uOrId : userById.get(uOrId); if (!u) return null;
@@ -223,14 +228,23 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     }
     return out;
   }
-  /* прочитать документ; нет или вчерашний — собрать (профиль и портрет — каждый раз свежие по дате d) */
+  /* прочитать документ; нет, вчерашний или собранный до последнего изменения данных (rev) — собрать заново (R08).
+     Месячный отчет за пределами года правки заморожен; в пределах года — тоже следует за ревизией */
+  const fresh = (row, uid, d) => row && row.day === d && Number(row.rev || 0) === dataRev(uid);
   function read(u, doc, d) {
-    if (doc.startsWith('month:')) { const row = getDoc.get(u.id, doc); if (row) return parse(open(row.json)); const ym = doc.slice(6); if (!monthsOutside(u.id, d).includes(ym)) return null; const data = buildMonth(u, ym); save(u.id, doc, data, d); return data; }
+    if (doc.startsWith('month:')) {
+      const ym = doc.slice(6), row = getDoc.get(u.id, doc);
+      if (row && (ym < monthOf(addDays(d, -366)) || Number(row.rev || 0) === dataRev(u.id))) return parse(open(row.json));
+      if (!monthsOutside(u.id, d).includes(ym)) return row ? parse(open(row.json)) : null;
+      const data = buildMonth(u, ym); save(u.id, doc, data, d); return data;
+    }
     if (!DOC_TITLES[doc]) return null;
     const row = getDoc.get(u.id, doc);
-    if (row && row.day === d) return parse(open(row.json));
+    if (fresh(row, u.id, d)) return parse(open(row.json));
     return row ? rebuild(u, d, [doc])[doc] : rebuild(u, d)[doc];   /* первое обращение собирает всю папку, устаревший документ — только себя */
   }
+  /* когда собран документ — для подписи «Собрано …» там, где задержка допустима */
+  const builtAt = (uid, doc) => (getDoc.get(uid, doc) || {}).updated_at || '';
   const ORDER = ['profile', 'portrait', 'recent', 'readings'];
   function list(u, d) {
     if (d && !getDoc.get(u.id, 'recent')) rebuild(u, d);
@@ -307,7 +321,7 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
   function textPortrait(p) {
     const out = ['ПОРТРЕТ', `В Лунарио с ${p.since ? fmt(p.since) : '—'}${p.streak ? `, серия ${p.streak} ${plural(p.streak, 'день', 'дня', 'дней')} подряд` : ''}${p.firstCard ? `. Первой картой была ${p.firstCard.name} (${fmt(p.firstCard.day)})` : ''}.`,
       `Дней с записями: ${p.counts.days}, записей: ${p.counts.notes}, благодарностей: ${p.counts.gratitudes}, обращений: ${p.counts.asks}, карт дня: ${p.counts.cards}, желаний: ${p.counts.wishes}${p.counts.wishesDone ? ` (исполнено ${p.counts.wishesDone})` : ''}.`];
-    if (p.moods90.length) out.push(`Настроения за 90 дней: ${p.moods90.map((m) => `${m.mood.toLowerCase()} ${m.share}%`).join(', ')}.`);
+    if (p.moods90.length) out.push(`Настроения за 90 дней (все отметки: ${p.moodMarks90 || 0} за ${p.moodDays90 || 0} ${plural(p.moodDays90 || 0, 'день', 'дня', 'дней')}): ${p.moods90.map((m) => `${m.mood.toLowerCase()} ${m.share}%`).join(', ')}.`);
     if (p.topics.length) out.push(`Темы вопросов: ${p.topics.map((t) => `${t.topic} — ${t.n}`).join(', ')}${p.mainTopic ? `. Чаще всего возвращается к теме «${p.mainTopic}»` : ''}.`);
     if (p.favoriteMethod) out.push(`Любимый способ ответа: ${p.favoriteMethod}.`);
     if (p.frequentCards.length) out.push(`Чаще всего приходили карты: ${p.frequentCards.map((c) => `${c.name} (${c.n})`).join(', ')}.`);
@@ -322,5 +336,5 @@ export function createKnowledge({ db, seal, open, C, signOf, destinyNum, persona
     if (doc === 'recent') return textRecent(data); if (doc === 'portrait') return textPortrait(data);
     return textMonth(data);
   }
-  return { rebuild, read, list, text, wipe, staleUsers, compatSave, RECENT_DAYS, DOC_TITLES };
+  return { rebuild, read, list, text, wipe, staleUsers, compatSave, builtAt, RECENT_DAYS, DOC_TITLES };
 }
