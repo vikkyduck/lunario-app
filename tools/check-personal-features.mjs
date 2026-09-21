@@ -587,6 +587,24 @@ try {
     assert.deepEqual(todayRow.moods, ['joy', 'trust'], 'the report week row carries every mark'); assert.equal(rep.month.marks >= 2, true);
     assert.ok(!/ровным|непрост/.test(rep.summary), 'one observed day gives no verdict about the week: ' + rep.summary); assert.ok(!/\bjoy\b|\btrust\b/.test(rep.summary), 'no raw keys in the summary');
     const ex = await aud.json('/data/export'); const exDay = ex.moods.find((m) => m.day === d0); assert.deepEqual(exDay.marks, ['joy', 'trust'], 'export carries all marks'); assert.ok(Array.isArray(ex.limits) && ex.limits.length, 'export names what it does not contain');
+    /* Панель настроения отмечает несколько (21.09): POST /api/mood с on — желаемое состояние отметки, ответ и /me несут все отметки дня,
+       главное — первое из отмеченных; снятие последней убирает и главное; без on — прежний смысл (отметить и сделать главным); день старой
+       версии (только главное) не теряет его при первой новой отметке */
+    { const mm = account(); await mm.json('/me');
+      let r = await mm.json('/mood', 'POST', { mood: 'quick:calm', on: true }); assert.deepEqual([r.mood, r.moods], ['quick:calm', ['quick:calm']]);
+      r = await mm.json('/mood', 'POST', { mood: 'quick:tired', on: true }); assert.deepEqual([r.mood, r.moods], ['quick:calm', ['quick:calm', 'quick:tired']], 'the second mark keeps the first as the main one');
+      r = await mm.json('/mood', 'POST', { mood: 'quick:tired', on: true }); assert.deepEqual(r.moods, ['quick:calm', 'quick:tired'], 'repeating on:true is idempotent');
+      assert.deepEqual((await mm.json('/me')).moods, ['quick:calm', 'quick:tired'], '/me carries every mark of the day'); assert.deepEqual((await mm.json('/day')).moods, ['quick:calm', 'quick:tired'], 'the day card sees the same marks');
+      r = await mm.json('/mood', 'POST', { mood: 'quick:calm', on: false }); assert.deepEqual([r.mood, r.moods], ['quick:tired', ['quick:tired']], 'removing the main mark promotes the next one');
+      r = await mm.json('/mood', 'POST', { mood: 'quick:calm', on: false }); assert.deepEqual(r.moods, ['quick:tired'], 'repeating on:false is idempotent');
+      r = await mm.json('/mood', 'POST', { mood: 'quick:tired', on: false }); assert.deepEqual([r.mood, r.moods], [null, []], 'the last mark removed clears the main one too');
+      assert.equal((await mm.json('/me')).mood, null); assert.deepEqual((await mm.json('/day')).moods, []);
+      r = await mm.json('/mood', 'POST', { mood: 'joy' }); assert.deepEqual([r.mood, r.moods], ['joy', ['joy']], 'old clients without on still mark and set the main one');
+      r = await mm.json('/mood', 'POST', { mood: 'own:собранно', on: true }); assert.deepEqual(r.moods, ['joy', 'own:собранно']);
+      assert.equal((await mm.raw('/mood', 'POST', { mood: 'nonsense', on: true })).status, 400);
+      /* день старой версии: только строка в moods */
+      const uidM = (await mm.json('/me')).user.id; qaDB.prepare('DELETE FROM mood_marks WHERE user_id = ?').run(uidM); qaDB.prepare("UPDATE moods SET mood = 'trust' WHERE user_id = ?").run(uidM);
+      r = await mm.json('/mood', 'POST', { mood: 'joy', on: true }); assert.deepEqual([r.mood, r.moods], ['trust', ['trust', 'joy']], 'a legacy main mood becomes a mark before the new one is added'); }
     /* F13, F12: мысль привязана к результату — две одинаковые руны на два вопроса дают две мысли; повтор к тому же результату обновляет только ее; расклад тоже принимает мысль */
     const a1 = await aud.json('/ask', 'POST', { question: 'Стоит ли мне менять работу сейчас?', kind: 'rune' });
     const a2 = await aud.json('/ask', 'POST', { question: 'Получится ли переезд в этом году?', kind: 'rune' });

@@ -222,7 +222,7 @@ async function saveDayCard(){
     if(!DC.state||DC.state.day!==day){ dayChanged(r.day,false); return; }   /* карточка уже показывает другой день — его не трогаем, только лента узнает о записи */
     DC.state={...r}; dcClearDraft(); DC.dirty=false; DC.bridge=undefined; DC.touched={habits:new Set(),askesis:new Set(),fields:new Set()}; hap('done');
     if(!DC.forDay){ answerFrom(r.answer,r.day); ANS.draft=''; paintAnswerEverywhere(); if(S.day&&r.day===S.day.date)S.day.remembered=true; }
-    if(!DC.forDay){ S.mood=DC.state.moods[0]||null; if(S.day&&r.saved.length)S.day.remembered=true; }
+    if(!DC.forDay){ S.moods=[...DC.state.moods]; S.mood=S.moods[0]||null; if(wgOpen==='mood')renderMoods(); if(S.day&&r.saved.length)S.day.remembered=true; }   /* панель настроения показывает те же отметки, что карточка */
     if(DC.forDay===yesterdayC()){ S.yesterday=undefined; }
     DC.firstSave=!DC.forDay&&!(S.daysTotal>0); dayChanged(r.day,false);
     DC.mode=matchMedia('(prefers-reduced-motion: reduce)').matches?'done':'celebrate'; paintDayCard();
@@ -423,7 +423,7 @@ async function loadDays(){
   const list=$('days-list'); if(!list)return;
   try{
     const c=ctx(); const r=await api('/days?calendar=14'); if(!c.alive())return; const items=r.items; S.daysTotal=r.total||0;
-    const today=DC.state?{day:DC.state.day,moods:DC.state.moods}:{day:S.day.date,moods:S.mood?[S.mood]:[]};
+    const today=DC.state?{day:DC.state.day,moods:DC.state.moods}:{day:S.day.date,moods:S.moods||[]};
     S.daysStrip=[...items].reverse().concat([today]);
     const rows=items.slice(0,3); const any=items.some(x=>!x.empty);
     list.innerHTML=any?rows.map(dayRowHtml).join(''):`<p class="hint">Пока пусто</p>`;
@@ -605,16 +605,18 @@ function moodFamily(family){moodUI.family=moodUI.family===family?null:family;ren
 function moodDetails(mode='families'){moodUI.precision=true;moodUI.mode=mode;renderMoods();$('mood-detail')?.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function moodOwn(){moodUI.ownOpen=true;renderMoods();$('mood-own').focus();}
 async function quickMood(key){const m=quickMoods().find(m=>m.key===key);if(!m)return;moodUI.family=m.family;moodUI.precision=false;await pickMood(key);}
+/* Панель «Настроение»: отмечено может быть несколько (S.moods — все отметки дня, S.mood — главное, первое); повторное нажатие снимает отметку */
 function renderMoods(){
-  const fams=moodFams(),list=moodList(),cur=moodInfo(S.mood),selected=moodUI.family;
-  const chip=m=>`<button data-on="click:pickMood-a0" data-a0="${m.key}" type="button" class="chip mchip${cur?.key===m.key?' on':''}" aria-pressed="${cur?.key===m.key}" style="--c:${moodUiColor(m.key)}">${esc(m.label)}</button>`;
+  const fams=moodFams(),list=moodList(),marks=S.moods||[],picked=new Set(marks),cur=moodInfo(S.mood),selected=moodUI.family;
+  const chip=m=>`<button data-on="click:pickMood-a0" data-a0="${m.key}" type="button" class="chip mchip${picked.has(m.key)?' on':''}" aria-pressed="${picked.has(m.key)}" style="--c:${moodUiColor(m.key)}">${esc(m.label)}</button>`;
+  const labels=marks.map(k=>MOOD_LABEL[k]).filter(Boolean);
   const familyKeys=Object.keys(fams).filter(f=>f!=='dyad'&&list.some(m=>m.family===f));
   $('t-moods').className='mood-picker';
   if(!quickMoods().length){$('t-moods').innerHTML=`<p class="practice-question">Как вы сейчас?</p><p class="hint">Список настроений не загрузился.</p><button data-on="click:loadCatalog-then-renderMoods-catch-toast-Нет-связи" type="button" class="btn ghost sm">Повторить</button>`;return;}
   $('t-moods').innerHTML=`<p class="practice-question">Как вы сейчас?</p>
-    <div class="quick-moods">${quickMoods().map(m=>`<button data-on="click:quickMood-a0" data-a0="${m.key}" type="button" class="quick-mood${S.mood===m.key?' on':''}" aria-pressed="${S.mood===m.key}">${moodSvg(m.key,30)}<span>${esc(m.label)}</span></button>`).join('')}<button data-on="click:moodOwn" type="button" class="quick-mood"><i class="ico pen"></i><span>Свое слово</span></button></div>
-    ${cur?`<div class="mpick saved-state" role="status">${moodSvg(S.mood,36)}<div><b>Сегодня — ${esc(cur.label)}</b><small>Сохранено · ${fmtDay(S.day.date)}. Можно выбрать другое</small></div></div>`:''}
-    <div class="mood-own-row" ${moodUI.ownOpen?'':'hidden'}><label for="mood-own">Свое настроение</label><div class="row"><input data-on="input:moodUI-own-value keydown:if-event-key-Enter-pickOwnMood" id="mood-own" aria-label="Свое настроение" maxlength="24" placeholder="Например: собранно" value="${esc(moodUI.own??ownMood(S.mood))}"><button data-on="click:pickOwnMood" class="btn sm" aria-label="Сохранить свое настроение">Сохранить</button></div></div>
+    <div class="quick-moods">${quickMoods().map(m=>`<button data-on="click:quickMood-a0" data-a0="${m.key}" type="button" class="quick-mood${picked.has(m.key)?' on':''}" aria-pressed="${picked.has(m.key)}">${moodSvg(m.key,30)}<span>${esc(m.label)}</span></button>`).join('')}<button data-on="click:moodOwn" type="button" class="quick-mood${marks.some(ownMood)?' on':''}"><i class="ico pen"></i><span>Свое слово</span></button></div>
+    ${cur?`<div class="mpick saved-state" role="status">${moodSvg(S.mood,36)}<div><b>Сегодня — ${esc(labels.join(', '))}</b><small>Сохранено · ${fmtDay(S.day.date)}. ${labels.length>1?'Повторное нажатие снимает отметку':'Можно отметить еще или снять'}</small></div></div>`:''}
+    <div class="mood-own-row" ${moodUI.ownOpen?'':'hidden'}><label for="mood-own">Свое настроение</label><div class="row"><input data-on="input:moodUI-own-value keydown:if-event-key-Enter-pickOwnMood" id="mood-own" aria-label="Свое настроение" maxlength="24" placeholder="Например: собранно" value="${esc(moodUI.own??(marks.map(ownMood).find(Boolean)||''))}"><button data-on="click:pickOwnMood" class="btn sm" aria-label="Сохранить свое настроение">Сохранить</button></div></div>
     <div class="utility-actions"><button data-on="click:moodDetails" type="button" class="btn ghost sm">${cur?'Хотите назвать точнее?':'Назвать точнее'}</button><button data-on="click:moodDetails-all" type="button" class="btn ghost sm">Все эмоции</button></div>
     <div id="mood-detail" ${moodUI.precision?'':'hidden'}><div class="segmented" role="tablist" aria-label="Выбор эмоций"><button data-on="click:moodMode-families" role="tab" aria-selected="${moodUI.mode==='families'}">Основные эмоции</button><button data-on="click:moodMode-all" role="tab" aria-selected="${moodUI.mode==='all'}">Все эмоции</button></div>
     ${moodUI.mode==='families'?`

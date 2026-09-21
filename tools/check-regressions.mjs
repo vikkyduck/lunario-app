@@ -99,8 +99,20 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     assert.equal(await page.inputValue('#wk-reflect'), 'Черновик прошлой недели');
     assert.equal((await owner.json('/week?week=' + cur)).reflection.text, 'Итог текущей недели', 'the save itself reached the right week');
     assert.equal(await page.evaluate((c) => draftGet('week', c), cur), null, 'the saved week draft is cleared');
+    /* Панель «Настроение» отмечает несколько (21.09): два быстрых настроения подряд — оба подсвечены и оба в карточке дня; повторное нажатие снимает одно */
+    await page.evaluate(() => { closeWidget(); go('history'); openWidget('mood'); }); await page.waitForSelector('#t-moods .quick-mood');
+    await page.evaluate(() => fetch('/app/api/day', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ moods: [] }) }).then(() => { S.moods = []; S.mood = null; renderMoods(); }));
+    await page.locator('#t-moods .quick-mood[data-a0="quick:calm"]').click(); await page.waitForFunction(() => S.moods.length === 1);
+    await page.locator('#t-moods .quick-mood[data-a0="quick:tired"]').click(); await page.waitForFunction(() => S.moods.length === 2);
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#t-moods .quick-mood.on')].map((b) => b.dataset.a0)), ['quick:calm', 'quick:tired'], 'both quick moods stay highlighted');
+    assert.ok((await page.locator('#t-moods .saved-state').innerText()).includes('Спокойно, Устала'), 'the saved line lists every mark');
+    assert.deepEqual((await owner.json('/day')).moods, ['quick:calm', 'quick:tired'], 'the day card carries both marks');
+    await page.locator('#t-moods .quick-mood[data-a0="quick:calm"]').click(); await page.waitForFunction(() => S.moods.length === 1);
+    assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#t-moods .quick-mood.on')].map((b) => b.dataset.a0)), ['quick:tired'], 'tapping a highlighted mood removes only it');
+    assert.deepEqual((await owner.json('/day')).moods, ['quick:tired']);
+    await page.evaluate(() => closeWidget());
     assert.deepEqual(errors, [], 'no page errors during the regressions');
-    console.log('PASS: browser regressions — cross-screen gratitude edit, deleted answer, lost response + edit, cancelled card pick, drafts after history clearing, delayed loads after clearing, week switch during a save (F05).');
+    console.log('PASS: browser regressions — cross-screen gratitude edit, deleted answer, lost response + edit, cancelled card pick, drafts after history clearing, delayed loads after clearing, week switch during a save (F05), several moods in the panel.');
   } finally { await ctx.close(); }
   await checkOnboardingWithMail({ browser, base, codeFor });
 }

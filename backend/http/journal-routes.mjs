@@ -9,19 +9,29 @@ export function createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrl
   const shape = (row) => { const t = readable(row.text), h = readable(row.title || ''); return { id: row.id, day: row.day, kind: row.kind, text: t.text, title: h.unreadable ? null : h.text, ...(t.unreadable || h.unreadable ? { unreadable: true } : {}) }; };
   const journalItem = (ref) => { const row = ref && ref.id ? db.prepare('SELECT id, day, text, kind, title FROM journal WHERE id = ? AND user_id = ?').get(ref.id, ref.uid) : null; return row ? shape(row) : null; };
   return async function journalRoutes({ p, req, res, url, u, d }) {
+    /* Настроение дня: отметок за день несколько (mood_marks), как в карточке дня. on — желаемое состояние отметки (true — отметить,
+       false — снять); без поля — прежний смысл для старых клиентов: отметить и сделать главным. «Главное» в moods — первое из
+       отмеченных (контракт moods.mjs), снятие последней отметки убирает и главное. Ответ несет все отметки дня — moods */
     if (p === '/api/mood' && req.method === 'POST') {
       const b = await readBody(req);
-      const mood = clean(b.mood, 30);
+      const mood = clean(b.mood, 30), on = typeof b.on === 'boolean' ? b.on : null;
       const own = /^own:[^\s|]{1,24}$/u.test(mood);   /* свое слово: «own:собранно» */
       if (!own && !C.moodInfo(mood)) return json(res, 400, { ok: false, error: 'bad_mood' });
-      mutate(u.id, () => {
-        db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, mood);
-        db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);   /* карточка дня показывает все отмеченные */
-        return { ok: true };
+      const marks = () => db.prepare('SELECT mood FROM mood_marks WHERE user_id = ? AND day = ? ORDER BY rowid').all(u.id, d).map((r) => r.mood);
+      const r = mutate(u.id, () => {
+        /* день старой версии: главное есть, отметок нет — сначала главное становится отметкой, иначе оно пропало бы из списка */
+        const legacy = db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d);
+        if (legacy && !marks().length) db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, legacy.mood);
+        if (on === false) db.prepare('DELETE FROM mood_marks WHERE user_id = ? AND day = ? AND mood = ?').run(u.id, d, mood);
+        else db.prepare('INSERT OR IGNORE INTO mood_marks (user_id, day, mood) VALUES (?,?,?)').run(u.id, d, mood);
+        const list = marks(), main = on === null ? mood : list[0];
+        if (main) db.prepare('INSERT INTO moods (user_id, day, mood) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET mood = excluded.mood').run(u.id, d, main);
+        else db.prepare('DELETE FROM moods WHERE user_id = ? AND day = ?').run(u.id, d);
+        return { ok: true, moods: list, mood: main || null };
       });
-      track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* свое слово — личный текст, в аналитику не идет */
+      if (on !== false) track(u, 'mood_set', mood.replace(/^own:.*/, 'own'));   /* свое слово — личный текст, в аналитику не идет */
       const month = d.slice(0, 7);
-      return json(res, 200, { ok: true, mood, stats: Moods.summary(u.id, month + '-01', month + '-31').stats, streak: touchStreak(u) });
+      return json(res, 200, { ok: true, mood: r.mood, moods: r.moods, stats: Moods.summary(u.id, month + '-01', month + '-31').stats, streak: touchStreak(u) });
     }
     /* Дневник: обычная запись, благодарность («кому и за что я благодарна сегодня») или ответ на вопрос дня.
        Все лежит в одной ленте, вид записи подписан. */

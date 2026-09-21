@@ -185,13 +185,15 @@ function paintToday(){
   if (wgOpen === 'tone') paintTone();
   renderMoods(); paintCardTile(); paintLunar(); loadNumerology();
 }
-function pickOwnMood(){ const w = ($('mood-own').value || '').trim().split(/\s+/)[0] || ''; if (!w) { toast('Напишите одно слово'); return; } pickMood('own:' + w.slice(0, 24)); }
-async function pickMood(id){
+function pickOwnMood(){ const w = ($('mood-own').value || '').trim().split(/\s+/)[0] || ''; if (!w) { toast('Напишите одно слово'); return; } pickMood('own:' + w.slice(0, 24), true); }   /* «Сохранить» всегда отмечает, не снимает */
+/* Отметок за день несколько, как в карточке дня: нажатие отмечает, повторное — снимает (on — желаемое состояние, не переключение:
+   повтор запроса дает тот же исход). Сервер отвечает всем списком дня; главное (S.mood) — первое из отмеченных, для открытки */
+async function pickMood(id,on=!(S.moods||[]).includes(id)){
   hap();
   try{
-    const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id})});
-    S.mood=r.mood; moodUI.own=ownMood(r.mood); renderMoods();
-    paintMoodExtra();
+    const r=await api('/mood',{method:'POST',body:JSON.stringify({mood:id,on})});
+    S.moods=r.moods||[]; S.mood=r.mood||null; moodUI.own=S.moods.map(ownMood).find(Boolean)||null; renderMoods();
+    paintMoodExtra(); if(S.day)dayChanged(S.day.date);   /* карточка дня, лента и неделя узнают об отметке (F25) */
   }catch(e){ toast(ERR_SAVE); }
 }
 async function loadNumerology(){

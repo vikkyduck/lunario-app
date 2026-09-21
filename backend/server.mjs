@@ -691,6 +691,7 @@ const server = createServer(async (req, res) => {
         return json(res, 200, {
           user: publicUser(u), day: dayPack(u, d), catalogV: catalogVersion(), preferences: preferences(u.preferences), ui: { ...C.UI }, features: FEATURES,
           mood: (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d) || {}).mood || null,
+          moods: Moods.ofDay(u.id, d),   /* все отметки дня — панель настроения отмечает несколько; mood (главное) — для старых клиентов и открытки */
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
           mailReady: mailLive(),
           supportUnread: W.userUnread(u.id),
