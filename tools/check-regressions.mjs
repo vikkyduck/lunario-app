@@ -3,7 +3,7 @@
    Настоящий бэкенд и изолированная база check-personal-features; запускается из него: --ui-regression (и в составе --ui).
    Экраны здесь дергаются теми же функциями, что и кнопки (go, openWidget, saveDayCard…) — проверяется путь данных, а не пиксели. */
 import assert from 'node:assert/strict';
-export async function checkRegressions({ browser, base, owner }) {
+export async function checkRegressions({ browser, base, owner, codeFor }) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const [name, value] = owner.cookie.split('='); await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, sameSite: 'Lax' }]);
   const page = await ctx.newPage(), errors = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));
@@ -102,4 +102,73 @@ export async function checkRegressions({ browser, base, owner }) {
     assert.deepEqual(errors, [], 'no page errors during the regressions');
     console.log('PASS: browser regressions — cross-screen gratitude edit, deleted answer, lost response + edit, cancelled card pick, drafts after history clearing, delayed loads after clearing, week switch during a save (F05).');
   } finally { await ctx.close(); }
+  await checkOnboardingWithMail({ browser, base, codeFor });
+}
+
+/* Анкета, когда письма настроены (как в проде: mailReady=true) и почта уже привязана до анкеты — через «Войти» на приветствии
+   или «Уже пользовались?» на самой анкете (21.09: «Проверьте адрес почты» под «Открыть мой день» без поля почты — анкету было не отправить).
+   Проверки идут без SMTP, поэтому mailReady в /api/me подменяется, а /api/auth/request — ответом «ушло»; код кладется в базу (codeFor),
+   /api/auth/verify и /api/profile — настоящие. Заодно: адрес, набранный в поле до входа по другой почте, не уходит на сервер */
+async function checkOnboardingWithMail({ browser, base, codeFor }) {
+  if (!codeFor) return;
+  const mailLive = async (page) => {
+    await page.route('**/api/me', async (route) => { const r = await route.fetch(); const body = await r.json(); await route.fulfill({ response: r, json: { ...body, mailReady: true } }); });
+    await page.route('**/api/auth/request', (route) => route.fulfill({ json: { ok: true } }));
+  };
+  const fillSteps = async (page, name) => {
+    await page.locator('#o-name').fill(name); await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
+    await page.locator('#o-birth').fill('1991-03-03'); await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
+    await page.locator('[data-on="click:obSkipTime"]').click();
+    await page.locator('#o-city').fill('Москва'); await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
+  };
+  /* 1. Приветствие → «Войти» → новая почта → код → «Заполнить профиль» → шаги → «Открыть мой день» — сразу «Сегодня» */
+  const login = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  try {
+    const page = await login.newPage(), errors = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));
+    await mailLive(page);
+    await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-hello.on');
+    await page.locator('#hello-login').click(); await page.waitForSelector('#v-login.on #auth-email');
+    const mail = 'onboard-login@example.test'; codeFor(mail);
+    await page.fill('#auth-email', mail); await page.click('#l-box [data-on="click:authSend"]'); await page.waitForSelector('#auth-code');
+    await page.fill('#auth-code', '123456'); await page.click('#l-box [data-on="click:authCheck"]');
+    await page.waitForFunction(() => document.getElementById('l-after').style.display !== 'none');
+    assert.equal(await page.evaluate(() => S.user.email), mail, 'the new address is attached to the device account before the questionnaire');
+    await page.locator('#l-after [data-on="click:openForm"]').click(); await page.waitForSelector('#v-onb.on');
+    await fillSteps(page, 'Вошла до анкеты');
+    assert.equal(await page.locator('#o-mailfield').evaluate((e) => e.style.display), 'none', 'the email field is hidden — the address is already attached');
+    assert.equal(await page.locator('#ob-done-q').innerText(), 'Почти готово');
+    await page.locator('#o-consent').check(); await page.locator('#o-go').click();
+    await page.waitForFunction(() => document.querySelector('#v-home.on') || document.getElementById('o-msg').innerText.trim());
+    assert.equal(await page.locator('#o-msg').innerText(), '', 'the form must submit — no «Проверьте адрес почты» for a hidden field');
+    await page.waitForSelector('#v-home.on');
+    assert.deepEqual(await page.evaluate(() => [S.user.onboarded, S.user.email, S.user.name]), [true, mail, 'Вошла до анкеты'], 'the profile is saved and the address kept');
+    assert.deepEqual(errors, [], 'no page errors on the onboarding with an attached address');
+  } finally { await login.close(); }
+  /* 2. На самой анкете: адрес набран в поле, затем «Уже пользовались?» с другой почтой — поле прячется, заголовок меняется, анкета уходит,
+        на сервер не идет ни код на набранный адрес, ни его привязка */
+  const inline = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  try {
+    const page = await inline.newPage(), errors = [], sent = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));
+    await mailLive(page); page.on('request', (r) => { if (r.url().endsWith('/api/auth/request')) sent.push(r.postDataJSON().email); });
+    await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-hello.on');
+    await page.getByRole('button', { name: /Открыть мой день/ }).click(); await page.waitForSelector('#v-onb.on');
+    await fillSteps(page, 'Вошла на анкете');
+    assert.equal(await page.locator('#ob-done-q').innerText(), 'Куда прислать код?', 'mail is live and no address yet — the last step asks for one');
+    await page.fill('#o-email', 'typed-then-abandoned@example.test');
+    await page.click('#o-auth [data-on="click:auth-step-email-paintAuth"]'); await page.waitForSelector('#o-auth #auth-email');
+    const mail = 'onboard-inline@example.test'; codeFor(mail);
+    await page.fill('#o-auth #auth-email', mail); await page.click('#o-auth [data-on="click:authSend"]'); await page.waitForSelector('#o-auth #auth-code');
+    await page.fill('#o-auth #auth-code', '123456'); await page.click('#o-auth [data-on="click:authCheck"]');
+    await page.waitForFunction((m) => S.user && S.user.email === m, mail);
+    await page.waitForFunction(() => document.getElementById('ob-done-q').innerText === 'Почти готово');
+    assert.equal(await page.locator('#o-mailfield').evaluate((e) => e.style.display), 'none', 'after signing in on the form the email field is hidden');
+    await page.locator('#o-consent').check(); await page.locator('#o-go').click();
+    await page.waitForFunction(() => document.querySelector('#v-home.on') || document.getElementById('o-msg').innerText.trim());
+    assert.equal(await page.locator('#o-msg').innerText(), '', 'the form must submit after signing in on it');
+    await page.waitForSelector('#v-home.on');
+    assert.deepEqual(sent, [mail], 'the abandoned address in the hidden field never gets a code');
+    assert.deepEqual(await page.evaluate(() => [S.user.onboarded, S.user.email]), [true, mail]);
+    assert.deepEqual(errors, [], 'no page errors on the inline sign-in path');
+  } finally { await inline.close(); }
+  console.log('PASS: questionnaire with mail live — address attached before the form (hello → Войти) and on the form (Уже пользовались?) submits without «Проверьте адрес почты»; a typed-then-abandoned address gets no code.');
 }

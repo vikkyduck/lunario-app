@@ -93,7 +93,7 @@ async function paintHelloLive(){
 function openForm(){
   $('v-onb').classList.remove('verifying-email');
   $('o-form').style.display=''; $('o-codebox').style.display='none';
-  const askMail = S.mailReady && !S.user?.email;   /* почта уже привязана через «Уже пользовались?» — второй раз не спрашиваем */
+  const askMail = obAskMail();   /* одно условие с проверкой при отправке (account.js): почта уже привязана — второй раз не спрашиваем */
   $('o-mailfield').style.display = askMail ? '' : 'none'; $('o-back').style.display = askMail ? '' : 'none';
   if (askMail) authMount('o-auth', { idle: obAuthIdle, onDone: obDone });
   obStep(0);

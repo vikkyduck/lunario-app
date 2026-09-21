@@ -300,27 +300,28 @@ try {
     assert.equal(qaDB.prepare("SELECT COUNT(*) n FROM reminders WHERE user_id=? AND enabled=1 AND feature NOT IN ('morning','evening','week')").get(uid).n,0,'old rows are switched off');
     assert.equal(reminders.migrateLegacyReminders(),0,'migration runs once'); }
   console.log('PASS: three reminders — morning from the настрой and chosen tiles, evening silent after a remembered day, weekly by moments; native 14-day plan; worker queue; legacy migration.');
-  /* «Моя неделя»: пусто → мало → полная; фрагменты дословно; «отозвалось» только по своим дням; рефлексия одна на неделю; чужие данные не видны */
+  /* «Моя неделя»: пусто → мало → полная; фрагменты дословно; «отозвалось» только по своим дням; рефлексия одна на неделю; чужие данные не видны.
+     Неделя запрашивается явно (?week=day): без параметра по понедельникам отдается прошедшая — записи сегодняшнего дня в нее не попадают, и прогон падал раз в неделю */
   { const wk=account();await wk.json('/me');await wk.json('/profile','POST',{name:'Неделя',birth:'1992-02-02',city:'Москва',consent:true});
-    const w0=await wk.json('/week');assert.equal(w0.mode,'empty');assert.equal(w0.text,'Записей не было. Это нормально.');assert.ok(w0.week.start<=day&&w0.week.end>=w0.week.start);assert.equal(w0.reflection.question,'Что хочется взять с собой в следующую неделю?');
-    assert.equal((await wk.json('/week?week=2030-01-01')).week.end<=w0.week.end,true,'the future is clamped to the current week');
-    await wk.json('/day','POST',{text:'Первый момент недели'});const w1=await wk.json('/week');assert.equal(w1.mode,'few');assert.equal(w1.text,'На этой неделе вы сохранили 1 момент');assert.equal(w1.saved[0].text,'Первый момент недели');
-    await wk.json('/day','POST',{gratitude:'Себе за то, что дошла',moods:['joy','quick:calm']});const w2=await wk.json('/week');assert.equal(w2.mode,'full');assert.equal(w2.moments,3);
+    const w0=await wk.json('/week?week='+day);assert.equal(w0.mode,'empty');assert.equal(w0.text,'Записей не было. Это нормально.');assert.ok(w0.week.start<=day&&w0.week.end>=w0.week.start);assert.equal(w0.reflection.question,'Что хочется взять с собой в следующую неделю?');
+    const wf=(await wk.json('/week?week=2030-01-01')).week;assert.ok(wf.start<=day&&wf.end>=day,'the future is clamped to the week of today');
+    await wk.json('/day','POST',{text:'Первый момент недели'});const w1=await wk.json('/week?week='+day);assert.equal(w1.mode,'few');assert.equal(w1.text,'На этой неделе вы сохранили 1 момент');assert.equal(w1.saved[0].text,'Первый момент недели');
+    await wk.json('/day','POST',{gratitude:'Себе за то, что дошла',moods:['joy','quick:calm']});const w2=await wk.json('/week?week='+day);assert.equal(w2.mode,'full');assert.equal(w2.moments,3);
     assert.equal(w2.moods.count,1);assert.deepEqual(w2.moods.days.find(x=>x.day===day).moods.map(m=>m.toLowerCase()),['радость','спокойно']);assert.ok(w2.moods.top.some(t=>t.mood.toLowerCase()==='радость'));
     assert.equal(w2.saved.length,2,'verbatim fragments');assert.ok(w2.saved.every(f=>['Первый момент недели','Себе за то, что дошла'].includes(f.text)));
     await wk.json('/me');const e=w2.echoes.find(x=>x.day===day);assert.ok(e&&e.morning&&e.evening&&e.verdict==='','today has a morning настрой and an evening record');
-    assert.equal((await wk.json('/week/echo','POST',{day,verdict:'yes'})).verdict,'yes');assert.equal((await wk.json('/week')).echoes.find(x=>x.day===day).verdict,'yes');
+    assert.equal((await wk.json('/week/echo','POST',{day,verdict:'yes'})).verdict,'yes');assert.equal((await wk.json('/week?week='+day)).echoes.find(x=>x.day===day).verdict,'yes');
     assert.equal((await wk.raw('/week/echo','POST',{day,verdict:'maybe'})).status,400);assert.equal((await wk.raw('/week/echo','POST',{day:'2031-01-01',verdict:'yes'})).status,400);
     assert.equal((await wk.json('/week/echo','POST',{day,verdict:''})).verdict,'');assert.equal(qaDB.prepare('SELECT COUNT(*) n FROM week_echoes WHERE day=?').get(day).n,0,'cleared verdict leaves no row');
     const r1=await wk.json('/week/reflect','POST',{week:day,text:'Взять с собой тишину'});assert.equal(r1.text,'Взять с собой тишину');assert.equal(r1.day,w2.week.end);
-    await wk.json('/week/reflect','POST',{week:day,text:'Взять с собой тишину и сон'});assert.equal((await wk.json('/week')).reflection.text,'Взять с собой тишину и сон');
+    await wk.json('/week/reflect','POST',{week:day,text:'Взять с собой тишину и сон'});assert.equal((await wk.json('/week?week='+day)).reflection.text,'Взять с собой тишину и сон');
     const uid=(await wk.json('/me')).user.id;assert.equal(qaDB.prepare("SELECT COUNT(*) n FROM journal WHERE user_id=? AND kind='weekly'").get(uid).n,1,'one reflection per week');
     assert.ok((await wk.json('/timeline?kind=&day=&offset=0')).items.some(i=>i.kind==='weekly'&&i.body==='Взять с собой тишину и сон'),'reflection is in the diary timeline');
-    assert.equal((await wk.json('/week')).moments,3,'the reflection itself is not a moment');
-    await wk.json('/week/reflect','POST',{week:day,text:''});assert.equal((await wk.json('/week')).reflection.text,'','empty text removes the reflection');
+    assert.equal((await wk.json('/week?week='+day)).moments,3,'the reflection itself is not a moment');
+    await wk.json('/week/reflect','POST',{week:day,text:''});assert.equal((await wk.json('/week?week='+day)).reflection.text,'','empty text removes the reflection');
     const h=(await wk.json('/habits','POST',{title:'Прогулка',rule:'каждый день'})).items.find(x=>x.title==='Прогулка');await wk.json('/day','POST',{habits:[{id:h.id,done:true}]});
-    const w3=await wk.json('/week');const rh=w3.rhythm.habits.find(x=>x.id===h.id);assert.ok(rh&&rh.done===1&&rh.days.some(x=>x.day===day&&x.done),'habit days in the rhythm');assert.ok(w3.rhythm.phrase,'a pace phrase comes with the rhythm');
-    const stranger=account();await stranger.json('/me');const ws=await stranger.json('/week');assert.equal(ws.mode,'empty');assert.equal(ws.echoes.length,0);assert.equal(ws.rhythm.habits.length,0,'another account sees none of it');
+    const w3=await wk.json('/week?week='+day);const rh=w3.rhythm.habits.find(x=>x.id===h.id);assert.ok(rh&&rh.done===1&&rh.days.some(x=>x.day===day&&x.done),'habit days in the rhythm');assert.ok(w3.rhythm.phrase,'a pace phrase comes with the rhythm');
+    const stranger=account();await stranger.json('/me');const ws=await stranger.json('/week?week='+day);assert.equal(ws.mode,'empty');assert.equal(ws.echoes.length,0);assert.equal(ws.rhythm.habits.length,0,'another account sees none of it');
     assert.equal(reminders.notificationFor('week',qaDB.prepare('SELECT * FROM users WHERE id=?').get(uid)).title,'Моя неделя: про что она'); }
   console.log('PASS: «Моя неделя» — empty / few / full modes, verbatim fragments, echo verdicts, one weekly reflection, rhythm days, account isolation.');
   await owner.json('/journal','POST',{kind:'gratitude',title:'Кому и за что я благодарна сегодня?',text:'Маме за звонок'});
@@ -628,11 +629,11 @@ try {
   // ── Аудит v98 (F08, F03, F04): неделя видит мысль и фото; карточка справочника — по ключу и версии; архив не перезаписывается ──
   { const w = account(); const me = await w.json('/me'), d0 = me.day.date;
     await w.json('/thought', 'POST', { source: 'card', slug: 'sun', name: 'Солнце', question: '', text: 'Мысль к карте — единственный момент недели' });
-    const wk = await w.json('/week'); assert.notEqual(wk.mode, 'empty', 'a week with one thought is not empty'); assert.equal(wk.moments, 1);
+    const wk = await w.json('/week?week=' + d0); assert.notEqual(wk.mode, 'empty', 'a week with one thought is not empty'); assert.equal(wk.moments, 1);   /* неделя сегодняшнего дня явно: по понедельникам без параметра отдается прошедшая */
     assert.ok(wk.saved.some((f) => f.kind === 'thought' && f.name === 'Солнце'), 'the thought is a fragment with its material: ' + JSON.stringify(wk.saved));
     const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2000, 7)]);
     await fetch(`${base}/api/day/photo?thumb=${jpeg.length}&w=100&h=100`, { method: 'PUT', headers: { Cookie: w.cookie, 'Content-Type': 'application/octet-stream', 'X-Forwarded-For': w.ip }, body: Buffer.concat([jpeg, jpeg]) });
-    assert.equal((await w.json('/week')).counts.photos, 1, 'a day photo counts as a moment');
+    assert.equal((await w.json('/week?week=' + d0)).counts.photos, 1, 'a day photo counts as a moment');
     const CE = await import(pathToFileURL(join(fixture, 'backend/content-edit.mjs')).href);
     const recs = CE.bookRecords('руны.txt'), r0 = recs[0], v0 = r0.version; assert.ok(v0 && recs.every((r) => r.version === v0));
     const n0 = CE.versions('руны.txt').length;
@@ -1257,7 +1258,10 @@ try {
       if(process.argv.includes('--ui-brand')){const {checkBrand}=await import('./check-brand.mjs');await checkBrand({browser,base,owner});}
       if(process.argv.includes('--ui')||process.argv.includes('--ui-design')){const designOwner=account();await designOwner.json('/me');await designOwner.json('/profile','POST',{name:'Анна',birth:'1990-01-01',city:'Москва',consent:true});const {checkDesign}=await import('./check-design.mjs');await checkDesign({browser,base,owner:designOwner});}
       if(process.argv.includes('--ui')||process.argv.includes('--ui-experience')){const xpOwner=account();await xpOwner.json('/me');await xpOwner.json('/profile','POST',{name:'Новый интерфейс',birth:'1990-01-01',city:'Москва',consent:true});const {checkExperience}=await import('./check-experience.mjs');await checkExperience({browser,base,owner:xpOwner});}
-      if(process.argv.includes('--ui')||process.argv.includes('--ui-regression')){const rgOwner=account();await rgOwner.json('/me');await rgOwner.json('/profile','POST',{name:'Регрессии',birth:'1990-01-01',city:'Москва',consent:true});const {checkRegressions}=await import('./check-regressions.mjs');await checkRegressions({browser,base,owner:rgOwner});}
+      if(process.argv.includes('--ui')||process.argv.includes('--ui-regression')){const rgOwner=account();await rgOwner.json('/me');await rgOwner.json('/profile','POST',{name:'Регрессии',birth:'1990-01-01',city:'Москва',consent:true});
+        /* код входа кладется в базу напрямую — письма в проверках не ходят; своя связь с базой, qaDB выше уже закрыта */
+        const codeFor=(email)=>{const c='123456',db=new DatabaseSync(join(fixture,'data/app.db'));db.prepare("INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login') ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0, purpose='login'").run(email,createHash('sha256').update(c+email).digest('hex'),new Date().toISOString(),new Date(Date.now()+600000).toISOString());db.close();return c;};
+        const {checkRegressions}=await import('./check-regressions.mjs');await checkRegressions({browser,base,owner:rgOwner,codeFor});}
       if(!process.argv.includes('--ui-recovery')&&!process.argv.includes('--ui-restoration')&&!process.argv.includes('--ui-experience')&&!process.argv.includes('--ui-design')&&!process.argv.includes('--ui-brand')&&!process.argv.includes('--ui-regression')){
       const repeatOwner=account();await repeatOwner.json('/me');await repeatOwner.json('/profile','POST',{name:'Повторные действия',birth:'1990-01-01',city:'Москва',consent:true});
       const {checkRepeatPractices}=await import('./check-repeat-practices.mjs');await checkRepeatPractices({browser,base,owner:repeatOwner});

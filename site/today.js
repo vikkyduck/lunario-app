@@ -340,6 +340,7 @@ function obDone(r){
   S.user = r.user;
   if (auth.box === 'l-box') { $('l-after').style.display = ''; $('l-box').style.display = 'none'; return; }
   $('o-back').style.display = 'none'; $('o-mailfield').style.display = 'none';
+  if (obIdx === OB_STEPS.length - 1) obStep(obIdx);   /* вошли на последнем шаге — заголовок «Куда прислать код?» сменяется на «Почти готово» */
   toast('Почта сохранена — осталось заполнить профиль');
 }
 const obAuthIdle = () => `<button data-on="click:auth-step-email-paintAuth" class="btn ghost sm full mt-3">Войти по почте</button>`;

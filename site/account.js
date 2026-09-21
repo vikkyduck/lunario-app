@@ -188,12 +188,16 @@ function attachCity(inputId, listId, geoId){
 /* ── анкета по шагам: один вопрос на экран (решение владелицы 19.09), как в дневнике; отправка — прежняя, по o-go ── */
 const OB_STEPS=[['name','Имя'],['birth','Дата'],['time','Время'],['city','Город'],['done','Готово']];
 let obIdx=0;
+/* Спрашиваем ли почту на последнем шаге: письма настроены и к аккаунту она еще не привязана (через «Уже пользовались?» или экран
+   входа почта уже есть — второй раз не спрашиваем). Одно условие на показ поля, заголовок шага и проверку при отправке —
+   раньше проверка смотрела только на S.mailReady и требовала адрес из скрытого поля: «Проверьте адрес почты» без поля почты */
+const obAskMail=()=>!!S.mailReady&&!S.user?.email;
 function obStep(n){
   obIdx=Math.max(0,Math.min(OB_STEPS.length-1,n));
   document.querySelectorAll('#o-form .ob-step').forEach((el,i)=>{ el.hidden=i!==obIdx; });
   $('ob-dots').innerHTML=OB_STEPS.map((_,i)=>`<i class="${i<obIdx?'done':i===obIdx?'on':''}"></i>`).join('');
   $('ob-names').innerHTML=OB_STEPS.map(([,t],i)=>`<span class="${i<obIdx?'done':i===obIdx?'on':''}">${t}</span>`).join('<i>·</i>');
-  if(obIdx===OB_STEPS.length-1){ const askMail=S.mailReady&&!S.user?.email; $('ob-done-q').textContent=askMail?'Куда прислать код?':ui('onb.done','Почти готово'); }
+  if(obIdx===OB_STEPS.length-1){ const askMail=obAskMail(); $('o-mailfield').style.display=askMail?'':'none'; $('ob-done-q').textContent=askMail?'Куда прислать код?':ui('onb.done','Почти готово'); }
   const inp=document.querySelector('#o-form .ob-step:not([hidden]) input:not([type=checkbox])');
   if(inp&&obIdx>0&&inp.type!=='date'&&inp.type!=='time') setTimeout(()=>inp.focus({preventScroll:true}),60);
   scrollToTop(0);
@@ -212,8 +216,8 @@ $('o-go').onclick=async()=>{
   const msg=$('o-msg'); showMsg(msg);
   const birth=$('o-birth').value;
   if(!birth){ showMsg(msg, 'Укажите дату рождения — без нее подсказки будут общими.', true); return; }
-  const email=$('o-email').value.trim().toLowerCase();
-  if(S.mailReady && !EMAIL_RE.test(email)){ showMsg(msg, 'Проверьте адрес почты.', true); return; }
+  const askMail=obAskMail(), email=askMail?$('o-email').value.trim().toLowerCase():'';   /* поле скрыто — его значение не читаем: там может остаться адрес, набранный до входа по другому */
+  if(askMail && !EMAIL_RE.test(email)){ showMsg(msg, 'Проверьте адрес почты.', true); return; }
   if(!$('o-consent').checked){ showMsg(msg, 'Чтобы продолжить, подтвердите согласие на обработку данных.', true); return; }
   const body = JSON.stringify({ name:$('o-name').value, birth, birthTime:$('o-time').value, city:$('o-city').value, consent:true });
   $('o-go').disabled=true; $('o-go').textContent='Готовим ваш день…';
@@ -222,7 +226,7 @@ $('o-go').onclick=async()=>{
     try{
       const r = await api('/profile', { method:'POST', body });
       S.user=r.user; S.day=r.day; hap('done');
-      if (S.mailReady && email) { await obSendCode(email); return; }
+      if (askMail && email) { await obSendCode(email); return; }
       finishOnboarding(); return;
     }catch(e){
       last=e;

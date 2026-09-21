@@ -20,10 +20,10 @@ export async function checkNotificationUI({browser,base,owner,other}) {
   try {
     const page=await onb.newPage();await page.goto(base+'/');await page.waitForSelector('#v-hello.on');
     await page.getByRole('button',{name:/Открыть мой день/}).click();await page.waitForSelector('#v-onb.on');
-    await page.locator('#o-name').fill('Ритм');await page.locator('#o-form .ob-step:not([hidden]) .btn').click();
-    await page.locator('#o-birth').fill('1992-02-02');await page.locator('#o-form .ob-step:not([hidden]) .btn').click();
+    await page.locator('#o-name').fill('Ритм');await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
+    await page.locator('#o-birth').fill('1992-02-02');await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
     await page.locator('[data-on="click:obSkipTime"]').click();
-    await page.locator('#o-city').fill('Москва');await page.locator('#o-form .ob-step:not([hidden]) .btn').click();
+    await page.locator('#o-city').fill('Москва');await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
     await page.locator('#o-consent').check();
     await page.locator('#o-go').click();await page.waitForSelector('#v-home.on');
     await page.evaluate(()=>openRhythm('home'));await page.waitForSelector('#v-rhythm.on');
