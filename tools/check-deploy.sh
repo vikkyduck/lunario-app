@@ -19,7 +19,10 @@ printf 'not a real db\n' > "$CLONE/backend/cities.db"   # не в git: пуст�
 mkdir -p "$SRV/app" "$SRV/content" "$SRV/backups"
 # на «сервере» — прежняя раскладка: site/ и backend/ прямо в папке приложения, без current; первый выпуск сохраняет ее как releases/prev-<выпуск>
 mkdir -p "$SRV/app/site" "$SRV/app/backend"; echo "// старый выпуск" > "$SRV/app/site/app.js"; echo "// старый сервер" > "$SRV/app/backend/server.mjs"; printf 'old1\n' > "$SRV/app/RELEASE"
-# Общие подстановки: сервер — локальная папка; проверки, systemd и health — заглушки, их подменяют сценарии
+# Общие подстановки: сервер — локальная папка; проверки, systemd и health — заглушки, их подменяют сценарии.
+# Переменные настоящего выпуска сюда не пропускаем: из deploy-safe.sh → deploy.sh → check-all сюда приходили EXPECT_RELEASE и EXPECT_MANIFEST
+# прода, вложенный deploy.sh сверял с ними «сервер» с RELEASE=old1 и падал — deploy-safe.sh не мог выпустить ничего (21.09)
+unset EXPECT_RELEASE EXPECT_MANIFEST ALLOW_DIRTY SKIP_CHECKS SERVER_HOST SERVER_USER
 export RUN_REMOTE="bash -c" APP_ROOT="$SRV/app" CONTENT_ROOT="$SRV/content" BACKUP_ROOT="$SRV/backups" INSTALL_UNITS=0 SYSTEMCTL=true
 export CHECK_CMD="true" HEALTH_CMD="true"
 fail() { echo "❌ check-deploy: $*"; exit 1; }
