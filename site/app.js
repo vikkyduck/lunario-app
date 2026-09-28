@@ -82,10 +82,10 @@ function go(v){
   if(v==='account')loadAccount();
 }
 /* Горизонтальный свайп дублирует четыре кнопки нижней навигации. Жест начинается на самой странице, но не забирает
-   управление у полей, открытых панелей и горизонтально прокручиваемых лент. Направление берем из порядка кнопок в разметке —
+   управление у полей и горизонтально прокручиваемых лент. Направление берем из порядка кнопок в разметке —
    если разделы переставят, свайп останется согласован с навигацией. */
 const NAV_VIEWS=[...document.querySelectorAll('.app-nav button[data-nav]')].map((b)=>b.dataset.nav);
-let navSwipe=null,navSwipeClickUntil=0,navSwipeClassTimer=0,navWheel=0,navWheelTimer=0;
+let navSwipe=null,navSwipeClickUntil=0,navSwipeClassTimer=0,navWheel=0,navWheelTimer=0,navWheelDone=false;
 function navSwipeScrollable(target){
   for(let el=target instanceof Element?target:null;el&&!el.classList.contains('view');el=el.parentElement){
     if(el.matches('input,textarea,select,[contenteditable="true"],[role="slider"]'))return true;
@@ -110,6 +110,7 @@ function navSwipeStart(target,x,y,id=0){
 }
 function navSwipeMove(x,y,e){
   if(!navSwipe)return;const dx=x-navSwipe.x,dy=y-navSwipe.y;
+  if(!navSwipe.horizontal&&Math.abs(dy)>12&&Math.abs(dy)>Math.abs(dx)){navSwipe=null;return;}
   if(!navSwipe.horizontal&&Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.1)navSwipe.horizontal=true;
   if(navSwipe.horizontal)e.preventDefault();
 }
@@ -118,22 +119,26 @@ function navSwipeEnd(x,y,e){
   if(Math.abs(dx)<42||Math.abs(dx)<Math.abs(dy)*1.1||navSwipeBlocked())return;
   navSwipeClickUntil=Date.now()+450;if(navSwipeGo(dx<0?1:-1))e.preventDefault();
 }
+/* Touch Events продолжаются в Safari даже когда браузер отменяет Pointer Events для прокрутки.
+   Палец обслуживается только здесь; Pointer Events ниже нужны мыши и перу. */
+document.addEventListener('touchstart',(e)=>{const p=e.touches[0];if(e.touches.length===1&&p)navSwipeStart(e.target,p.clientX,p.clientY);else navSwipe=null;},{passive:true});
+document.addEventListener('touchmove',(e)=>{const p=e.touches[0];if(e.touches.length!==1){navSwipe=null;return;}if(p)navSwipeMove(p.clientX,p.clientY,e);},{passive:false});
+document.addEventListener('touchend',(e)=>{const p=e.changedTouches[0];if(p)navSwipeEnd(p.clientX,p.clientY,e);else navSwipe=null;},{passive:false});
+document.addEventListener('touchcancel',()=>{navSwipe=null;},{passive:true});
 if(window.PointerEvent){
-  document.addEventListener('pointerdown',(e)=>{if(!e.isPrimary||(e.pointerType==='mouse'&&e.button!==0))return;if(navSwipeStart(e.target,e.clientX,e.clientY,e.pointerId))try{e.target.setPointerCapture(e.pointerId);}catch(err){}},{passive:true});
+  document.addEventListener('pointerdown',(e)=>{if(e.pointerType==='touch'||!e.isPrimary||e.button!==0)return;navSwipeStart(e.target,e.clientX,e.clientY,e.pointerId);},{passive:true});
   document.addEventListener('pointermove',(e)=>{if(navSwipe&&navSwipe.id===e.pointerId)navSwipeMove(e.clientX,e.clientY,e);},{passive:false});
   document.addEventListener('pointerup',(e)=>{if(navSwipe&&navSwipe.id===e.pointerId)navSwipeEnd(e.clientX,e.clientY,e);},{passive:false});
   document.addEventListener('pointercancel',(e)=>{if(navSwipe&&navSwipe.id===e.pointerId)navSwipe=null;},{passive:true});
-}else{
-  document.addEventListener('touchstart',(e)=>{const p=e.touches[0];if(e.touches.length===1&&p)navSwipeStart(e.target,p.clientX,p.clientY);else navSwipe=null;},{passive:true});
-  document.addEventListener('touchmove',(e)=>{const p=e.touches[0];if(navSwipe&&e.touches.length===1&&p)navSwipeMove(p.clientX,p.clientY,e);},{passive:false});
-  document.addEventListener('touchend',(e)=>{const p=e.changedTouches[0];if(p)navSwipeEnd(p.clientX,p.clientY,e);else navSwipe=null;},{passive:false});
-  document.addEventListener('touchcancel',()=>{navSwipe=null;},{passive:true});
 }
+document.addEventListener('dragstart',(e)=>{if(navSwipe)e.preventDefault();});
 /* Горизонтальный жест трекпада — тот же переход; обычное колесо и горизонтальные ленты не перехватываем. */
 document.addEventListener('wheel',(e)=>{
-  if(navSwipeBlocked()||navSwipeScrollable(e.target)||Math.abs(e.deltaX)<18||Math.abs(e.deltaX)<Math.abs(e.deltaY)*1.1)return;
-  e.preventDefault();clearTimeout(navWheelTimer);navWheel+=e.deltaX;navWheelTimer=setTimeout(()=>{navWheel=0;},220);
-  if(Math.abs(navWheel)>=55){const step=navWheel>0?1:-1;navWheel=0;navSwipeGo(step);}
+  if(e.ctrlKey||navSwipeBlocked()||!NAV_VIEWS.includes(activeView())||navSwipeScrollable(e.target)||!e.deltaX||Math.abs(e.deltaX)<Math.abs(e.deltaY)*1.2)return;
+  e.preventDefault();clearTimeout(navWheelTimer);navWheelTimer=setTimeout(()=>{navWheel=0;navWheelDone=false;},250);
+  if(navWheelDone)return;
+  navWheel+=e.deltaX*(e.deltaMode===1?16:e.deltaMode===2?innerWidth:1);
+  if(Math.abs(navWheel)>=55){navWheelDone=true;navSwipeGo(navWheel>0?1:-1);}
 },{passive:false});
 /* После настоящего свайпа мобильный браузер иногда присылает click по карточке, с которой начался жест. */
 document.addEventListener('click',(e)=>{if(Date.now()<navSwipeClickUntil){e.preventDefault();e.stopPropagation();}},{capture:true});

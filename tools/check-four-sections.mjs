@@ -12,7 +12,7 @@ export async function checkFourSections({browser,base,owner}){
     /* пробелы нормализуем: в подписи вкладки стоит неразрывный пробел, чтобы «с собой» не разрывалось на узком экране —
    для человека это тот же текст, и проверка не должна зависеть от вида пробела */
     assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.replace(/\s+/g,' ').trim()),['Сегодня','Дневник','Свериться с собой','Обо мне']);
-    const swipe=async(sel,x0,x1,y0=360,y1=364)=>page.evaluate(({sel,x0,x1,y0,y1})=>{const el=document.querySelector(sel),fire=(type,x,y)=>el.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:7,pointerType:'touch',isPrimary:true,button:0,clientX:x,clientY:y}));fire('pointerdown',x0,y0);fire('pointermove',x1,y1);fire('pointerup',x1,y1);},{sel,x0,x1,y0,y1});
+    const swipe=async(sel,x0,x1,y0=360,y1=364)=>page.evaluate(({sel,x0,x1,y0,y1})=>{const el=document.querySelector(sel),fire=(type,x,y)=>el.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:7,pointerType:'mouse',isPrimary:true,button:0,clientX:x,clientY:y}));fire('pointerdown',x0,y0);fire('pointermove',x1,y1);fire('pointerup',x1,y1);},{sel,x0,x1,y0,y1});
     await swipe('#v-home',389,1);await page.locator('#v-history.on').waitFor();
     await swipe('.app-nav',389,1);await page.locator('#v-ask.on').waitFor();
     await swipe('#v-ask',60,330);await page.locator('#v-history.on').waitFor();
