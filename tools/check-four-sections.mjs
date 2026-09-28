@@ -12,12 +12,14 @@ export async function checkFourSections({browser,base,owner}){
     /* пробелы нормализуем: в подписи вкладки стоит неразрывный пробел, чтобы «с собой» не разрывалось на узком экране —
    для человека это тот же текст, и проверка не должна зависеть от вида пробела */
     assert.deepEqual((await page.locator('.app-nav button').allTextContents()).map(s=>s.replace(/\s+/g,' ').trim()),['Сегодня','Дневник','Свериться с собой','Обо мне']);
-    const swipe=async(sel,x0,x1,y0=360,y1=364)=>page.evaluate(({sel,x0,x1,y0,y1})=>{const el=document.querySelector(sel),fire=(type,touches,changedTouches=touches)=>{const e=new Event(type,{bubbles:true,cancelable:true});Object.defineProperties(e,{touches:{value:touches},changedTouches:{value:changedTouches}});el.dispatchEvent(e);};fire('touchstart',[{clientX:x0,clientY:y0}]);fire('touchmove',[{clientX:x1,clientY:y1}]);fire('touchend',[],[{clientX:x1,clientY:y1}]);},{sel,x0,x1,y0,y1});
+    const swipe=async(sel,x0,x1,y0=360,y1=364)=>page.evaluate(({sel,x0,x1,y0,y1})=>{const el=document.querySelector(sel),fire=(type,x,y)=>el.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:7,pointerType:'touch',isPrimary:true,button:0,clientX:x,clientY:y}));fire('pointerdown',x0,y0);fire('pointermove',x1,y1);fire('pointerup',x1,y1);},{sel,x0,x1,y0,y1});
     await swipe('#v-home',389,1);await page.locator('#v-history.on').waitFor();
     await swipe('.app-nav',389,1);await page.locator('#v-ask.on').waitFor();
     await swipe('#v-ask',60,330);await page.locator('#v-history.on').waitFor();
     await swipe('#v-history',60,330);await page.locator('#v-home.on').waitFor();
     await swipe('#v-home',200,196,120,300);assert.ok(await page.locator('#v-home').evaluate(el=>el.classList.contains('on')),'vertical scrolling does not change the section');
+    await page.evaluate(()=>openWidget('lunar'));await page.locator('#wg.on').waitFor();await swipe('#wg-body',389,1);await page.locator('#v-history.on').waitFor();assert.equal(await page.locator('#wg.on').count(),0,'swiping from a reading closes it and opens the next section');
+    await page.evaluate(()=>document.querySelector('.app-nav').dispatchEvent(new WheelEvent('wheel',{bubbles:true,cancelable:true,deltaX:-80})));await page.locator('#v-home.on').waitFor();
     assert.equal(await page.locator('#v-home .sqs,#v-home .mini,#v-today,#v-around').count(),0,'No obsolete menu or orphan category');
     // «Аккаунт» — не вкладка: открывается со вкладки «Обо мне» (кружок справа вверху — тема), ни одна вкладка не подсвечена, назад — на «Сегодня»
     await page.locator('#h-acct').click();await page.locator('#v-account.on').waitFor();assert.equal(await page.locator('.app-nav [aria-current=page]').count(),0);

@@ -85,7 +85,7 @@ function go(v){
    управление у полей, открытых панелей и горизонтально прокручиваемых лент. Направление берем из порядка кнопок в разметке —
    если разделы переставят, свайп останется согласован с навигацией. */
 const NAV_VIEWS=[...document.querySelectorAll('.app-nav button[data-nav]')].map((b)=>b.dataset.nav);
-let navSwipe=null,navSwipeClickUntil=0,navSwipeClassTimer=0;
+let navSwipe=null,navSwipeClickUntil=0,navSwipeClassTimer=0,navWheel=0,navWheelTimer=0;
 function navSwipeScrollable(target){
   for(let el=target instanceof Element?target:null;el&&!el.classList.contains('view');el=el.parentElement){
     if(el.matches('input,textarea,select,[contenteditable="true"],[role="slider"]'))return true;
@@ -93,7 +93,7 @@ function navSwipeScrollable(target){
   }
   return false;
 }
-function navSwipeOpen(){return !!(wgOpen||document.body.classList.contains('practice-open')||document.querySelector('.pc-bg.on'));}
+function navSwipeBlocked(){return !!(document.body.classList.contains('practice-open')||document.querySelector('.pc-bg.on'));}
 function navSwipeGo(step){
   const active=document.querySelector('.view.on')?.id.replace(/^v-/,'');const i=NAV_VIEWS.indexOf(active),to=NAV_VIEWS[i+step];
   if(i<0||!to)return false;
@@ -103,23 +103,38 @@ function navSwipeGo(step){
   navSwipeClassTimer=setTimeout(()=>document.body.classList.remove('nav-swipe-next','nav-swipe-prev'),260);
   return true;
 }
-document.addEventListener('touchstart',(e)=>{
-  const t=e.target,pt=e.touches[0],view=t instanceof Element&&(t.closest('.view.on')||(document.body.classList.contains('inner')&&document.querySelector('.view.on')));
-  if(e.touches.length!==1||!pt||!view||!NAV_VIEWS.includes(view.id.replace(/^v-/,''))||navSwipeOpen()||navSwipeScrollable(t)){navSwipe=null;return;}
-  navSwipe={x:pt.clientX,y:pt.clientY,horizontal:false};
-},{passive:true});
-document.addEventListener('touchmove',(e)=>{
-  if(!navSwipe||e.touches.length!==1)return;const pt=e.touches[0],dx=pt.clientX-navSwipe.x,dy=pt.clientY-navSwipe.y;
+function navSwipeStart(target,x,y,id=0){
+  const view=target instanceof Element&&(target.closest('.view.on')||(document.body.classList.contains('inner')&&document.querySelector('.view.on')));
+  if(!view||!NAV_VIEWS.includes(view.id.replace(/^v-/,''))||navSwipeBlocked()||navSwipeScrollable(target)){navSwipe=null;return false;}
+  navSwipe={x,y,id,horizontal:false};return true;
+}
+function navSwipeMove(x,y,e){
+  if(!navSwipe)return;const dx=x-navSwipe.x,dy=y-navSwipe.y;
   if(!navSwipe.horizontal&&Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.1)navSwipe.horizontal=true;
   if(navSwipe.horizontal)e.preventDefault();
-},{passive:false});
-document.addEventListener('touchend',(e)=>{
-  if(!navSwipe||!e.changedTouches[0]){navSwipe=null;return;}
-  const p=navSwipe,pt=e.changedTouches[0],dx=pt.clientX-p.x,dy=pt.clientY-p.y;navSwipe=null;
-  if(Math.abs(dx)<42||Math.abs(dx)<Math.abs(dy)*1.1||navSwipeOpen())return;
+}
+function navSwipeEnd(x,y,e){
+  if(!navSwipe)return;const p=navSwipe,dx=x-p.x,dy=y-p.y;navSwipe=null;
+  if(Math.abs(dx)<42||Math.abs(dx)<Math.abs(dy)*1.1||navSwipeBlocked())return;
   navSwipeClickUntil=Date.now()+450;if(navSwipeGo(dx<0?1:-1))e.preventDefault();
+}
+if(window.PointerEvent){
+  document.addEventListener('pointerdown',(e)=>{if(!e.isPrimary||(e.pointerType==='mouse'&&e.button!==0))return;if(navSwipeStart(e.target,e.clientX,e.clientY,e.pointerId))try{e.target.setPointerCapture(e.pointerId);}catch(err){}},{passive:true});
+  document.addEventListener('pointermove',(e)=>{if(navSwipe&&navSwipe.id===e.pointerId)navSwipeMove(e.clientX,e.clientY,e);},{passive:false});
+  document.addEventListener('pointerup',(e)=>{if(navSwipe&&navSwipe.id===e.pointerId)navSwipeEnd(e.clientX,e.clientY,e);},{passive:false});
+  document.addEventListener('pointercancel',(e)=>{if(navSwipe&&navSwipe.id===e.pointerId)navSwipe=null;},{passive:true});
+}else{
+  document.addEventListener('touchstart',(e)=>{const p=e.touches[0];if(e.touches.length===1&&p)navSwipeStart(e.target,p.clientX,p.clientY);else navSwipe=null;},{passive:true});
+  document.addEventListener('touchmove',(e)=>{const p=e.touches[0];if(navSwipe&&e.touches.length===1&&p)navSwipeMove(p.clientX,p.clientY,e);},{passive:false});
+  document.addEventListener('touchend',(e)=>{const p=e.changedTouches[0];if(p)navSwipeEnd(p.clientX,p.clientY,e);else navSwipe=null;},{passive:false});
+  document.addEventListener('touchcancel',()=>{navSwipe=null;},{passive:true});
+}
+/* Горизонтальный жест трекпада — тот же переход; обычное колесо и горизонтальные ленты не перехватываем. */
+document.addEventListener('wheel',(e)=>{
+  if(navSwipeBlocked()||navSwipeScrollable(e.target)||Math.abs(e.deltaX)<18||Math.abs(e.deltaX)<Math.abs(e.deltaY)*1.1)return;
+  e.preventDefault();clearTimeout(navWheelTimer);navWheel+=e.deltaX;navWheelTimer=setTimeout(()=>{navWheel=0;},220);
+  if(Math.abs(navWheel)>=55){const step=navWheel>0?1:-1;navWheel=0;navSwipeGo(step);}
 },{passive:false});
-document.addEventListener('touchcancel',()=>{navSwipe=null;},{passive:true});
 /* После настоящего свайпа мобильный браузер иногда присылает click по карточке, с которой начался жест. */
 document.addEventListener('click',(e)=>{if(Date.now()<navSwipeClickUntil){e.preventDefault();e.stopPropagation();}},{capture:true});
 function onboarded(){ return !!(S.user && S.user.onboarded); }
