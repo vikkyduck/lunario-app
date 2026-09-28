@@ -14,6 +14,7 @@
 
    Письма не отправляются, рабочая база и секреты не используются. */
 import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
 import { mkdtemp, cp, mkdir, rm } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -279,6 +280,36 @@ try {
     db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login')`)
       .run(email, createHash('sha256').update('123456' + email).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
     const actor = account(); await actor.json('/me'); await actor.json('/auth/verify', 'POST', { email, code: '123456' });
+    if (role === 'content') {
+      const browser = await chromium.launch({ headless: true });
+      try {
+        const context = await browser.newContext();
+        const split = actor.cookie.indexOf('=');
+        await context.addCookies([{ name: actor.cookie.slice(0, split), value: actor.cookie.slice(split + 1), url: base }]);
+        const page = await context.newPage();
+        const errors = []; page.on('pageerror', e => errors.push(e.message));
+        await page.goto(base + '/cabinet#content/backlog');
+        const row = page.locator('#extra tr').filter({hasText: 'Задача для роли content'});
+        for (const automatic of [false, true]) {
+          if (automatic) await page.evaluate(() => { delete window.LUN_HANDLERS['taskLinkForm-a0']; delete window.LUN_HANDLERS['taskLinkSave-a0']; });
+          await row.getByRole('button', {name:'+ Ссылка', exact:true}).click();
+          await page.locator('#tl-url').fill('javascript:alert(1)');
+          await page.getByRole('button', {name:'Прикрепить',exact:true}).click();
+          await page.getByText('Укажите полную ссылку, начинающуюся с https:// или http://.', {exact:true}).waitFor();
+          assert.equal(await page.getByRole('button', {name:'Прикрепить',exact:true}).isEnabled(), true);
+          await page.locator('#tl-url').fill(`https://example.test/browser-${automatic}`);
+          const label = `Материал из браузера ${automatic}`;
+          await page.locator('#tl-title').fill(label);
+          await page.getByRole('button', {name:'Прикрепить',exact:true}).click();
+          await row.getByRole('link', {name:label,exact:true}).waitFor();
+          await page.reload();
+          await row.getByRole('link', {name:label,exact:true}).waitFor();
+        }
+        assert.deepEqual(errors, []);
+        db.prepare('DELETE FROM task_links WHERE task_id = ?').run(taskOf(role));
+        console.log('PASS: Контент — реальный клик, ввод ссылки, сохранение, перезагрузка.');
+      } finally { await browser.close(); }
+    }
     const id = taskOf(role), link = { id, action: 'addLink', url: `https://example.test/${role}`, title: 'Материал' };
     assert.equal((await actor.raw('/cabinet/tasks', 'POST', link)).status, 200);
     assert.equal((await actor.raw('/cabinet/tasks', 'POST', link)).status, 200);

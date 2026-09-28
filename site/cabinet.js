@@ -274,20 +274,30 @@ async function backupNow() {
 async function mediaArchive(id, on) { const r = await api('/cabinet/media/archive', { method: 'POST', body: JSON.stringify({ id, on }) }); toast(r.ok ? (on ? 'Сгружено в архив' : 'Возвращено') : 'Не получилось'); EXTRAS.media(); }
 async function mediaDel(id) { if (!confirm('Удалить файл насовсем? Если он еще может понадобиться — лучше «Сгрузить»: запись и скачивание останутся.')) return; await api('/cabinet/media?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.media(); }
 function taskLinkForm(id) {
-  const task = S.tasks.items.find((t) => t.id === id);
+  id = Number(id);
+  const task = (S.tasks?.items || []).find((t) => Number(t.id) === id);
+  if (!task) { toast('Задача не найдена. Обновите бэклог.'); return; }
   openModal(`<div class="head"><h2>Прикрепить ссылку</h2><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
     <p>${esc(task.title)}</p><div class="stack-10">
-    ${field('Ссылка', '<input id="tl-url" type="url" maxlength="2048" placeholder="https://…">')}
+    ${field('Ссылка', '<input id="tl-url" type="url" maxlength="2048" placeholder="https://…" autocomplete="url">')}
     ${field('Название (необязательно)', '<input id="tl-title" maxlength="140" placeholder="Материал или результат работы">')}
-    <button data-on="click:taskLinkSave-a0" data-a0="${id}" class="btn gold">Прикрепить</button><p id="tl-msg" class="hint" role="status"></p></div>`);
+    <button id="tl-save" type="button" data-on="click:taskLinkSave-a0" data-a0="${id}" class="btn gold">Прикрепить</button><p id="tl-msg" class="hint" role="status"></p></div>`);
 }
 async function taskLinkSave(id) {
+  const button = $('tl-save'), message = $('tl-msg');
+  if (!button || button.disabled) return;
+  button.disabled = true; message.textContent = 'Сохраняем…';
+  const errors = { bad_url: 'Укажите полную ссылку, начинающуюся с https:// или http://.',
+    too_many_links: 'К задаче уже прикреплено 50 ссылок.', no_access: 'Нет доступа к этой задаче.',
+    not_found: 'Задача удалена или больше недоступна. Обновите бэклог.' };
   try {
-    const r = await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id, action: 'addLink', url: $('tl-url').value, title: $('tl-title').value }) });
-    if (!r.ok) { $('tl-msg').textContent = r.error === 'too_many_links' ? 'К задаче уже прикреплено 50 ссылок.' : 'Укажите корректную ссылку, начинающуюся с https:// или http://.'; return; }
+    const r = await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id: Number(id), action: 'addLink', url: $('tl-url').value.trim(), title: $('tl-title').value.trim() }) });
+    if (!r.ok) throw Object.assign(new Error('save_failed'), { code: r.error });
     closeModal(); toast('Ссылка прикреплена'); await EXTRAS.backlog();
-  } catch { if ($('tl-msg')) $('tl-msg').textContent = 'Не удалось прикрепить ссылку. Проверьте соединение и доступ к задаче.'; }
+  } catch (e) { message.textContent = errors[e.code] || 'Не удалось прикрепить ссылку. Попробуйте еще раз.'; }
+  finally { button.disabled = false; }
 }
+
 function taskForm(id) {
   const r = S.tasks, t = (r.items || []).find((x) => x.id === id) || {};
   openModal(`<div class="head"><div><span class="eyebrow">Беклог</span><h2 class="mt-6">${id ? 'Изменить задачу' : 'Новая задача'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
