@@ -445,6 +445,7 @@ body.hello .bg::after{content:"";position:absolute;inset:0;background:linear-gra
 .wg-body{margin-top:22px}
 body.wg-open{overflow:hidden}
 .app-nav{position:fixed;z-index:120;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(430px,calc(100% - 24px));height:auto;padding:5px;display:none;grid-template-columns:repeat(4,1fr);gap:3px;border:1px solid rgba(255,255,255,.13);border-radius:var(--r-xl);background:rgba(19,16,34,.78);box-shadow:inset 0 1px rgba(255,255,255,.15),0 16px 48px rgba(0,0,0,.45);backdrop-filter:none;-webkit-backdrop-filter:none}
+body.inner{overscroll-behavior-x:none}
 body.inner .app-nav{display:grid}
 .app-nav button{border:0;border-radius:var(--r-l);background:transparent;color:var(--faint);font:inherit;font-size:11px;line-height:1.1;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px;text-align:center;cursor:pointer}
 .app-nav button .ico{width:21px;height:21px;background:var(--faint)}

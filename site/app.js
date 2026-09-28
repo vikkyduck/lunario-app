@@ -88,7 +88,7 @@ const NAV_VIEWS=[...document.querySelectorAll('.app-nav button[data-nav]')].map(
 let navSwipe=null,navSwipeClickUntil=0,navSwipeClassTimer=0;
 function navSwipeScrollable(target){
   for(let el=target instanceof Element?target:null;el&&!el.classList.contains('view');el=el.parentElement){
-    if(el.matches('input,textarea,select,[contenteditable="true"],[role="slider"],.app-nav'))return true;
+    if(el.matches('input,textarea,select,[contenteditable="true"],[role="slider"]'))return true;
     const s=getComputedStyle(el);if(el.scrollWidth>el.clientWidth+4&&/(auto|scroll)/.test(s.overflowX))return true;
   }
   return false;
@@ -104,19 +104,19 @@ function navSwipeGo(step){
   return true;
 }
 document.addEventListener('touchstart',(e)=>{
-  const t=e.target,pt=e.touches[0],view=t instanceof Element&&t.closest('.view.on');
-  if(e.touches.length!==1||!pt||!view||!NAV_VIEWS.includes(view.id.replace(/^v-/,''))||navSwipeOpen()||navSwipeScrollable(t)||pt.clientX<18||pt.clientX>innerWidth-18){navSwipe=null;return;}
-  navSwipe={x:pt.clientX,y:pt.clientY,at:Date.now(),horizontal:false};
+  const t=e.target,pt=e.touches[0],view=t instanceof Element&&(t.closest('.view.on')||(document.body.classList.contains('inner')&&document.querySelector('.view.on')));
+  if(e.touches.length!==1||!pt||!view||!NAV_VIEWS.includes(view.id.replace(/^v-/,''))||navSwipeOpen()||navSwipeScrollable(t)){navSwipe=null;return;}
+  navSwipe={x:pt.clientX,y:pt.clientY,horizontal:false};
 },{passive:true});
 document.addEventListener('touchmove',(e)=>{
   if(!navSwipe||e.touches.length!==1)return;const pt=e.touches[0],dx=pt.clientX-navSwipe.x,dy=pt.clientY-navSwipe.y;
-  if(!navSwipe.horizontal&&Math.abs(dx)>14&&Math.abs(dx)>Math.abs(dy)*1.2)navSwipe.horizontal=true;
+  if(!navSwipe.horizontal&&Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.1)navSwipe.horizontal=true;
   if(navSwipe.horizontal)e.preventDefault();
 },{passive:false});
 document.addEventListener('touchend',(e)=>{
   if(!navSwipe||!e.changedTouches[0]){navSwipe=null;return;}
   const p=navSwipe,pt=e.changedTouches[0],dx=pt.clientX-p.x,dy=pt.clientY-p.y;navSwipe=null;
-  if(Date.now()-p.at>1200||Math.abs(dx)<52||Math.abs(dx)<Math.abs(dy)*1.2||navSwipeOpen())return;
+  if(Math.abs(dx)<42||Math.abs(dx)<Math.abs(dy)*1.1||navSwipeOpen())return;
   navSwipeClickUntil=Date.now()+450;if(navSwipeGo(dx<0?1:-1))e.preventDefault();
 },{passive:false});
 document.addEventListener('touchcancel',()=>{navSwipe=null;},{passive:true});
