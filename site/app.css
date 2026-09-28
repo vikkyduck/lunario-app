@@ -449,6 +449,11 @@ body.inner .app-nav{display:grid}
 .app-nav button{border:0;border-radius:var(--r-l);background:transparent;color:var(--faint);font:inherit;font-size:11px;line-height:1.1;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 2px;text-align:center;cursor:pointer}
 .app-nav button .ico{width:21px;height:21px;background:var(--faint)}
 .app-nav button.on .ico{background:var(--gold-2)}
+body.nav-swipe-next .view.on{animation:nav-swipe-next .24s var(--sp)}
+body.nav-swipe-prev .view.on{animation:nav-swipe-prev .24s var(--sp)}
+@keyframes nav-swipe-next{from{opacity:.55;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes nav-swipe-prev{from{opacity:.55;transform:translateX(-24px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){body.nav-swipe-next .view.on,body.nav-swipe-prev .view.on{animation:none}}
 #v-ask>.back,#v-history>.back,#v-about>.back{display:none}
 #v-account>.back,#v-news>.back{margin-bottom:6px}
 .danger-zone{padding-top:20px;border-top:1px solid var(--line)}

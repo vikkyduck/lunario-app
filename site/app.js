@@ -81,6 +81,47 @@ function go(v){
   if(v==='about')loadAbout();
   if(v==='account')loadAccount();
 }
+/* Горизонтальный свайп дублирует четыре кнопки нижней навигации. Жест начинается на самой странице, но не забирает
+   управление у полей, открытых панелей и горизонтально прокручиваемых лент. Направление берём из порядка кнопок в разметке —
+   если разделы переставят, свайп останется согласован с навигацией. */
+const NAV_VIEWS=[...document.querySelectorAll('.app-nav button[data-nav]')].map((b)=>b.dataset.nav);
+let navSwipe=null,navSwipeClickUntil=0,navSwipeClassTimer=0;
+function navSwipeScrollable(target){
+  for(let el=target instanceof Element?target:null;el&&!el.classList.contains('view');el=el.parentElement){
+    if(el.matches('input,textarea,select,[contenteditable="true"],[role="slider"],.app-nav'))return true;
+    const s=getComputedStyle(el);if(el.scrollWidth>el.clientWidth+4&&/(auto|scroll)/.test(s.overflowX))return true;
+  }
+  return false;
+}
+function navSwipeOpen(){return !!(wgOpen||document.body.classList.contains('practice-open')||document.querySelector('.pc-bg.on'));}
+function navSwipeGo(step){
+  const active=document.querySelector('.view.on')?.id.replace(/^v-/,'');const i=NAV_VIEWS.indexOf(active),to=NAV_VIEWS[i+step];
+  if(i<0||!to)return false;
+  clearTimeout(navSwipeClassTimer);document.body.classList.remove('nav-swipe-next','nav-swipe-prev');
+  void document.body.offsetWidth;document.body.classList.add(step>0?'nav-swipe-next':'nav-swipe-prev');
+  go(to);hap();track('nav_swipe',active+'>'+to);
+  navSwipeClassTimer=setTimeout(()=>document.body.classList.remove('nav-swipe-next','nav-swipe-prev'),260);
+  return true;
+}
+document.addEventListener('touchstart',(e)=>{
+  const t=e.target,pt=e.touches[0],view=t instanceof Element&&t.closest('.view.on');
+  if(e.touches.length!==1||!pt||!view||!NAV_VIEWS.includes(view.id.replace(/^v-/,''))||navSwipeOpen()||navSwipeScrollable(t)||pt.clientX<18||pt.clientX>innerWidth-18){navSwipe=null;return;}
+  navSwipe={x:pt.clientX,y:pt.clientY,at:Date.now(),horizontal:false};
+},{passive:true});
+document.addEventListener('touchmove',(e)=>{
+  if(!navSwipe||e.touches.length!==1)return;const pt=e.touches[0],dx=pt.clientX-navSwipe.x,dy=pt.clientY-navSwipe.y;
+  if(!navSwipe.horizontal&&Math.abs(dx)>14&&Math.abs(dx)>Math.abs(dy)*1.2)navSwipe.horizontal=true;
+  if(navSwipe.horizontal)e.preventDefault();
+},{passive:false});
+document.addEventListener('touchend',(e)=>{
+  if(!navSwipe||!e.changedTouches[0]){navSwipe=null;return;}
+  const p=navSwipe,pt=e.changedTouches[0],dx=pt.clientX-p.x,dy=pt.clientY-p.y;navSwipe=null;
+  if(Date.now()-p.at>1200||Math.abs(dx)<52||Math.abs(dx)<Math.abs(dy)*1.2||navSwipeOpen())return;
+  navSwipeClickUntil=Date.now()+450;if(navSwipeGo(dx<0?1:-1))e.preventDefault();
+},{passive:false});
+document.addEventListener('touchcancel',()=>{navSwipe=null;},{passive:true});
+/* После настоящего свайпа мобильный браузер иногда присылает click по карточке, с которой начался жест. */
+document.addEventListener('click',(e)=>{if(Date.now()<navSwipeClickUntil){e.preventDefault();e.stopPropagation();}},{capture:true});
 function onboarded(){ return !!(S.user && S.user.onboarded); }
 /* Фразы интерфейса из кабинета (интерфейс.txt): ui('ключ', 'как в коде'). Статичная разметка — data-ui, applyUi() после загрузки */
 const ui=(k,f)=>(S.ui&&S.ui[k])||f;
