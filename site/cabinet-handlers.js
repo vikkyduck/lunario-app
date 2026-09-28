@@ -24,6 +24,8 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "mediaDel-a0": function (event) { mediaDel(JSON.parse(this.dataset.a0)) },
   "if-event-key-Enter-ctSearch-value": function (event) { if (event.key === 'Enter') ctSearch(this.value) },
   "taskStatus-a0-value": function (event) { taskStatus(JSON.parse(this.dataset.a0),this.value) },
+  "taskLinkForm-a0": function () { taskLinkForm(JSON.parse(this.dataset.a0)) },
+  "taskLinkSave-a0": function () { taskLinkSave(JSON.parse(this.dataset.a0)) },
   "taskForm-0": function (event) { taskForm(0) },
   "taskForm-a0": function (event) { taskForm(JSON.parse(this.dataset.a0)) },
   "taskDel-a0": function (event) { taskDel(JSON.parse(this.dataset.a0)) },

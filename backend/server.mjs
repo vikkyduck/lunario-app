@@ -1,3 +1,4 @@
+import { createBacklogTelegram } from './backlog-telegram.mjs';
 /* Лунарио — веб-приложение (PWA). Zero-dependency Node >=22.5 (node:sqlite).
    Слушает 127.0.0.1, за nginx. Своя папка и свой порт — не пересекается с лендингом.
    Аккаунт анонимный: httpOnly-cookie с токеном, e-mail можно привязать позже. */
@@ -126,6 +127,11 @@ initReminders(db, { habitList: (uid, d) => habitList(uid, d), askesisList: (uid,
 initCabinet(db);   /* таблицы кабинетов; колонки users ведет schema.mjs */
 initReports(db, DATA_DIR);
 W.initWorkspace(db, DATA_DIR, seal, open_);
+const backlogTelegram = createBacklogTelegram({ db,
+  token: process.env.TELEGRAM_BACKLOG_BOT_TOKEN || '', chatId: process.env.TELEGRAM_BACKLOG_CHAT_ID || '',
+  cabinetUrl: `${PUBLIC_BASE}${BASE}/cabinet`,
+});
+backlogTelegram.start();
 /* Отчеты, дашборд кабинета и полная выгрузка — в отдельном потоке с ограниченной очередью (job-runner.mjs, F09, F10): SQLite синхронна,
    и один отчет или выгрузка года записей не должны задерживать запросы приложения. Выгрузок в очереди — не больше 4 */
 const Reports = createJobRunner({ dataDir: DATA_DIR, maxByKind: { export: 4 }, inline: { overview, report, export: (userId, format) => exportInline(userId, format) } });

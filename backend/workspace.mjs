@@ -178,7 +178,7 @@ export const TASK_ROLES = { content: 'Контент', support: 'Поддерж�
 export function taskList(roles = []) {
   const order = `ORDER BY CASE status WHEN 'done' THEN 1 ELSE 0 END, CASE priority WHEN 'high' THEN 0 ELSE 1 END, created_at DESC`;
   const rows = roles.length ? all(`SELECT * FROM tasks WHERE role IN (${roles.map(() => '?').join(',')}) ${order}`, ...roles) : all(`SELECT * FROM tasks ${order}`);
-  return rows.map((t) => ({ ...t, created_by: mask(t.created_by), assignee: mask(t.assignee) }));
+  return rows.map((t) => ({ ...t, links: all('SELECT * FROM task_links WHERE task_id = ? ORDER BY id', t.id).map((link) => ({ ...link, created_by: mask(link.created_by) })), created_by: mask(t.created_by), assignee: mask(t.assignee) }));
 }
 export function taskSave(b, by) {
   const title = clean(b.title, 140); if (!title) return { ok: false, error: 'no_title' };
@@ -197,6 +197,24 @@ export function taskStatus(id, status, by, own = []) {
   const t = one('SELECT role FROM tasks WHERE id = ?', Number(id)); if (!t) return { ok: false, error: 'not_found' };
   if (own.length && !own.includes(t.role)) return { ok: false, error: 'no_access' };   // скрытая в списке задача не должна меняться по id
   db.prepare('UPDATE tasks SET status=?, updated_at=?, done_at=? WHERE id=?').run(status, now(), status === 'done' ? now() : '', Number(id));
+  return { ok: true };
+}
+export function taskLinkAdd(id, b, by, own = []) {
+  const t = one('SELECT role FROM tasks WHERE id = ?', Number(id));
+  if (!t) return { ok: false, error: 'not_found' };
+  if (own.length && !own.includes(t.role)) return { ok: false, error: 'no_access' };
+  let url;
+  try {
+    if (typeof b.url !== 'string' || b.url.length > 2048) throw new Error();
+    const parsed = new URL(b.url.trim());
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error();
+    url = parsed.href;
+  } catch { return { ok: false, error: 'bad_url' }; }
+  if (one('SELECT id FROM task_links WHERE task_id = ? AND url = ?', Number(id), url)) return { ok: true };
+  if (one('SELECT COUNT(*) n FROM task_links WHERE task_id = ?', Number(id)).n >= 50) return { ok: false, error: 'too_many_links' };
+  db.prepare('INSERT INTO task_links (task_id, url, title, created_by, created_at) VALUES (?,?,?,?,?)')
+    .run(Number(id), url, clean(b.title, 140), by || '', now());
+  db.prepare('UPDATE tasks SET updated_at = ? WHERE id = ?').run(now(), Number(id));
   return { ok: true };
 }
 export function taskRemove(id) { db.prepare('DELETE FROM tasks WHERE id = ?').run(Number(id)); return { ok: true }; }

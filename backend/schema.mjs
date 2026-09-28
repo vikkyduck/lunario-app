@@ -298,12 +298,38 @@ export const MIGRATIONS = [
     addColumn(db, 'knowledge', 'rev', 'INTEGER DEFAULT 0');
     for (const col of ['text_key', 'text', 'question', 'theme']) addColumn(db, 'daily_sets', col, "TEXT NOT NULL DEFAULT ''");
   } },
+  { v: 24, name: 'ссылки к задачам', up(db) {
+    db.exec(`CREATE TABLE IF NOT EXISTS task_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      url TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL, created_at TEXT NOT NULL,
+      UNIQUE(task_id, url)
+    )`);
+  } },
+  { v: 25, name: 'очередь Telegram для бэклога', up(db) {
+    db.exec(`CREATE TABLE backlog_telegram_outbox (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+      next_at INTEGER NOT NULL DEFAULT 0, sent_at INTEGER, last_error TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX idx_backlog_telegram_pending ON backlog_telegram_outbox(state, id);
+    CREATE TRIGGER backlog_telegram_created AFTER INSERT ON tasks BEGIN
+      INSERT INTO backlog_telegram_outbox(payload) VALUES(json_object('kind','created','task_id',NEW.id,'title',NEW.title,'role',NEW.role,'status',NEW.status));
+    END;
+    CREATE TRIGGER backlog_telegram_status AFTER UPDATE OF status ON tasks WHEN OLD.status <> NEW.status BEGIN
+      INSERT INTO backlog_telegram_outbox(payload) VALUES(json_object('kind','status','task_id',NEW.id,'title',NEW.title,'role',NEW.role,'status',NEW.status,'old_status',OLD.status));
+    END;
+    CREATE TRIGGER backlog_telegram_link AFTER INSERT ON task_links BEGIN
+      INSERT INTO backlog_telegram_outbox(payload)
+        SELECT json_object('kind','link','task_id',t.id,'title',t.title,'role',t.role,'url',NEW.url,'link_title',NEW.title) FROM tasks t WHERE t.id=NEW.task_id;
+    END;`);
+  } },
 ];
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
 /* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера (и отдельными процессами перед работой).
    Границы у миграций и проверки одни (F12): все, от чего зависят операции, — здесь, включая users.data_rev и knowledge.rev */
 export const REQUIRED = {
+  backlog_telegram_outbox: ['payload', 'state', 'attempts', 'next_at', 'sent_at', 'last_error'],
   users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref', 'data_rev'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
   entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text', 'start_day', 'tz'], wishes: ['photo', 'photo_ts'],
@@ -314,7 +340,7 @@ export const REQUIRED = {
   staff: ['email', 'roles'], costs: ['month', 'name', 'amount'], errors: ['ts', 'day', 'path', 'message'], cabinet_settings: ['key', 'value'],
   reminders: ['user_id', 'feature', 'enabled', 'time', 'freq', 'weekday', 'tz', 'next_at'], push_queue: ['user_id', 'feature', 'title', 'body', 'endpoint'], push_shown: ['item_id', 'endpoint'],
   campaigns: ['name', 'source', 'created_at'], materials: ['kind', 'section', 'status'], materials_versions: ['material_id', 'json'], media: ['name', 'file', 'archived', 'archived_at'],
-  ai_providers: ['provider', 'key_enc'], tasks: ['title', 'role', 'status'], tickets: ['user_id', 'status', 'last_at'], messages: ['ticket_id', 'who', 'text'],
+  ai_providers: ['provider', 'key_enc'], task_links: ['task_id', 'url', 'title', 'created_by', 'created_at'], tasks: ['title', 'role', 'status'], tickets: ['user_id', 'status', 'last_at'], messages: ['ticket_id', 'who', 'text'],
 };
 export const REQUIRED_INDEXES = ['idx_users_email', 'idx_sessions_user', 'idx_entries_user', 'idx_events_day', 'idx_events_user', 'idx_journal_user', 'idx_journal_user_day', 'idx_wishes_user',
   'idx_habits_user', 'idx_askesis_user', 'idx_events_user_ts', 'idx_receipts_created', 'idx_errors_day', 'idx_reminders_due', 'idx_tickets_user', 'idx_messages_ticket'];

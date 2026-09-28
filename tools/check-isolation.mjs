@@ -272,6 +272,28 @@ try {
   for (const id of [tContent, tSupport]) assert.equal((await two.raw('/cabinet/tasks', 'POST', { id, status: 'in_progress', onlyStatus: true })).status, 200, 'свою задачу сотрудник по-прежнему переводит');
   console.log('PASS: сотрудник с двумя ролями видит и меняет ровно задачи своих областей — продуктовые ему не видны и не переводятся по номеру.');
 
+  for (const role of ['content', 'support', 'product', 'marketing']) {
+    if (role === 'marketing') await staff.json('/cabinet/tasks', 'POST', { title: 'Маркетинг', role });
+    const email = `links-${role}@example.test`;
+    await staff.json('/cabinet/staff', 'POST', { email, name: role, roles: [role] });
+    db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login')`)
+      .run(email, createHash('sha256').update('123456' + email).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+    const actor = account(); await actor.json('/me'); await actor.json('/auth/verify', 'POST', { email, code: '123456' });
+    const id = taskOf(role), link = { id, action: 'addLink', url: `https://example.test/${role}`, title: 'Материал' };
+    assert.equal((await actor.raw('/cabinet/tasks', 'POST', link)).status, 200);
+    assert.equal((await actor.raw('/cabinet/tasks', 'POST', link)).status, 200);
+    const task = (await actor.json('/cabinet/tasks')).items.find((t) => t.id === id);
+    assert.equal(task.links.length, 1); assert.equal(task.links[0].url, link.url);
+    for (const url of ['javascript:alert(1)', 'data:text/html,test', 'https://user:pass@example.test'])
+      assert.equal((await actor.raw('/cabinet/tasks', 'POST', { ...link, url })).status, 400);
+    if (role !== 'product') {
+      assert.equal((await actor.raw('/cabinet/tasks', 'POST', { ...link, id: tProduct })).status, 403);
+      assert.equal((await actor.raw('/cabinet/tasks', 'POST', { id, title: 'Подмена', role: 'product' })).status, 403);
+    }
+  }
+  assert.equal((await staff.raw('/cabinet/tasks', 'POST', { id: tContent, action: 'addLink', url: 'https://example.test/admin' })).status, 200);
+  console.log('PASS: ссылки доступны всем 5 ролям, сохраняются, не дублируются; чужие задачи и опасные URL защищены.');
+
   /* ── PDF рисует ровно то, что дал personalExport: своих запросов к базе не делает ── */
   const pdfSrc = readFileSync(join(repo, 'backend/personal-export-pdf.mjs'), 'utf8');
   assert.equal(/\bdb\.prepare\(|\bdb\.exec\(/.test(pdfSrc), false, 'PDF-выгрузка ходит в базу сама — данные могут прийти не от того человека');

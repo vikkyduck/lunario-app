@@ -188,8 +188,8 @@ const EXTRAS = {
   async backlog() {
     const r = await api('/cabinet/tasks'); S.tasks = r;
     const sel = (t) => `<select data-on="change:taskStatus-a0-value" data-a0="${t.id}" class="sel-sm">${Object.entries(r.statuses).map(([k, v]) => `<option value="${k}" ${t.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`;
-    $('extra').innerHTML = `${r.canCreate ? `<div class="row row-end mt-14"><button data-on="click:taskForm-0" class="btn gold sm fixed">+ Новая задача</button></div>` : `<div class="notice">Вы видите задачи, поставленные ${r.own.length > 1 ? 'вашим ролям' : 'вашей роли'}${r.own.length ? ` (${r.own.map((k) => `«${esc(r.roles[k])}»`).join(', ')})` : ''}. Меняйте статус — постановщик увидит его сразу.</div>`}
-      <div class="tbl"><div class="scroll"><table><thead><tr><th>Задача</th><th>Кому</th><th>Приоритет</th><th>Срок</th><th>Статус</th><th>Поставил</th><th></th></tr></thead><tbody>${r.items.map((t) => `<tr class="${t.status === 'done' ? 'dim-55' : ''}"><td><b>${esc(t.title)}</b>${t.text ? `<small>${esc(t.text.slice(0, 140))}</small>` : ''}</td><td>${esc(r.roles[t.role] || t.role)}${t.assignee ? `<small>${esc(t.assignee)}</small>` : ''}</td><td>${t.priority === 'high' ? '<span class="pill warn warn-border">высокий</span>' : 'обычный'}</td><td>${t.due_day || '—'}</td><td>${sel(t)}</td><td>${esc(t.created_by)}<small>${fmtTs(t.created_at)}</small></td><td class="num">${r.canCreate ? `<button data-on="click:taskForm-a0" data-a0="${t.id}" class="btn sm">✎</button> <button data-on="click:taskDel-a0" data-a0="${t.id}" class="btn sm warn">✕</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Задач пока нет.</td></tr>'}</tbody></table></div></div>`;
+    $('extra').innerHTML = `${r.canCreate ? `<div class="row row-end mt-14"><button data-on="click:taskForm-0" class="btn gold sm fixed">+ Новая задача</button></div>` : `<div class="notice">Вы видите задачи, поставленные ${r.own.length > 1 ? 'вашим ролям' : 'вашей роли'}${r.own.length ? ` (${r.own.map((k) => `«${esc(r.roles[k])}»`).join(', ')})` : ''}. Меняйте статус и прикрепляйте ссылки на материалы и результаты работы.</div>`}
+      <div class="tbl"><div class="scroll"><table><thead><tr><th>Задача</th><th>Кому</th><th>Приоритет</th><th>Срок</th><th>Статус</th><th>Поставил</th><th></th></tr></thead><tbody>${r.items.map((t) => `<tr class="${t.status === 'done' ? 'dim-55' : ''}"><td><b>${esc(t.title)}</b>${t.text ? `<small>${esc(t.text.slice(0, 140))}</small>` : ''}${(t.links || []).map((link) => `<small><a href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">${esc(link.title || link.url)}</a></small>`).join('')}<button data-on="click:taskLinkForm-a0" data-a0="${t.id}" class="btn sm">+ Ссылка</button></td><td>${esc(r.roles[t.role] || t.role)}${t.assignee ? `<small>${esc(t.assignee)}</small>` : ''}</td><td>${t.priority === 'high' ? '<span class="pill warn warn-border">высокий</span>' : 'обычный'}</td><td>${t.due_day || '—'}</td><td>${sel(t)}</td><td>${esc(t.created_by)}<small>${fmtTs(t.created_at)}</small></td><td class="num">${r.canCreate ? `<button data-on="click:taskForm-a0" data-a0="${t.id}" class="btn sm">✎</button> <button data-on="click:taskDel-a0" data-a0="${t.id}" class="btn sm warn">✕</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">Задач пока нет.</td></tr>'}</tbody></table></div></div>`;
   },
   async tickets() {
     const q = S.data.queue || [], st = S.data.statuses || {};
@@ -273,6 +273,21 @@ async function backupNow() {
 }
 async function mediaArchive(id, on) { const r = await api('/cabinet/media/archive', { method: 'POST', body: JSON.stringify({ id, on }) }); toast(r.ok ? (on ? 'Сгружено в архив' : 'Возвращено') : 'Не получилось'); EXTRAS.media(); }
 async function mediaDel(id) { if (!confirm('Удалить файл насовсем? Если он еще может понадобиться — лучше «Сгрузить»: запись и скачивание останутся.')) return; await api('/cabinet/media?id=' + id, { method: 'DELETE' }); toast('Удалено'); EXTRAS.media(); }
+function taskLinkForm(id) {
+  const task = S.tasks.items.find((t) => t.id === id);
+  openModal(`<div class="head"><h2>Прикрепить ссылку</h2><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>
+    <p>${esc(task.title)}</p><div class="stack-10">
+    ${field('Ссылка', '<input id="tl-url" type="url" maxlength="2048" placeholder="https://…">')}
+    ${field('Название (необязательно)', '<input id="tl-title" maxlength="140" placeholder="Материал или результат работы">')}
+    <button data-on="click:taskLinkSave-a0" data-a0="${id}" class="btn gold">Прикрепить</button><p id="tl-msg" class="hint" role="status"></p></div>`);
+}
+async function taskLinkSave(id) {
+  try {
+    const r = await api('/cabinet/tasks', { method: 'POST', body: JSON.stringify({ id, action: 'addLink', url: $('tl-url').value, title: $('tl-title').value }) });
+    if (!r.ok) { $('tl-msg').textContent = r.error === 'too_many_links' ? 'К задаче уже прикреплено 50 ссылок.' : 'Укажите корректную ссылку, начинающуюся с https:// или http://.'; return; }
+    closeModal(); toast('Ссылка прикреплена'); await EXTRAS.backlog();
+  } catch { if ($('tl-msg')) $('tl-msg').textContent = 'Не удалось прикрепить ссылку. Проверьте соединение и доступ к задаче.'; }
+}
 function taskForm(id) {
   const r = S.tasks, t = (r.items || []).find((x) => x.id === id) || {};
   openModal(`<div class="head"><div><span class="eyebrow">Беклог</span><h2 class="mt-6">${id ? 'Изменить задачу' : 'Новая задача'}</h2></div><button data-on="click:closeModal" class="btn sm">Закрыть</button></div>

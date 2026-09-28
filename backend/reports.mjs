@@ -49,7 +49,7 @@ export const DEFAULT_PERIODS = [7, 30, 90];
 export const OVERVIEW_BLOCKS = ['new_users', 'activation', 'active', 'repeat', 'retention', 'features', 'costs', 'problems'];
 export const ROLE_MENUS = {
   admin:     ['overview', 'users', 'lifecycle', 'economy', 'ai', 'backlog', 'system', 'data', 'events', 'access', 'saved'],
-  marketing: ['acquisition', 'campaigns', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'topics', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
+  marketing: ['backlog', 'acquisition', 'campaigns', 'funnel', 'delivery', 'viral', 'audience', 'concerns', 'topics', 'heatmap', 'feedback', 'cohorts', 'notifications', 'saved'],
   product:   ['activity', 'retention', 'activation', 'features', 'topics', 'rituals', 'cohorts', 'notifications', 'ai', 'backlog', 'economy', 'lifecycle', 'supportmetrics', 'system', 'saved'],
   content:   ['content', 'check', 'backlog', 'saved'],   /* «Контент» — одна страница с вкладками; «Проверка текстов» — пять отчетов вместе */
   support:   ['tickets', 'supportmetrics', 'backlog', 'faq', 'users', 'delivery', 'saved'],
@@ -99,6 +99,7 @@ const readSetting = (key) => { try { const r = db.prepare('SELECT value FROM cab
 export function getConfig() {
   const c = readSetting('config') || {};
   const menus = {}; for (const r of ROLE_KEYS) menus[r] = Array.isArray(c.menus && c.menus[r]) ? c.menus[r].filter((k) => k in REPORT_META) : [...ROLE_MENUS[r]];
+  for (const r of ROLE_KEYS) if (!menus[r].includes('backlog')) menus[r].push('backlog');
   const periods = Array.isArray(c.periods) && c.periods.length ? c.periods : [...DEFAULT_PERIODS];
   const blocks = Array.isArray(c.blocks) ? c.blocks.filter((k) => OVERVIEW_BLOCKS.includes(k)) : [...OVERVIEW_BLOCKS];
   const titles = c.titles && typeof c.titles === 'object' ? c.titles : {};
