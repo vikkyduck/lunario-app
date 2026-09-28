@@ -1,7 +1,12 @@
+import { telegramTransport } from '../backend/telegram-transport.mjs';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { migrate, verifySchema } from '../backend/schema.mjs';
 import { createBacklogTelegram } from '../backend/backlog-telegram.mjs';
+assert.equal(telegramTransport(''), fetch);
+assert.throws(() => telegramTransport('443'));
+assert.throws(() => telegramTransport('bad'));
+await assert.rejects(telegramTransport('17443')('https://example.test/', {}));
 const db = new DatabaseSync(':memory:');
 migrate(db, () => {}); verifySchema(db); migrate(db, () => {});
 const count = () => db.prepare('SELECT COUNT(*) n FROM backlog_telegram_outbox').get().n;

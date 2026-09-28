@@ -23,3 +23,9 @@
 Проверки: `node tools/check-backlog-telegram.mjs`, `node tools/check-isolation.mjs`. Первый тест входит в `tools/check-all.mjs`.
 
 Документация API: https://core.telegram.org/bots/api#sendmessage
+
+## Сеть рабочего сервера
+
+Для сервера без прямого доступа к Telegram настроена служба `lunario-telegram-tunnel.service`. SSH-туннель слушает только `127.0.0.1:17443` и соединяет его с `api.telegram.org:443` через DigitalOcean. Отдельный SSH-ключ ограничен переадресацией на Telegram; ключ хоста DigitalOcean закреплен в known_hosts. Токен бота остается в `/opt/lunario-app/.env` на сервере Lunario. TLS проходит сквозь туннель, сертификат проверяется для `api.telegram.org`.
+
+`TELEGRAM_BACKLOG_TUNNEL_PORT=17443` включает этот транспорт только для уведомлений бэклога. Служба туннеля запускается после перезагрузки и восстанавливает соединение при разрыве. Остальные запросы приложения идут прежним путем. Диагностика: `systemctl status lunario-telegram-tunnel`, журнал этой службы и состояние очереди. При отключении туннеля сначала удалите `TELEGRAM_BACKLOG_TUNNEL_PORT` и перезапустите приложение; для прямой отправки нужен доступ сервера к Telegram.

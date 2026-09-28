@@ -1,5 +1,6 @@
+import { telegramTransport } from './telegram-transport.mjs';
 /* Durable backlog notifications. Telegram failure never changes a saved task. */
-export function createBacklogTelegram({ db, token = '', chatId = '', cabinetUrl = '', fetchFn = fetch, clock = Date.now, log = console.warn }) {
+export function createBacklogTelegram({ db, token = '', chatId = '', cabinetUrl = '', fetchFn = telegramTransport(process.env.TELEGRAM_BACKLOG_TUNNEL_PORT || ''), clock = Date.now, log = console.warn }) {
   let busy = false;
   const enabled = Boolean(token && chatId);
   const format = (e) => {
