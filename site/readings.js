@@ -122,29 +122,23 @@ function cardDayHtml(c, day, compact){
     ${actionsHtml(id)}`;
 }
 
-/* ══════════ Выбор руками (по референсам, решение владелицы 19.09): веер рубашек или ряд камней — человек касается нужного числа,
-   и только потом сервер вытягивает. Рубашки неотличимы, случайность та же, но выбор — его. pickCards рисует веер в box
+/* ══════════ Выбор руками (по референсам, решение владелицы 19.09): сетка рубашек или ряд камней — человек касается нужного числа,
+   и только потом сервер вытягивает. Рубашки неотличимы, случайность та же, но выбор — его. pickCards рисует выбор в box
    и ждет касаний; обещание исполняется, когда выбрано need штук. ══════════ */
 let PICK=null;
 const pickWord=(kind,n)=>kind==='tarot'?plural(n,'карту','карты','карт'):plural(n,'руну','руны','рун');
-/* вся колода (22 карты веером в два ряда) и все руны (мешочек): выбор не выглядит обрезанным — решение владелицы 19.09 */
+/* вся колода (22 отдельные рубашки) и все руны (мешочек): выбор не выглядит обрезанным — решение владелицы 19.09 */
 function pickerHtml(kind,need,total){
   const back=kind==='tarot'?`<img src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt="">`:`<span class="stone-back"></span>`;
-  const card=(i)=>`<button data-on="click:pickerTap-a0" data-a0="${i}" class="fan-card" type="button" aria-label="${kind==='tarot'?'Карта':'Руна'} ${i+1}">${back}<span class="pick-n"></span></button>`;
-  let rows;
-  if(kind==='tarot'){ const nRows=Math.ceil(total/11), per=Math.ceil(total/nRows); rows=Array.from({length:nRows},(_,r)=>{ const idx=Array.from({length:Math.min(per,total-r*per)},(_,k)=>r*per+k); return `<div class="fan" style="--n:${idx.length}">${idx.map((i,k)=>card(i).replace('class="fan-card"',`class="fan-card" style="--i:${k}"`)).join('')}</div>`; }).join(''); }
-  else rows=`<div class="fan" style="--n:${total}">${Array.from({length:total},(_,i)=>card(i)).join('')}</div>`;
+  const card=(i)=>`<button data-on="click:pickerTap-a0" data-a0="${i}" class="fan-card" type="button" aria-label="${kind==='tarot'?'Карта':'Руна'} ${i+1}" aria-pressed="false">${back}<span class="pick-n"></span></button>`;
+  const rows=`<div class="fan" style="--n:${total}">${Array.from({length:total},(_,i)=>card(i)).join('')}</div>`;
   return `<div class="picker ${kind}" id="picker"><p class="picker-q">${need===1?(kind==='tarot'?ui('card.pick','Выберите карту'):ui('rune.pick','Выберите руну')):`Выберите ${need} ${pickWord(kind,need)}`}</p><div class="fan-rows">${rows}</div></div>`;
-}
-/* карты в ряду ложатся внахлест ровно так, чтобы ряд поместился в ширину экрана */
-function fitFans(box){
-  box.querySelectorAll('.picker.tarot .fan').forEach(fan=>{ const cards=[...fan.children]; if(cards.length<2)return; const w=cards[0].getBoundingClientRect().width||46, avail=fan.clientWidth-12; const step=Math.min(w*.62,(avail-w)/(cards.length-1)); fan.style.setProperty('--ml',(step-w).toFixed(1)+'px'); });
 }
 function pickCards(box,kind,need,{scroll=false}={}){
   cancelPick();   /* новый выбор завершает незавершенный старый */
   const total=kind==='tarot'?(Object.keys(CAT?.cards||{}).length||22):(Object.keys(CAT?.runes||{}).length||24);
   box.innerHTML=pickerHtml(kind,need,total); box.style.display='block';
-  requestAnimationFrame(()=>{ fitFans(box); if(scroll)box.scrollIntoView({behavior:'smooth',block:'center'}); });
+  requestAnimationFrame(()=>{ if(scroll)box.scrollIntoView({behavior:'smooth',block:'center'}); });
   return new Promise((res,rej)=>{ PICK={need,chosen:[],res,rej}; });
 }
 /* Ожидание выбора карт завершается явно (повторный аудит v112, R11): закрыли панель, перерисовали экран, начали новый вопрос —
@@ -153,7 +147,7 @@ function cancelPick(){ if(!PICK)return; const p=PICK; PICK=null; p.rej(Object.as
 function pickerTap(i){
   if(!PICK)return; i=+i;
   const el=document.querySelector(`#picker .fan-card[data-a0="${i}"]`); if(!el||PICK.chosen.includes(i))return;
-  PICK.chosen.push(i); el.classList.add('on'); el.querySelector('.pick-n').textContent=PICK.need>1?PICK.chosen.length:''; hap();
+  PICK.chosen.push(i); el.classList.add('on'); el.setAttribute('aria-pressed','true'); el.querySelector('.pick-n').textContent=PICK.need>1?PICK.chosen.length:''; hap();
   if(PICK.chosen.length>=PICK.need){ const p=PICK; PICK=null; $('picker')?.classList.add('done'); setTimeout(()=>p.res(p.chosen),480); }
 }
 /* карта дня: пока не открыта — веер вместо одной рубашки; выбранная становится картой дня и переворачивается */

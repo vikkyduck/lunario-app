@@ -71,6 +71,17 @@ export async function checkDesign({browser,base,owner}){
     await page.evaluate(()=>go('hello'));await ready();await fit('welcome');assert.ok(await page.locator('.heromoon img').evaluate(e=>e.complete&&e.naturalWidth>0));await shot('welcome');
     await page.evaluate(()=>openLogin());await ready();await fit('email login');await shot('login');
     await page.evaluate(()=>go('history'));await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#v-history [data-feature=habits]').hover();assert.equal(await page.locator('[data-feature=habits]').evaluate(e=>getComputedStyle(e).transform),'none');
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(async()=>{go('ask');await loadCatalog();pickCards(document.getElementById('a-result'),'tarot',3).catch(()=>{});});
+    await page.locator('#picker.tarot .fan-card').first().waitFor();
+    const tarotBoxes=await page.locator('#picker.tarot .fan-card').evaluateAll(cards=>cards.map(c=>c.getBoundingClientRect().toJSON()));
+    assert.equal(tarotBoxes.length,22,'the full tarot deck is available');
+    assert.ok(tarotBoxes.every(b=>b.width>=56&&b.height>=96),'every tarot card has a clear touch target');
+    assert.ok(tarotBoxes.every((a,i)=>tarotBoxes.slice(i+1).every(b=>a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top)),'tarot cards do not overlap');
+    for(let i=0;i<2;i++)await page.locator('#picker.tarot .fan-card').nth(i).click();
+    assert.deepEqual(await page.locator('#picker.tarot .fan-card.on .pick-n').allTextContents(),['1','2']);
+    assert.deepEqual(await page.locator('#picker.tarot .fan-card.on').evaluateAll(cards=>cards.map(c=>c.getAttribute('aria-pressed'))),['true','true']);
+    await shot('tarot-picker');await page.evaluate(()=>cancelPick());
     assert.deepEqual(errors,[]);
     if(folder)await writeFile(join(folder,'design-coverage.json'),JSON.stringify({coverage,errors},null,2));
     console.log('PASS: '+coverage.length+' design screens in both themes; associated labels, no horizontal overflow, short settings, editable askesis date, support draft/caret across refresh and failure, all original destinations, reduced motion.');
