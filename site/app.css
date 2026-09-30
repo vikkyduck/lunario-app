@@ -1231,8 +1231,7 @@ body:not(.inner) #v-onb .card{background:linear-gradient(135deg,#1d1738,#141126)
 @media(prefers-reduced-transparency:reduce){
   html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
-/* Приветствие — один экран без прокрутки (решение владелицы 17.09: «первая страница статичная»).
-   Mobile-first: луна справа сверху, три обещания, кнопка; на компьютере тот же макет внутри корпуса телефона (frame.css). */
+/* Приветствие: луна, кубик ДА / НЕТ и вход; на компьютере тот же макет внутри корпуса телефона. */
 #v-hello .hello-stage{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:22px;padding-block:12px}
 #v-hello .hello-content{width:100%;max-width:none;margin:0;padding:0;min-width:0}
 #v-hello .heromoon{display:block;position:relative;order:-1;inset:auto;transform:none;width:clamp(120px,36vw,168px);height:auto;aspect-ratio:1;align-self:flex-end;margin-right:4px;opacity:.94}
@@ -1247,17 +1246,41 @@ body:not(.inner) #v-onb .card{background:linear-gradient(135deg,#1d1738,#141126)
 #v-hello .gift .ico{width:22px;height:22px;flex-basis:22px;margin-top:3px;background-color:#f0d79a;filter:drop-shadow(0 0 10px #f0d79a26)}
 #v-hello .cta{margin-top:28px;position:relative;isolation:isolate}
 #v-hello .cta .btn{position:relative;padding:14px 22px;gap:14px;font-weight:600;line-height:1.3;color:#f5f2ea;white-space:nowrap}
+body.hello .section-head{display:none}
+#v-hello .hello-oracle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 4px}
+#v-hello .hello-oracle-copy{min-width:0}
+#v-hello .hello-oracle h3{margin:0 0 8px;color:#f0d79a;font-size:18px;font-weight:600;letter-spacing:.12em}
+#v-hello .hello-oracle-copy p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
+#v-hello .hello-oracle-copy .hello-dice-result{min-height:22px;margin-top:8px;color:#f5f2ea;font-weight:600}
+#v-hello .hello-dice-button{flex:0 0 134px;display:flex;flex-direction:column;align-items:center;gap:10px;min-height:144px;padding:6px 0;border:0;border-radius:18px;background:transparent;color:#f0d79a;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#v-hello .hello-dice-button:disabled{cursor:wait;opacity:1}
+#v-hello .hello-dice-scene{display:grid;place-items:center;width:112px;height:104px;perspective:550px}
+#v-hello .hello-dice-cube{position:relative;display:block;width:72px;height:72px;transform-style:preserve-3d;transform:rotateX(-16deg) rotateY(-24deg)}
+#v-hello .hello-dice-face{position:absolute;inset:0;display:grid;place-items:center;border:1px solid #e9d8af99;border-radius:14px;background:linear-gradient(140deg,#564966,#262033 72%);box-shadow:inset 0 1px 12px #f0d79a26;color:#f5e3b6;font-size:25px;font-weight:600;backface-visibility:hidden}
+#v-hello .dice-front{transform:translateZ(36px);font-size:23px}
+#v-hello .dice-back{transform:rotateY(180deg) translateZ(36px)}
+#v-hello .dice-right{transform:rotateY(90deg) translateZ(36px)}
+#v-hello .dice-left{transform:rotateY(-90deg) translateZ(36px)}
+#v-hello .dice-top{transform:rotateX(90deg) translateZ(36px)}
+#v-hello .dice-bottom{transform:rotateX(-90deg) translateZ(36px)}
+#v-hello .hello-dice-action{font-size:13px;line-height:20px;text-underline-offset:4px}
+#v-hello .hello-dice-button:hover .hello-dice-action{text-decoration:underline}
+#v-hello .hello-inside{display:flex;align-items:center;justify-content:center;gap:9px;min-height:44px;margin-top:8px;border:1px solid #ffffff2b;border-radius:var(--r-pill);color:#f5f2ea;text-decoration:none;font-size:15px;background:#0b0a143d}
+#v-hello .hello-inside:hover{background:#ffffff12}
+#v-hello .hello-inside:focus-visible{outline:2px solid var(--gold-2);outline-offset:5px}
 body.hello::before{background:radial-gradient(ellipse 90% 25% at 20% 76%,rgba(240,215,154,.25),transparent 100%),radial-gradient(ellipse 70% 32% at 110% 24%,rgba(240,215,154,.16),transparent 100%)}
 @media(max-width:370px){
   #v-hello .gift{gap:12px}
 }
 /* низкие экраны (телефон с адресной строкой, маленькое окно): всё равно один экран */
 @media(max-height:640px){
-  #v-hello .hello-stage{gap:12px;padding-block:10px}
-  #v-hello .heromoon{width:104px}
+  #v-hello .hello-stage{gap:8px;padding-block:6px}
+  #v-hello .heromoon{width:72px}
   #v-hello .gifts{gap:10px}
-  #v-hello .hello-claim{font-size:21px;margin-bottom:12px}
-  #v-hello .cta{margin-top:18px}
+  #v-hello .hello-content .hello-claim{font-size:22px;margin-bottom:6px}
+  #v-hello .hello-oracle{padding-top:6px}
+  #v-hello .cta{margin-top:12px}
+  body.hello #v-hello .trust{margin:10px 0 0;font-size:13px}
 }
 @media(prefers-reduced-motion:reduce){
   .compact-brand .moon-img{animation:none!important}

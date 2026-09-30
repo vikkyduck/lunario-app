@@ -76,7 +76,6 @@ function go(v){
   if(v==='home')window.tourMaybe?.();   /* подсказки по приложению — один раз, на «Сегодня» */
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();loadPushNote();paintYesterday();}
-  if(v==='hello') paintHelloLive();
   if(v==='history') loadHistory();
   if(v==='about')loadAbout();
   if(v==='account')loadAccount();
@@ -146,10 +145,34 @@ function onboarded(){ return !!(S.user && S.user.onboarded); }
 /* Фразы интерфейса из кабинета (интерфейс.txt): ui('ключ', 'как в коде'). Статичная разметка — data-ui, applyUi() после загрузки */
 const ui=(k,f)=>(S.ui&&S.ui[k])||f;
 function applyUi(){ if(!S.ui)return; document.querySelectorAll('[data-ui]').forEach(el=>{ const v=S.ui[el.dataset.ui]; if(v&&el.textContent!==v)el.textContent=v; }); }
-/* Строка сегодняшнего дня на приветствии: «Сегодня 8-й лунный день · Растущая Луна» — по Москве, без входа */
-async function paintHelloLive(){
-  const el=$('hello-live'); if(!el||el.textContent)return;
-  try{ const r=await api('/hello'); if(r.ui){ S.ui=r.ui; applyUi(); } const parts=[r.lunar?`${ordinal(r.lunar.n)} лунный день`:'',r.moon||''].filter(Boolean); if(parts.length){ el.textContent='Сегодня · '+parts.join(' · '); el.hidden=false; } }catch(e){ /* без строки приветствие не хуже */ }
+/* Кубик на приветствии работает до регистрации и без сети. Ответ выбирается заново при каждом броске. */
+async function rollHelloDice(){
+  const button=$('hello-dice'), cube=$('hello-dice-cube');
+  if(!button || !cube || button.disabled)return;
+  button.disabled=true;
+  button.setAttribute('aria-busy','true');
+  $('hello-dice-result').textContent='';
+  $('hello-dice-face').textContent='?';
+  $('hello-dice-action').textContent='Бросаем…';
+  try{
+    const answer=(crypto.getRandomValues(new Uint8Array(1))[0] & 1) ? 'ДА' : 'НЕТ';
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches && cube.animate){
+      const animation=cube.animate([
+        {transform:'translateY(0) rotateX(-16deg) rotateY(-24deg)'},
+        {transform:'translateY(-24px) rotateX(170deg) rotateY(200deg)',offset:.42},
+        {transform:'translateY(-8px) rotateX(300deg) rotateY(500deg)',offset:.8},
+        {transform:'translateY(0) rotateX(344deg) rotateY(696deg)'}
+      ],{duration:950,easing:'cubic-bezier(.2,.65,.3,1)'});
+      await animation.finished.catch(()=>{});
+    }
+    $('hello-dice-face').textContent=answer;
+    $('hello-dice-result').textContent='Выпало: '+answer;
+  }finally{
+    button.disabled=false;
+    button.removeAttribute('aria-busy');
+    button.setAttribute('aria-label','Бросить кубик еще раз');
+    $('hello-dice-action').textContent='Бросить еще раз';
+  }
 }
 function openForm(){
   $('v-onb').classList.remove('verifying-email');

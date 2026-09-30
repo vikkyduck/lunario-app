@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=124"></script>
+<script src="/app/boot.js?v=126"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=124">
-<link rel="stylesheet" href="/app/app.css?v=124">
-<link rel="stylesheet" href="/app/frame.css?v=124">
+<link rel="stylesheet" href="/app/theme.css?v=126">
+<link rel="stylesheet" href="/app/app.css?v=126">
+<link rel="stylesheet" href="/app/frame.css?v=126">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -70,17 +70,29 @@
     <div class="hello-stage">
     <div class="hello-content">
       <h2 class="hello-claim" data-ui="hello.claim">Пространство, где можно услышать себя</h2>
-      <!-- живая строка сегодняшнего дня — до анкеты, по /api/hello: приложение показывает себя, а не обещает -->
-      <p class="hello-live" id="hello-live" hidden></p>
-      <p class="hello-ritual" data-ui="hello.ritual">Три минуты в день</p>
-      <ul class="gifts">
-        <li class="gift"><i class="ico star" aria-hidden="true"></i><span><b data-ui="hello.morning">Утром</b><small data-ui="hello.morning_sub">настрой дня, пока варится кофе</small></span></li>
-        <li class="gift"><i class="ico pen" aria-hidden="true"></i><span><b data-ui="hello.evening">Вечером</b><small data-ui="hello.evening_sub">пара фраз о том, что запомнилось</small></span></li>
-        <li class="gift"><i class="ico calendar" aria-hidden="true"></i><span><b data-ui="hello.week">К воскресенью</b><small data-ui="hello.week_sub">Лунарио само соберет историю вашей недели</small></span></li>
-      </ul>
+      <div class="hello-oracle">
+        <div class="hello-oracle-copy">
+          <h3>ДА / НЕТ</h3>
+          <p id="hello-dice-hint">Загадайте вопрос<br>и бросьте кубик</p>
+          <p class="hello-dice-result" id="hello-dice-result" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+        <button class="hello-dice-button" id="hello-dice" type="button" data-on="click:rollHelloDice" aria-label="Бросить кубик ДА / НЕТ" aria-describedby="hello-dice-hint">
+          <span class="hello-dice-scene" aria-hidden="true">
+            <span class="hello-dice-cube" id="hello-dice-cube">
+              <span class="hello-dice-face dice-front" id="hello-dice-face">?</span>
+              <span class="hello-dice-face dice-back">✦</span>
+              <span class="hello-dice-face dice-right">✦</span>
+              <span class="hello-dice-face dice-left">✦</span>
+              <span class="hello-dice-face dice-top">✦</span>
+              <span class="hello-dice-face dice-bottom">✦</span>
+            </span>
+          </span>
+          <span class="hello-dice-action" id="hello-dice-action">Бросить кубик</span>
+        </button>
+      </div>
       <div class="cta">
         <button data-on="click:openForm" class="btn welcome-primary"><span data-ui="hello.cta">Открыть мой день</span><span aria-hidden="true">→</span></button>
-        <p class="hello-free" data-ui="hello.free">Карта дня, лунный день и дневник — бесплатно</p>
+        <a class="hello-inside" href="https://lunario.online/chto-vnutri">Что внутри <span aria-hidden="true">↗</span></a>
       </div>
     </div>
     <div class="heromoon" aria-hidden="true"><img src="/app/assets/moon-hero-1120.webp" srcset="/app/assets/moon-hero-560.webp 560w, /app/assets/moon-hero-1120.webp 1120w" sizes="760px" width="1120" height="1120" alt="" fetchpriority="high" decoding="async"></div>
@@ -369,22 +381,22 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=124"></script>
+<script src="/app/moon-logo.js?v=126"></script>
 
-<script type="module" src="/app/sky.js?v=124"></script>
+<script type="module" src="/app/sky.js?v=126"></script>
 
-<script src="/app/common.js?v=124"></script>
-<script src="/app/experience.js?v=124"></script>
-<script src="/app/app.js?v=124"></script>
-<script src="/app/today.js?v=124"></script>
-<script src="/app/diary.js?v=124"></script>
-<script src="/app/readings.js?v=124"></script>
-<script src="/app/practices.js?v=124"></script>
-<script src="/app/about.js?v=124"></script>
-<script src="/app/account.js?v=124"></script>
-<script src="/app/tour.js?v=124"></script>
-<script src="/app/handlers.js?v=124"></script>
-<script src="/app/on.js?v=124"></script>
-<script src="/app/start.js?v=124"></script>
+<script src="/app/common.js?v=126"></script>
+<script src="/app/experience.js?v=126"></script>
+<script src="/app/app.js?v=126"></script>
+<script src="/app/today.js?v=126"></script>
+<script src="/app/diary.js?v=126"></script>
+<script src="/app/readings.js?v=126"></script>
+<script src="/app/practices.js?v=126"></script>
+<script src="/app/about.js?v=126"></script>
+<script src="/app/account.js?v=126"></script>
+<script src="/app/tour.js?v=126"></script>
+<script src="/app/handlers.js?v=126"></script>
+<script src="/app/on.js?v=126"></script>
+<script src="/app/start.js?v=126"></script>
 </body>
 </html>
