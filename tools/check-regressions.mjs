@@ -163,7 +163,7 @@ async function checkOnboardingWithMail({ browser, base, codeFor }) {
     const page = await inline.newPage(), errors = [], sent = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));
     await mailLive(page); page.on('request', (r) => { if (r.url().endsWith('/api/auth/request')) sent.push(r.postDataJSON().email); });
     await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-hello.on');
-    await page.getByRole('button', { name: /Открыть мой день/ }).click(); await page.waitForSelector('#v-onb.on');
+    await page.locator('#v-hello .cta').getByRole('button', { name: /Открыть мой день/ }).click(); await page.waitForSelector('#v-onb.on');
     await fillSteps(page, 'Вошла на анкете');
     assert.equal(await page.locator('#ob-done-q').innerText(), 'Куда прислать код?', 'mail is live and no address yet — the last step asks for one');
     await page.fill('#o-email', 'typed-then-abandoned@example.test');

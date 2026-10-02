@@ -81,7 +81,7 @@ export async function checkBrand({browser,base,owner}) {
       assert.match(await page.locator('#v-hello .cta .btn').evaluate(e=>getComputedStyle(e).backgroundImage),/0\.78/,'Dense welcome glass without backdrop filtering');
       const typography=await page.locator('#v-hello .gift b').first().evaluate(e=>({size:parseFloat(getComputedStyle(e).fontSize),weight:getComputedStyle(e).fontWeight}));
       assert.equal(typography.weight,'600');assert.ok(typography.size>=24,'Benefits stay readable on the narrowest phone');
-      assert.ok(await page.locator('.welcome-primary').evaluate(e=>getComputedStyle(e,'::before').backgroundImage.startsWith('conic-gradient')));
+      assert.ok(await page.locator('#v-hello .cta .welcome-primary').evaluate(e=>getComputedStyle(e,'::before').backgroundImage.startsWith('conic-gradient')));
 
       assert.equal(await page.locator('#v-hello .gift b').first().textContent(),'Замечать свое настроение');
       assert.ok(await page.locator('#v-hello .cta .btn').evaluate(e=>e.getBoundingClientRect().height>=70));
@@ -95,7 +95,7 @@ export async function checkBrand({browser,base,owner}) {
     }
     // The landing's moving edge responds to pointer position, with no effect under reduced motion.
     await page.setViewportSize({width:1440,height:900});await ready();
-    const primary=page.locator('.welcome-primary');await primary.scrollIntoViewIfNeeded();
+    const primary=page.locator('#v-hello .cta .welcome-primary');await primary.scrollIntoViewIfNeeded();
     const rect=await primary.boundingBox();
     await page.mouse.move(rect.x+rect.width*.25,rect.y+rect.height*.35);await page.waitForTimeout(60);
     const edge=await primary.evaluate(e=>e.style.getPropertyValue('--glass-edge'));assert.ok(edge.length>0);
