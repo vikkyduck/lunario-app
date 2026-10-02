@@ -338,6 +338,14 @@ MIGRATIONS.push({ v: 26, name: 'персональная память и оче�
     CREATE TABLE rag_usage (user_id INTEGER NOT NULL, day TEXT NOT NULL, requests INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,day));
   `);
 }});
+MIGRATIONS.push({ v: 27, name: 'очистка персональной памяти при любом удалении аккаунта', up(db) {
+  db.exec(`CREATE TRIGGER rag_user_deleted AFTER DELETE ON users BEGIN
+    DELETE FROM rag_chunks WHERE user_id=OLD.id;
+    DELETE FROM rag_state WHERE user_id=OLD.id;
+    DELETE FROM rag_turns WHERE user_id=OLD.id;
+    DELETE FROM rag_usage WHERE user_id=OLD.id;
+  END;`);
+}});
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
 /* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера (и отдельными процессами перед работой).

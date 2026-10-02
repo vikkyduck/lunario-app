@@ -89,6 +89,7 @@ finish_or_rollback() {
   if [ "$INSTALL_UNITS" = 1 ]; then
     # сервис работает не от root (ревью v114, F02): пользователь lunario и права — backend/service-user.sh; rsync от root сбросил владельцев
     remote "bash $APP_ROOT/current/backend/service-user.sh $APP_ROOT $CONTENT_ROOT $BACKUP_ROOT" || return 1
+    remote "if [ -f $APP_ROOT/current/backend/rag/install-service.sh ]; then bash $APP_ROOT/current/backend/rag/install-service.sh; fi" || return 1
     remote "install -m644 $APP_ROOT/current/backend/lunario-app.service /etc/systemd/system/lunario-app.service \
       && install -m644 $APP_ROOT/current/backend/lunario-daily.service /etc/systemd/system/lunario-daily.service \
       && install -m644 $APP_ROOT/current/backend/lunario-daily.timer /etc/systemd/system/lunario-daily.timer \

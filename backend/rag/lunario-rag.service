@@ -7,7 +7,7 @@ Requires=lunario-chroma.service
 User=lunario-rag
 Group=lunario-rag
 UMask=0077
-WorkingDirectory=/opt/lunario-app/current/backend/rag
+WorkingDirectory=/opt/lunario-rag/code
 EnvironmentFile=/opt/lunario-rag/service.env
 Environment=HF_HOME=/opt/lunario-rag/models
 Environment=HF_HUB_OFFLINE=1
