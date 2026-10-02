@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=126"></script>
+<script src="/app/boot.js?v=129"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=126">
-<link rel="stylesheet" href="/app/app.css?v=126">
-<link rel="stylesheet" href="/app/frame.css?v=126">
+<link rel="stylesheet" href="/app/theme.css?v=129">
+<link rel="stylesheet" href="/app/app.css?v=129">
+<link rel="stylesheet" href="/app/frame.css?v=129">
 </head>
 <body>
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -69,7 +69,15 @@
     </header>
     <div class="hello-stage">
     <div class="hello-content">
-      <h2 class="hello-claim" data-ui="hello.claim">Пространство, где можно услышать себя</h2>
+      <div class="hello-lead">
+        <h2 class="hello-claim" data-ui="hello.claim">Пространство, где можно услышать себя</h2>
+        <div class="heromoon" aria-hidden="true"><img src="/app/assets/moon-hero-560.webp" width="560" height="560" alt="" fetchpriority="high" decoding="async"></div>
+      </div>
+      <p class="hello-description">Это не просто чат с AI, а пространство, которое <strong>помнит ваш контекст</strong> и учитывает его в предложенных вопросах</p>
+      <div class="cta">
+        <button data-on="click:openForm" class="btn welcome-primary"><span data-ui="hello.cta">Открыть мой день</span><span aria-hidden="true">→</span></button>
+        <a class="hello-inside" href="https://lunario.online/chto-vnutri">Что внутри <span aria-hidden="true">↗</span></a>
+      </div>
       <div class="hello-oracle">
         <div class="hello-oracle-copy">
           <h3>ДА / НЕТ</h3>
@@ -90,13 +98,19 @@
           <span class="hello-dice-action" id="hello-dice-action">Бросить кубик</span>
         </button>
       </div>
-      <div class="cta">
-        <button data-on="click:openForm" class="btn welcome-primary"><span data-ui="hello.cta">Открыть мой день</span><span aria-hidden="true">→</span></button>
-        <a class="hello-inside" href="https://lunario.online/chto-vnutri">Что внутри <span aria-hidden="true">↗</span></a>
-      </div>
     </div>
-    <div class="heromoon" aria-hidden="true"><img src="/app/assets/moon-hero-1120.webp" srcset="/app/assets/moon-hero-560.webp 560w, /app/assets/moon-hero-1120.webp 1120w" sizes="760px" width="1120" height="1120" alt="" fetchpriority="high" decoding="async"></div>
     </div>
+    <ul class="hello-paths" aria-label="Возможности Лунарио">
+      <li><span class="hello-path-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><p><strong>Хотите разобраться в себе</strong><span>Открывайте «Обо мне»</span></p></li>
+      <li><span class="hello-path-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.5 5.5a5 5 0 0 0-7 0L12 7l-1.5-1.5a5 5 0 0 0-7 7L12 21l8.5-8.5a5 5 0 0 0 0-7Z"/></svg></span><p><strong>Интересуют отношения</strong><span>Смотрите совместимость</span></p></li>
+      <li><span class="hello-path-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="12" height="17" rx="2"/><path d="m5 6-2 1 2 15 9-1M14 8v7m-3-3.5h6"/></svg></span><p><strong>Хотите понять текущий период</strong><span>Можно сделать расклад</span></p></li>
+      <li><span class="hello-path-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span><p><strong>Каждый день</strong><span>Пуш, про что этот день</span></p></li>
+    </ul>
+    <div class="hello-future">
+      <h3>И это только начало 🌙</h3>
+      <p>Постепенно Лунарио станет полноценным AI-компаньоном с инструментами самопознания и поддержки в одном приложении.</p>
+    </div>
+    <button data-on="click:openForm" class="btn welcome-primary hello-bottom-cta" type="button">Открыть мой день <span aria-hidden="true">→</span></button>
     <p class="trust" data-ui="hello.trust">Записи хранятся в России и видны только вам.</p>
   </section>
 
@@ -381,22 +395,22 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=126"></script>
+<script src="/app/moon-logo.js?v=129"></script>
 
-<script type="module" src="/app/sky.js?v=126"></script>
+<script type="module" src="/app/sky.js?v=129"></script>
 
-<script src="/app/common.js?v=126"></script>
-<script src="/app/experience.js?v=126"></script>
-<script src="/app/app.js?v=126"></script>
-<script src="/app/today.js?v=126"></script>
-<script src="/app/diary.js?v=126"></script>
-<script src="/app/readings.js?v=126"></script>
-<script src="/app/practices.js?v=126"></script>
-<script src="/app/about.js?v=126"></script>
-<script src="/app/account.js?v=126"></script>
-<script src="/app/tour.js?v=126"></script>
-<script src="/app/handlers.js?v=126"></script>
-<script src="/app/on.js?v=126"></script>
-<script src="/app/start.js?v=126"></script>
+<script src="/app/common.js?v=129"></script>
+<script src="/app/experience.js?v=129"></script>
+<script src="/app/app.js?v=129"></script>
+<script src="/app/today.js?v=129"></script>
+<script src="/app/diary.js?v=129"></script>
+<script src="/app/readings.js?v=129"></script>
+<script src="/app/practices.js?v=129"></script>
+<script src="/app/about.js?v=129"></script>
+<script src="/app/account.js?v=129"></script>
+<script src="/app/tour.js?v=129"></script>
+<script src="/app/handlers.js?v=129"></script>
+<script src="/app/on.js?v=129"></script>
+<script src="/app/start.js?v=129"></script>
 </body>
 </html>

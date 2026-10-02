@@ -1231,12 +1231,15 @@ body:not(.inner) #v-onb .card{background:linear-gradient(135deg,#1d1738,#141126)
 @media(prefers-reduced-transparency:reduce){
   html[data-theme] body.inner :is(.app-nav,.rem-summary,.wg-x){background:var(--sheet);backdrop-filter:none;-webkit-backdrop-filter:none}
 }
-/* Приветствие: луна, кубик ДА / НЕТ и вход; на компьютере тот же макет внутри корпуса телефона. */
-#v-hello .hello-stage{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:22px;padding-block:12px}
+/* Приветствие: ценность и вход выше кубика; сценарии и развитие продукта доступны при прокрутке. */
+#v-hello .hello-stage{flex:none;padding:28px 0 0}
 #v-hello .hello-content{width:100%;max-width:none;margin:0;padding:0;min-width:0}
-#v-hello .heromoon{display:block;position:relative;order:-1;inset:auto;transform:none;width:clamp(120px,36vw,168px);height:auto;aspect-ratio:1;align-self:flex-end;margin-right:4px;opacity:.94}
+#v-hello .hello-lead{display:grid;grid-template-columns:minmax(0,1fr) 72px;align-items:center;gap:14px}
+#v-hello .heromoon{display:block;position:relative;inset:auto;transform:none;width:72px;height:auto;aspect-ratio:1;margin:0;opacity:.94}
 #v-hello .heromoon img{filter:drop-shadow(0 0 32px #f2d18d24)}
-#v-hello .hello-claim{margin:0 0 18px;color:#f5f2ea}
+#v-hello .hello-content .hello-claim{margin:0;color:#f5f2ea;font-size:clamp(23px,6.4vw,28px);line-height:1.2;text-wrap:balance}
+html[data-skin] #v-hello .hello-description{margin:20px 0 0;color:#c9c4d4;font-size:16px;line-height:1.55;text-wrap:pretty}
+#v-hello .hello-description strong{color:#f5f2ea;font-weight:500}
 #v-hello .gifts{margin:0;gap:14px}
 #v-hello .hello-ritual{margin:22px 0 -6px}
 #v-hello .hello-live{margin:-6px 0 0}
@@ -1244,10 +1247,10 @@ body:not(.inner) #v-onb .card{background:linear-gradient(135deg,#1d1738,#141126)
 #v-hello .gift b{font-size:17px;font-weight:600;color:#f5f2ea;line-height:1.35}
 #v-hello .gift small{font-size:15px;line-height:1.4;color:var(--muted);margin-top:1px}
 #v-hello .gift .ico{width:22px;height:22px;flex-basis:22px;margin-top:3px;background-color:#f0d79a;filter:drop-shadow(0 0 10px #f0d79a26)}
-#v-hello .cta{margin-top:28px;position:relative;isolation:isolate}
+#v-hello .cta{margin-top:22px;position:relative;isolation:isolate}
 #v-hello .cta .btn{position:relative;padding:14px 22px;gap:14px;font-weight:600;line-height:1.3;color:#f5f2ea;white-space:nowrap}
 body.hello .section-head{display:none}
-#v-hello .hello-oracle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 4px}
+#v-hello .hello-oracle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px;padding:20px 0 18px;border-top:1px solid #ffffff1f}
 #v-hello .hello-oracle-copy{min-width:0}
 #v-hello .hello-oracle h3{margin:0 0 8px;color:#f0d79a;font-size:18px;font-weight:600;letter-spacing:.12em}
 #v-hello .hello-oracle-copy p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
@@ -1268,19 +1271,27 @@ body.hello .section-head{display:none}
 #v-hello .hello-inside{display:flex;align-items:center;justify-content:center;gap:9px;min-height:44px;margin-top:8px;border:1px solid #ffffff2b;border-radius:var(--r-pill);color:#f5f2ea;text-decoration:none;font-size:15px;background:#0b0a143d}
 #v-hello .hello-inside:hover{background:#ffffff12}
 #v-hello .hello-inside:focus-visible{outline:2px solid var(--gold-2);outline-offset:5px}
+#v-hello .hello-paths{display:grid;margin:0;padding:0;list-style:none;border-top:1px solid #ffffff1f}
+#v-hello .hello-paths li{display:flex;align-items:flex-start;gap:14px;padding:20px 0;border-bottom:1px solid #ffffff1f}
+html[data-skin] #v-hello .hello-paths p{margin:0;font-size:15px;line-height:1.5;color:#c9c4d4}
+#v-hello .hello-paths strong{display:block;margin-bottom:4px;font-size:16px;font-weight:500;color:#f5f2ea}
+#v-hello .hello-paths p>span{display:block}
+#v-hello .hello-path-icon{flex:0 0 28px;padding-top:2px;color:#e2cc98}
+#v-hello .hello-path-icon svg{display:block;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+#v-hello .hello-future{margin:28px 0 24px;padding:22px 20px;background:linear-gradient(145deg,#c7a5ff12,#ead39509);border:1px solid #d9c4a026;border-radius:22px}
+#v-hello .hello-future h3{margin:0 0 12px;font-size:19px;line-height:1.35;font-weight:500;color:#f0d79a}
+html[data-skin] #v-hello .hello-future p{margin:0;color:#c9c4d4;font-size:15px;line-height:1.6;text-wrap:pretty}
+#v-hello .hello-bottom-cta{position:relative;flex-shrink:0;gap:14px;color:#f5f2ea}
+body.hello #v-hello .trust{margin:24px 0 0;font-size:13px;line-height:1.5;text-align:center;align-self:center}
 body.hello::before{background:radial-gradient(ellipse 90% 25% at 20% 76%,rgba(240,215,154,.25),transparent 100%),radial-gradient(ellipse 70% 32% at 110% 24%,rgba(240,215,154,.16),transparent 100%)}
 @media(max-width:370px){
   #v-hello .gift{gap:12px}
 }
-/* низкие экраны (телефон с адресной строкой, маленькое окно): всё равно один экран */
+/* На невысоких экранах вход доступен сразу, остальное описание прокручивается. */
 @media(max-height:640px){
-  #v-hello .hello-stage{gap:8px;padding-block:6px}
-  #v-hello .heromoon{width:72px}
+  #v-hello .hello-stage{padding-top:20px}
   #v-hello .gifts{gap:10px}
-  #v-hello .hello-content .hello-claim{font-size:22px;margin-bottom:6px}
-  #v-hello .hello-oracle{padding-top:6px}
-  #v-hello .cta{margin-top:12px}
-  body.hello #v-hello .trust{margin:10px 0 0;font-size:13px}
+  #v-hello .hello-content .hello-claim{font-size:23px}
 }
 @media(prefers-reduced-motion:reduce){
   .compact-brand .moon-img{animation:none!important}
