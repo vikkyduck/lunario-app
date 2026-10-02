@@ -27,6 +27,7 @@ export function personalExport(db,u,open){
     dailySets:rows('SELECT day,text,question FROM daily_sets WHERE user_id=? ORDER BY day'),
     dayPhotos:rows('SELECT day,ts,w,h FROM day_photos WHERE user_id=? ORDER BY day').map(r=>({...r,url:`/app/api/day/photo?day=${r.day}&size=full`})),
     compat:rows('SELECT id,ts,day,other_birth,total,rings,you,other,text FROM compat_checks WHERE user_id=? ORDER BY id').map(r=>{let rings=[];try{rings=JSON.parse(r.rings);}catch{} return {...r,rings,text:readable(r.text).text};}),   /* история совместимости — та же, что в базе знаний (R10) */
+    ragTurns: rows('SELECT id,day,ts,question,answer,sources FROM rag_turns WHERE user_id=? ORDER BY id').map(r=>({...r,question:readable(r.question).text,answer:readable(r.answer).text,sources:JSON.parse(readable(r.sources).text || '[]')})),
     echoes:rows('SELECT day,verdict FROM week_echoes WHERE user_id=? ORDER BY day'),
     reminders:rows('SELECT feature,enabled,time,freq,weekday,tz FROM reminders WHERE user_id=? ORDER BY feature')};
 }

@@ -139,7 +139,7 @@ export function mediaPath(file) { const safe = String(file).replace(/[^a-z0-9.\-
 export const AI_PROVIDERS = {
   openai: { label: 'GPT (OpenAI)', model: 'gpt-4o-mini', hint: 'ключ sk-… из platform.openai.com' },
   gemini: { label: 'Gemini (Google)', model: 'gemini-2.0-flash', hint: 'ключ из aistudio.google.com' },
-  yandex: { label: 'Алиса / YandexGPT', model: 'yandexgpt-lite', hint: 'API-ключ сервисного аккаунта; в «доп.» — folder id' },
+  yandex: { label: 'Алиса / YandexGPT', model: 'aliceai-llm-flash', hint: 'API-ключ сервисного аккаунта и идентификатор каталога (folder ID)' },
   gigachat: { label: 'ГигаЧат (Сбер)', model: 'GigaChat', hint: 'Authorization key из личного кабинета; в «доп.» — scope, например GIGACHAT_API_PERS' },
 };
 export function aiList() {
@@ -151,12 +151,12 @@ export function aiSave(b, by) {
   const cur = one('SELECT key_enc FROM ai_providers WHERE provider = ?', k) || {};
   const key = clean(b.key, 400);
   db.prepare(`INSERT INTO ai_providers (provider, key_enc, model, extra, enabled, updated_by, updated_at) VALUES (?,?,?,?,?,?,?)
-    ON CONFLICT(provider) DO UPDATE SET key_enc = excluded.key_enc, model = excluded.model, extra = excluded.extra, enabled = excluded.enabled, updated_by = excluded.updated_by, updated_at = excluded.updated_at`)
+    ON CONFLICT(provider) DO UPDATE SET key_enc = excluded.key_enc, model = excluded.model, extra = excluded.extra, enabled = excluded.enabled, check_ok = NULL, check_note = '', checked_at = '', updated_by = excluded.updated_by, updated_at = excluded.updated_at`)
     .run(k, key ? seal(key) : (cur.key_enc || ''), clean(b.model, 80) || AI_PROVIDERS[k].model, clean(b.extra, 200), b.enabled === false ? 0 : 1, by || '', now());
   return { ok: true };
 }
 export function aiRemove(k) { db.prepare('DELETE FROM ai_providers WHERE provider = ?').run(String(k)); return { ok: true }; }
-export function aiKey(k) { const r = one('SELECT key_enc, model, extra, enabled FROM ai_providers WHERE provider = ?', k); return r && r.key_enc && r.enabled ? { key: open_(r.key_enc), model: r.model, extra: r.extra } : null; }
+export function aiKey(k) { const r = one('SELECT key_enc, model, extra, enabled, check_ok FROM ai_providers WHERE provider = ?', k); return r && r.key_enc && r.enabled ? { key: open_(r.key_enc), model: r.model, extra: r.extra, verified: r.check_ok === 1 } : null; }
 /* живая проверка ключа там, где это один GET; у Яндекса и Сбера — OAuth, проверяем только формат */
 export async function aiCheck(k) {
   const c = aiKey(k); if (!c) return { ok: false, note: 'ключ не задан или выключен' };
@@ -164,7 +164,15 @@ export async function aiCheck(k) {
   try {
     if (k === 'openai') { const r = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${c.key}` }, signal: AbortSignal.timeout(10000) }); ok = r.ok; note = ok ? 'ключ принят' : `ответ ${r.status}`; }
     else if (k === 'gemini') { const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(c.key)}`, { signal: AbortSignal.timeout(10000) }); ok = r.ok; note = ok ? 'ключ принят' : `ответ ${r.status}`; }
-    else if (k === 'yandex') { ok = c.key.length > 20 && !!c.extra; note = ok ? 'формат в порядке; folder id задан — проверится при первом вызове' : 'нужен ключ и folder id в поле «доп.»'; }
+    else if (k === 'yandex') {
+      if (!c.extra) { ok = false; note = 'Укажите идентификатор каталога'; }
+      else {
+        const model = c.model.startsWith('gpt://') ? c.model : `gpt://${c.extra}/${c.model || 'aliceai-llm-flash'}`;
+        const r = await fetch('https://ai.api.cloud.yandex.net/v1/chat/completions', { method: 'POST', headers: { Authorization: `Api-Key ${c.key}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(20000), body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Ответь одним словом: готово' }], max_tokens: 12, temperature: 0 }) });
+        const response = r.ok ? await r.json() : null;
+        ok = r.ok && !!response?.choices?.[0]?.message?.content; note = ok ? 'Подключено: модель ответила на проверочный запрос' : `Не подключено: код ${r.status}. Проверьте каталог, права ключа и оплату.`;
+      }
+    }
     else if (k === 'gigachat') { ok = c.key.length > 20; note = ok ? 'формат в порядке; токен по OAuth получится при первом вызове' : 'слишком короткий ключ'; }
   } catch (e) { ok = false; note = 'сеть: ' + e.message; }
   db.prepare('UPDATE ai_providers SET check_ok = ?, check_note = ?, checked_at = ? WHERE provider = ?').run(ok ? 1 : 0, note, now(), k);

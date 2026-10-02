@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script defer src="/app/boot.js?v=131"></script>
+<script defer src="/app/boot.js?v=132"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=131">
-<link rel="stylesheet" href="/app/app.css?v=131">
-<link rel="stylesheet" href="/app/frame.css?v=131">
+<link rel="stylesheet" href="/app/theme.css?v=132">
+<link rel="stylesheet" href="/app/app.css?v=132">
+<link rel="stylesheet" href="/app/frame.css?v=132">
 </head>
 <body class="hello">
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -241,6 +241,12 @@
     <section class="feature-group" id="morning-rest"><h2 data-ui="home.more_group">Еще про этот день</h2><div class="wids mini-grid" id="morning-more"><button data-on="click:openWidget-card" class="wid has-thumb" data-feature="card" data-chip="Карта дня" type="button"><span class="card-thumb" aria-hidden="true"><img id="t-cardthumb" src="/app/assets/brand/card-back.svg?v=1" width="200" height="360" alt=""></span><b>Карта дня</b><span id="t-cardsub">Одна карта на день: смысл и что сделать сегодня</span></button><button data-on="click:openWidget-dayrune" class="wid" data-feature="dayrune" data-chip="Руна дня" type="button"><span class="rune-thumb" id="t-runethumb" hidden aria-hidden="true"><img src="" alt="" width="40" height="40"></span><i class="ico rune"></i><b>Руна дня</b><span id="t-runesub">Одна руна на день</span></button><button data-on="click:openWidget-sky" class="wid" data-feature="sky" data-chip="Планеты" type="button"><i class="ico star"></i><b>Влияние планет</b><span id="t-skysub">Фазы Луны, затмения, ретроградные планеты</span></button><button data-on="click:openWidget-day" class="wid" data-feature="day" data-chip="Прогноз дня" type="button"><i class="ico orbit"></i><b>Прогноз дня</b><span id="t-daysub">Ваш прогноз на сегодня</span></button><button data-on="click:openWidget-lunar" class="moonline" data-feature="lunar" data-chip="Луна" type="button"><canvas class="moon-sm" id="moonToday" width="92" height="92" aria-hidden="true"></canvas><span class="grow"><b class="moon-title">Луна</b><b id="h-moon"></b><small id="h-lunar"></small><span class="lunar-advice" id="ar-period"></span></span><span class="lunar-arrow" aria-hidden="true">→</span></button><button data-on="click:openWidget-tone" class="wid" data-feature="tone" data-chip="Вопрос дня" type="button"><i class="ico star"></i><b>Вопрос дня</b><span id="t-tonesub">Вопрос по теме дня — ответ вечером в дневнике</span></button></div></section>
   </section>
   <section class="view" id="v-ask"><h1 data-ui="ask.title">Свериться с собой</h1><p class="section-caption" data-ui="ask.caption">Карты, руны, вопросы</p>
+    <div id="rag-entry" class="wids" hidden><button type="button" class="wid" data-on="click:openRag"><i class="ico moon"></i><b>Лунарио помнит</b><span>Поговорить о том, что важно, с опорой на ваши записи</span></button></div>
+    <section id="rag-panel" class="rag-panel" aria-label="Разговор с Лунарио" hidden>
+      <h2>Лунарио помнит</h2><p class="hint">Ваши записи помогают увидеть связи и подобрать вопросы для размышления.</p>
+      <div id="rag-messages" aria-live="polite"></div>
+      <form data-on="submit:sendRag-event"><label for="rag-question">Что хочется обсудить?</label><textarea id="rag-question" rows="3" maxlength="1200" required minlength="3" placeholder="Например: что помогало мне справляться с тревогой?"></textarea><button id="rag-send" class="btn gold" type="submit">Обсудить с Лунарио</button><p id="rag-status" class="hint" role="status"></p></form>
+    </section>
     <div class="wids question-entry"><button data-on="click:openWidget-worry" class="wid" data-feature="worry" type="button"><i class="ico question"></i><b>Ответить себе на вопрос</b><span>Отношения, работа, решения, отношение к себе</span></button></div>
     <div class="wids tiles method-grid" aria-label="Выбрать способ">
 <button data-on="click:openAsk-yesno" class="wid" type="button"><i class="ico yes-no"></i><b>Да / Нет</b><span>Короткий ответ с пояснением</span></button><button data-on="click:openAsk-rune" class="wid" type="button"><i class="ico rune"></i><b>Руны</b><span>Одна, три, крест, четыре стихии</span></button><button data-on="click:openAsk-spread" class="wid" type="button"><i class="ico tarot"></i><b>Таро</b><span>Три карты, «Выбор», Кельтский крест</span></button></div>
@@ -395,22 +401,23 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script defer src="/app/moon-logo.js?v=131"></script>
+<script defer src="/app/moon-logo.js?v=132"></script>
 
-<script type="module" src="/app/sky.js?v=131"></script>
+<script type="module" src="/app/sky.js?v=132"></script>
 
-<script defer src="/app/common.js?v=131"></script>
-<script defer src="/app/experience.js?v=131"></script>
-<script defer src="/app/app.js?v=131"></script>
-<script defer src="/app/today.js?v=131"></script>
-<script defer src="/app/diary.js?v=131"></script>
-<script defer src="/app/readings.js?v=131"></script>
-<script defer src="/app/practices.js?v=131"></script>
-<script defer src="/app/about.js?v=131"></script>
-<script defer src="/app/account.js?v=131"></script>
-<script defer src="/app/tour.js?v=131"></script>
-<script defer src="/app/handlers.js?v=131"></script>
-<script defer src="/app/on.js?v=131"></script>
-<script defer src="/app/start.js?v=131"></script>
+<script defer src="/app/common.js?v=132"></script>
+<script defer src="/app/experience.js?v=132"></script>
+<script defer src="/app/app.js?v=132"></script>
+<script defer src="/app/today.js?v=132"></script>
+<script defer src="/app/diary.js?v=132"></script>
+<script defer src="/app/readings.js?v=132"></script>
+<script defer src="/app/practices.js?v=132"></script>
+<script defer src="/app/about.js?v=132"></script>
+<script defer src="/app/account.js?v=132"></script>
+<script defer src="/app/tour.js?v=132"></script>
+<script defer src="/app/rag.js?v=132"></script>
+<script defer src="/app/handlers.js?v=132"></script>
+<script defer src="/app/on.js?v=132"></script>
+<script defer src="/app/start.js?v=132"></script>
 </body>
 </html>

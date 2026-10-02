@@ -1,0 +1,30 @@
+[Unit]
+Description=Lunario local embeddings and personal retrieval
+After=network-online.target lunario-chroma.service
+Requires=lunario-chroma.service
+
+[Service]
+User=lunario-rag
+Group=lunario-rag
+UMask=0077
+WorkingDirectory=/opt/lunario-app/current/backend/rag
+EnvironmentFile=/opt/lunario-rag/service.env
+Environment=HF_HOME=/opt/lunario-rag/models
+Environment=HF_HUB_OFFLINE=1
+Environment=RAG_DATA_DIR=/opt/lunario-rag/state
+Environment=RAG_CPU_THREADS=2
+Environment=ANONYMIZED_TELEMETRY=False
+Environment=TOKENIZERS_PARALLELISM=false
+ExecStart=/opt/lunario-rag-venv/bin/uvicorn service:app --host 127.0.0.1 --port 5034 --workers 1 --no-access-log
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/lunario-rag
+MemoryMax=3G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

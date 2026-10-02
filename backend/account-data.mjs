@@ -8,6 +8,10 @@
    seen — где человек видит эти данные; exported — ключ в личной выгрузке (personal-export.mjs; '' — не выгружается, и сказано почему).
    Новая таблица с user_id обязана попасть сюда — check-personal-features сверяет список со схемой базы и с выгрузкой (R10). */
 export const PERSONAL_DATA = [
+  { table: 'rag_chunks', on: 'history', note: 'производный индекс, очищается вместе с источниками', seen: '', exported: '' },
+  { table: 'rag_state', on: 'history', note: 'удаление создает надежное задание очистки векторов', seen: '', exported: '' },
+  { table: 'rag_usage', on: 'history', note: 'служебный счетчик запросов', seen: '', exported: '' },
+  { table: 'rag_turns', on: 'history', note: 'разговор с Лунарио', seen: '«Свериться с собой» → Лунарио помнит', exported: 'ragTurns' },
   { table: 'entries', on: 'history', note: 'вопросы, карты, расклады', seen: '«Свериться с собой» → история; день', exported: 'entries' },
   { table: 'moods', on: 'history', seen: 'карточка дня, отчет по настроениям', exported: 'moods' },
   { table: 'mood_marks', on: 'history', note: 'все отмеченные за день настроения', seen: 'карточка дня, неделя, отчет', exported: 'moods' },

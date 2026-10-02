@@ -28,6 +28,6 @@
       }
     }
   }
-  for (const type of ['click', 'input', 'change', 'keydown']) document.addEventListener(type, run);
+  for (const type of ['click', 'input', 'change', 'keydown', 'submit']) document.addEventListener(type, run);
   document.addEventListener('toggle', run, true);
 })();

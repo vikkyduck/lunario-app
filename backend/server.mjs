@@ -35,6 +35,8 @@ import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, 
 import * as W from './workspace.mjs';
 import { natalChart, skyAt, inSign } from './astro.mjs';
 import { createKnowledge } from './knowledge.mjs';
+import { createRag } from './rag.mjs';
+import { createRagProvider } from './rag-provider.mjs';
 import { natalMeanings as natalMeaningsOf } from './natal-texts.mjs';
 import { createMemory } from './memory.mjs';
 import { createBackup } from './backup.mjs';
@@ -550,6 +552,8 @@ const Memory = createMemory({ db, open: open_, C, questionOf: (u, d) => dayPack(
 /* База знаний — папка документов о человеке, собранная из журнала (knowledge.mjs): ее читают ИИ, выгрузка и «на себе» в кабинете, экраны — нет */
 const natalMeanings = (chart) => natalMeaningsOf(chart, C.natalTexts());   /* значения и резюме карты — одни и те же для экрана и базы знаний */
 const Knowledge = createKnowledge({ db, seal, open: open_, C, signOf, destinyNum, personalYearAt, dayNum, numFormula, ageBand, natal: natalFor, natalMeanings, habitList, askesisList, MOOD_RU, topicOf, memory: Memory, lunarOf, nowISO , dataRev });
+const Rag = createRag({ db, seal, open: open_, knowledge: Knowledge, dayOf: userDay, catalogVersion, mutate, provider: createRagProvider({ getKey: W.aiKey }), logger: logError });
+Rag.start();
 /* раз в сутки по поясу человека документы пересобираются — по одному человеку за такт, не задерживая запросы; свежие (за сегодня) не трогаются */
 function knowledgeDaily() {
   try { const stale = Knowledge.staleUsers((u) => userDay(u)); let i = 0;
@@ -662,6 +666,19 @@ const server = createServer(async (req, res) => {
       }
 
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы — backend/http/cabinet-routes.mjs ── */
+      if (p === '/api/rag/status' && req.method === 'GET') return json(res, 200, await Rag.status());
+      if (p === '/api/rag/history' && req.method === 'GET') return json(res, 200, { items: Rag.history(u.id) });
+      if (p === '/api/rag/source' && req.method === 'GET') {
+        const item = await Rag.source(u.id, url.searchParams.get('id') || '');
+        return json(res, item ? 200 : 404, item || { error: 'not_found' });
+      }
+      if (p === '/api/rag/ask' && req.method === 'POST') {
+        const b = await readBody(req), question = cleanText(b.question, 1200), requestId = String(b.requestId || '');
+        if (question.length < 3 || !/^[a-f0-9-]{36}$/.test(requestId)) return json(res, 400, { error: 'invalid_question' });
+        const result = await Rag.ask(u, question, requestId);
+        return json(res, result.ok ? 200 : 409, result);
+      }
+
       if (p.startsWith('/api/cabinet/')) return cabinetRoutes({ p, req, res, url, u, d });
 
       /* ── первый источник (UTM с лендинга или рекламы) — один раз ── */

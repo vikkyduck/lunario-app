@@ -233,6 +233,9 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   for (const e of entries) flow.card({ meta: [fmtDay(e.day), KIND[e.kind] || e.kind].filter(Boolean).join(' · '), title: e.question || (e.title || ''), answer: e.question ? (e.title || '') : '', text: e.body || '' });
 
   /* ── совместимость ── */
+  const ragTurns = data.ragTurns || [];
+  if (ragTurns.length) { flow.section('Свериться с собой', 'Разговор с Лунарио', plural(ragTurns.length, 'ответ', 'ответа', 'ответов')); for (const r of ragTurns) flow.card({ meta: fmtDay(r.day), title: r.question || '', text: r.answer || '' }); }
+
   const compat = [...(data.compat || [])].sort((a, b) => (b.day || '').localeCompare(a.day || '') || b.id - a.id);
   if (compat.length) { flow.section('Обо мне', 'Совместимость', plural(compat.length, 'расчет', 'расчета', 'расчетов')); for (const c of compat) flow.card({ meta: `${fmtDay(c.day)} · ${c.you} и ${c.other} · партнер ${fmtDay(c.other_birth)}`, title: `${c.total}% — ${(c.rings || []).map((r) => `${r[0]} ${r[1]}%`).join(', ')}`, text: c.text || '' }); }
 

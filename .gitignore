@@ -29,3 +29,8 @@ mobile/ios/build/
 # локальные настройки Claude Code
 .claude/
 .deploy-snapshot
+
+# Local Python RAG runtime and model cache
+**/__pycache__/
+**/.venv/
+**/chroma_db/

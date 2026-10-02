@@ -1890,3 +1890,11 @@ body.inner #v-home .head-tools{margin-top:-6px}
 .natal-description h4{font-size:14px;line-height:1.5;margin:22px 0 8px;color:var(--gold-2)}
 .natal-description p{font-size:15px;line-height:1.7;margin:0 0 12px;white-space:pre-line}
 .natal-description p:last-child{margin-bottom:0}
+
+/* Разговор и раскрываемые источники используют типографику приложения. */
+.rag-panel{margin:16px 0;padding:20px;border:1px solid var(--line,rgba(255,255,255,.16));border-radius:24px;background:rgba(255,255,255,.035)}
+.rag-panel[hidden],#rag-entry[hidden]{display:none}
+.rag-turn{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+.rag-question{font-weight:600}.rag-answer,.rag-source{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.rag-source{font-size:14px;opacity:.85}.rag-turn details{margin:10px 0}.rag-turn summary{cursor:pointer}.rag-turn details button{margin:8px 4px 0 0;text-align:left;white-space:normal}
+.rag-panel form{display:grid;gap:12px;margin-top:20px}.rag-panel textarea{width:100%;box-sizing:border-box;resize:vertical}.rag-panel .btn{min-height:44px}

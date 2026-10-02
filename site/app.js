@@ -73,6 +73,8 @@ function go(v){
   const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   window.refreshMoonLogos?.();window.LunarioSky?.refresh();
   if(v==='account')XP.scroll.account=0;   /* открывается по кружку с любой вкладки — начинаем с шапки, а не с прошлой прокрутки */
+  if(v==='ask')ragAvailability();
+  if(v==='hello')clearRagUi();
   if(v==='home')window.tourMaybe?.();   /* подсказки по приложению — один раз, на «Сегодня» */
   restoreScroll(v);
   if(v==='home' && S.user?.onboarded){refreshHomeStatus();paintLunar();loadPushNote();paintYesterday();}

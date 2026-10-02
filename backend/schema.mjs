@@ -324,11 +324,26 @@ export const MIGRATIONS = [
     END;`);
   } },
 ];
+MIGRATIONS.push({ v: 26, name: 'персональная память и очередь удаления векторов', up(db) {
+  db.exec(`
+    CREATE TABLE rag_state (user_id INTEGER PRIMARY KEY, namespace TEXT NOT NULL UNIQUE, rev INTEGER NOT NULL DEFAULT -1, catalog TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '');
+    CREATE TABLE rag_chunks (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, source_key TEXT NOT NULL, label TEXT NOT NULL, kind TEXT NOT NULL, day TEXT NOT NULL, text_enc TEXT NOT NULL);
+    CREATE INDEX idx_rag_chunks_user ON rag_chunks(user_id);
+    CREATE TABLE rag_purges (namespace TEXT PRIMARY KEY);
+    CREATE TRIGGER rag_delete_namespace AFTER DELETE ON rag_state BEGIN
+      INSERT OR IGNORE INTO rag_purges(namespace) VALUES (OLD.namespace);
+    END;
+    CREATE TABLE rag_turns (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, request_id TEXT NOT NULL, day TEXT NOT NULL, ts TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, sources TEXT NOT NULL, model TEXT NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, UNIQUE(user_id, request_id));
+    CREATE INDEX idx_rag_turns_user ON rag_turns(user_id,id);
+    CREATE TABLE rag_usage (user_id INTEGER NOT NULL, day TEXT NOT NULL, requests INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,day));
+  `);
+}});
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
 /* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера (и отдельными процессами перед работой).
    Границы у миграций и проверки одни (F12): все, от чего зависят операции, — здесь, включая users.data_rev и knowledge.rev */
 export const REQUIRED = {
+  rag_state: ['user_id','namespace','rev','catalog'], rag_chunks: ['id','user_id','text_enc','source_key'], rag_turns: ['user_id','request_id','question','answer','sources'], rag_usage: ['user_id','day','requests'], rag_purges: ['namespace'],
   backlog_telegram_outbox: ['payload', 'state', 'attempts', 'next_at', 'sent_at', 'last_error'],
   users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref', 'data_rev'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],

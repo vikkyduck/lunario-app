@@ -57,6 +57,7 @@ const RESETS=[];
 function registerReset(fn,{profile=false}={}){ RESETS.push({fn,profile}); }
 function resetLocalAccount({profile=true}={}){
   resetRequests();
+  if (typeof clearRagUi === 'function') clearRagUi();
   const uid=(typeof S!=='undefined'&&S.user?.id)||0;
   try{ const gone=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&(k.startsWith(`lun_draft_${uid}_`)||k===`lun_dc_draft_${uid}`||k===`lun_tool_offer_${uid}`))gone.push(k); } gone.forEach(k=>localStorage.removeItem(k)); }catch(e){}
   for(const r of RESETS){ if(!profile&&r.profile)continue; try{ r.fn(); }catch(e){ /* сброс одного модуля не должен мешать остальным */ } }
