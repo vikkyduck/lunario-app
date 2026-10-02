@@ -1981,3 +1981,20 @@ body.inner #v-home .home-later{margin-top:12px}
 /* Нижние ссылки собраны вместе; свободная высота распределяется между смысловыми блоками. */
 #v-hello .hello-footer{grid-row:4;display:grid;gap:10px}
 #v-hello .hello-footer .hello-inside,body.hello #v-hello .hello-footer .trust{grid-row:auto}
+
+/* Быстрая запись и возвращение к собственным словам в Дневнике. */
+body.inner .diary-shortcuts{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+body.inner .diary-shortcuts .btn{flex:1;white-space:nowrap}
+body.inner .diary-search{display:grid;gap:10px;margin-bottom:20px}
+body.inner .diary-search label{font-size:14px;color:var(--text-2)}
+body.inner .diary-search .row{gap:8px;flex-wrap:wrap}
+body.inner .diary-search input{min-width:0;flex:1;width:100px}
+body.inner .diary-search select{min-width:0;flex:1;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text);font:inherit}
+body.inner .day-row .t{min-width:0}
+body.inner .day-row .t p{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;line-height:1.4}
+body.inner .day-row .t small{white-space:normal;line-height:1.4}
+body.inner .dc-actions{flex-wrap:wrap}
+body.inner .dc-optional{margin:16px 0 10px}
+body.inner #w-days .diary-search .search-note{font-size:13px;line-height:1.45;margin:0;color:var(--muted)}
+body.inner #w-days .days-month{font-size:12px;letter-spacing:.06em}
+body.inner #w-days #days-result-count{font-size:14px;line-height:1.4}

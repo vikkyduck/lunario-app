@@ -104,17 +104,43 @@ export function createDay({ db, seal, open, readable = null, sealBytes = null, o
     const moods = moodsOf(uid, d), m = morningStored(uid, d), ph = photoMeta(uid, d);
     const text = first ? open(first.text).replace(/\s+/g, ' ').trim().slice(0, 140) : '';
     const ld = lunarOf(u, d);
-    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, lunarFrom: ld ? ld.nFrom || 0 : 0, lunarTitle: ld ? ld.title || '' : '', empty: (dayWritten ? !dayWritten(uid, d) : !moods.length && !ph) && !text };   /* «записан» — по правилу пуша и «Сегодня» (day-sources.mjs); текст любого вида — не пусто */
+    return { day: d, text, textKind: first ? first.kind || 'journal' : '', moods, kinds, theme: m ? m.theme : '', photo: ph ? ph.ts : '', lunar: ld ? ld.n : 0, lunarFrom: ld ? ld.nFrom || 0 : 0, lunarTitle: ld ? ld.title || '' : '', empty: !moods.length && !ph && !text && !kinds.length };   /* В архиве любая личная отметка делает день непустым. */
   }
   /* Список дней. calendar — последние n календарных дней до d (пустые тоже, с темой утра); иначе — только дни с записями, страницей до before */
   /* «дни с записями» — политика DAY_ACTIVE из day-sources.mjs: одна и та же для архива, страниц и счетчика (аудит v98 F08, v112 R12) */
-  function days(u, d, { calendar = 0, before = '', limit = 30 } = {}) {
+  function days(u, d, { calendar = 0, before = '', limit = 30, query = '', kind = '', includeToday = false } = {}) {
     const total = countActiveDays(db, u.id, d);   /* дней с записями до сегодня — по нему предлагаются шаги вечера */
     if (calendar) { const out = []; for (let i = 1; i <= calendar; i++) out.push(summary(u, addDays(d, -i))); return { items: out, next: null, total }; }
-    const cut = isDay(before) ? before : d;
+    const end = includeToday ? addDays(d, 1) : d;
+    const cut = isDay(before) && before < end ? before : end;
+    const normalize = (v) => String(v || '').toLocaleLowerCase('ru-RU').replaceAll('\u0451', 'е').replace(/\s+/g, ' ').trim();
+    const words = normalize(query).split(' ').filter(Boolean);
+    const filter = ['text', 'mood'].includes(kind) ? kind : '';
+    if (words.length || filter) {
+      // Search decrypted texts only for this owner. Bound work per page; the cursor also advances over non-matches.
+      const candidates = activeDays(db, u.id, cut, 301), items = [];
+      let cursor = '', scanned = 0;
+      for (const date of candidates.slice(0, 300)) {
+        cursor = date; scanned++;
+        const rows = db.prepare('SELECT kind, text FROM journal WHERE user_id = ? AND day = ? ORDER BY id DESC').all(u.id, date);
+        const texts = rows.map(r => ({kind: r.kind || 'journal', text: read(r.text).text || ''})).filter(r => r.text);
+        const match = words.length ? texts.find(r => words.every(w => normalize(r.text).includes(w))) : texts[0];
+        if (words.length && !match || filter === 'text' && !texts.length || filter === 'mood' && !moodsOf(u.id, date).length) continue;
+        const item = summary(u, date);
+        if (match && words.length) {
+          const plain = match.text.replace(/\s+/g, ' ').trim();
+          const pos = words.length ? normalize(plain).indexOf(words[0]) : 0, start = Math.max(0, pos - 45);
+          item.text = (start ? '…' : '') + plain.slice(start, start + 140) + (plain.length > start + 140 ? '…' : '');
+          item.textKind = match.kind;
+        }
+        items.push(item);
+        if (items.length >= limit) break;
+      }
+      return {items, next: candidates.length > scanned ? cursor : null, total: null};
+    }
     const found = activeDays(db, u.id, cut, limit + 1);
     const page = found.slice(0, limit);
-    return { items: page.map((x) => summary(u, x)), next: found.length > limit ? page[page.length - 1] : null, total };
+    return { items: page.map((x) => summary(u, x)), next: found.length > limit ? page[page.length - 1] : null, total: includeToday ? countActiveDays(db, u.id, end) : total };
   }
 
   /* Сохранение: все в одной транзакции — либо весь день записан, либо ничего (повтор с телефона безопасен).

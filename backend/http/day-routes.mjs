@@ -34,7 +34,7 @@ export function createDayRoutes({ json, readBody, day, bridge }) {
     }
     if (req.method === 'GET') {
       /* прошлые дни: список одной строкой (calendar — последние n дней, иначе страницей по дням с записями), открытый день, «мост» из прошлого */
-      if (p === '/api/days') { const q = url.searchParams; return json(res, 200, day.days(u, d, { calendar: Math.min(31, Number(q.get('calendar')) || 0), before: q.get('before') || '', limit: Math.min(60, Number(q.get('limit')) || 30) })); }
+      if (p === '/api/days') { const q = url.searchParams; return json(res, 200, day.days(u, d, { calendar: Math.min(31, Number(q.get('calendar')) || 0), before: q.get('before') || '', limit: Math.max(1, Math.min(60, Number(q.get('limit')) || 30)), query: (q.get('q') || '').slice(0, 120), kind: q.get('kind') || '', includeToday: q.get('today') === '1' })); }
       if (p === '/api/day/view') { const x = url.searchParams.get('day') || ''; if (!ISO.test(x) || x > d) return json(res, 400, { ok: false, error: 'bad_day' }); return json(res, 200, day.view(u, x, d)); }   /* с editable: старый день — только чтение, и экран знает это заранее */
       if (p === '/api/thoughts') { const x = url.searchParams.get('day') || d; return json(res, 200, { items: day.thoughtsOf(u.id, ISO.test(x) && x <= d ? x : d) }); }   /* мысли к материалам за день */
       if (p === '/api/day/bridge') { const x = url.searchParams.get('day') || ''; return json(res, 200, { item: bridge(u, ISO.test(x) && x <= d ? x : d) }); }   /* «Я помню» (memory.mjs) и для открытого прошлого дня */

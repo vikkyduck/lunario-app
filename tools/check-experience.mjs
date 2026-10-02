@@ -27,11 +27,9 @@ export async function checkExperience({browser,base,owner}){
     const save=await page.locator('#tone-save').boundingBox();await shot('question-keyboard');assert.ok(save.y>=0&&save.y+save.height<=420,JSON.stringify(save));
     await page.locator('#tone-save').click();await page.locator('#tone-box .saved-state').waitFor();await close();
     /* Дневник по шагам: первый вопрос — тот же, что зовет вечерний пуш; записанный день читается текстом; прошлые дни — строками */
-    await page.setViewportSize({width:390,height:844});await page.locator('.app-nav [data-nav=history]').click();await page.locator('#day-card #dc-text').waitFor();
+    await page.setViewportSize({width:390,height:844});await page.locator('.app-nav [data-nav=history]').click();await page.getByRole('button',{name:'Записать мысль',exact:true}).click();await page.locator('#dc-text').waitFor();
     assert.equal(await page.locator('#day-card .dc-q').innerText(),'Что хочется оставить от этого дня?');
-    await page.locator('#dc-text').fill('Сегодня я нашла время для себя');await page.locator('#dc-next').click();await page.locator('#dc-mood-chips').waitFor();
-    while(await page.locator('#dc-next').innerText()!=='Запомнить этот день')await page.locator('#dc-next').click();
-    await page.locator('#dc-next').click();await page.locator('#day-card .dc-read').first().waitFor({timeout:8000});
+    await page.locator('#dc-text').fill('Сегодня я нашла время для себя');await page.locator('#dc-next').click();await page.locator('#day-card .dc-read').first().waitFor({timeout:8000});
     assert.ok((await page.locator('#day-card').innerText()).includes('Сегодня я нашла время для себя'));assert.ok((await page.locator('#day-card').innerText()).includes('Длинный ответ'),'the answer of the day is part of the recorded day');
     await page.locator('.app-nav [data-nav=home]').click();await shot('home-tools-light');await page.reload();await page.waitForSelector('#v-home.on');
     await page.locator('.app-nav [data-nav=history]').click();await page.locator('#day-card .dc-read').first().waitFor();await shot('diary-light');

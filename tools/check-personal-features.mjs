@@ -558,6 +558,28 @@ try {
     assert.equal((await askOwner.raw('/day','POST',{day:'2020-01-01',text:'x'})).status,400,'days older than a year are not editable');
     console.log('PASS: a past day can be written and corrected within a year; deleting a block works; the streak stays.'); }
 
+  // Diary search reads every personal text, not only a day's display snippet; keeps ownership and pagination.
+  { const writer=account(), stranger=account();const me=await writer.json('/me');await stranger.json('/me');
+    await writer.json('/profile','POST',{name:'Поиск',birth:'1990-01-01',city:'Москва',consent:true});
+    const d=me.day.date, ago=n=>new Date(Date.parse(d+'T12:00:00Z')-n*864e5).toISOString().slice(0,10);
+    await writer.json('/day','POST',{text:'Сегодня прогулка у озера',moods:['joy']});
+    await writer.json('/day','POST',{day:ago(1),text:'Обычная запись без совпадения',gratitude:'Спасибо за прогулку у озера'});
+    await writer.json('/day','POST',{day:ago(40),text:'Старая прогулка у озера'});
+    const find=q=>writer.json('/days?today=1&'+new URLSearchParams(q));
+    const first=await find({q:'ПРОГУЛ',limit:'1'});assert.equal(first.items[0].day,d);assert.ok(first.next);
+    const second=await find({q:'прогул',limit:'1',before:first.next});assert.equal(second.items[0].day,ago(1));assert.match(second.items[0].text,/Спасибо/,'match is in gratitude, not the default day snippet');
+    const third=await find({q:'прогул',limit:'1',before:second.next});assert.equal(third.items[0].day,ago(40));
+    assert.equal((await find({q:'ПРОГУЛ ОЗЕРА',kind:'mood'})).items.length,1);
+    assert.equal((await find({q:'нетсовпадений'})).items.length,0);
+    assert.equal((await stranger.json('/days?today=1&q='+encodeURIComponent('прогул'))).items.length,0);
+    await writer.json('/day','POST',{text:'Исправленная запись'});
+    assert.ok(!(await find({q:'прогул'})).items.some(x=>x.day===d),'search sees edits immediately');
+    await writer.json('/day?day='+ago(1)+'&what=gratitude','DELETE');
+    assert.ok(!(await find({q:'прогул'})).items.some(x=>x.day===ago(1)),'deleted text is not searchable');
+    assert.equal((await find({kind:'text'})).items.length,3);
+    console.log('PASS: diary search covers past and current text, gratitude, filters, edits, deletion, paging and owner isolation.');
+  }
+
   // ── Аудит v98 (F01–F19): удаление одной записи, повтор без дубля, отклик в составе дня, честный лимит, мысль к результату,
   //    открытый вопрос, настоящие даты, частичные настройки, все отметки настроения в отчете и выгрузке, старый день только для чтения ──
   { const aud = account(); const me = await aud.json('/me'), d0 = me.day.date, uid = me.user.id;

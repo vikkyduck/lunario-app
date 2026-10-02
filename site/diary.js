@@ -18,14 +18,15 @@ function weekShift(n){const w=WK.data?.week;if(!w)return;loadWeek(new Date(Date.
 function paintWeek(){
   const w=WK.data,box=$('week-box');if(!w||!box)return;
   const nav=`<div class="week-nav"><button data-on="click:weekShift-a0" data-a0="-1" type="button" class="btn ghost sm">← прошлая</button><span class="eyebrow">${wkRange(w.week.start,w.week.end)}</span>${w.week.current?'<span></span>':'<button data-on="click:weekShift-a0" data-a0="1" type="button" class="btn ghost sm">следующая →</button>'}</div>`;
-  const quote=(f)=>`<blockquote class="week-quote"><small>${wkDate(f.day)} · ${WK_KIND[f.kind]||''}${f.kind==='thought'&&f.name?' · '+esc(f.name):''}</small><p>${esc(f.text)}</p></blockquote>`;   /* мысль — с именем материала: видно, к чему она */
+  const quote=(f)=>`<blockquote class="week-quote"><small><button data-on="click:openDay-a0" data-a0="${f.day}" class="week-daylink" type="button">${wkDate(f.day)} →</button> · ${WK_KIND[f.kind]||''}${f.kind==='thought'&&f.name?' · '+esc(f.name):''}</small><p>${esc(f.text)}</p></blockquote>`;   /* мысль — с именем материала: видно, к чему она */
   const saved=w.saved.length?`<section class="card week-part"><h3>Что вы сохранили</h3>${w.saved.map(quote).join('')}</section>`:'';
   const carried=w.reflection.previous?`<section class="card week-part week-carried"><span class="eyebrow">С прошлой недели</span><p class="t2">${quoted(w.reflection.previous)}</p></section>`:'';
   /* черновик рефлексии живет на устройстве до подтвержденного сохранения (аудит v98, F06): закрыть панель и обновить страницу — текст на месте */
   const draft=draftGet('week',w.week.start), reflectText=draft!==null?draft:w.reflection.text;
   const reflect=`<section class="card week-part"><h3>${esc(w.reflection.question)}</h3><div class="field"><textarea data-on="input:wkReflectInput-this" id="wk-reflect" maxlength="2000" rows="2">${esc(reflectText)}</textarea></div><div class="answer-actions"><button data-on="click:saveWeekReflection" class="btn sm" id="wk-reflect-save" type="button">Сохранить</button></div><p class="hint" id="wk-reflect-state" role="status">${draft!==null&&draft!==w.reflection.text?'Черновик восстановлен — не сохранен':''}</p></section>`;
   /* разделы — по наличию данных, а не по режиму (F08): неделя с одной мыслью или одной отметкой показывает ее, вступление говорит, сколько всего */
-  const intro=w.mode!=='full'?`<section class="card week-part"><p class="t2">${esc(w.text)}</p></section>`:'';
+  const counts=w.counts||{}, savedCounts=[counts.texts?`${counts.texts} ${plural(counts.texts,'запись','записи','записей')}`:'',counts.moodDays?`настроение за ${counts.moodDays} ${plural(counts.moodDays,'день','дня','дней')}`:'',counts.photos?`${counts.photos} фото`:'',counts.notes?`${counts.notes} ${plural(counts.notes,'заметка к практике','заметки к практикам','заметок к практикам')}`:''].filter(Boolean).join(', ');
+  const intro=w.mode!=='full'?`<section class="card week-part"><p class="t2">${savedCounts?'Сохранено: '+esc(savedCounts)+'.':esc(w.text)}</p></section>`:'';
   const days=w.moods.days;
   const moods=`<section class="card week-part"><h3>Настроение недели</h3>${w.moods.count?`<div class="week-strip" aria-hidden="true">${days.map((d,i)=>`<div class="week-col${d.day>w.week.today?' future':''}"><span class="week-dow">${WK_DOW[i]}</span><span class="week-dot ${d.moods.length?'done':'none'}"></span></div>`).join('')}</div><div class="week-mood-list">${days.map((d,i)=>d.moods.length?`<p><b>${WK_DOW[i]}</b>${d.moods.map(esc).join(' · ')}</p>`:'').join('')}</div>${w.moods.top[0]?.count>1?`<p class="hint">Чаще всего — ${w.moods.top.filter(t=>t.count===w.moods.top[0].count).map(t=>esc(t.mood)).join(', ')}: ${w.moods.top[0].count} ${plural(w.moods.top[0].count,'день','дня','дней')} из ${w.moods.count}</p>`:`<p class="hint">${w.moods.count===1?'Отметка за один день':`Отметки за ${w.moods.count} ${plural(w.moods.count,'день','дня','дней')} — настроения не повторялись`}</p>`}`:'<p class="hint">Настроение на этой неделе не отмечали</p>'}</section>`;
   const echoes=`<section class="card week-part"><h3>Что отозвалось</h3>${w.echoes.length?w.echoes.map(e=>`<div class="week-echo" data-day="${e.day}"><small><button data-on="click:openDay-a0" data-a0="${e.day}" class="week-daylink" type="button">${wkDate(e.day)} →</button>${e.source?' · '+esc(e.source):''}</small><p><span class="week-when">Утром</span> ${esc(e.morning)}</p><p><span class="week-when">Вечером</span> ${esc(e.evening)}</p><div class="chips flow">${WK_VERDICT.map(([k,l])=>`<button data-on="click:weekEcho-a0-a1" data-a0="${e.day}" data-a1="${k}" type="button" class="chip${e.verdict===k?' on':''}" aria-pressed="${e.verdict===k}">${l}</button>`).join('')}</div></div>`).join(''):'<p class="hint">Пар «утро ↔ вечер» пока не набралось: для них нужны настрой утром и запись вечером</p>'}</section>`;
@@ -62,8 +63,8 @@ async function saveWeekReflection(){
    пустое не сохраняется. Черновик живет в localStorage до сохранения: звонок в 21:03 не стирает написанное. ══════════ */
 /* touched.fields — какие поля человек трогал в этой сессии: на сервер уходят только они (повторный аудит v112, R01): благодарность,
    поправленная в своей панели, не перезапишется старым текстом из карточки дня */
-const DC={state:null,forDay:null,mode:'steps',step:0,text:'',gratitude:'',answer:'',moods:new Set(),own:'',ownOpen:false,habits:new Map(),askesis:new Map(),touched:{habits:new Set(),askesis:new Set(),fields:new Set()},echo:'',bridge:undefined,dirty:false};
-registerReset(()=>{ DC.state=null; DC.forDay=null; DC.bridge=undefined; DC.dirty=false; DC.touched={habits:new Set(),askesis:new Set(),fields:new Set()}; });   /* сброс аккаунта на устройстве (F05) */
+const DC={freeText:false,state:null,forDay:null,mode:'steps',step:0,text:'',gratitude:'',answer:'',moods:new Set(),own:'',ownOpen:false,habits:new Map(),askesis:new Map(),touched:{habits:new Set(),askesis:new Set(),fields:new Set()},echo:'',bridge:undefined,dirty:false};
+registerReset(()=>{ DC.state=null; DC.forDay=null; DC.freeText=false; DC.bridge=undefined; DC.dirty=false; DC.touched={habits:new Set(),askesis:new Set(),fields:new Set()}; });   /* сброс аккаунта на устройстве (F05) */
 const addDaysC=(d,n)=>new Date(Date.parse(d+'T12:00:00Z')+n*864e5).toISOString().slice(0,10);
 const yesterdayC=()=>S.day?addDaysC(S.day.date,-1):'';
 /* Шаги вечера. База — «пара строк» и настроение, у всех и всегда. Остальное — инструменты: благодарность, привычки, аскеза
@@ -84,7 +85,7 @@ const MIC_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 /* «пятница, 18 сентября» — как на «Сегодня»; cap — с заглавной для заголовков */
 const fmtDayWords=(d,cap=false)=>{const s=new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});return cap?s[0].toUpperCase()+s.slice(1):s;};
 const stepOn=(key)=>key==='mood'?true:toolsVisible().has(TOOL_OF[key]||key);   /* все практики, включая вопрос дня и фото, — по выбору человека */
-const eveningStepsOn=()=>stepOrder().filter(stepOn);
+const eveningStepsOn=()=>stepOrder().filter(key=>stepOn(key)||key==='text'&&DC.freeText);
 /* черновик — свой у каждого аккаунта на устройстве, шаг по имени (состав шагов может меняться) */
 const dcDraftKey=()=>'lun_dc_draft_'+(S.user?.id||0);
 function dcSaveDraft(){ if(!DC.state)return; try{ localStorage.setItem(dcDraftKey(),JSON.stringify({day:DC.state.day,stepKey:(dcSteps()[DC.step]||{}).key||'text',text:DC.text,gratitude:DC.gratitude,answer:DC.answer,moods:[...DC.moods],own:DC.own,echo:DC.echo,fields:[...DC.touched.fields],
@@ -101,6 +102,7 @@ async function loadDayCard(keepStep=false){
 /* Значения с сервера + черновик; записанный день без черновика открывается для чтения */
 function dcFromState(){
   const s=DC.state, draft=dcLoadDraft(s.day);
+  DC.freeText=!!(draft&&(draft.stepKey==='text'||draft.fields?.includes('text')));
   DC.text=s.text?s.text.text:''; DC.gratitude=s.gratitude?s.gratitude.text:''; DC.answer=s.answer?s.answer.text:'';
   if(!DC.forDay)answerFrom(s.answer,s.day);   /* панель и карточка на «Сегодня» знают тот же ответ */
   DC.moods=new Set(s.moods.filter(m=>!m.startsWith('own:'))); DC.own=s.moods.filter(m=>m.startsWith('own:')).map(m=>m.slice(4)).join(', '); DC.ownOpen=!!DC.own;
@@ -167,16 +169,15 @@ function paintDayCard(){
       <div class="field grow"><input data-on="input:dcNote-a0-value" data-a0="${a.id}" maxlength="500" placeholder="заметка, если хочется" value="${esc(v.note||'')}"></div></div>`;}).join('')}</div>`;
   }
   const filled=dcFilled(step.key);
-  const primary=last?`<button data-on="click:saveDayCard" class="btn" id="dc-next" type="button">${DC.forDay?(DC.forDay===yesterdayC()?'Запомнить вчерашний день':'Сохранить'):ui('diary.save','Запомнить этот день')}</button>`:`<button data-on="click:dcNext" class="btn" id="dc-next" type="button">Дальше</button>`;
-  /* «Сохранить» и «← Назад» на каждом шаге (решение владелицы 19.09): человек всегда видит, как закончить и как вернуться */
-  const secondary=[!last?`<button data-on="click:saveDayCard" class="btn ghost sm" type="button">Сохранить</button>`:'', i?`<button data-on="click:dcBack" class="btn ghost sm" type="button">← Назад</button>`:''].filter(Boolean);
-  const actions=`<div class="answer-actions dc-actions">${primary}${filled||last?'':`<button data-on="click:dcNext" class="btn ghost sm dc-skip" type="button">Пропустить</button>`}</div>${secondary.length?`<div class="dc-secondary">${secondary.join('')}</div>`:''}<p class="hint" id="dc-state" role="status"></p>`;
+  const primary=`<button data-on="click:saveDayCard" class="btn" id="dc-next" type="button">Сохранить</button>`;
+  const secondary=[!last?`<button data-on="click:dcNext" class="btn ghost sm" type="button">${filled?'Следующий вопрос →':'Пропустить →'}</button>`:'', i?`<button data-on="click:dcBack" class="btn ghost sm" type="button">← Назад</button>`:''].filter(Boolean);
+  const actions=`<p class="hint dc-optional">Можно сохранить сейчас. Остальные вопросы — по желанию.</p><div class="answer-actions dc-actions">${primary}${secondary.join('')}</div><p class="hint" id="dc-state" role="status">${DC.dirty?'Черновик на этом устройстве — еще не сохранен':''}</p>`;
   box.innerHTML=head+body+actions;
   if(step.key==='mood'&&DC.ownOpen&&!DC.own)$('dc-own')?.focus({preventScroll:true});
   box.querySelectorAll('textarea').forEach(growTextarea);
   if(!journalSpeech)prepareDictation();
 }
-function dcInput(id){ const el=$('dc-'+id); if(!el)return; DC[id]=el.value; DC.touched.fields.add(id); DC.dirty=true; dcSaveDraft(); const skip=document.querySelector('.dc-skip'); if(skip&&el.value.trim())skip.remove(); }
+function dcInput(id){ const el=$('dc-'+id); if(!el)return; DC[id]=el.value; DC.touched.fields.add(id); DC.dirty=true; dcSaveDraft(); const state=$('dc-state'); if(state)state.textContent='Черновик на этом устройстве — еще не сохранен'; const skip=document.querySelector('.dc-skip'); if(skip&&el.value.trim())skip.remove(); }
 function dcNext(){ hap(); if(journalSpeech)stopJournalDictation(); DC.step=Math.min(DC.step+1,dcSteps().length-1); dcSaveDraft(); paintDayCard(); scrollToTop(Math.max(0,$('day-card').getBoundingClientRect().top+scrollTopNow()-16)); }
 function dcBack(){ hap(); if(journalSpeech)stopJournalDictation(); DC.step=Math.max(0,DC.step-1); dcSaveDraft(); paintDayCard(); }
 function dcMood(key){if(DC.moods.has(key))DC.moods.delete(key);else DC.moods.add(key);DC.touched.fields.add('moods');DC.dirty=true;dcSaveDraft();const b=document.querySelector(`#dc-mood-chips [data-a0="${key}"]`);if(b){b.classList.toggle('on',DC.moods.has(key));b.setAttribute('aria-pressed',DC.moods.has(key));}hap();document.querySelector('.dc-skip')?.remove();}
@@ -188,6 +189,13 @@ function dcNote(id,value){id=Number(id);const cur=DC.askesis.get(id)||{kept:null
 function dcEcho(v){ DC.echo=DC.echo===v?'':v; DC.touched.fields.add('echo'); dcSaveDraft(); document.querySelectorAll('.dc-echo-q .chip').forEach(b=>{const on=b.dataset.a0===DC.echo;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);}); hap(); document.querySelector('.dc-skip')?.remove(); }
 /* микрофон внутри поля: диктовка идет в поле текущего шага */
 function dcDictate(fieldId){ DICT_SCOPES.dc={text:fieldId,btn:'dc-mic',note:'dc-speech-note'}; journalDictate('dc'); }
+async function dcWrite(){
+  if(saveDayCard.busy)return;
+  if(!DC.state)await loadDayCard();
+  if(!DC.state)return;
+  DC.freeText=true; DC.mode='steps'; DC.step=dcSteps().findIndex(s=>s.key==='text');
+  paintDayCard(); $('dc-text')?.focus();
+}
 function dcEdit(){ DC.mode='steps'; DC.step=0; DC.bridge=undefined; paintDayCard(); hap(); scrollToTop(Math.max(0,$('day-card').getBoundingClientRect().top+scrollTopNow()-16)); }
 /* первая привычка и первая аскеза — прямо из шага, без похода на страницу инструмента */
 async function dcAddHabit(){
@@ -207,7 +215,7 @@ async function saveDayCard(){
   const f=DC.touched.fields;
   const nothing=(!DC.text.trim()&&!DC.gratitude.trim()&&!DC.answer.trim()&&!DC.moods.size&&!DC.own.trim()||!f.size)&&!DC.touched.habits.size&&!DC.touched.askesis.size;
   if(nothing&&!dcWritten(DC.state)){ const st=$('dc-state'); if(st)st.textContent='Пока нечего запомнить — отметьте настроение или напишите пару слов'; hap(); return; }
-  saveDayCard.busy=true;const btn=$('dc-next');if(btn){btn.disabled=true;btn.textContent='Запоминаем…';}
+  saveDayCard.busy=true;const btn=$('dc-next');if(btn){btn.disabled=true;btn.textContent='Сохраняем…';}
   const own=DC.own.split(',').map(x=>x.trim().replace(/\s+/g,'-').slice(0,24)).filter(Boolean).map(x=>'own:'+x);
   /* уходит только то, что было на экране и что трогали: скрытый шаг — ключа нет, сервер «не трогает»; привычки — только отмеченные в этой сессии,
      чтобы не стереть галочку, поставленную позже в самом инструменте */
@@ -228,7 +236,7 @@ async function saveDayCard(){
     DC.mode=matchMedia('(prefers-reduced-motion: reduce)').matches?'done':'celebrate'; paintDayCard();
   }
   catch(e){ if(e.code==='cancelled')return; const st=$('dc-state'); if(st)st.textContent=e.code==='too_many'?'Записей за этот день уже сто — новые не сохраняются, текст остался в форме':e.code==='unreadable'?ui('diary.unreadable','Эта запись не читается — ее нельзя переписать, обратитесь в поддержку'):ERR_SAVE_KEPT; }   /* лимит — честный отказ, черновик на месте (F15); нечитаемая запись не перезаписывается (F14) */
-  finally{ saveDayCard.busy=false; const b=$('dc-next'); if(b){b.disabled=false;b.textContent=DC.forDay?'Сохранить':'Запомнить этот день';} }
+  finally{ saveDayCard.busy=false; const b=$('dc-next'); if(b){b.disabled=false;b.textContent='Сохранить';} }
 }
 /* Дописать или поправить прошлый день — той же карточкой по шагам: «Вчера не записали» утром на «Сегодня», «Изменить» в открытом дне */
 async function dcLoadFor(day){
@@ -306,8 +314,7 @@ function paintDayDone(){
     ${dayProseHtml(s)}
     ${warm?`<p class="dc-warm">${warm}</p>`:''}
     <div class="dc-bridge" id="dc-bridge" hidden></div>
-    ${DC.forDay?'':nextStepHtml()}
-    ${DC.forDay?'':toolOfferHtml()}
+
     ${DC.forDay?'<div class="dc-done-actions"><button data-on="click:dcToday" class="btn ghost sm" type="button">К сегодняшнему дню →</button></div>':''}<p class="hint" id="dc-state" role="status"></p>`;
   loadBridge();
 }
@@ -417,7 +424,9 @@ const moodTone=(m)=>{ if(!m)return ''; if(m.startsWith('own:'))return 'own'; con
 const dayRowHtml=(x)=>{
   const dt=new Date(x.day+'T12:00:00'), wd=dt.toLocaleDateString('ru-RU',{weekday:'short'}).replace('.','');
   const tail=x.photo?`<img class="ph" src="${API}/day/photo?day=${x.day}&size=thumb&t=${encodeURIComponent(x.photo)}" alt="" loading="lazy" decoding="async">`:`<span class="a" aria-hidden="true">›</span>`;
-  return `<button data-on="click:openDay-a0" data-a0="${x.day}" class="day-row${x.empty?' empty':''}${x.photo?' has-photo':''}" type="button" aria-label="${fmtDayWords(x.day,true)}"><span class="n"><b>${dt.getDate()}</b><small>${wd}</small></span><span class="t"><p class="${x.lunarTitle?'':'quiet'}">${x.lunarTitle?esc(x.lunarTitle):x.empty?'Без записей':'Записан'}</p><small>${x.lunar?`☾ ${ordinal(x.lunar)} лунный день`:''}</small></span>${tail}</button>`;
+  const moods=(x.moods||[]).map(m=>MOOD_LABEL[m]).join(', ');
+  const label=x.text||moods||(x.kinds?.includes('habits')?'Отмечена привычка':x.kinds?.includes('askesis')?'Отметка практики':x.photo?'Фото дня':x.empty?'Без записей':'Записан');
+  return `<button data-on="click:openDay-a0" data-a0="${x.day}" class="day-row${x.empty?' empty':''}${x.photo?' has-photo':''}" type="button" aria-label="${fmtDayWords(x.day,true)}: ${esc(label)}"><span class="n"><b>${dt.getDate()}</b><small>${wd}</small></span><span class="t"><p>${esc(label)}</p>${x.text&&moods?`<small>${esc(moods)}</small>`:''}<small>${x.lunar?`☾ ${ordinal(x.lunar)} лунный день${x.lunarTitle?' · '+esc(x.lunarTitle):''}`:''}</small></span>${tail}</button>`;
 };
 async function loadDays(){
   const list=$('days-list'); if(!list)return;
@@ -425,30 +434,43 @@ async function loadDays(){
     const c=ctx(); const r=await api('/days?calendar=14'); if(!c.alive())return; const items=r.items; S.daysTotal=r.total||0;
     const today=DC.state?{day:DC.state.day,moods:DC.state.moods}:{day:S.day.date,moods:S.moods||[]};
     S.daysStrip=[...items].reverse().concat([today]);
-    const rows=items.slice(0,3); const any=items.some(x=>!x.empty);
-    list.innerHTML=any?rows.map(dayRowHtml).join(''):`<p class="hint">Пока пусто</p>`;
-    $('days-all').hidden=!any;
+    const recent=await api('/days?limit=3'); if(!c.alive())return; const rows=recent.items; const any=rows.length>0;
+    list.innerHTML=any?rows.map(dayRowHtml).join(''):`<p class="hint">Здесь появятся прошлые записи. Можно начать с одной мысли сегодня.</p>`;
+    $('days-all').hidden=false;
   }catch(e){ if(e.code==='cancelled')return; list.innerHTML='<p class="hint">Прошлые дни не загрузились.</p>'; }
 }
+const DAY_SEARCH={query:'',kind:'',next:'',month:'',count:0,request:0};
+registerReset(()=>{Object.assign(DAY_SEARCH,{query:'',kind:'',next:'',month:'',count:0,request:DAY_SEARCH.request+1}); if($('days-query'))$('days-query').value='';if($('days-kind'))$('days-kind').value='';});
+function searchDays(event){event.preventDefault();DAY_SEARCH.query=$('days-query').value.trim();DAY_SEARCH.kind=$('days-kind').value;loadAllDays();}
+function filterDays(){DAY_SEARCH.query=$('days-query').value.trim();DAY_SEARCH.kind=$('days-kind').value;loadAllDays();}
+function resetDaysSearch(){ $('days-query').value=''; $('days-kind').value=''; DAY_SEARCH.query='';DAY_SEARCH.kind='';loadAllDays(); }
 async function loadAllDays(more=false){
   const box=$('days-box'); if(!box)return;
-  if(!more){ box.innerHTML='<p class="hint">Загружаем…</p>'; loadAllDays.next=''; }
+  const request=++DAY_SEARCH.request, c=ctx();
+  if(!more){ box.innerHTML='<p class="hint" role="status">Загружаем записи…</p>'; DAY_SEARCH.next='';DAY_SEARCH.month='';DAY_SEARCH.count=0; }
+  else if($('days-more'))$('days-more').disabled=true;
   try{
-    if(!CAT) await loadCatalog();   /* названия настроений — из каталога; без него в списке мелькали бы ключи вроде quick:anxious */
-    const q=new URLSearchParams({limit:'30'}); if(more&&loadAllDays.next)q.set('before',loadAllDays.next);
-    const c=ctx(); const r=await api('/days?'+q); if(!c.alive())return; loadAllDays.next=r.next||'';
-    const monthOf=(d)=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}).replace(' г.','');
-    let month=more?loadAllDays.month||'':'';   /* месяц — подписью, когда сменился: числа без месяца в длинном списке не читаются */
-    const rows=r.items.map(x=>{const m=monthOf(x.day);const head=m!==month?`<p class="hint days-month">${m[0].toUpperCase()+m.slice(1)}</p>`:'';month=m;return head+dayRowHtml(x);}).join('');
-    loadAllDays.month=month;
-    const strip=(S.daysStrip||[]).map((x,k,arr)=>`<i class="t-${moodTone(x.moods[0])}${k===arr.length-1?' today':''}" title="${fmtDayWords(x.day,true)}"></i>`).join('');
-    if(!more)box.innerHTML=`${strip?`<div class="days-strip">${strip}</div>`:''}<p class="hint">${r.total?`${r.total} ${plural(r.total,'день','дня','дней')}`:'Пока пусто'}</p><div class="days-list" id="days-all-list">${rows}</div><button data-on="click:loadAllDays-true" class="btn ghost" id="days-more" type="button"${r.next?'':' hidden'}>Показать еще</button>`;
-    else { $('days-all-list').insertAdjacentHTML('beforeend',rows); $('days-more').hidden=!r.next; }
-  }catch(e){ if(e.code==='cancelled')return; box.innerHTML='<p class="hint">Не получилось загрузить.</p>'; }
+    if(!CAT)await loadCatalog();
+    const q=new URLSearchParams({limit:'30',today:'1'});
+    if(DAY_SEARCH.query)q.set('q',DAY_SEARCH.query);if(DAY_SEARCH.kind)q.set('kind',DAY_SEARCH.kind);
+    if(more&&DAY_SEARCH.next)q.set('before',DAY_SEARCH.next);
+    const r=await api('/days?'+q); if(!c.alive()||request!==DAY_SEARCH.request)return;
+    DAY_SEARCH.next=r.next||'';DAY_SEARCH.count+=r.items.length;
+    const monthOf=d=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{month:'long',year:'numeric'}).replace(' г.','');
+    const rows=r.items.map(x=>{const m=monthOf(x.day), head=m!==DAY_SEARCH.month?`<p class="days-month">${m[0].toUpperCase()+m.slice(1)}</p>`:'';DAY_SEARCH.month=m;return head+dayRowHtml(x);}).join('');
+    if(!more)box.innerHTML='<p class="search-status" id="days-result-count"></p><div class="days-list" id="days-all-list"></div><button data-on="click:loadAllDays-true" class="btn ghost" id="days-more" type="button">Показать еще</button>';
+    $('days-all-list').insertAdjacentHTML('beforeend',rows);
+    const filtered=!!(DAY_SEARCH.query||DAY_SEARCH.kind);
+    $('days-result-count').textContent=DAY_SEARCH.count?`${filtered?'Найдено':'Показано'}: ${DAY_SEARCH.count} ${plural(DAY_SEARCH.count,'день','дня','дней')}${!filtered&&r.total?' из '+r.total:''}`:r.next?'В просмотренной части записей совпадений нет. Можно продолжить поиск.':filtered?'Ничего не найдено. Попробуйте другое слово или сбросьте фильтр.':'Здесь появятся ваши записи.';
+    const next=$('days-more');next.hidden=!r.next;next.disabled=false;next.textContent=filtered?'Искать дальше':'Показать еще';
+  }catch(e){if(e.code==='cancelled'||!c.alive()||request!==DAY_SEARCH.request)return;
+    if(!more)box.innerHTML='<p class="hint">Записи не загрузились.</p><button data-on="click:loadAllDays" type="button" class="btn ghost sm">Повторить</button>';
+    else {const next=$('days-more');if(next){next.disabled=false;next.textContent='Не загрузилось — повторить';}}
+  }
 }
 /* Открытый день — читается как текст: утро, записи, настроение, практики */
 async function openDay(day){
-  if(S.day&&day===S.day.date){ go('history'); requestAnimationFrame(()=>$('day-card')?.scrollIntoView({block:'start',behavior:'smooth'})); return; }
+  if(S.day&&day===S.day.date){ closeWidget(); goDayCard(); return; }
   openWidget('dayview',fmtDayWords(day,true)); const box=$('dayview-box'); box.innerHTML='<p class="hint">Загружаем…</p>'; track('day_open');
   try{
     const c=ctx(); const v=await api('/day/view?day='+day); if(!c.alive()||!$('dayview-box'))return;   /* поздний ответ после сброса или закрытой панели не рисуем (F05) */
@@ -607,7 +629,7 @@ function renderMoods(){
     <div class="quick-moods">${quickMoods().map(m=>`<button data-on="click:quickMood-a0" data-a0="${m.key}" type="button" class="quick-mood${picked.has(m.key)?' on':''}" aria-pressed="${picked.has(m.key)}">${moodSvg(m.key,30)}<span>${esc(m.label)}</span></button>`).join('')}<button data-on="click:moodOwn" type="button" class="quick-mood${marks.some(ownMood)?' on':''}"><i class="ico pen"></i><span>Свое слово</span></button></div>
     ${cur?`<div class="mpick saved-state" role="status">${moodSvg(S.mood,36)}<div><b>Сегодня — ${esc(labels.join(', '))}</b><small>Сохранено · ${fmtDay(S.day.date)}. ${labels.length>1?'Повторное нажатие снимает отметку':'Можно отметить еще или снять'}</small></div></div>`:''}
     <div class="mood-own-row" ${moodUI.ownOpen?'':'hidden'}><label for="mood-own">Свое настроение</label><div class="row"><input data-on="input:moodUI-own-value keydown:if-event-key-Enter-pickOwnMood" id="mood-own" aria-label="Свое настроение" maxlength="24" placeholder="Например: собранно" value="${esc(moodUI.own??(marks.map(ownMood).find(Boolean)||''))}"><button data-on="click:pickOwnMood" class="btn sm" aria-label="Сохранить свое настроение">Сохранить</button></div></div>
-    <div class="utility-actions"><button data-on="click:moodDetails" type="button" class="btn ghost sm">${cur?'Хотите назвать точнее?':'Назвать точнее'}</button><button data-on="click:moodDetails-all" type="button" class="btn ghost sm">Все эмоции</button></div>
+    <div class="utility-actions"><button data-on="click:openWidget-hmood" type="button" class="btn ghost sm">История настроений</button><button data-on="click:moodDetails" type="button" class="btn ghost sm">${cur?'Хотите назвать точнее?':'Назвать точнее'}</button><button data-on="click:moodDetails-all" type="button" class="btn ghost sm">Все эмоции</button></div>
     <div id="mood-detail" ${moodUI.precision?'':'hidden'}><div class="segmented" role="tablist" aria-label="Выбор эмоций"><button data-on="click:moodMode-families" role="tab" aria-selected="${moodUI.mode==='families'}">Основные эмоции</button><button data-on="click:moodMode-all" role="tab" aria-selected="${moodUI.mode==='all'}">Все эмоции</button></div>
     ${moodUI.mode==='families'?`
       <div id="mood-shades" class="mood-shades" ${selected?'':'hidden'}><p>${selected?esc(fams[selected][0]):''} · что ближе?</p><div class="chips flow">${list.filter(m=>m.family===selected).map(chip).join('')}</div></div>

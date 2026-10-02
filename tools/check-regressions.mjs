@@ -87,6 +87,26 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
   try {
     await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-home.on');
     const today = await page.evaluate(() => S.day.date);
+    // A free note needs no enabled tools; the draft and the saved note remain reachable through search.
+    await owner.json('/preferences','POST',{tools:[]});await page.reload();
+    await page.locator('[data-nav="history"]').click();
+    await page.getByRole('button',{name:'Записать мысль',exact:true}).click();
+    await page.locator('#dc-text').fill('Проверка дневника: прогулка вернула спокойствие');
+    await page.reload();await page.locator('[data-nav="history"]').click();
+    await page.locator('#dc-text').waitFor();
+    assert.equal(await page.locator('#dc-text').inputValue(),'Проверка дневника: прогулка вернула спокойствие');
+    await page.getByRole('button',{name:'Сохранить',exact:true}).click();
+    await page.locator('#day-card.done').waitFor();
+    assert.ok((await page.locator('#day-card').innerText()).includes('прогулка вернула спокойствие'));
+    assert.deepEqual((await owner.json('/preferences')).preferences.tools,[],'free writing does not change evening preferences');
+    await page.getByRole('button',{name:'Найти запись',exact:true}).click();
+    await page.locator('#days-query').fill('прогулка вернула');await page.getByRole('button',{name:'Найти',exact:true}).click();
+    await page.locator('#days-all-list .day-row').waitFor();
+    assert.equal(await page.locator('#days-all-list .day-row').count(),1);
+    await page.locator('#days-all-list .day-row').click();await page.locator('#v-history.on').waitFor();
+    assert.equal(await page.locator('#day-card.done').isVisible(),true);
+    await owner.json('/preferences','POST',{tools:[...new Set([...(pr.tools||[]),'gratitude','journal'])]});
+    await page.reload();await page.locator('#v-home.on').waitFor();
     const natal = await owner.json('/natal');
     await page.locator('[data-nav="about"]').click();
     assert.equal(await page.locator('#me-card').isVisible(), false, 'old profile introduction stays hidden');

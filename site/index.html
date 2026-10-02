@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script defer src="/app/boot.js?v=142"></script>
+<script defer src="/app/boot.js?v=145"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=142">
-<link rel="stylesheet" href="/app/app.css?v=142">
-<link rel="stylesheet" href="/app/frame.css?v=142">
+<link rel="stylesheet" href="/app/theme.css?v=145">
+<link rel="stylesheet" href="/app/app.css?v=145">
+<link rel="stylesheet" href="/app/frame.css?v=145">
 </head>
 <body class="hello">
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -251,18 +251,19 @@
     <!-- история — не инструмент: полоской на всю ширину внизу (правило владелицы 20.09) -->
     <div class="wids strip history-rows"><button data-on="click:openWidget-hentries" class="wid" data-feature="hentries" type="button"><i class="ico yes-no"></i><b>Мои вопросы и ответы</b><span>Все, о чем спрашивали</span></button></div></section>
   <section class="view" id="v-history"><h1>Дневник</h1>
+    <div class="diary-shortcuts"><button data-on="click:dcWrite" class="btn" type="button">Записать мысль</button><button data-on="click:openWidget-days" class="btn ghost" type="button">Найти запись</button></div>
     <!-- Карточка сегодняшнего дня — по шагам: один вопрос на экран, «Дальше», в конце — праздник и день в режиме чтения.
          Все рисует paintDayCard(); ни один шаг не обязателен, пустое не сохраняется -->
     <div class="home-action diary-action" id="diary-action" hidden></div>
     <section class="card day-card" id="day-card" aria-live="polite"></section>
     <!-- из чего собран вечер: кнопка «Настроить вечер» разворачивает чипы на месте (paintEveningSet); строка «Мой вечер: …» снята (решение владелицы 20.09) -->
     <div class="evening-set" id="evening-set"></div>
-    <!-- Практики — плашками сразу под карточкой дня (решение владелицы 19.09): видны всегда. Одна строка на плашку, название — действием; «Неделя» — не практика (решение владелицы 20.09) -->
-    <section class="feature-group practices" id="diary-tools"><h2 data-ui="diary.practices">Практики</h2><div class="wids tiles practice-grid">
-<button data-on="click:openWidget-habits" class="wid" type="button"><i class="ico check"></i><b>Привычки</b></button><button data-on="click:openWidget-askesis" class="wid" type="button"><i class="ico flag"></i><b>Взять аскезу</b></button><button data-on="click:openWidget-gratitude" class="wid" type="button"><i class="ico heart"></i><b>Записать благодарность</b></button><button data-on="click:openWidget-wishes" class="wid" type="button"><i class="ico wish"></i><b>Загадать желание</b></button><button data-on="click:openWidget-hmood" class="wid" type="button"><i class="ico smile"></i><b>Отметить свое настроение</b></button></div></section>
     <!-- Прошлые дни — компактно, три строки; «Моя неделя» и «Архив» — кнопками в заголовке -->
     <section class="feature-group past-days" id="past-days"><div class="sec-head"><h2 data-ui="diary.past">Прошлые дни</h2><div class="sec-actions"><button data-on="click:openWidget-week" class="btn ghost sm" type="button">Моя неделя</button><button data-on="click:openWidget-days" class="btn ghost sm" id="days-all" type="button" aria-label="Архив" data-ui="diary.archive">Архив</button></div></div>
       <div class="days-list" id="days-list"></div></section>
+    <!-- Практики — после истории записей: видны всегда. Одна строка на плашку, название — действием; «Неделя» — не практика (решение владелицы 20.09) -->
+    <section class="feature-group practices" id="diary-tools"><h2 data-ui="diary.practices">Практики</h2><div class="wids tiles practice-grid">
+<button data-on="click:openWidget-habits" class="wid" type="button"><i class="ico check"></i><b>Привычки</b></button><button data-on="click:openWidget-askesis" class="wid" type="button"><i class="ico flag"></i><b>Взять аскезу</b></button><button data-on="click:openWidget-gratitude" class="wid" type="button"><i class="ico heart"></i><b>Записать благодарность</b></button><button data-on="click:openWidget-wishes" class="wid" type="button"><i class="ico wish"></i><b>Загадать желание</b></button><button data-on="click:openWidget-mood" class="wid" type="button"><i class="ico smile"></i><b>Отметить свое настроение</b></button></div></section>
   </section>
   <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button" data-ui="back">← Назад</button><span class="eyebrow practice-eb" id="practice-eb"></span><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div><div class="wg-foot"><button data-on="click:practiceBack" class="btn ghost wg-return" type="button" data-ui="return">← Вернуться</button></div></section>
   <!-- ОБО МНЕ: вкладка внизу — разборы по дате рождения; анкета и настройки живут в аккаунте (кружок с буквой имени справа вверху) -->
@@ -312,7 +313,7 @@
   <div class="wpane" id="w-appearance"><div id="appearance-box"></div></div>
   <div class="wpane" id="w-askDate"><div class="field"><label for="ask-date">До какого дня</label><input id="ask-date" type="date" aria-describedby="ask-date-msg"></div><button data-on="click:saveAskDate" class="btn" id="ask-date-save" type="button">Сохранить дату</button><p class="msg" id="ask-date-msg" role="status"></p></div>
   <div class="wpane" id="w-dayview"><div id="dayview-box"></div></div>
-  <div class="wpane" id="w-days"><div id="days-box"></div></div>
+  <div class="wpane" id="w-days"><form class="diary-search" data-on="submit:searchDays-event"><label for="days-query">Найти в своих записях</label><div class="row"><input type="search" id="days-query" maxlength="120" placeholder="Слово или фраза"><button type="submit" class="btn sm">Найти</button></div><p class="search-note">По текстам записей, благодарностей, ответов и итогов недели</p><div class="row"><label for="days-kind">Показать</label><select id="days-kind" data-on="change:filterDays"><option value="">Все дни</option><option value="text">С записями</option><option value="mood">С настроением</option></select><button type="button" class="btn ghost sm" data-on="click:resetDaysSearch">Сбросить</button></div></form><div id="days-box" aria-live="polite"></div></div>
   <div class="wpane" id="w-dayrune"><div id="dayrune-box"><p class="hint">Тянем руну…</p></div></div>
   <div class="wpane" id="w-card">
     <div id="t-pick" hidden></div>   <!-- веер рубашек: карту дня выбирают руками (paintCardPick) -->
@@ -399,23 +400,23 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script defer src="/app/moon-logo.js?v=142"></script>
+<script defer src="/app/moon-logo.js?v=145"></script>
 
-<script type="module" src="/app/sky.js?v=142"></script>
+<script type="module" src="/app/sky.js?v=145"></script>
 
-<script defer src="/app/common.js?v=142"></script>
-<script defer src="/app/experience.js?v=142"></script>
-<script defer src="/app/app.js?v=142"></script>
-<script defer src="/app/today.js?v=142"></script>
-<script defer src="/app/diary.js?v=142"></script>
-<script defer src="/app/readings.js?v=142"></script>
-<script defer src="/app/practices.js?v=142"></script>
-<script defer src="/app/about.js?v=142"></script>
-<script defer src="/app/account.js?v=142"></script>
-<script defer src="/app/tour.js?v=142"></script>
-<script defer src="/app/rag.js?v=142"></script>
-<script defer src="/app/handlers.js?v=142"></script>
-<script defer src="/app/on.js?v=142"></script>
-<script defer src="/app/start.js?v=142"></script>
+<script defer src="/app/common.js?v=145"></script>
+<script defer src="/app/experience.js?v=145"></script>
+<script defer src="/app/app.js?v=145"></script>
+<script defer src="/app/today.js?v=145"></script>
+<script defer src="/app/diary.js?v=145"></script>
+<script defer src="/app/readings.js?v=145"></script>
+<script defer src="/app/practices.js?v=145"></script>
+<script defer src="/app/about.js?v=145"></script>
+<script defer src="/app/account.js?v=145"></script>
+<script defer src="/app/tour.js?v=145"></script>
+<script defer src="/app/rag.js?v=145"></script>
+<script defer src="/app/handlers.js?v=145"></script>
+<script defer src="/app/on.js?v=145"></script>
+<script defer src="/app/start.js?v=145"></script>
 </body>
 </html>
