@@ -1885,8 +1885,14 @@ body.inner #v-home .head-tools{margin-top:-6px}
 .natal-chart>summary::after{content:'+';margin-left:auto;color:var(--gold-2);font-size:22px}
 .natal-chart[open]>summary::after{content:'−'}
 .natal-chart-body{padding:0 16px 20px;overflow-x:auto}
-.natal-descriptions{display:grid;gap:18px}
-.natal-description h3{font-size:20px;line-height:1.35;margin:0 0 14px}
+.natal-descriptions{display:grid;gap:12px}
+.natal-description{padding:0;overflow:hidden}
+.natal-description>summary{display:flex;align-items:center;gap:12px;padding:18px 20px;min-height:52px;cursor:pointer;list-style:none;font-size:17px;font-weight:700;line-height:1.4}
+.natal-description>summary::-webkit-details-marker{display:none}
+.natal-description>summary::after{content:'+';flex:0 0 auto;margin-left:auto;color:var(--gold-2);font-size:22px}
+.natal-description[open]>summary::after{content:'−'}
+.natal-description-body{padding:0 20px 18px}
+.natal-description h3{font-size:20px;line-height:1.35;margin:2px 0 14px;color:var(--gold-2)}
 .natal-description h4{font-size:14px;line-height:1.5;margin:22px 0 8px;color:var(--gold-2)}
 .natal-description p{font-size:15px;line-height:1.7;margin:0 0 12px;white-space:pre-line}
 .natal-description p:last-child{margin-bottom:0}

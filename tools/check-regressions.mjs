@@ -50,11 +50,18 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     await page.getByRole('button', {name: 'Натальная карта', exact: true}).click();
     await page.locator('.natal-chart').waitFor();
     assert.equal(await page.locator('.natal-chart-body').isVisible(), false, 'raw chart is collapsed initially');
-    const expected = natal.meanings.planets.filter(p => p.inSign).map(p => p.inSign);
-    assert.deepEqual(await page.locator('.natal-description h3').allTextContents(), expected.map(p => p.title));
+    const meaningTitles = {'Солнце':'Ваш источник жизненных сил','Луна':'ваш способ восстанавливаться и реагировать','Меркурий':'ваш способ мышления и стиль общения','Венера':'ваше понятия о красоте и то, как вы выбираете партнеров','Марс':'ваш способ действовать и отстаивать границы','Юпитер':'ваш ориентир для развития, амбиций и зона везения','Сатурн':'ваше отношение к ответственности, правилам и долгосрочным целям.','Уран':'как вы понимаете свободу и к каким озарениям способны','Нептун':'ваш источник интуиции, воображения и идеалов','Хирон':'ваша уязвимая зона опыта, где преодоление слабостей рождает способность помогать другим'};
+    const expected = natal.meanings.planets.filter(p => p.inSign && meaningTitles[p.name]);
+    assert.deepEqual(await page.locator('.natal-description > summary').allTextContents(), expected.map(p => meaningTitles[p.name]));
+    assert.equal(await page.locator('.natal-description[open]').count(), 0, 'planet descriptions are collapsed initially');
     for (let i = 0; i < expected.length; i++) {
-      const text = await page.locator('.natal-description').nth(i).innerText();
-      for (const paragraph of expected[i].text.split(/\n\s*\n/)) assert.ok(text.includes(paragraph));
+      const item = page.locator('.natal-description').nth(i);
+      assert.equal(await item.locator('.natal-description-body').isVisible(), false);
+      await item.locator('summary').click();
+      assert.equal(await item.locator('h3').innerText(), expected[i].inSign.title, 'placement is shown inside the expanded description');
+      const text = await item.innerText();
+      for (const paragraph of expected[i].inSign.text.split(/\n\s*\n/)) assert.ok(text.includes(paragraph));
+      await item.locator('summary').click();
     }
     assert.equal(await page.locator('.natal-summary').count(), 0);
     await page.locator('.natal-chart > summary').click();

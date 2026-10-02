@@ -23,6 +23,18 @@ function paintRuneTile(){
 }
 /* знак зодиака тонкой линией из спрайта в index.html — эмодзи ♈…♓ на телефонах цветные и не из палитры */
 const zodiacGlyph = (i) => Number.isInteger(i) ? `<svg class="zsym" aria-hidden="true"><use href="#z${i}"/></svg>` : '';
+const natalDescriptionTitles = {
+  'Солнце': 'Ваш источник жизненных сил',
+  'Луна': 'ваш способ восстанавливаться и реагировать',
+  'Меркурий': 'ваш способ мышления и стиль общения',
+  'Венера': 'ваше понятия о красоте и то, как вы выбираете партнеров',
+  'Марс': 'ваш способ действовать и отстаивать границы',
+  'Юпитер': 'ваш ориентир для развития, амбиций и зона везения',
+  'Сатурн': 'ваше отношение к ответственности, правилам и долгосрочным целям.',
+  'Уран': 'как вы понимаете свободу и к каким озарениям способны',
+  'Нептун': 'ваш источник интуиции, воображения и идеалов',
+  'Хирон': 'ваша уязвимая зона опыта, где преодоление слабостей рождает способность помогать другим',
+};
 async function loadNatal(){
   const box = $('natal-box');
   try{
@@ -37,11 +49,11 @@ async function loadNatal(){
     const labels = new Set(['Возможный ресурс', 'Возможные трудности']);
     const prose = (text) => String(text).split(/\n\s*\n/).filter(Boolean).map(part => labels.has(part.trim())
       ? `<h4>${esc(part.trim())}</h4>` : `<p>${esc(part)}</p>`).join('');
-    const descriptions = (m.planets || []).map(p => p.inSign).filter(Boolean);
+    const descriptions = (m.planets || []).filter(p => p.inSign && natalDescriptionTitles[p.name]);
     box.innerHTML = `<details class="natal-chart"><summary>Натальная карта</summary><div class="natal-chart-body">
       <h3>Планеты</h3><table class="nt"><thead><tr><th>Планета</th><th>Положение</th><th>Дом</th><th></th></tr></thead><tbody>${planets}</tbody></table>
       ${points}${houses}${aspects}</div></details>
-      <div class="natal-descriptions">${descriptions.map(x => `<article class="card natal-description"><h3>${esc(x.title)}</h3>${prose(x.text)}</article>`).join('')}</div>`;
+      <div class="natal-descriptions">${descriptions.map(p => `<details class="card natal-description"><summary>${esc(natalDescriptionTitles[p.name])}</summary><div class="natal-description-body"><h3>${esc(p.inSign.title)}</h3>${prose(p.inSign.text)}</div></details>`).join('')}</div>`;
 
   }catch(e){ if(e.code==='cancelled')return; box.innerHTML = `<p class="msg err">${e.code==='no_birth' ? 'Укажите дату рождения в анкете — без нее карту не построить.' : 'Не получилось рассчитать карту.'}</p>`; }
 }
