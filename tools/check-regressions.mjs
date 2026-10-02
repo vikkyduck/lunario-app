@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 export async function checkRegressions({ browser, base, owner, codeFor }) {
   // A stalled connection must never leave only the phone background.
-  const startupCtx = await browser.newContext({serviceWorkers: 'block'});
+  const startupCtx = await browser.newContext({viewport: {width: 390, height: 844}, serviceWorkers: 'block'});
   try {
     const startup = await startupCtx.newPage();
     await startup.route('**/api/me', () => {});
@@ -18,7 +18,12 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     await startup.getByRole('link', {name: 'Повторить загрузку'}).click();
     await startup.waitForFunction(() => !document.querySelector('[data-startup-required]').disabled);
     assert.equal(await startup.locator('#startup-note').isVisible(), false);
-    assert.equal(await startup.getByRole('button', {name: 'Открыть мой день'}).count(), 1);
+    assert.equal(await startup.getByRole('button', {name: 'Войти по почте'}).isEnabled(), true);
+    assert.deepEqual(await startup.evaluate(() => ({
+      fits: document.documentElement.scrollHeight <= innerHeight + 1,
+      horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+      headerPosition: getComputedStyle(document.querySelector('.hello-header')).position,
+    })), {fits: true, horizontalOverflow: false, headerPosition: 'sticky'});
     const [cookieName, cookieValue] = owner.cookie.split('=');
     await startupCtx.addCookies([{name: cookieName, value: cookieValue, domain: '127.0.0.1', path: '/app'}]);
     await startup.reload({waitUntil: 'domcontentloaded'});
@@ -33,9 +38,11 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     const staticPage = await noScripts.newPage();
     await staticPage.goto(base + '/');
     assert.equal(await staticPage.locator('#v-hello').isVisible(), true, 'welcome is rendered even without application scripts');
-    assert.equal(await staticPage.getByRole('link', {name: 'Что внутри'}).isVisible(), true);
+    assert.equal(await staticPage.getByRole('link', {name: 'Что внутри'}).count(), 0);
+    assert.equal(await staticPage.getByRole('button', {name: 'Открыть мой день'}).count(), 0);
+    assert.equal(await staticPage.getByRole('button', {name: 'Войти по почте'}).isVisible(), true);
     assert.equal(await staticPage.locator('.hello-claim').textContent(), 'Пространство, где можно услышать себя');
-    assert.equal(await staticPage.locator('.hello-description').textContent(), 'Лунарио помнит контекст и помогает найти ресурс');
+    assert.equal(await staticPage.locator('.hello-description').textContent(), 'Помнит контекст и помогает найти ресурс');
     assert.deepEqual(await staticPage.locator('.hello-paths li').allTextContents(), [
       '«Свериться с собой»найти свое решение',
       '«Совместимость»прояснить суть отношений',
@@ -240,7 +247,8 @@ async function checkOnboardingWithMail({ browser, base, codeFor }) {
     const page = await inline.newPage(), errors = [], sent = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));
     await mailLive(page); page.on('request', (r) => { if (r.url().endsWith('/api/auth/request')) sent.push(r.postDataJSON().email); });
     await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-hello.on');
-    await page.locator('#v-hello .cta').getByRole('button', { name: /Открыть мой день/ }).click(); await page.waitForSelector('#v-onb.on');
+    await page.waitForFunction(() => !document.getElementById('hello-login').disabled);
+    await page.evaluate(() => openForm()); await page.waitForSelector('#v-onb.on');
     await fillSteps(page, 'Вошла на анкете');
     assert.equal(await page.locator('#ob-done-q').innerText(), 'Куда прислать код?', 'mail is live and no address yet — the last step asks for one');
     await page.fill('#o-email', 'typed-then-abandoned@example.test');

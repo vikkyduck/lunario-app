@@ -84,7 +84,12 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('mess
       }
     }catch(e){ /* ссылка старая — просто открываем приложение */ } })();
     if(r.day && typeof r.day.moonPhase==='number') moonSetPhase(r.day.moonPhase);
-    if(!r.user.onboarded){ go('hello'); track('intro_view'); if(S.mailReady) $('hello-login').style.display='block'; return; }
+    if(!r.user.onboarded){
+      go('hello'); track('intro_view');
+      $('hello-login').disabled=false;
+      $('hello-login').title='';
+      return;
+    }
     startApp();
   }catch(e){
     go('hello');

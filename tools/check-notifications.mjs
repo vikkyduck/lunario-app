@@ -19,7 +19,8 @@ export async function checkNotificationUI({browser,base,owner,other}) {
   const onb=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
   try {
     const page=await onb.newPage();await page.goto(base+'/');await page.waitForSelector('#v-hello.on');
-    await page.locator('#v-hello .cta').getByRole('button',{name:/Открыть мой день/}).click();await page.waitForSelector('#v-onb.on');
+    await page.waitForFunction(()=>!document.getElementById('hello-login').disabled);
+    await page.evaluate(()=>openForm());await page.waitForSelector('#v-onb.on');
     await page.locator('#o-name').fill('Ритм');await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
     await page.locator('#o-birth').fill('1992-02-02');await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
     await page.locator('[data-on="click:obSkipTime"]').click();
