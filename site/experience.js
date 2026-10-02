@@ -92,15 +92,19 @@ function paintMorning(){
   const animate=$('v-home')?.classList.contains('on')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
   const before=animate?new Map(tiles.map(t=>[t,t.getBoundingClientRect()])):null;   /* где плитка видна сейчас — с учетом еще идущего переезда */
   if(animate)for(const t of tiles)t.getAnimations().forEach(a=>a.cancel());          /* дальше меряем чистую раскладку */
-  if(!chips.children.length)chips.innerHTML=MORNING.map(([k,label])=>`<button data-on="click:toggleMorning-a0" data-a0="${k}" type="button" class="chip">${label}</button>`).join('');
+  if(!chips.children.length)chips.innerHTML=MORNING.map(([k,label])=>{
+    const hint=tiles.find(t=>t.dataset.feature===k)?.dataset.choiceHint||'';
+    return `<button data-on="click:toggleMorning-a0" data-a0="${k}" type="button" class="chip morning-choice" aria-label="${esc(label)}" aria-describedby="morning-hint-${k}"><b>${esc(label)}</b><span id="morning-hint-${k}">${esc(hint)}</span></button>`;
+  }).join('');
   for(const c of chips.children){const on=chosen.includes(c.dataset.a0);c.classList.toggle('on',on);c.setAttribute('aria-pressed',String(on));}
   for(const t of tiles)(chosen.includes(t.dataset.feature)?feed:more).appendChild(t);
   more.dataset.count=String(more.children.length);   /* сколько квадратов осталось — для ровных рядов на телефоне */
+  if($('morning-more-count'))$('morning-more-count').textContent=String(more.children.length);
   feed.closest('.feature-group').hidden=!chosen.length;more.closest('.feature-group').hidden=chosen.length===MORNING.length;
   /* вопрос задан, пока на него не ответили; после выбора — одна строка «Утром показываем…», развернуть можно всегда */
   const answered=Array.isArray(XP.prefs.morning),collapsed=!XP.morningOpen;   /* свернуто по умолчанию (по обзору 19.09): экран — для чтения, не для настроек */
   const picker=$('morning-picker'),summary=$('morning-summary');
-  if(picker)picker.hidden=collapsed;if(summary){summary.hidden=!collapsed;$('morning-summary-list').textContent=chosen.length?chosen.map(k=>MORNING.find(m=>m[0]===k)[1]).join(' · '):'только настрой дня';}
+  if(picker)picker.hidden=collapsed;if(summary){summary.hidden=!collapsed;summary.setAttribute('aria-expanded',String(!collapsed));$('morning-summary-list').textContent=chosen.length?chosen.map(k=>MORNING.find(m=>m[0]===k)[1]).join(' · '):'Только настрой дня';}
   if($('morning-empty'))$('morning-empty').hidden=chosen.length>0;if($('morning-done'))$('morning-done').hidden=false;
   if(!before)return;
   const dur=320,easing='cubic-bezier(.2,.7,.2,1)';
