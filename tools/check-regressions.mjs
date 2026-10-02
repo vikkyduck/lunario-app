@@ -54,12 +54,13 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     assert.equal(await staticPage.locator('.hello-claim').textContent(), 'Пространство, где можно услышать себя');
     assert.equal(await staticPage.locator('.hello-description').textContent(), 'Помнит контекст и помогает найти ресурс');
     assert.deepEqual(await staticPage.locator('.hello-paths li').allTextContents(), [
-      '«Свериться с собой»найти свое решение',
-      '«Совместимость»прояснить суть отношений',
-      '«Обо мне»ключ к талантам',
+      'Свериться с собойнайти свое решение',
+      'Совместимостьпрояснить суть отношений',
+      'Обо мнеключ к талантам',
       'Каждое утроподсказка на день',
     ]);
-    assert.equal(await staticPage.locator('.hello-future p').textContent(), 'Лунарио — личный компаньон, который понимает с полуслова и всегда на вашей стороне');
+    assert.deepEqual(await staticPage.locator('.hello-paths strong').allTextContents(), ['Свериться с собой', 'Совместимость', 'Обо мне']);
+    assert.equal(await staticPage.locator('.hello-future p').textContent(), 'Лунарио личный компаньон, который понимает с полуслова и всегда на вашей стороне');
     assert.equal(await staticPage.getByRole('link', {name: 'Повторить загрузку'}).isVisible(), true);
   } finally { await noScripts.close(); }
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
