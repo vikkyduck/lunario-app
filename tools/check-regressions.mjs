@@ -19,11 +19,21 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     await startup.waitForFunction(() => !document.querySelector('[data-startup-required]').disabled);
     assert.equal(await startup.locator('#startup-note').isVisible(), false);
     assert.equal(await startup.getByRole('button', {name: 'Войти по почте'}).isEnabled(), true);
-    assert.deepEqual(await startup.evaluate(() => ({
-      fits: document.documentElement.scrollHeight <= innerHeight + 1,
-      horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
-      headerPosition: getComputedStyle(document.querySelector('.hello-header')).position,
-    })), {fits: true, horizontalOverflow: false, headerPosition: 'sticky'});
+    const welcomeLayout = await startup.evaluate(() => {
+      const blocks = ['.hello-about', '.hello-oracle', '.hello-inside', '.trust'].map(selector => document.querySelector(selector).getBoundingClientRect());
+      const gaps = blocks.slice(1).map((box, index) => Math.round(box.top - blocks[index].bottom));
+      return {
+        fits: document.documentElement.scrollHeight <= innerHeight + 1,
+        horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1,
+        headerPosition: getComputedStyle(document.querySelector('.hello-header')).position,
+        ordered: blocks.every((box, index) => !index || box.top >= blocks[index - 1].bottom),
+        gapSpread: Math.max(...gaps) - Math.min(...gaps),
+        trustBottom: Math.round(innerHeight - blocks.at(-1).bottom),
+      };
+    });
+    assert.deepEqual({fits: welcomeLayout.fits, horizontalOverflow: welcomeLayout.horizontalOverflow, headerPosition: welcomeLayout.headerPosition, ordered: welcomeLayout.ordered}, {fits: true, horizontalOverflow: false, headerPosition: 'sticky', ordered: true});
+    assert.ok(welcomeLayout.gapSpread <= 3, 'welcome blocks are distributed evenly');
+    assert.ok(welcomeLayout.trustBottom <= 30, 'privacy note stays at the bottom of the screen');
     const [cookieName, cookieValue] = owner.cookie.split('=');
     await startupCtx.addCookies([{name: cookieName, value: cookieValue, domain: '127.0.0.1', path: '/app'}]);
     await startup.reload({waitUntil: 'domcontentloaded'});
@@ -38,7 +48,7 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     const staticPage = await noScripts.newPage();
     await staticPage.goto(base + '/');
     assert.equal(await staticPage.locator('#v-hello').isVisible(), true, 'welcome is rendered even without application scripts');
-    assert.equal(await staticPage.getByRole('link', {name: 'Что внутри'}).count(), 0);
+    assert.equal(await staticPage.getByRole('link', {name: 'Что внутри'}).isVisible(), true);
     assert.equal(await staticPage.getByRole('button', {name: 'Открыть мой день'}).count(), 0);
     assert.equal(await staticPage.getByRole('button', {name: 'Войти по почте'}).isVisible(), true);
     assert.equal(await staticPage.locator('.hello-claim').textContent(), 'Пространство, где можно услышать себя');
