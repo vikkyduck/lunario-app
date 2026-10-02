@@ -70,6 +70,16 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     assert.equal(await page.locator('.natal-chart-body').isVisible(), false, 'chart collapses on click');
     await page.locator('.wg-x').click();
 
+    const numerology = await owner.json('/numerology');
+    await page.getByRole('button', {name: 'Личный год', exact: true}).click();
+    await page.locator('#w-year-box .yr-img').waitFor();
+    assert.equal(await page.locator('#m-yearsub').innerText(), '', 'old planet and energy subtitle is removed from the personal-year tile');
+    assert.equal(await page.locator('#w-year-box .num-mark').count(), 0, 'old year-number badge is removed');
+    const yearText = await page.locator('#w-year-box').innerText();
+    assert.ok(!yearText.includes(`Год ${numerology.year.n} ·`), 'old year, planet and energy heading is removed');
+    if (numerology.year.info?.message) assert.ok(yearText.includes(numerology.year.info.message), 'the personal message remains');
+    await page.locator('.wg-x').click();
+
     /* R01: благодарность A → карточка дня загружена → в панели правим на B → сохраняем день с новым настроением: остается B */
     await owner.json('/journal', 'POST', { text: 'Благодарность A — из панели', kind: 'gratitude' });
     await page.evaluate(() => go('history')); await page.waitForFunction(() => DC.state && DC.state.gratitude && DC.state.gratitude.text.startsWith('Благодарность A'));

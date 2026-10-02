@@ -237,11 +237,8 @@ const yearPeriod = (y) => y.from && y.to ? `${numDate(y.from)} — ${numDate(day
 function yearHtml(y){
   const i = y.info, id = y.res || (y.res = regRes({ type: 'year', year: y, stamp: String(y.year) }));
   return `<div class="item rise">
-    <img class="yr-img" src="${i.image}" width="1080" height="1080" alt="Личный год ${y.n} · ${esc(i.energy)}">
-    <div class="row top mt-3">
-      <span class="num-mark">${y.n}</span>
-      <div class="grow"><b>Год ${y.n} · ${esc(i.planet)} · ${esc(i.energy)}</b>${i.message ? `<p class="mt-2 strong italic">${esc(i.message)}</p>` : `<p class="mt-2">${esc(y.text || '')}</p>`}</div>
-    </div>
+    <img class="yr-img" src="${i.image}" width="1080" height="1080" alt="">
+    ${i.message || y.text ? `<p class="mt-3 strong italic center">${esc(i.message || y.text)}</p>` : ''}
     ${actionsHtml(id)}
   </div>
   <div class="item rise yr-art" style="--i:1">${i.caption ? `<p class="yr-cap">${esc(i.caption)}</p>` : ''}${blocksHtml(i.blocks)}</div>`;
@@ -256,7 +253,7 @@ function paintNum(n){
   $('w-birth-box').innerHTML=item(n.destiny.n,n.destiny.title,n.destiny.text,n.destiny.formula);
   const tileTitle=document.querySelector('[data-feature="year"] b'); if(tileTitle)tileTitle.textContent=title;
   if(wgOpen==='year') $('wg-title').textContent=title;
-  $('m-yearsub').textContent=n.year.info ? `${n.year.info.planet} · ${n.year.info.energy}` : '';
+  $('m-yearsub').textContent='';
 }
 
 /* ── «Что вас сегодня беспокоит?»: вопрос раскрывается в три способа получить ответ ── */
