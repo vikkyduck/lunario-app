@@ -228,12 +228,12 @@ function blocksHtml(blocks){
   }
   close(); return out.join('');
 }
-/* Год живет от дня рождения до дня рождения — так и подписываем:
-   «с 6 апреля 2026 по 5 апреля 2027», строкой ниже — «с 6 апреля 2027 по 5 апреля 2028 — год 3» */
-const ruDate = (d, withYear) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}) }).replace(/\s*г\.$/, '');
+/* Личный год живет от дня рождения до дня перед следующим днем рождения.
+   На плашке показываем только этот период: «Что ждет вас с 06.04.2026 по 05.04.2027». */
 const dayBefore = (d) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() - 1); return t.toISOString().slice(0, 10); };
-const span = (from, to) => `с ${ruDate(from, true)} по ${ruDate(dayBefore(to), true)}`;
-const yearPeriod = (y) => y.from ? span(y.from, y.to) + (y.next && y.next.to ? `<br>${span(y.next.from, y.next.to)} — год ${y.next.n}` : '') : String(y.year);
+const numDate = (d) => { const [y, m, day] = String(d).split('-'); return day && m && y ? `${day}.${m}.${y}` : String(d || ''); };
+const yearTitle = (y) => y.from && y.to ? `Что ждет вас с ${numDate(y.from)} по ${numDate(dayBefore(y.to))}` : 'Что ждет вас в этом году';
+const yearPeriod = (y) => y.from && y.to ? `${numDate(y.from)} — ${numDate(dayBefore(y.to))}` : String(y.year);
 function yearHtml(y){
   const i = y.info, id = y.res || (y.res = regRes({ type: 'year', year: y, stamp: String(y.year) }));
   return `<div class="item rise">
@@ -250,10 +250,13 @@ function paintNum(n){
   const item=(num,title,text,f)=>`<div class="item rise"><div class="row top">
     <span class="num-mark">${num}</span>
     <div class="grow"><b>${title}</b>${f?`<small>${f}</small>`:''}<p class="mt-2">${text}</p></div></div></div>`;
-  $('w-year-box').innerHTML=n.year.info ? yearHtml(n.year) : item(n.year.n,'Личный год '+n.year.n,n.year.text,yearPeriod(n.year));
+  const title = yearTitle(n.year);
+  $('w-year-box').innerHTML=n.year.info ? yearHtml(n.year) : item(n.year.n,title,n.year.text,yearPeriod(n.year));
   if (n.year.info) preparePending();   /* открытка года собирается заранее, как и остальные */
   $('w-birth-box').innerHTML=item(n.destiny.n,n.destiny.title,n.destiny.text,n.destiny.formula);
-  $('m-yearsub').textContent=n.year.info ? `${n.year.n} · ${n.year.info.planet} · ${n.year.info.energy}` : String(n.year.n);
+  const tileTitle=document.querySelector('[data-feature="year"] b'); if(tileTitle)tileTitle.textContent=title;
+  if(wgOpen==='year') $('wg-title').textContent=title;
+  $('m-yearsub').textContent=n.year.info ? `${n.year.info.planet} · ${n.year.info.energy}` : '';
 }
 
 /* ── «Что вас сегодня беспокоит?»: вопрос раскрывается в три способа получить ответ ── */
