@@ -25,7 +25,7 @@ step(`синтаксис: ${files.length} файлов`, { status: syntaxOk ? 0 
 step('версии ?v= оболочки', run(['tools/bump-version.mjs']));
 
 /* 3. проверки по темам — каждая своим процессом; сначала быстрые и статические, потом интеграционные (с настоящим сервером) */
-const CHECKS = ['check-startup-worker', 'check-backlog-telegram', 'check-yo', 'check-features', 'check-daily-sets', 'check-entry-history', 'check-brand', 'check-daylight', 'check-design', 'check-experience',
+const CHECKS = ['check-natal-texts', 'check-startup-worker', 'check-backlog-telegram', 'check-yo', 'check-features', 'check-daily-sets', 'check-entry-history', 'check-brand', 'check-daylight', 'check-design', 'check-experience',
   'check-feature-recovery', 'check-four-sections', 'check-notifications', 'check-repeat-practices', 'check-restoration', 'check-usability',
   ...(quick ? [] : ['check-personal-features', 'check-sync', 'check-isolation'])];
 for (const c of CHECKS) step(c, run([`tools/${c}.mjs`]));

@@ -471,20 +471,10 @@ function loadAbout(){
   $('ab-sub').textContent=[u.name,u.sign].filter(Boolean).join(' · ')||'Мой профиль';
   paintMeCard();
 }
-/* карточка человека над списком: имя, натальная Луна и лунный день рождения — из той же натальной карты, что и панель */
-async function paintMeCard(){
-  const box=$('me-card'); if(!box)return;
-  const u=S.user; if(!u?.birth){ box.hidden=true; return; }
-  const name=String(u.name||'').trim();
-  const paint=(c)=>{
-    const moon=c?.planets?.find(p=>p.key==='moon'), lb=c?.lunarBirth;
-    const line=[moon?`Натальная Луна ${esc(moon.signIn)}`:'', lb?`родились в <span class="nowrap">${ordinal(lb.n)} лунный</span> день`:''].filter(Boolean).join(' · ');
-    const memo=S.memory?.about?.text||'';   /* «В Лунарио с 3 марта. Первой картой была Луна» — memory.mjs, после первой недели */
-    box.innerHTML=`<b class="me-name">${esc(name||'Обо мне')}</b>${line?`<span class="me-line">${line}</span>`:''}<span class="me-sub">${[fmtDay(u.birth),u.city].filter(Boolean).map(esc).join(' · ')}</span>${memo?`<span class="me-memo">${esc(memo)}</span>`:''}`;
-    box.hidden=false; const sub=$('ab-sub'); if(sub) sub.hidden=true;   /* имя и знак под заголовком — теперь в карточке */
-  };
-  paint(natalCache);
-  if(!natalCache){ try{ const c=ctx(); const n=await api('/natal?quiet=1'); if(!c.alive())return; natalCache=n; paint(natalCache); }catch(e){ /* карточка остается с датой и городом */ } }
+/* Верхний блок «Обо мне» оставлен пустым до новой редакции текста. */
+function paintMeCard(){
+  const box=$('me-card'); if(box){ box.hidden=true; box.replaceChildren(); }
+  const sub=$('ab-sub'); if(sub){ sub.hidden=true; sub.textContent=''; }
 }
 function loadAccount(){
   const u=S.user; paintAvatar();

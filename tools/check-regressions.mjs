@@ -44,6 +44,25 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
   try {
     await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-home.on');
     const today = await page.evaluate(() => S.day.date);
+    const natal = await owner.json('/natal');
+    await page.locator('[data-nav="about"]').click();
+    assert.equal(await page.locator('#me-card').isVisible(), false, 'old profile introduction stays hidden');
+    await page.getByRole('button', {name: 'Натальная карта', exact: true}).click();
+    await page.locator('.natal-chart').waitFor();
+    assert.equal(await page.locator('.natal-chart-body').isVisible(), false, 'raw chart is collapsed initially');
+    const expected = natal.meanings.planets.filter(p => p.inSign).map(p => p.inSign);
+    assert.deepEqual(await page.locator('.natal-description h3').allTextContents(), expected.map(p => p.title));
+    for (let i = 0; i < expected.length; i++) {
+      const text = await page.locator('.natal-description').nth(i).innerText();
+      for (const paragraph of expected[i].text.split(/\n\s*\n/)) assert.ok(text.includes(paragraph));
+    }
+    assert.equal(await page.locator('.natal-summary').count(), 0);
+    await page.locator('.natal-chart > summary').click();
+    assert.equal(await page.locator('.natal-chart-body').isVisible(), true, 'chart expands on click');
+    await page.locator('.natal-chart > summary').click();
+    assert.equal(await page.locator('.natal-chart-body').isVisible(), false, 'chart collapses on click');
+    await page.locator('.wg-x').click();
+
     /* R01: благодарность A → карточка дня загружена → в панели правим на B → сохраняем день с новым настроением: остается B */
     await owner.json('/journal', 'POST', { text: 'Благодарность A — из панели', kind: 'gratitude' });
     await page.evaluate(() => go('history')); await page.waitForFunction(() => DC.state && DC.state.gratitude && DC.state.gratitude.text.startsWith('Благодарность A'));

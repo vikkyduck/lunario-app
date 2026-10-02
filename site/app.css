@@ -1877,3 +1877,16 @@ body.inner #v-home .head-tools{margin-top:-6px}
 #v-hello .startup-note{font-size:13px;line-height:1.5;color:var(--muted,#aaa);text-align:center;margin:0}
 #v-hello .startup-note a{color:inherit;text-decoration:underline;white-space:nowrap}
 #v-hello .startup-note[hidden]{display:none}
+
+/* Расчет свернут; персональные тексты читаются сразу, с абзацами из редакции. */
+.natal-chart{border:1px solid var(--line);border-radius:18px;margin-bottom:20px;overflow:hidden}
+.natal-chart>summary{display:flex;align-items:center;gap:12px;padding:18px 20px;min-height:52px;cursor:pointer;list-style:none;font-weight:700}
+.natal-chart>summary::-webkit-details-marker{display:none}
+.natal-chart>summary::after{content:'+';margin-left:auto;color:var(--gold-2);font-size:22px}
+.natal-chart[open]>summary::after{content:'−'}
+.natal-chart-body{padding:0 16px 20px;overflow-x:auto}
+.natal-descriptions{display:grid;gap:18px}
+.natal-description h3{font-size:20px;line-height:1.35;margin:0 0 14px}
+.natal-description h4{font-size:14px;line-height:1.5;margin:22px 0 8px;color:var(--gold-2)}
+.natal-description p{font-size:15px;line-height:1.7;margin:0 0 12px;white-space:pre-line}
+.natal-description p:last-child{margin-bottom:0}

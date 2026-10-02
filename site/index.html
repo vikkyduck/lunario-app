@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script defer src="/app/boot.js?v=130"></script>
+<script defer src="/app/boot.js?v=131"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=130">
-<link rel="stylesheet" href="/app/app.css?v=130">
-<link rel="stylesheet" href="/app/frame.css?v=130">
+<link rel="stylesheet" href="/app/theme.css?v=131">
+<link rel="stylesheet" href="/app/app.css?v=131">
+<link rel="stylesheet" href="/app/frame.css?v=131">
 </head>
 <body class="hello">
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -262,8 +262,8 @@
   </section>
   <section class="view" id="v-practice"><header class="practice-header"><button data-on="click:practiceBack" class="back" id="practice-back" type="button" data-ui="back">← Назад</button><span class="eyebrow practice-eb" id="practice-eb"></span><h1 id="practice-title"></h1></header><div id="practice-tools"></div><div id="practice-body"></div><div class="wg-foot"><button data-on="click:practiceBack" class="btn ghost wg-return" type="button" data-ui="return">← Вернуться</button></div></section>
   <!-- ОБО МНЕ: вкладка внизу — разборы по дате рождения; анкета и настройки живут в аккаунте (кружок с буквой имени справа вверху) -->
-  <section class="view" id="v-about"><h1 data-ui="about.title">Обо мне</h1><p class="section-caption" id="ab-sub">Мой профиль</p>
-    <!-- экран начинается с человека, а не с меню (по разбору референсов 19.09): имя, натальная Луна, лунный день рождения; тап — в натальную карту -->
+  <section class="view" id="v-about"><h1 data-ui="about.title">Обо мне</h1><p class="section-caption" id="ab-sub" hidden></p>
+    <!-- Место для нового описания; до утверждения текста не показывается. -->
     <button data-on="click:openWidget-natal" class="me-card" id="me-card" type="button" hidden></button>
     <div class="wids tiles about-links"><button data-on="click:openWidget-natal" class="wid" data-feature="natal" type="button" aria-label="Натальная карта"><i class="ico orbit"></i><b>Натальная карта</b><span id="m-natalsub">Планеты, дома, аспекты</span></button><button data-on="click:openWidget-year" class="wid" data-feature="year" type="button" aria-label="Личный год"><i class="ico calendar"></i><b>Личный год</b><span id="m-yearsub"></span></button><button data-on="click:openWidget-birthnum" class="wid" data-feature="birthnum" type="button" aria-label="Нумерология"><i class="ico numerology"></i><b>Нумерология</b><span>Число рождения и его значение</span></button><button data-on="click:openWidget-compat" class="wid" data-feature="compat" type="button" aria-label="Совместимость"><i class="ico compatibility"></i><b>Совместимость</b><span>По дате партнера</span></button></div>
   </section>
@@ -395,22 +395,22 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script defer src="/app/moon-logo.js?v=130"></script>
+<script defer src="/app/moon-logo.js?v=131"></script>
 
-<script type="module" src="/app/sky.js?v=130"></script>
+<script type="module" src="/app/sky.js?v=131"></script>
 
-<script defer src="/app/common.js?v=130"></script>
-<script defer src="/app/experience.js?v=130"></script>
-<script defer src="/app/app.js?v=130"></script>
-<script defer src="/app/today.js?v=130"></script>
-<script defer src="/app/diary.js?v=130"></script>
-<script defer src="/app/readings.js?v=130"></script>
-<script defer src="/app/practices.js?v=130"></script>
-<script defer src="/app/about.js?v=130"></script>
-<script defer src="/app/account.js?v=130"></script>
-<script defer src="/app/tour.js?v=130"></script>
-<script defer src="/app/handlers.js?v=130"></script>
-<script defer src="/app/on.js?v=130"></script>
-<script defer src="/app/start.js?v=130"></script>
+<script defer src="/app/common.js?v=131"></script>
+<script defer src="/app/experience.js?v=131"></script>
+<script defer src="/app/app.js?v=131"></script>
+<script defer src="/app/today.js?v=131"></script>
+<script defer src="/app/diary.js?v=131"></script>
+<script defer src="/app/readings.js?v=131"></script>
+<script defer src="/app/practices.js?v=131"></script>
+<script defer src="/app/about.js?v=131"></script>
+<script defer src="/app/account.js?v=131"></script>
+<script defer src="/app/tour.js?v=131"></script>
+<script defer src="/app/handlers.js?v=131"></script>
+<script defer src="/app/on.js?v=131"></script>
+<script defer src="/app/start.js?v=131"></script>
 </body>
 </html>

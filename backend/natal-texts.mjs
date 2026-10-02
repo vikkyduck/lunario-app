@@ -11,7 +11,7 @@
 
    Резюме — выводы по карте по правилам: ведущая стихия и крест (по десяти планетам от Солнца до Плутона), чего не хватает,
    стеллиум (три и больше планет в одном знаке), Солнце, Луна и Асцендент в знаках, Солнце и Луна в домах,
-   три самых точных аспекта. Показывается на экране «Натальная карта» первым и ложится в базу знаний («Обо мне»). */
+   три самых точных аспекта. Сохраняется в базе знаний («Обо мне»); на экране показываются только описания планет в знаках. */
 
 export const ELEMENT_OF = { 'Овен': 'огонь', 'Лев': 'огонь', 'Стрелец': 'огонь', 'Телец': 'земля', 'Дева': 'земля', 'Козерог': 'земля',
   'Близнецы': 'воздух', 'Весы': 'воздух', 'Водолей': 'воздух', 'Рак': 'вода', 'Скорпион': 'вода', 'Рыбы': 'вода' };
@@ -28,7 +28,7 @@ const ordinal = (n) => `${n}-й`;
 /* Читает все файлы значений в одну структуру: {planetSign, planetHouse, aspect, pointSign, balance} → {текст, суть} */
 export function loadNatalTexts(rows) {
   const T = { planetSign: {}, planetHouse: {}, aspect: {}, pointSign: {}, balance: {} };
-  const put = (m, k, text, gist) => { if (text) m[k] = { text: String(text).trim(), gist: String(gist || '').trim() }; };
+  const put = (m, k, text, gist) => { if (text) m[k] = { text: String(text).trim().replace(/\\n/g, '\n'), gist: String(gist || '').trim() }; };
   for (const c of rows('планеты-в-знаках.txt', 3) || []) put(T.planetSign, key(c[0], c[1]), c[2], c[3]);
   for (const c of rows('планеты-в-домах.txt', 3) || []) put(T.planetHouse, key(c[0], houseNo(c[1])), c[2], c[3]);
   for (const c of rows('аспекты.txt', 4) || []) put(T.aspect, key(c[0], c[1], c[2]), c[3], c[4]);
