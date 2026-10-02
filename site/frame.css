@@ -15,7 +15,7 @@ html.framed .wrap::-webkit-scrollbar{display:none}
 html.framed body:not(.inner) .wrap{height:100%;overflow:auto;padding:74px 24px 44px;scrollbar-width:none}
 /* Приветствие с описанием возможностей прокручивается внутри корпуса, как на телефоне. */
 html.framed body.hello .wrap{display:block;min-height:0;max-width:none}
-html.framed #v-hello.on{min-height:0}
+html.framed #v-hello.on{min-height:calc(min(932px,100dvh - 84px) - 118px)}
 
 /* ── статус-бар: часы слева, островок по центру, сеть и батарея справа; всё декоративное ── */
 html.framed .frame-bar{position:fixed;top:0;left:0;right:0;height:58px;z-index:500;pointer-events:none;display:flex;align-items:center;justify-content:space-between;padding:0 34px}

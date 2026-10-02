@@ -20,7 +20,7 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     assert.equal(await startup.locator('#startup-note').isVisible(), false);
     assert.equal(await startup.getByRole('button', {name: 'Войти по почте'}).isEnabled(), true);
     const welcomeLayout = await startup.evaluate(() => {
-      const blocks = ['.hello-about', '.hello-oracle', '.hello-inside', '.trust'].map(selector => document.querySelector(selector).getBoundingClientRect());
+      const blocks = ['.hello-header', '.hello-about', '.hello-oracle', '.hello-footer'].map(selector => document.querySelector(selector).getBoundingClientRect());
       const gaps = blocks.slice(1).map((box, index) => Math.round(box.top - blocks[index].bottom));
       return {
         fits: document.documentElement.scrollHeight <= innerHeight + 1,
@@ -31,9 +31,25 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
         trustBottom: Math.round(innerHeight - blocks.at(-1).bottom),
       };
     });
-    assert.deepEqual({fits: welcomeLayout.fits, horizontalOverflow: welcomeLayout.horizontalOverflow, headerPosition: welcomeLayout.headerPosition, ordered: welcomeLayout.ordered}, {fits: true, horizontalOverflow: false, headerPosition: 'sticky', ordered: true});
+    assert.deepEqual({fits: welcomeLayout.fits, horizontalOverflow: welcomeLayout.horizontalOverflow, headerPosition: welcomeLayout.headerPosition, ordered: welcomeLayout.ordered}, {fits: true, horizontalOverflow: false, headerPosition: 'relative', ordered: true});
     assert.ok(welcomeLayout.gapSpread <= 3, 'welcome blocks are distributed evenly');
     assert.ok(welcomeLayout.trustBottom <= 30, 'privacy note stays at the bottom of the screen');
+    // The desktop phone has its own height: distributing against the window left a large empty bottom.
+    await startup.setViewportSize({width: 1000, height: 1000});
+    await startup.waitForFunction(() => document.documentElement.classList.contains('framed'));
+    const framedWelcome = await startup.evaluate(() => {
+      const wrap = document.querySelector('.wrap'), trust = document.querySelector('#v-hello .trust').getBoundingClientRect();
+      return {bottomGap: document.body.getBoundingClientRect().bottom - trust.bottom,
+        overflow: wrap.scrollHeight > wrap.clientHeight + 1};
+    });
+    assert.ok(framedWelcome.bottomGap >= 40 && framedWelcome.bottomGap <= 48, 'privacy note follows the phone bottom, not content height');
+    assert.equal(framedWelcome.overflow, false, 'welcome fits inside the tall phone frame');
+    await startup.setViewportSize({width: 320, height: 568});
+    await startup.waitForFunction(() => !document.documentElement.classList.contains('framed'));
+    assert.equal(await startup.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, 'small phones have no sideways overflow');
+    await startup.getByRole('link', {name: 'Что внутри'}).scrollIntoViewIfNeeded();
+    assert.equal(await startup.getByRole('link', {name: 'Что внутри'}).isVisible(), true);
+    await startup.setViewportSize({width: 390, height: 844});
     const [cookieName, cookieValue] = owner.cookie.split('=');
     await startupCtx.addCookies([{name: cookieName, value: cookieValue, domain: '127.0.0.1', path: '/app'}]);
     await startup.reload({waitUntil: 'domcontentloaded'});
