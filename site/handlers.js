@@ -4,6 +4,7 @@
    Вызывается из on.js с this = элемент и event = событие, как и раньше; вернул false — preventDefault.
    Файл собран автоматически из прежних атрибутов; следующий шаг — переезд обработчиков в модули экранов. */
 window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
+  "saveDigitalMap": function (event) { event.preventDefault(); saveDigitalMap(this); },
   "go-hello": function (event) { go('hello') },
   "openCabinet-return-false": function (event) { openCabinet();return false },
   "tourShort": function (event) { tourStart(true, 'short') },

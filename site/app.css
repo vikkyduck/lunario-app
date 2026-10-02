@@ -1904,3 +1904,19 @@ body.inner #v-home .head-tools{margin-top:-6px}
 .rag-question{font-weight:600}.rag-answer,.rag-source{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
 .rag-source{font-size:14px;opacity:.85}.rag-turn details{margin:10px 0}.rag-turn summary{cursor:pointer}.rag-turn details button{margin:8px 4px 0 0;text-align:left;white-space:normal}
 .rag-panel form{display:grid;gap:12px;margin-top:20px}.rag-panel textarea{width:100%;box-sizing:border-box;resize:vertical}.rag-panel .btn{min-height:44px}
+
+/* Цифровая карта: те же раскрывающиеся описания, что у натальной карты. */
+#w-birth-box { display: grid; gap: 12px; }
+#digital-birth-results, #digital-personal-results { display: grid; gap: 12px; }
+#digital-personal-results[hidden] { display: none; }
+.digital-reading > summary { display: flex; align-items: center; gap: 12px; }
+.digital-number { display: inline-grid; place-items: center; flex: 0 0 36px; height: 36px; border: 1px solid var(--gold); border-radius: 50%; color: var(--gold); font-size: 20px; }
+.digital-star { display: block; width: min(100%, 320px); margin: 16px auto; color: var(--gold); }
+.digital-star path { fill: none; stroke: currentColor; stroke-width: 1.2; opacity: .6; }
+.digital-star .digital-outline { opacity: .2; }
+.digital-star circle { fill: var(--bg, #0f1423); stroke: currentColor; }
+.digital-star text { fill: currentColor; text-anchor: middle; font-size: 20px; font-family: inherit; }
+.digital-trace { margin-top: 16px; }
+.digital-trace p { overflow-wrap: anywhere; }
+.digital-form input[aria-invalid="true"] { border-color: #d68b8b; }
+.digital-notice { margin: 0 0 8px; font-size: 13px; line-height: 1.55; font-weight: 400; }

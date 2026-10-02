@@ -1,3 +1,4 @@
+import { seedNumerology } from './numerology-store.mjs';
 /* Схема базы приложения и ее история — одно место вместо ALTER TABLE, разбросанных по модулям.
 
    Как устроено. MIGRATIONS — последовательные шаги с номером; номер последнего примененного лежит в
@@ -346,14 +347,24 @@ MIGRATIONS.push({ v: 27, name: 'очистка персональной памя
     DELETE FROM rag_usage WHERE user_id=OLD.id;
   END;`);
 }});
+MIGRATIONS.push({ v: 28, name: 'цифровая карта и каталог нумерологии', up(db) {
+  addColumn(db, 'users', 'numerology_data', "TEXT NOT NULL DEFAULT ''");
+  db.exec(`CREATE TABLE numerology_texts (
+    content_version TEXT NOT NULL, namespace TEXT NOT NULL, section TEXT NOT NULL,
+    number INTEGER NOT NULL CHECK(number BETWEEN 1 AND 9), payload TEXT NOT NULL,
+    PRIMARY KEY(content_version, namespace, section, number)
+  )`);
+  seedNumerology(db);
+}});
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
 /* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера (и отдельными процессами перед работой).
    Границы у миграций и проверки одни (F12): все, от чего зависят операции, — здесь, включая users.data_rev и knowledge.rev */
 export const REQUIRED = {
+  numerology_texts: ['content_version', 'namespace', 'section', 'number', 'payload'],
   rag_state: ['user_id','namespace','rev','catalog'], rag_chunks: ['id','user_id','text_enc','source_key'], rag_turns: ['user_id','request_id','question','answer','sources'], rag_usage: ['user_id','day','requests'], rag_purges: ['namespace'],
   backlog_telegram_outbox: ['payload', 'state', 'attempts', 'next_at', 'sent_at', 'last_error'],
-  users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref', 'data_rev'],
+  users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref', 'data_rev', 'numerology_data'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
   entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text', 'start_day', 'tz'], wishes: ['photo', 'photo_ts'],
   events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],

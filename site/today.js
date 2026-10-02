@@ -250,7 +250,6 @@ function paintNum(n){
   const title = yearTitle(n.year);
   $('w-year-box').innerHTML=n.year.info ? yearHtml(n.year) : item(n.year.n,title,n.year.text,yearPeriod(n.year));
   if (n.year.info) preparePending();   /* открытка года собирается заранее, как и остальные */
-  $('w-birth-box').innerHTML=item(n.destiny.n,n.destiny.title,n.destiny.text,n.destiny.formula);
   const tileTitle=document.querySelector('[data-feature="year"] b'); if(tileTitle)tileTitle.textContent=title;
   if(wgOpen==='year') $('wg-title').textContent=title;
   $('m-yearsub').textContent='';

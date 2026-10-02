@@ -45,6 +45,8 @@ import { initReminders, FEATURES as REMINDER_FEATURES, listReminders, saveRemind
 import { CLIENT_EVENTS } from './events.mjs';
 import { clearHistory, deleteAccount, sweepAbandoned } from './account-data.mjs';
 import { migrate, verifySchema, SCHEMA_VERSION } from './schema.mjs';
+import { createNumerology } from './numerology-store.mjs';
+import { NumerologyError } from './numerology.mjs';
 import { createJobRunner } from './job-runner.mjs';
 import { createCabinetRoutes } from './http/cabinet-routes.mjs';
 import * as CE from './content-edit.mjs';
@@ -180,6 +182,7 @@ const track = (u, type, detail = '') => db.prepare('INSERT INTO events (ts, day,
 /* Ревизия личных данных (R08, ревью v114 F04): растет вместе с самой записью, правкой или удалением — одной транзакцией, через
    mutate() из mutation.mjs; маршрутизатор ее не трогает и списка путей не держит. База знаний сверяет ревизию при чтении */
 const mutate = createMutation(db);
+const Numerology = createNumerology({ db, open: open_, seal, mutate });
 const dataRev = (uid) => (db.prepare('SELECT data_rev FROM users WHERE id = ?').get(uid) || {}).data_rev || 0;
 function ageBand(birth) {
   if (!ISO_DAY.test(String(birth || ''))) return '';
@@ -755,6 +758,15 @@ const server = createServer(async (req, res) => {
       }
       if (p === '/api/timeline' && req.method === 'GET') return json(res,200,timeline(db,u.id,url.searchParams,open_));
 
+      if (p === '/api/numerology/map' && ['GET', 'POST'].includes(req.method)) {
+        try {
+          const value = req.method === 'GET' ? Numerology.result(u, d) : Numerology.save(u, await readBody(req), d);
+          return json(res, value.ok === false ? 422 : 200, value);
+        } catch (e) {
+          if (!(e instanceof NumerologyError)) throw e;
+          return json(res, 422, { ok: false, error: e.code, ...(e.field ? { errors: { [e.field]: e.code } } : {}) });
+        }
+      }
       if (p === '/api/profile' && req.method === 'POST') {
         const b = await readBody(req);
         const birth = clean(b.birth, 10);

@@ -222,7 +222,7 @@ const WIDGET_LOADERS = {
   habits: () => { habitView='today'; hbEditing=null; habitFormOpen=false; if(HB)paintHabits(); loadHabits(); },
   askesis: () => loadAskesis(), days: () => loadAllDays(), sky: () => loadSky(), lunar: () => paintLunarWidget(), gratitude: () => loadGratitude(), tone: () => loadTone(),
   day: () => { showForecastNote(); track('forecast_view'); }, worry: () => renderHub(), invite: () => loadInvite(), remind: () => paintAllReminders(), edit: () => fillEdit(),
-  support: () => supOpen(), dayrune: () => loadDayRune(), card: () => paintCardPick(), natal: () => loadNatal(), year: () => loadNumerology(), birthnum: () => loadNumerology(),
+  support: () => supOpen(), dayrune: () => loadDayRune(), card: () => paintCardPick(), natal: () => loadNatal(), year: () => loadNumerology(), birthnum: () => loadDigitalMap(),
 };
 function loadWidgetContent(k){ WIDGET_LOADERS[k]?.(); }
 /* Картинка к функции из кабинета «Контент» (dayPack.art): наверху панели; ask — общая для Таро, рун и «Да / Нет» */

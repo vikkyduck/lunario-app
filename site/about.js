@@ -1,4 +1,84 @@
 /* Лунарио — «Обо мне»: натальная карта */
+let digitalMapRequest = 0;
+registerReset(() => { digitalMapRequest++; if ($('w-birth-box')) $('w-birth-box').innerHTML = ''; }, { profile: true });
+const digitalText = text => esc(String(text ?? '').replace(/\u0451/g, 'е').replace(/\u0401/g, 'Е'));
+const digitalErrors = {
+  NO_BIRTH: 'Добавьте дату рождения в анкете.', INVALID_DATE_FORMAT: 'Проверьте формат даты рождения.',
+  INVALID_DATE: 'Проверьте дату рождения.', FUTURE_BIRTH_DATE: 'Дата рождения не может быть в будущем.',
+  EMPTY_NAME: 'Введите хотя бы одну букву.', MIXED_ALPHABETS: 'Используйте один алфавит для официального имени, фамилии и отчества.',
+  UNSUPPORTED_CHARACTER: 'Допустимы русские или латинские буквы, пробелы, дефисы и апострофы.',
+  TEXT_TOO_LONG: 'В поле должно быть не больше 200 символов.', PROFILE_REQUIRED: 'Выберите способ расчета.',
+};
+const digitalFields = [['firstName', 'Официальное имя'], ['lastName', 'Фамилия'], ['patronymic', 'Отчество'], ['everydayName', 'Повседневное имя'], ['businessName', 'Название бизнеса']];
+function digitalCalculation(n) {
+  const terms = n.inputs.join(' + '), steps = n.reduction.steps;
+  return (n.letters ? n.letters.map(l => `${esc(l.letter)} = ${l.value}`).join(' · ') + '<br>' : '')
+    + esc(terms + (n.inputs.length > 1 ? ' = ' + n.sum : '') + (steps.length > 1 ? ' → ' + steps.slice(1).join(' → ') : ''));
+}
+function digitalReading(r) {
+  const c = r.content;
+  return `<details class="card natal-description digital-reading" data-reading="${esc(r.id)}"><summary><span class="digital-number">${r.value}</span><span>${digitalText(r.label)}</span></summary><div class="natal-description-body">
+    ${c ? `<h3>${digitalText(c.title)}</h3><h4>Возможный ресурс</h4><p>${digitalText(c.resource)}</p><h4>Возможная трудность</h4><p>${digitalText(c.difficulty)}</p><h4>Ваша задача</h4><p>${digitalText(c.task)}</p>` : `<p>${digitalText(r.message)}</p>`}
+    ${r.id === 'D' && r.namespace === 'base9' ? '<p class="hint">Число отношений совпадает с числом судьбы по формуле. Здесь оно рассматривается в контексте отношений.</p>' : ''}
+    <details class="digital-trace"><summary>Расчет</summary><p>${r.calculation.normalized ? esc(r.calculation.normalized) + '<br>' : ''}${digitalCalculation(r.calculation)}</p></details>
+  </div></details>`;
+}
+function digitalStar(birth) {
+  const points = [['A', 55, 110], ['B', 160, 34], ['C', 265, 110], ['D', 226, 244], ['E', 94, 244], ['F', 160, 150]];
+  return `<svg class="digital-star" viewBox="0 0 320 282" role="img" aria-label="Звезда по дате рождения: ${points.map(([k]) => `${k}: ${birth.star[k].value}`).join(', ')}">
+    <path d="M160 34L226 244L55 110H265L94 244Z"/><path class="digital-outline" d="M160 34L265 110L226 244H94L55 110Z"/>
+    ${points.map(([k, x, y]) => `<circle cx="${x}" cy="${y}" r="22"/><text x="${x}" y="${y + 6}">${birth.star[k].value}</text>`).join('')}</svg>`;
+}
+function renderDigitalMap(data, { formOpen = false, errors = {}, draft } = {}) {
+  const box = $('w-birth-box'), input = draft || data.inputs;
+  box.innerHTML = `<p class="hint digital-notice">${digitalText(data.notice)}</p>
+    <div id="digital-birth-results">${data.birth ? `<details class="card digital-chart"><summary>Звезда ${data.profile.startsWith('base9') ? '1–9' : '1–22'} · ${numDate(data.birth.birthDate)}</summary>
+      <div class="natal-description-body"><div class="field"><label for="digital-profile">Способ расчета звезды</label><select id="digital-profile" data-on="change:changeDigitalMapProfile-value"><option value="base9-v1-proposed" ${data.profile.startsWith('base9') ? 'selected' : ''}>Базовые числа 1–9</option><option value="star22-v1-proposed" ${data.profile.startsWith('star22') ? 'selected' : ''}>Звезда 1–22 · только расчет</option></select></div>${digitalStar(data.birth)}</div></details>
+      ${data.birthReadings.map(digitalReading).join('')}` : `<p class="msg err">${digitalText(digitalErrors[data.birthError] || 'Не получилось рассчитать дату.')}</p><button class="btn ghost" data-on="click:closeWidget-go-account-openWidget-edit" type="button">Дополнить анкету</button>`}</div>
+    <details class="card digital-form" ${formOpen ? 'open' : ''}><summary>Имя и название бизнеса</summary><form id="digital-form" class="natal-description-body" data-on="submit:saveDigitalMap">
+      ${digitalFields.map(([key, label]) => `<div class="field"><label for="digital-${key}">${label}</label><input id="digital-${key}" name="${key}" value="${esc(input[key])}" maxlength="200" autocomplete="off" data-on="input:digitalMapDirty" ${errors[key] ? `aria-invalid="true" aria-describedby="digital-error-${key}"` : ''}>${errors[key] ? `<p class="msg err" id="digital-error-${key}">${digitalText(digitalErrors[errors[key]] || 'Проверьте значение.')}</p>` : ''}</div>`).join('')}
+      <button class="btn" type="submit">Сохранить и рассчитать</button><p id="digital-form-status" role="status">${errors.expression ? digitalText(digitalErrors[errors.expression]) : ''}</p></form></details>
+    <div id="digital-personal-results">${data.nameReadings.map(digitalReading).join('')}
+      ${data.expressionStatus === 'insufficient_input' ? '<p class="hint">Для числа экспрессии нужны официальное имя и фамилия. Отчество можно оставить пустым.</p>' : ''}
+      ${data.business ? digitalReading(data.business) : ''}</div><p id="digital-status" role="status"></p>`;
+}
+function digitalMapDirty() {
+  const results = $('digital-personal-results'); if (results) results.hidden = true;
+  const status = $('digital-form-status'); if (status) status.textContent = 'Изменения еще не сохранены';
+}
+async function loadDigitalMap() {
+  const box = $('w-birth-box'), request = ++digitalMapRequest, context = ctx();
+  box.innerHTML = '<p class="hint">Считаем цифровую карту…</p>';
+  try {
+    const data = await api('/numerology/map');
+    if (context.alive() && request === digitalMapRequest) renderDigitalMap(data);
+  } catch (e) {
+    if (!context.alive() || request !== digitalMapRequest || e.code === 'cancelled') return;
+    box.innerHTML = '<p class="msg err">Не получилось загрузить цифровую карту.</p><button class="btn ghost" type="button" data-on="click:loadDigitalMap">Повторить</button>';
+  }
+}
+async function saveDigitalMap(form, profile) {
+  const inputs = Object.fromEntries(new FormData(form)), context = ctx(), request = ++digitalMapRequest;
+  if (profile) inputs.profile = profile;
+  const submit = form.querySelector('button[type="submit"]'); submit.disabled = true;
+  const controls = [...form.querySelectorAll('input'), $('digital-profile')].filter(Boolean);
+  controls.forEach(el => { el.disabled = true; });
+  const status = $('digital-form-status'); status.textContent = 'Сохраняем…';
+  try {
+    const data = await api('/numerology/map', { method: 'POST', body: JSON.stringify(inputs) });
+    if (!context.alive() || request !== digitalMapRequest) return;
+    renderDigitalMap(data, { formOpen: !profile });
+    $('digital-form-status').textContent = 'Сохранено';
+  } catch (e) {
+    if (!context.alive() || request !== digitalMapRequest || e.code === 'cancelled') return;
+    if (e.body?.result) renderDigitalMap(e.body.result, { formOpen: true, errors: e.body.errors || {}, draft: inputs });
+    $('digital-form-status').textContent = digitalErrors[e.code] || (e.body?.errors ? 'Проверьте отмеченные поля. Изменения не сохранены.' : 'Не получилось сохранить. Повторите попытку.');
+  } finally { if (submit.isConnected) submit.disabled = false; controls.forEach(el => { if (el.isConnected) el.disabled = false; }); }
+}
+async function changeDigitalMapProfile(profile) {
+  // Include typed fields so switching the chart never discards a name draft.
+  await saveDigitalMap($('digital-form'), profile);
+}
 /* ── натальная карта: расчет на сервере, здесь только вывод ── */
 let natalCache = null;
 registerReset(() => { natalCache = null; }, { profile: true });   /* живет с анкетой: сбрасывается при выходе, не при очистке истории (F05) */

@@ -170,6 +170,11 @@ export function personalExportPdf(data, { moodName = (m) => m, topicTitle = (k) 
   flow.kv('Город', p.city);
   flow.kv('Почта', p.email);
   flow.kv('Фото', p.photo ? 'загружено' : '');
+  const numerology = data.numerology || {};
+  if (numerology.unreadable) flow.empty('Данные цифровой карты не удалось расшифровать.');
+  else for (const [key, label] of [['firstName', 'Официальное имя'], ['lastName', 'Фамилия'], ['patronymic', 'Отчество'], ['everydayName', 'Повседневное имя'], ['businessName', 'Название бизнеса']]) {
+    if (numerology[key]) flow.kv(label, numerology[key]);
+  }
 
   /* ── настройки ── */
   const pr = data.preferences || {};

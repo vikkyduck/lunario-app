@@ -14,7 +14,7 @@ export const isDecryptFailed = (e) => !!e && e.code === 'decrypt_failed';
 export const readableWith = (open) => (s) => { try { return { text: open(s), unreadable: false }; } catch (e) { if (isDecryptFailed(e)) return { text: null, unreadable: true }; throw e; } };
 /* Есть ли в базе хоть одна зашифрованная строка — по ней решается, можно ли заводить новый ключ (только на пустой базе) */
 export function hasEncrypted(db) {
-  for (const [table, col] of [['journal', 'text'], ['wishes', 'text'], ['habits', 'title'], ['askesis', 'title'], ['entries', 'question']]) {
+  for (const [table, col] of [['journal', 'text'], ['wishes', 'text'], ['habits', 'title'], ['askesis', 'title'], ['entries', 'question'], ['users', 'numerology_data']]) {
     try { if (db.prepare(`SELECT 1 FROM ${table} WHERE ${col} LIKE '${ENC_MARK}%' LIMIT 1`).get()) return true; } catch { /* таблицы еще нет */ }
   }
   return false;
