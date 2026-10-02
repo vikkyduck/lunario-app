@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-skin="compact">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
@@ -27,14 +27,14 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script src="/app/boot.js?v=129"></script>
+<script defer src="/app/boot.js?v=130"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=129">
-<link rel="stylesheet" href="/app/app.css?v=129">
-<link rel="stylesheet" href="/app/frame.css?v=129">
+<link rel="stylesheet" href="/app/theme.css?v=130">
+<link rel="stylesheet" href="/app/app.css?v=130">
+<link rel="stylesheet" href="/app/frame.css?v=130">
 </head>
-<body>
+<body class="hello">
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="z0" viewBox="0 0 24 24"><path d="M12 21V9c0-4-3-6-6-4S4 11 7 12M12 9c0-4 3-6 6-4s2 6-1 7"/></symbol>
@@ -62,7 +62,7 @@
     <div class="head-tools section-acct"><button data-on="click:openWidget-appearance" class="acct gear-btn" type="button" aria-label="Оформление: светлая, темная или как на устройстве"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button><button data-on="click:openAccount" class="acct acct-btn" type="button" aria-label="Аккаунт: анкета, уведомления, выход">✦</button></div></div>
 
   <!-- ВХОД: личный профиль или вход по почте -->
-  <section class="view" id="v-hello">
+  <section class="view on" id="v-hello">
     <header class="hello-header">
     <h1 class="wordmark hero" aria-label="Лунарио"><span class="wm-text">Лунари</span><span class="o-wrap"><span class="o-glyph">О</span><span class="mark" aria-hidden="true"><canvas class="moon-img" data-brand-moon id="moonHello" width="208" height="208"></canvas><span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span></span></span></h1>
       <button data-on="click:openLogin" class="hello-login" id="hello-login" type="button" aria-label="Войти по почте" style="display:none">Войти</button>
@@ -75,9 +75,10 @@
       </div>
       <p class="hello-description">Это не просто чат с AI, а пространство, которое <strong>помнит ваш контекст</strong> и учитывает его в предложенных вопросах</p>
       <div class="cta">
-        <button data-on="click:openForm" class="btn welcome-primary"><span data-ui="hello.cta">Открыть мой день</span><span aria-hidden="true">→</span></button>
+        <button disabled data-startup-required data-on="click:openForm" class="btn welcome-primary"><span data-ui="hello.cta">Открыть мой день</span><span aria-hidden="true">→</span></button>
         <a class="hello-inside" href="https://lunario.online/chto-vnutri">Что внутри <span aria-hidden="true">↗</span></a>
       </div>
+      <p id="startup-note" class="startup-note" role="status"><span id="startup-message">Подключаемся к Лунарио… Если загрузка не завершится, попробуйте еще раз.</span> <a href="/app/">Повторить загрузку</a></p>
       <div class="hello-oracle">
         <div class="hello-oracle-copy">
           <h3>ДА / НЕТ</h3>
@@ -110,7 +111,6 @@
       <h3>И это только начало 🌙</h3>
       <p>Постепенно Лунарио станет полноценным AI-компаньоном с инструментами самопознания и поддержки в одном приложении.</p>
     </div>
-    <button data-on="click:openForm" class="btn welcome-primary hello-bottom-cta" type="button">Открыть мой день <span aria-hidden="true">→</span></button>
     <p class="trust" data-ui="hello.trust">Записи хранятся в России и видны только вам.</p>
   </section>
 
@@ -395,22 +395,22 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script src="/app/moon-logo.js?v=129"></script>
+<script defer src="/app/moon-logo.js?v=130"></script>
 
-<script type="module" src="/app/sky.js?v=129"></script>
+<script type="module" src="/app/sky.js?v=130"></script>
 
-<script src="/app/common.js?v=129"></script>
-<script src="/app/experience.js?v=129"></script>
-<script src="/app/app.js?v=129"></script>
-<script src="/app/today.js?v=129"></script>
-<script src="/app/diary.js?v=129"></script>
-<script src="/app/readings.js?v=129"></script>
-<script src="/app/practices.js?v=129"></script>
-<script src="/app/about.js?v=129"></script>
-<script src="/app/account.js?v=129"></script>
-<script src="/app/tour.js?v=129"></script>
-<script src="/app/handlers.js?v=129"></script>
-<script src="/app/on.js?v=129"></script>
-<script src="/app/start.js?v=129"></script>
+<script defer src="/app/common.js?v=130"></script>
+<script defer src="/app/experience.js?v=130"></script>
+<script defer src="/app/app.js?v=130"></script>
+<script defer src="/app/today.js?v=130"></script>
+<script defer src="/app/diary.js?v=130"></script>
+<script defer src="/app/readings.js?v=130"></script>
+<script defer src="/app/practices.js?v=130"></script>
+<script defer src="/app/about.js?v=130"></script>
+<script defer src="/app/account.js?v=130"></script>
+<script defer src="/app/tour.js?v=130"></script>
+<script defer src="/app/handlers.js?v=130"></script>
+<script defer src="/app/on.js?v=130"></script>
+<script defer src="/app/start.js?v=130"></script>
 </body>
 </html>

@@ -4,6 +4,38 @@
    Экраны здесь дергаются теми же функциями, что и кнопки (go, openWidget, saveDayCard…) — проверяется путь данных, а не пиксели. */
 import assert from 'node:assert/strict';
 export async function checkRegressions({ browser, base, owner, codeFor }) {
+  // A stalled connection must never leave only the phone background.
+  const startupCtx = await browser.newContext({serviceWorkers: 'block'});
+  try {
+    const startup = await startupCtx.newPage();
+    await startup.route('**/api/me', () => {});
+    await startup.goto(base + '/', {waitUntil: 'domcontentloaded'});
+    await startup.locator('#v-hello.on').waitFor({state: 'visible', timeout: 2000});
+    assert.equal(await startup.locator('[data-startup-required]').isDisabled(), true);
+    await startup.getByText('Не удалось подключиться к Лунарио.', {exact: false}).waitFor({timeout: 11000});
+    assert.equal(await startup.getByRole('link', {name: 'Повторить загрузку'}).isVisible(), true);
+    await startup.unroute('**/api/me');
+    await startup.getByRole('link', {name: 'Повторить загрузку'}).click();
+    await startup.waitForFunction(() => !document.querySelector('[data-startup-required]').disabled);
+    assert.equal(await startup.locator('#startup-note').isVisible(), false);
+    assert.equal(await startup.getByRole('button', {name: 'Открыть мой день'}).count(), 1);
+    const [cookieName, cookieValue] = owner.cookie.split('=');
+    await startupCtx.addCookies([{name: cookieName, value: cookieValue, domain: '127.0.0.1', path: '/app'}]);
+    await startup.reload({waitUntil: 'domcontentloaded'});
+    await startup.locator('#v-home.on').waitFor();
+    await startup.route('**/api/me', () => {});
+    await startup.reload({waitUntil: 'domcontentloaded'});
+    await startup.locator('#v-home.on').waitFor({timeout: 11000});
+    assert.equal(await startup.locator('#offline-note').isVisible(), true, 'saved profile is restored after the network deadline');
+  } finally { await startupCtx.close(); }
+  const noScripts = await browser.newContext({javaScriptEnabled: false, serviceWorkers: 'block'});
+  try {
+    const staticPage = await noScripts.newPage();
+    await staticPage.goto(base + '/');
+    assert.equal(await staticPage.locator('#v-hello').isVisible(), true, 'welcome is rendered even without application scripts');
+    assert.equal(await staticPage.getByRole('link', {name: 'Что внутри'}).isVisible(), true);
+    assert.equal(await staticPage.getByRole('link', {name: 'Повторить загрузку'}).isVisible(), true);
+  } finally { await noScripts.close(); }
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   const [name, value] = owner.cookie.split('='); await ctx.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, sameSite: 'Lax' }]);
   const page = await ctx.newPage(), errors = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));

@@ -51,35 +51,44 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('mess
 (async function(){
   if('serviceWorker' in navigator) ensurePushWorker().catch(()=>{});
   let r;
+  const startupRequest = new AbortController();
+  const startupDeadline = setTimeout(() => startupRequest.abort(), 8000);
   try{
-    try { r = await api('/me'); try { localStorage.setItem('lun_me', JSON.stringify({ at: Date.now(), r })); } catch(e) {} }
+    try { r = await api('/me', {signal: startupRequest.signal}); try { localStorage.setItem('lun_me', JSON.stringify({ at: Date.now(), r })); } catch(e) {} }
     catch(e){   /* нет связи (а не отказ сервера) — сегодняшний пакет дня не меняется до полуночи, показываем последний сохраненный */
       const snap = (!e.status && offlineSnapshot()) || null; if (!snap) throw e;
       r = snap.r; S.offlineAt = snap.at;
     }
+    clearTimeout(startupDeadline);
     S.user=r.user; S.day=r.day; S.mood=r.mood; S.moods=r.moods||(r.mood?[r.mood]:[]); S.memory=r.memory||{}; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;S.ui=r.ui||{};FEATURES=r.features||FEATURES;applyUi();initExperience(r.preferences);
     if (S.offlineAt) { const n = $('offline-note'); if (n) { n.hidden = false; n.textContent = `Без связи · показываем то, что было на ${new Date(S.offlineAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${r.day?.date !== new Date().toLocaleDateString('sv-SE') ? ', ' + fmtDay(r.day?.date) : ''}`; } }
     try{ if(r.user&&r.user.lat!=null) window.LunarioSky?.setProfile({lat:r.user.lat,lon:r.user.lon,name:r.user.city||''}); }catch(e){}
     registerWebMcp();
     try{ if(/[?&]app=1/.test(location.search)) localStorage.setItem('lun_app','1'); }catch(e){}
     if(isStaff(r.user) && !inApp() && !/[?&]preview=/.test(location.search)){ location.replace('/app/cabinet'); return; }   /* предпросмотр из кабинета — остаемся в приложении */
+    $('startup-note').hidden = true;
+    document.querySelectorAll('[data-startup-required]').forEach(el => el.disabled = false);
     track('app_open');
-    try{
+    void (async () => { try{
       const qs = new URLSearchParams(location.search), utm = {};
       for (const k of ['utm_source','utm_medium','utm_campaign','utm_content','utm_term']) if (qs.get(k)) utm[k] = qs.get(k);
       if (Object.keys(utm).length) { utm.ref = document.referrer.slice(0, 120); await api('/utm',{method:'POST',body:JSON.stringify(utm)}); if (!qs.get('ref')) history.replaceState(null,'',location.pathname + (qs.get('app') ? '?app=1' : '')); }
-    }catch(e){}
+    }catch(e){} })();
     if (r.supportUnread) { const d = $('h-supdot'); if (d) d.hidden = false; }
     const ref = new URLSearchParams(location.search).get('ref');
-    try{
+    void (async () => { try{
       if (ref && /^[a-z0-9]{6,12}$/i.test(ref)) {
         const inv = await api('/invite',{method:'POST',body:JSON.stringify({code:ref})});
         if (inv.ok) setTimeout(()=>toast(inv.from ? `${inv.from} зовет вас в Лунарио — добро пожаловать` : 'Вы пришли по ссылке подруги — добро пожаловать'), 1200);   /* событие invite_used пишет сервер */
         history.replaceState(null,'',location.pathname);
       }
-    }catch(e){ /* ссылка старая — просто открываем приложение */ }
+    }catch(e){ /* ссылка старая — просто открываем приложение */ } })();
     if(r.day && typeof r.day.moonPhase==='number') moonSetPhase(r.day.moonPhase);
     if(!r.user.onboarded){ go('hello'); track('intro_view'); if(S.mailReady) $('hello-login').style.display='block'; return; }
     startApp();
-  }catch(e){ go('hello'); }
+  }catch(e){
+    go('hello');
+    $('startup-note').hidden = false;
+    $('startup-message').textContent = 'Не удалось подключиться к Лунарио. Проверьте соединение и попробуйте еще раз.';
+  }finally{ clearTimeout(startupDeadline); }
 })();

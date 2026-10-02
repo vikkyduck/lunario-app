@@ -4,7 +4,7 @@
    при пропавшей связи). Прежняя версия отдавала ее из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const V = '129';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
+const V = '130';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
 const CACHE = 'lunario-app-v' + V;
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
 const SHELL = ['/app/', '/app/theme.css?v=' + V, '/app/app.css?v=' + V, '/app/frame.css?v=' + V,
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (e) => {
   // только сама страница приложения: переход на /app/install или /app/cabinet не должен подменять офлайн-оболочку
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
     e.respondWith(
-      fetch(e.request)
+      fetchDocument(e.request)
         .then((r) => {
           if (r.ok && u.origin === location.origin && (u.pathname === '/app/' || u.pathname === '/app/index.html')) {
             const cp = r.clone();
@@ -43,7 +43,7 @@ self.addEventListener('fetch', (e) => {
           }
           return r;
         })
-        .catch(() => caches.match('/app/'))
+        .catch(async () => (await caches.match('/app/')) || Response.error())
     );
     return;
   }
@@ -56,9 +56,17 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then(async (c) => { await c.put(e.request, cp); trim(c); });
       }
       return r;
-    }).catch(() => caches.match('/app/')))
+    }).catch(() => Response.error()))
   );
 });
+
+/* Сохраненная страница доступна и при зависшем соединении, а не только при отказе сети. */
+async function fetchDocument(request) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try { return await fetch(request, {signal: controller.signal}); }
+  finally { clearTimeout(timeout); }
+}
 
 /* кеш не растет бесконечно: старые файлы сверх лимита выбрасываем, оболочка остается */
 async function trim(c) {

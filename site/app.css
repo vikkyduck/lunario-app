@@ -1872,3 +1872,8 @@ body.inner :is(.wids.tiles,.wids.mini-grid){gap:12px;grid-auto-rows:160px}   /* 
 /* кружки шапки — 40px везде, центр на линии центра заголовка: на «Сегодня» — вордмарка, на вкладках — h1 */
 body.inner .head-tools .acct{width:40px;height:40px}
 body.inner #v-home .head-tools{margin-top:-6px}
+
+/* Первый экран виден до ответа API; переход в анкету доступен после загрузки профиля. */
+#v-hello .startup-note{font-size:13px;line-height:1.5;color:var(--muted,#aaa);text-align:center;margin:0}
+#v-hello .startup-note a{color:inherit;text-decoration:underline;white-space:nowrap}
+#v-hello .startup-note[hidden]{display:none}
