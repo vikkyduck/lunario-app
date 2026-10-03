@@ -169,6 +169,7 @@ async function rollHelloDice(){
     }
     $('hello-dice-face').textContent=answer;
     $('hello-dice-result').textContent='Выпало: '+answer;
+    $('hello-continue').hidden=false;
   }finally{
     button.disabled=false;
     button.removeAttribute('aria-busy');

@@ -11,7 +11,7 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     await startup.route('**/api/me', () => {});
     await startup.goto(base + '/', {waitUntil: 'domcontentloaded'});
     await startup.locator('#v-hello.on').waitFor({state: 'visible', timeout: 2000});
-    assert.equal(await startup.locator('[data-startup-required]').isDisabled(), true);
+    assert.equal(await startup.locator('[data-startup-required]').evaluateAll(nodes=>nodes.every(n=>n.disabled)), true);
     await startup.getByText('Не удалось подключиться к Лунарио.', {exact: false}).waitFor({timeout: 11000});
     assert.equal(await startup.getByRole('link', {name: 'Повторить загрузку'}).isVisible(), true);
     await startup.unroute('**/api/me');
@@ -50,6 +50,13 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     await startup.getByRole('link', {name: 'Что внутри'}).scrollIntoViewIfNeeded();
     assert.equal(await startup.getByRole('link', {name: 'Что внутри'}).isVisible(), true);
     await startup.setViewportSize({width: 390, height: 844});
+    await startup.locator('#hello-start').click();
+    await startup.locator('#v-onb.on #o-name').waitFor();
+    await startup.locator('#v-onb [data-on="click:go-hello"]').click();
+    await startup.locator('#hello-login').click();
+    await startup.locator('#v-login.on .login-new button').click();
+    await startup.locator('#v-onb.on #o-name').waitFor();
+    await startup.locator('#v-onb [data-on="click:go-hello"]').click();
     const [cookieName, cookieValue] = owner.cookie.split('=');
     await startupCtx.addCookies([{name: cookieName, value: cookieValue, domain: '127.0.0.1', path: '/app'}]);
     await startup.reload({waitUntil: 'domcontentloaded'});
@@ -264,6 +271,19 @@ async function checkOnboardingWithMail({ browser, base, codeFor }) {
     await page.locator('[data-on="click:obSkipTime"]').click();
     await page.locator('#o-city').fill('Москва'); await page.locator('#o-form .ob-step:not([hidden]) [data-on="click:obNext"]').click();
   };
+  // A first-time visitor starts from the visible CTA, completes the profile and verifies a new address.
+  const fresh = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+  try {
+    const page=await fresh.newPage();page.setDefaultTimeout(15000);await mailLive(page);
+    await page.goto(base+'/');await page.locator('#hello-start').click();
+    await fillSteps(page,'Первое знакомство');
+    const mail='new-welcome@example.test';codeFor(mail);
+    await page.locator('#o-email').fill(mail);await page.locator('#o-consent').check();await page.locator('#o-go').click();
+    await page.locator('#o-codebox #auth-code').fill('123456');await page.locator('#o-codebox [data-on="click:authCheck"]').click();
+    await page.locator('#v-home.on').waitFor();
+    assert.deepEqual(await page.evaluate(()=>[S.user.onboarded,S.user.email,S.user.name]),[true,mail,'Первое знакомство']);
+    await page.reload();await page.locator('#v-home.on').waitFor();
+  } finally {await fresh.close();}
   /* 1. Приветствие → «Войти» → новая почта → код → «Заполнить профиль» → шаги → «Открыть мой день» — сразу «Сегодня» */
   const login = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   try {
@@ -295,7 +315,9 @@ async function checkOnboardingWithMail({ browser, base, codeFor }) {
     await mailLive(page); page.on('request', (r) => { if (r.url().endsWith('/api/auth/request')) sent.push(r.postDataJSON().email); });
     await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-hello.on');
     await page.waitForFunction(() => !document.getElementById('hello-login').disabled);
-    await page.evaluate(() => openForm()); await page.waitForSelector('#v-onb.on');
+    await page.locator('#hello-dice').click();
+    await page.locator('#hello-continue:not([hidden]) button').waitFor();
+    await page.locator('#hello-continue button').click(); await page.waitForSelector('#v-onb.on');
     await fillSteps(page, 'Вошла на анкете');
     assert.equal(await page.locator('#ob-done-q').innerText(), 'Куда прислать код?', 'mail is live and no address yet — the last step asks for one');
     await page.fill('#o-email', 'typed-then-abandoned@example.test');

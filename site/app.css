@@ -1998,3 +1998,16 @@ body.inner .dc-optional{margin:16px 0 10px}
 body.inner #w-days .diary-search .search-note{font-size:13px;line-height:1.45;margin:0;color:var(--muted)}
 body.inner #w-days .days-month{font-size:12px;letter-spacing:.06em}
 body.inner #w-days #days-result-count{font-size:14px;line-height:1.4}
+
+/* Первый визит: один основной путь к профилю, продолжение после пробного броска. */
+#v-hello .hello-start{display:grid;gap:8px}
+#v-hello .hello-start .btn{width:100%;min-height:46px;background:linear-gradient(135deg,#f0d79a,#c9a85e);color:#211b30;border:0;font-size:16px;font-weight:600}
+html[data-skin] #v-hello .hello-start p{margin:0;font-size:13px;line-height:1.4;color:#c9c4d4;text-align:center}
+#v-hello .hello-oracle{display:grid;grid-template-columns:minmax(0,1fr) 118px}
+#v-hello .hello-continue{grid-column:1/-1;display:grid;justify-items:start;gap:8px}
+#v-hello .hello-continue[hidden]{display:none}
+html[data-skin] #v-hello .hello-continue p{margin:0;color:#c9c4d4;font-size:13px;line-height:1.4}
+#v-hello .hello-continue .btn{min-height:44px;color:#f0d79a;border-color:#d9b86866}
+#v-login .login-new{margin:24px 0;display:grid;gap:8px}
+#v-login .login-new p{margin:0}
+html[data-skin] #v-onb .onb-intro{margin:18px 0;font-size:14px;line-height:1.5;color:var(--muted)}

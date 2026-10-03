@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script defer src="/app/boot.js?v=145"></script>
+<script defer src="/app/boot.js?v=147"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=145">
-<link rel="stylesheet" href="/app/app.css?v=145">
-<link rel="stylesheet" href="/app/frame.css?v=145">
+<link rel="stylesheet" href="/app/theme.css?v=147">
+<link rel="stylesheet" href="/app/app.css?v=147">
+<link rel="stylesheet" href="/app/frame.css?v=147">
 </head>
 <body class="hello">
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -78,6 +78,10 @@
         <p id="startup-note" class="startup-note" role="status"><span id="startup-message">Подключаемся к Лунарио… Если загрузка не завершится, попробуйте еще раз.</span> <a href="/app/">Повторить загрузку</a></p>
       </div>
       </div>
+      <div class="hello-start">
+        <button disabled data-startup-required data-on="click:openForm" class="btn" id="hello-start" type="button">Начать знакомство</button>
+        <p>Сначала короткий профиль, затем — ваш день и Дневник</p>
+      </div>
       <ul class="hello-paths" aria-label="Возможности Лунарио">
         <li><span class="hello-path-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span><p><strong>Свериться с собой</strong><span>найти свое решение</span></p></li>
         <li><span class="hello-path-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.5 5.5a5 5 0 0 0-7 0L12 7l-1.5-1.5a5 5 0 0 0-7 7L12 21l8.5-8.5a5 5 0 0 0 0-7Z"/></svg></span><p><strong>Совместимость</strong><span>прояснить суть отношений</span></p></li>
@@ -107,6 +111,10 @@
         </span>
         <span class="hello-dice-action" id="hello-dice-action">Бросить кубик</span>
       </button>
+      <div class="hello-continue" id="hello-continue" hidden>
+        <p>Кубик выбирает ответ случайно. Хотите узнать больше о себе?</p>
+        <button disabled data-startup-required data-on="click:openForm" class="btn ghost sm" type="button">Создать профиль →</button>
+      </div>
     </div>
     <div class="hello-footer">
       <a class="hello-inside" href="https://lunario.online/chto-vnutri">Что внутри <span aria-hidden="true">↗</span></a>
@@ -119,8 +127,9 @@
     <button data-on="click:go-hello" class="back" data-ui="back">← Назад</button>
     <span class="eyebrow">Вход</span>
     <h1>Войти по почте</h1>
-    <p class="login-intro">Пришлем шестизначный код — пароль не нужен. Профиль, записи и практики откроются на этом устройстве.</p>
+    <p class="login-intro">Уже пользовались Лунарио? Укажите прежнюю почту — откроются ваш профиль и записи. Пришлем код, пароль не нужен.</p>
     <div class="card sec" id="l-box"></div>
+    <div class="login-new"><p>Впервые здесь?</p><button data-on="click:openForm" class="btn ghost" type="button">Начать знакомство</button></div>
     <div class="card sec" id="l-after" style="display:none">
       <p class="t2">Почта сохранена. Осталось заполнить короткий профиль — записи привяжутся к ней.</p>
       <button data-on="click:openForm" class="btn mt-3">Заполнить профиль</button>
@@ -155,6 +164,7 @@
     </div>
     <!-- Анкета по шагам (решение владелицы 19.09): один вопрос на экран, «Дальше», как в дневнике. Поля и их id те же,
          что и раньше — отправка (o-go в app.js) не изменилась; показывается только текущий шаг (obStep) -->
+    <p class="onb-intro">Дата и место рождения нужны для личных описаний. Время можно пропустить.</p>
     <div class="card sec ob-card" id="o-form">
       <div class="dc-dots" id="ob-dots" aria-hidden="true"></div>
       <div class="dc-names" id="ob-names" aria-hidden="true"></div>
@@ -400,23 +410,23 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script defer src="/app/moon-logo.js?v=145"></script>
+<script defer src="/app/moon-logo.js?v=147"></script>
 
-<script type="module" src="/app/sky.js?v=145"></script>
+<script type="module" src="/app/sky.js?v=147"></script>
 
-<script defer src="/app/common.js?v=145"></script>
-<script defer src="/app/experience.js?v=145"></script>
-<script defer src="/app/app.js?v=145"></script>
-<script defer src="/app/today.js?v=145"></script>
-<script defer src="/app/diary.js?v=145"></script>
-<script defer src="/app/readings.js?v=145"></script>
-<script defer src="/app/practices.js?v=145"></script>
-<script defer src="/app/about.js?v=145"></script>
-<script defer src="/app/account.js?v=145"></script>
-<script defer src="/app/tour.js?v=145"></script>
-<script defer src="/app/rag.js?v=145"></script>
-<script defer src="/app/handlers.js?v=145"></script>
-<script defer src="/app/on.js?v=145"></script>
-<script defer src="/app/start.js?v=145"></script>
+<script defer src="/app/common.js?v=147"></script>
+<script defer src="/app/experience.js?v=147"></script>
+<script defer src="/app/app.js?v=147"></script>
+<script defer src="/app/today.js?v=147"></script>
+<script defer src="/app/diary.js?v=147"></script>
+<script defer src="/app/readings.js?v=147"></script>
+<script defer src="/app/practices.js?v=147"></script>
+<script defer src="/app/about.js?v=147"></script>
+<script defer src="/app/account.js?v=147"></script>
+<script defer src="/app/tour.js?v=147"></script>
+<script defer src="/app/rag.js?v=147"></script>
+<script defer src="/app/handlers.js?v=147"></script>
+<script defer src="/app/on.js?v=147"></script>
+<script defer src="/app/start.js?v=147"></script>
 </body>
 </html>
