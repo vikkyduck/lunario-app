@@ -17,3 +17,4 @@ CUR="$(remote "readlink $APP_ROOT/current 2>/dev/null || echo ''")"
 echo "==> откат: current → $TARGET (сейчас $CUR)"
 remote "cd $APP_ROOT && ln -sfn $TARGET current && echo '$CUR' > PREVIOUS && (cp $TARGET/RELEASE RELEASE 2>/dev/null || true) && (cp $TARGET/MANIFEST MANIFEST 2>/dev/null || true)"
 if [ "${INSTALL_UNITS:-1}" = 1 ]; then remote "$SYSTEMCTL restart lunario-app && sleep 1 && printf 'health: ' && curl -sS $HEALTH_URL && echo"; fi
+if [ "${INSTALL_UNITS:-1}" = 1 ] && [ -z "${RUN_REMOTE:-}" ]; then mail_report; fi

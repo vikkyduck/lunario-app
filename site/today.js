@@ -275,61 +275,160 @@ $('a-go').onclick=async()=>{
 /* ── вход по коду на почту: один поток на анкету («Уже пользовались?»), экран входа и виджет «Вход по почте».
    Три места отличаются только контейнером и тем, что делать после проверки кода (onDone). ── */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
-const AUTH_ERRORS = {
-  send: { too_often: 'Слишком часто. Попробуйте через несколько минут.', mail_off: 'Отправка почты еще не настроена.', send_failed: 'Письмо не ушло. Проверьте адрес или попробуйте позже.', _: 'Не получилось отправить код.' },
-  verify: { wrong_code: 'Код не подошел. Проверьте письмо.', expired: 'Код истек — запросите новый.', too_many: 'Слишком много попыток. Запросите новый код.', _: 'Не получилось войти.' },
-  /* тот же код, но другое дело: здесь отказ означает, что аккаунт остался на месте */
-  del: { wrong_code: 'Код не подошел — аккаунт не удален.', expired: 'Код истек — начните удаление заново.', too_many: 'Слишком много попыток. Начните удаление заново.', no_code: 'Код не найден — начните удаление заново.', _: 'Не получилось удалить аккаунт.' },
-};
-const authErrorText = (e, step) => AUTH_ERRORS[step][e && e.code] || AUTH_ERRORS[step]._;
+/* Тексты отказов почты (AUTH_ERRORS, authErrorText) — в common.js: одни на приложение и кабинет */
 /* сотрудник: кабинет открывается по умолчанию, пока человек не нажал «В приложение» — выбор запоминается на устройстве */
 const isStaff = (u) => !!(u && u.roles && u.roles.length);
 function inApp(){ try{ return localStorage.getItem('lun_app')==='1'; }catch(e){ return false; } }
 function openCabinet(){ try{ localStorage.removeItem('lun_app'); }catch(e){} location.href='/app/cabinet'; }
-/* box — id контейнера; step — idle | email | code; idle() — что показать в покое; onDone(r) — что делать после кода */
-const auth = { box: '', step: 'idle', email: '', idle: () => '', onDone: () => {} };
+
+/* Состояние почты (S.mailReady) — не навсегда: приходит с /api/me, дальше его уточняют ответы на запрос кода (mail_off или долгий
+   mail_down — false, письмо ушло — true) и проверка GET /api/mail-status. null — сервер ничего не сказал: оставляем прежнее */
+let mailCheckedAt = 0;
+const MAIL_RECHECK_MS = 5 * 60e3;
+function noteMailReady(v){
+  if (typeof v !== 'boolean') return false;
+  mailCheckedAt = Date.now(); const changed = !!S.mailReady !== v; S.mailReady = v; return changed;
+}
+let mailTriedAt = 0;   /* неудачная попытка спросить (нет сети) — пауза 15 с, а не 5 минут: связь вернется — проверим сразу */
+/* Вернулись на вкладку или появилась сеть: проверяем почту, только если вход по ней нужен прямо сейчас — экран входа, анкета
+   или «Аккаунт» у человека без привязанной почты, — и не чаще раза в 5 минут. Поменялось — перерисовываем то, что от него зависит */
+const mailMatters = () => !!S.user && !S.user.email && !S.localPreview && ['login', 'onb', 'account'].includes(activeView());
+/* force — переход на экран входа, анкету или «Аккаунт», появление сети: если почта считается выключенной, спрашиваем
+   без ожидания пяти минут (иначе «Привязать почту» не возвращалась, пока не переключишь вкладку браузера) */
+async function refreshMailState(force = false){
+  if (document.hidden || !mailMatters() || Date.now() - mailTriedAt < 15e3) return;
+  if (!(force === true && !S.mailReady) && Date.now() - mailCheckedAt < MAIL_RECHECK_MS) return;
+  mailTriedAt = Date.now();
+  const st = await fetchMailStatus();
+  if (st && noteMailReady(st.mailReady)) applyMailState();
+}
+document.addEventListener('visibilitychange', () => refreshMailState());
+window.addEventListener('online', () => { mailTriedAt = 0; refreshMailState(true); });
+function applyMailState(){
+  const v = activeView();
+  if (v === 'login' && auth.box === 'l-box' && !auth.busy) {
+    if (S.mailReady && auth.step === 'off') { auth.step = 'email'; paintAuth(); }
+    else if (!S.mailReady && auth.step === 'email') { auth.email = ($('auth-email')?.value || auth.email).trim().toLowerCase(); auth.step = 'off'; paintAuth(); }   /* набранный адрес вернется в поле */
+  }
+  if (v === 'onb' && $('o-form').style.display !== 'none') { paintObBack(); if (obIdx === OB_STEPS.length - 1) obStep(obIdx); }   /* поле почты на последнем шаге — по тому же условию obAskMail */
+  if (v === 'account') loadAccount();
+}
+
+/* box — id контейнера; step — idle | wait (спрашиваем сервер о почте) | off (вход по почте не работает) | email | code;
+   idle() — что показать в покое, off() — когда почта не работает; onDone(r) — что делать после кода.
+   gen — номер подключения: ответ, пришедший после смены экрана, не рисуется в чужой контейнер. busy — идет запрос: повторное
+   нажатие ничего не шлет (два письма подряд — и код из первого уже не подходит). sentAt — когда ушел код, late — письмо могло задержаться */
+const AUTH_RESEND_MS = 60000, AUTH_SLOW_MS = 8000;
+const auth = { box: '', step: 'idle', email: '', idle: () => '', off: () => authOffHtml(), onDone: () => {}, gen: 0, busy: false, sentAt: 0, late: false, timer: 0 };
 function authMount(box, o){
   if (auth.box && auth.box !== box) { const prev = $(auth.box); if (prev) prev.innerHTML = ''; }
-  Object.assign(auth, { step: 'idle', email: '', idle: () => '' }, o, { box });
+  Object.assign(auth, { step: 'idle', email: '', idle: () => '', off: authOffHtml, busy: false, sentAt: 0, late: false }, o, { box, gen: auth.gen + 1 });
   paintAuth();
 }
+/* Честное состояние вместо формы: письма не уходят — поле почты ни к чему, профиль и записи на месте */
+const authOffHtml = () => `<div class="auth-off" role="status"><h2 class="auth-off-title" tabindex="-1">Вход по почте временно не работает</h2>
+  <p class="auth-off-text">Ваш профиль и записи сохранены — это сбой на нашей стороне. Загляните чуть позже.</p></div>
+  <button data-on="click:authRecheck-this" class="btn ghost auth-recheck" type="button">Проверить еще раз</button><p class="msg" id="auth-msg" role="status"></p>`;
 function paintAuth(){
+  clearInterval(auth.timer);
   const box = $(auth.box); if (!box) return;
   box.classList.add('auth-flow');
+  if (auth.box === 'o-auth') $('o-back')?.classList.toggle('mail-off', auth.step === 'off');   /* на анкете честная строка заменяет «Уже пользовались?» */
+  if (auth.box === 'l-box') $('v-login')?.classList.toggle('mail-off', auth.step === 'off');   /* «Укажите прежнюю почту» без поля почты не показываем */
   if (auth.step === 'idle') { box.innerHTML = auth.idle(); return; }
+  if (auth.step === 'wait') { box.innerHTML = '<p class="hint auth-wait" role="status">Проверяем вход по почте…</p>'; return; }
+  if (auth.step === 'off') { box.innerHTML = auth.off(); setTimeout(() => box.querySelector('.auth-off-title, .auth-off-note')?.focus(), 60); return; }   /* фокус — на честную строку: нажатая кнопка исчезла, диктор прочтет, что случилось */
   box.innerHTML = auth.step === 'email'
     ? `<div class="field"><label for="auth-email">Почта</label><input id="auth-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.ru" value="${esc(auth.email)}"></div>
-      <button data-on="click:authSend" class="btn auth-submit">Прислать код</button><p class="msg" id="auth-msg"></p>`
+      <button data-on="click:authSend" class="btn auth-submit" type="button">Прислать код</button><p class="msg" id="auth-msg" role="status"></p>`
     : `<p class="auth-sent">Код отправлен на <b>${esc(auth.email)}</b></p>
-      <div class="field"><label for="auth-code">Код из письма</label><input id="auth-code" class="code-input" inputmode="numeric" maxlength="6" placeholder="000000"></div>
-      <button data-on="click:authCheck" class="btn auth-submit">Войти</button>
-      <button data-on="click:auth-step-email-paintAuth" class="btn ghost sm auth-secondary">Изменить адрес</button><p class="msg" id="auth-msg"></p>`;
+      ${auth.late ? '<p class="auth-note auth-late" role="status">Письмо могло задержаться. Если его нет через пару минут, запросите код еще раз.</p>' : ''}
+      <div class="field"><label for="auth-code">Код из письма</label><input id="auth-code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"></div>
+      <button data-on="click:authCheck" class="btn auth-submit" type="button">Войти</button><p class="msg" id="auth-msg" role="status"></p>
+      <p class="auth-note">Не пришло? Проверьте папку «Спам».</p>
+      <button data-on="click:authResend" class="btn ghost sm auth-secondary" id="auth-resend" type="button" disabled>Прислать еще раз</button>
+      <button data-on="click:authEditEmail" class="btn ghost sm auth-secondary" type="button">Изменить адрес</button>`;
+  if (auth.step === 'code') { tickResend(); auth.timer = setInterval(tickResend, 1000); }
   setTimeout(() => $(auth.step === 'email' ? 'auth-email' : 'auth-code')?.focus(), 60);
 }
-const requestCode = (email) => api('/auth/request', { method:'POST', body: JSON.stringify({ email }) }).then(() => track('login_code_sent'));
+/* «Прислать еще раз» — через минуту после отправки, с обратным отсчетом на кнопке: раньше письмо обычно еще в пути */
+function tickResend(){
+  const b = $('auth-resend'); if (!b) { clearInterval(auth.timer); return; }
+  if (b.getAttribute('aria-busy')) return;   /* идет повторная отправка */
+  const left = Math.ceil((auth.sentAt + AUTH_RESEND_MS - Date.now()) / 1000);
+  b.disabled = left > 0; b.textContent = left > 0 ? `Прислать еще раз через ${left} с` : 'Прислать еще раз';
+  if (left <= 0) clearInterval(auth.timer);
+}
+const requestCode = (email) => api('/auth/request', { method:'POST', body: JSON.stringify({ email }) }).then((r) => { track('login_code_sent'); return r; });
+/* Один запрос кода на «Прислать код» и «Прислать еще раз». Кнопка занята, пока ждем; ответа нет 8 с — говорим об этом,
+   запрос не отменяем. Вернет ответ сервера или null — отказ уже показан (или экран сменился и ответ не наш) */
+async function authRequest(btn, msg){
+  const gen = auth.gen; auth.busy = true;
+  const release = holdButton(btn);
+  const slow = setTimeout(() => { if (gen === auth.gen && msg?.isConnected) showMsg(msg, 'Письмо идет дольше обычного…'); }, AUTH_SLOW_MS);
+  try {
+    const r = await requestCode(auth.email);
+    if (gen !== auth.gen) return null;
+    noteMailReady(true); auth.sentAt = Date.now(); auth.late = !!r?.uncertain;
+    return r;
+  } catch (e) {
+    if (gen !== auth.gen) return null;
+    noteMailReady(mailReadyIn(e));
+    if (isMailOff(e) && auth.step === 'email') { auth.step = 'off'; paintAuth(); return null; }
+    /* на шаге кода остаемся: код из прошлого письма действует 15 минут — так и говорим, а не «загляните позже» */
+    if (auth.step === 'code' && (isMailOff(e) || e.code === 'mail_down' || e.code === 'send_failed')) { showMsg(msg, 'Новый код сейчас не отправить — письма временно не уходят. Код из прошлого письма действует 15 минут: введите его.', true); return null; }
+    showMsg(msg, authErrorText(e, 'send'), true); return null;
+  } finally { clearTimeout(slow); if (gen === auth.gen) auth.busy = false; release(); }
+}
 async function authSend(){
-  const email = $('auth-email').value.trim().toLowerCase(), msg = $('auth-msg');
+  if (auth.busy) return;
+  const input = $('auth-email'), msg = $('auth-msg'); if (!input) return;
+  const email = input.value.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) { showMsg(msg, 'Проверьте адрес почты.', true); return; }
-  showMsg(msg, 'Отправляем код…');
-  try { await requestCode(email); auth.email = email; auth.step = 'code'; paintAuth(); hap('ok'); }
-  catch (e) { showMsg(msg, authErrorText(e, 'send'), true); }
+  auth.email = email; showMsg(msg, 'Отправляем код…');
+  if (await authRequest(document.querySelector(`#${auth.box} .auth-submit`), msg)) { auth.step = 'code'; paintAuth(); hap('ok'); }
+}
+async function authResend(){
+  if (auth.busy || Date.now() - auth.sentAt < AUTH_RESEND_MS) return;
+  showMsg($('auth-msg'), 'Отправляем новый код…');
+  if (!(await authRequest($('auth-resend'), $('auth-msg')))) return;
+  paintAuth(); hap('ok'); showMsg($('auth-msg'), 'Отправили новый код — введите его из последнего письма.');
+}
+function authEditEmail(){ if (auth.busy) return; auth.step = 'email'; auth.late = false; paintAuth(); }
+/* «Проверить еще раз» на честном экране: только читает состояние почты на сервере, писем не шлет */
+async function authRecheck(btn){
+  if (auth.busy) return;
+  const gen = auth.gen; auth.busy = true; const release = holdButton(btn);
+  showMsg($('auth-msg'), 'Проверяем…');
+  const st = await fetchMailStatus();
+  if (gen !== auth.gen) return;
+  auth.busy = false; if (st) noteMailReady(st.mailReady);
+  if (st && S.mailReady) { auth.step = 'email'; paintAuth(); return; }
+  release(); showMsg($('auth-msg'), st ? 'Пока не работает. Попробуйте позже.' : 'Не удалось проверить — нет связи с Лунарио.');
 }
 async function authCheck(){
-  const code = $('auth-code').value.trim(), msg = $('auth-msg');
+  if (auth.busy) return;
+  const input = $('auth-code'), msg = $('auth-msg'); if (!input) return;
+  const code = input.value.trim();
   if (code.length !== 6) { showMsg(msg, 'Код состоит из шести цифр.', true); return; }
+  const gen = auth.gen; auth.busy = true;
+  const release = holdButton(document.querySelector(`#${auth.box} .auth-submit`));
+  showMsg(msg, 'Проверяем код…');
   try {
     const r = await api('/auth/verify', { method:'POST', body: JSON.stringify({ email: auth.email, code }) });
-    hap('done'); track('login_done');
+    if (gen !== auth.gen) return;
+    hap('done'); track('login_done'); showMsg(msg);
     if (isStaff(r.user) && !inApp()) { location.href = '/app/cabinet'; return; }   // сотрудник — сначала в кабинет
-    auth.onDone(r);
-  } catch (e) { showMsg(msg, authErrorText(e, 'verify'), true); }
+    auth.onDone(r);   /* кнопка остается занятой: дальше перезагрузка или другой экран, второй раз код не уйдет */
+  } catch (e) { if (gen === auth.gen) { showMsg(msg, authErrorText(e, 'verify'), true); release(); } }
+  finally { if (gen === auth.gen) auth.busy = false; }
 }
 /* Почта в «Аккаунте» — строкой под датой рождения (решение владелицы 20.09, панель «Вход по почте» снята). У аккаунта без почты —
    кнопка «Привязать почту»: тот же поток кода, что на анкете, разворачивается прямо в карточке профиля */
 function accountMailOpen(){
   const box=$('ac-auth'); if(!box)return;
   box.hidden=false; $('ac-mail-btn').hidden=true;
-  authMount('ac-auth', { step:'email', onDone:(r)=>{
+  authMount('ac-auth', { step:'email', email: S.pendingEmail || '', onDone:(r)=>{   /* адрес из анкеты, если там письмо не ушло */
     if (r.merged) { location.reload(); return; }   /* чужой аккаунт найден — перезагрузка подтянет его целиком */
     S.user=r.user; toast('Почта сохранена — доступ не потеряется'); box.hidden=true; box.innerHTML=''; loadAccount();
   } });
@@ -345,6 +444,7 @@ function obDone(r){
   toast('Почта сохранена — осталось заполнить профиль');
 }
 const obAuthIdle = () => `<button data-on="click:auth-step-email-paintAuth" class="btn ghost sm full mt-3">Войти по почте</button>`;
+const obAuthOff = () => '<p class="auth-off-note" role="status">Уже пользовались Лунарио? Вход по почте сейчас не работает — ваш профиль и записи сохранены, загляните чуть позже.</p>';
 /* all — отозвать сессии на всех устройствах: если телефон потерян или код входа попал не в те руки */
 async function logout(all){
   if(!confirm(all?'Выйти на всех устройствах? Везде понадобится заново войти по коду; записи останутся в аккаунте.':'Выйти на этом устройстве? Записи останутся в аккаунте и вернутся при следующем входе.')) return;

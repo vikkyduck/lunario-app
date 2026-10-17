@@ -82,8 +82,11 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
   /* Код действует 15 минут. purpose — для чего он: 'login' (вход и выдача доступа сотруднику) или
      'delete' (подтверждение удаления аккаунта). Код одной цели не подходит для другой: письмо
      «подтвердите удаление» не должно открывать вход. У почты в каждый момент один код — новый заменяет прежний. */
-  function issueLoginCode(email, purpose = 'login') {
-    const code = String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
+  /* Письмо уходит раньше, чем код попадает в базу (mail-service.mjs): newLoginCode — только придумать код,
+     saveLoginCode — записать его, когда письмо принято. Неудачная повторная отправка так не отменяет код,
+     который уже лежит у человека в почте. */
+  const newLoginCode = () => String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
+  function saveLoginCode(email, code, purpose = 'login') {
     db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
       VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET
       code_hash = excluded.code_hash, created_at = excluded.created_at,
@@ -91,6 +94,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
       .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString(), purpose);
     return code;
   }
+  const issueLoginCode = (email, purpose = 'login') => saveLoginCode(email, newLoginCode(), purpose);
   /* Ровно шесть ASCII-цифр. Раньше код резался до шести символов, и «1234567» с верными первыми шестью подходил —
      то есть проверка пропускала не тот код, который человек получил в письме. */
   const CODE = /^[0-9]{6}$/;
@@ -173,7 +177,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
     }
   }
 
-  return { parseCookies, setSessionCookie, clearSessionCookie, newSession, createSession, getUser, issueLoginCode, checkLoginCode, codeFormatOk, verifyLogin,
+  return { parseCookies, setSessionCookie, clearSessionCookie, newSession, createSession, getUser, issueLoginCode, newLoginCode, saveLoginCode, checkLoginCode, codeFormatOk, verifyLogin,
     /* для проверок и отчетов: какая политика сейчас действует */
     policy: { SESSION_MAX_MS, SESSION_IDLE_MS, STAFF_MAX_MS, STAFF_IDLE_MS, SEEN_STEP_MS } };
 }

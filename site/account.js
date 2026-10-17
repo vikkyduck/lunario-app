@@ -240,13 +240,24 @@ $('o-go').onclick=async()=>{
     : last && last.status ? 'Сервер не принял анкету. Напишите нам, если повторится.'
     : 'Нет связи — анкета осталась на месте, нажмите еще раз', true);
 };
+const obCodeOff = () => `<div class="auth-off" role="status"><h2 class="auth-off-title" tabindex="-1">Письма сейчас не уходят</h2>
+  <p class="auth-off-text">Профиль сохранен. Почту привяжете позже в «Аккаунте» — записи останутся на этом устройстве.</p></div>
+  <button data-on="click:finishOnboarding" class="btn auth-exit" type="button">Открыть мой день</button>`;
 /* В анкете указана почта: код — на том же экране; не ушел — не держим человека на пороге, почту можно привязать в «Аккаунте» */
 async function obSendCode(email){
-  try { await requestCode(email); }
-  catch (e) { toast(authErrorText(e, 'send')); finishOnboarding(); return; }
+  let sent;
+  try { sent = await requestCode(email); noteMailReady(true); }
+  catch (e) {
+    noteMailReady(mailReadyIn(e));
+    /* опечатка в адресе — остаемся на анкете: поле с адресом на месте, исправить можно сразу (профиль уже сохранен) */
+    if (e && e.code === 'bad_recipient') { const go = $('o-go'); go.disabled = false; go.textContent = 'Открыть мой день'; showMsg($('o-msg'), authErrorText(e, 'send'), true); $('o-email')?.focus(); return; }
+    /* почта не работает — не держим на пороге: открываем день, адрес подставим в «Привязать почту» */
+    S.pendingEmail = email; toast('Почту сейчас не подтвердить — привяжете ее позже в «Аккаунте»'); finishOnboarding(); return;
+  }
   $('o-form').style.display='none'; $('o-back').style.display='none'; $('o-codebox').style.display='';
   $('v-onb').classList.add('verifying-email'); scrollToTop(0);
-  authMount('o-codebox', { step: 'code', email, onDone: (r) => {
+  /* профиль уже сохранен: из окна кода всегда есть выход в приложение — и когда почта перестала работать посреди шага */
+  authMount('o-codebox', { step: 'code', email, sentAt: Date.now(), late: !!sent?.uncertain, off: obCodeOff, onDone: (r) => {
     if (r.merged) { location.reload(); return; }        // почта уже была — открываем тот аккаунт
     S.user = r.user; finishOnboarding();
   } });

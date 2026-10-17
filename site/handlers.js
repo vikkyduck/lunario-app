@@ -39,7 +39,7 @@ window.LUN_HANDLERS = Object.assign(window.LUN_HANDLERS || {}, {
   "openWidget-invite": function (event) { openWidget('invite') },
   "logout-true": function (event) { logout(true) },
   "wipe-data": function (event) { wipe('data') },
-  "wipe-account": function (event) { wipe('account') },
+  "wipe-account": function (event) { wipe('account', this) },
   "go-home": function (event) { go('home') },
   "go-ask": function (event) { go('ask') },
   "go-history": function (event) { go('history') },

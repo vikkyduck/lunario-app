@@ -528,23 +528,41 @@ async function saveProfile(){
     showMsg(msg, e.code==='bad_birth' ? 'Проверьте дату рождения.' : ERR_SAVE, true);
   }
 }
+/* Письма не уходят — подтвердить удаление нечем. Не тост на пару секунд, а строка в «Аккаунте», пока человек не попробует снова:
+   что можно сделать сейчас («Очистить историю») и что будет потом. Ручного удаления через поддержку не обещаем */
+const DEL_MAIL_DOWN='Подтвердить удаление кодом сейчас не получится: письма временно не уходят. Все записи можно стереть уже сейчас кнопкой «Очистить историю». Удалить аккаунт можно будет, когда письма снова пойдут: нажмите «Удалить аккаунт» еще раз позже.';
+/* отказы при запросе кода удаления — свои слова: советы входа («проверьте адрес», «найдите код в Спаме») в «Аккаунте» не выполнить */
+const delSendText=(e)=>e&&e.code==='bad_recipient'?`Письмо с кодом не доходит до ${S.user?.email||'вашей почты'} — подтвердить удаление этой почтой сейчас не получится. Записи можно стереть кнопкой «Очистить историю».`
+  :e&&e.code==='too_often'?'Код уже отправляли несколько раз. Начните удаление заново через 10 минут.':authErrorText(e,'send');
+let wipeBusy=false;
+function delNote(text){ const n=$('ac-del-note'); if(!n)return; n.textContent=text||''; n.hidden=!text; }
 /* Удаление необратимо, поэтому у аккаунта с почтой оно подтверждается кодом из письма — как и вход.
    Аккаунту без почты подтверждать нечем: остается только вопрос на экране. */
-async function wipe(what){
+async function wipe(what, btn){
   const isAcc=what==='account';
+  if(isAcc&&wipeBusy) return;   /* письмо с кодом еще идет: второе нажатие не шлет второй код (он заменил бы первый) */
   if(!confirm(isAcc?'Удалить аккаунт и все данные? Это необратимо.':'Очистить всю историю вопросов, дневник и желания?')) return;
   let code='';
+  if(isAcc) delNote('');
   if(isAcc && S.user && S.user.email){
     let sent;
-    try{ sent=await api('/account/delete-code',{method:'POST'}); }
-    catch(e){ toast(authErrorText(e,'send')); return; }
-    if(sent.sent){
-      code=(prompt(`Код подтверждения отправлен на ${S.user.email}. Введите его, чтобы удалить аккаунт — после этого записи не восстановить.`)||'').trim();
+    wipeBusy=true; const release=holdButton(btn); delNote(`Отправляем код на ${S.user.email}…`);
+    const slow=setTimeout(()=>delNote('Письмо идет дольше обычного…'),8000);
+    try{ sent=await api('/account/delete-code',{method:'POST'}); delNote(''); }
+    catch(e){
+      noteMailReady(mailReadyIn(e));
+      delNote(isMailOff(e)||['mail_down','send_failed'].includes(e.code)?DEL_MAIL_DOWN:delSendText(e));
+      return;
+    }
+    finally{ clearTimeout(slow); wipeBusy=false; release(); }
+    if(sent.sent||sent.uncertain){   /* uncertain — письмо ушло, но ответ почты оборвался: код действует, письмо может задержаться */
+      noteMailReady(true);
+      code=(prompt(`Код подтверждения отправлен на ${S.user.email}.${sent.uncertain?' Письмо могло задержаться — если его нет через пару минут, начните удаление заново.':''} Введите код, чтобы удалить аккаунт — после этого записи не восстановить.`)||'').trim();
       if(!code) return;
     }
   }
   try{ await api('/'+(isAcc?'account':'data'),{method:'DELETE',...(code?{body:JSON.stringify({code})}:{})}); }
-  catch(e){ toast(isAcc?authErrorText(e,'del'):'Не получилось очистить историю'); return; }
+  catch(e){ if(isAcc)delNote(authErrorText(e,'del')); else toast('Не получилось очистить историю'); return; }
   if(isAcc){ location.reload(); return; }
   resetLocalAccount({profile:false});   /* черновики, загруженные записи и производные экраны этого аккаунта — тоже (R06); анкета остается, живые запросы отменены (F05) */
   toast('История очищена'); loadHistory(); loadDayCard();

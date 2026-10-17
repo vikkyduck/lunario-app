@@ -4,6 +4,7 @@ export function createBacklogTelegram({ db, token = '', chatId = '', cabinetUrl 
   let busy = false;
   const enabled = Boolean(token && chatId);
   const format = (e) => {
+    if (e.kind === 'ops') return String(e.text || '');   /* служебное оповещение владелице — например, «вход по почте не работает» (mail-service.mjs) */
     const roles = { content: 'Контент', support: 'Поддержка', product: 'Продукт', marketing: 'Маркетинг' };
     const statuses = { new: 'Новая', in_progress: 'В работе', review: 'На проверке', done: 'Готово' };
     const lines = [e.kind === 'created' ? 'Новая задача' : e.kind === 'status' ? 'Изменен статус задачи' : 'Прикреплена ссылка', `№ ${e.task_id} · ${e.title}`, `Функция: ${roles[e.role] || e.role}`];

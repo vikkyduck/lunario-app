@@ -17,32 +17,44 @@ function closeModal() { $('modal').classList.remove('on'); }
 const COLORS = ['#e0c070', '#a9b8ff', '#c9a4e8', '#8fd9b6', '#f0a3a3', '#f3dca0', '#7fb2e8', '#d4a373', '#b5b5b5'];
 
 /* ── вход ── */
-let loginEmail = '';
+/* Тексты отказов — общие с приложением (authErrorText в common.js). Почта выключена (mailReady:false из /api/cabinet/me) —
+   говорим об этом над формой, но форму не прячем: при коротком сбое (mail_down) сервер ответит правдиво, когда повторить */
+let loginEmail = '', loginBusy = false, cabMailReady = null;
+const CAB_MAIL_OFF = 'Вход по почте сейчас не работает. Если вы уже входили на этом устройстве — обновите страницу; иначе попробуйте позже.';
 function renderLogin(step) {
   const box = $('l-box');
   if (step === 'code') {
     box.innerHTML = `<p class="lead">Код отправлен на <b>${esc(loginEmail)}</b></p>
-      <input id="l-code" inputmode="numeric" maxlength="6" placeholder="000000" class="mt-12 code-input">
-      <button data-on="click:loginVerify" class="btn gold w-full mt-12">Войти</button>
-      <button data-on="click:renderLogin-email" class="btn sm mt-8">Изменить адрес</button><p class="msg" id="l-msg"></p>`;
+      <input id="l-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" class="mt-12 code-input">
+      <button data-on="click:loginVerify-this" class="btn gold w-full mt-12" type="button">Войти</button>
+      <button data-on="click:renderLogin-email" class="btn sm mt-8" type="button">Изменить адрес</button><p class="msg" id="l-msg" role="status"></p>`;
     setTimeout(() => $('l-code').focus(), 60); return;
   }
-  box.innerHTML = `<label class="eyebrow mb-8">Почта</label><input id="l-email" type="email" placeholder="you@example.ru" value="${esc(loginEmail)}">
-    <button data-on="click:loginRequest" class="btn gold w-full mt-12">Прислать код</button><p class="msg" id="l-msg"></p>`;
+  box.innerHTML = `${cabMailReady === false ? `<p class="notice mail-off-note" id="l-mail-off" role="status">${CAB_MAIL_OFF}</p>` : ''}
+    <label class="eyebrow mb-8" for="l-email">Почта</label><input id="l-email" type="email" placeholder="you@example.ru" value="${esc(loginEmail)}">
+    <button data-on="click:loginRequest-this" class="btn gold w-full mt-12" type="button">Прислать код</button><p class="msg" id="l-msg" role="status"></p>`;
   setTimeout(() => $('l-email').focus(), 60);
 }
-async function loginRequest() {
-  const email = $('l-email').value.trim().toLowerCase(), msg = $('l-msg'); msg.className = 'msg';
-  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) { msg.classList.add('err'); msg.textContent = 'Проверьте адрес почты.'; return; }
-  msg.textContent = 'Отправляем код…';
-  try { await api('/auth/request', { method: 'POST', body: JSON.stringify({ email }) }); loginEmail = email; renderLogin('code'); }
-  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'too_often' ? 'Слишком часто. Попробуйте через несколько минут.' : e.code === 'mail_off' ? 'Отправка почты не настроена.' : 'Не получилось отправить код.'; }
+function loginMsg(text, err) { const msg = $('l-msg'); if (!msg) return; msg.className = 'msg' + (err ? ' err' : ''); msg.textContent = text; }
+/* Повторное нажатие во время запроса ничего не шлет: второе письмо отменило бы код из первого */
+async function loginRequest(btn) {
+  if (loginBusy) return;
+  const email = $('l-email').value.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) { loginMsg('Проверьте адрес почты.', true); return; }
+  loginBusy = true; const release = holdButton(btn); loginMsg('Отправляем код…');
+  const slow = setTimeout(() => loginMsg('Письмо идет дольше обычного…'), 8000);
+  try { await api('/auth/request', { method: 'POST', body: JSON.stringify({ email }) }); cabMailReady = true; loginEmail = email; renderLogin('code'); }
+  catch (e) { const ready = mailReadyIn(e); if (ready !== null) cabMailReady = ready; loginMsg(authErrorText(e, 'send'), true); release(); }
+  finally { clearTimeout(slow); loginBusy = false; }
 }
-async function loginVerify() {
-  const code = $('l-code').value.trim(), msg = $('l-msg'); msg.className = 'msg';
-  if (code.length !== 6) { msg.classList.add('err'); msg.textContent = 'Код состоит из шести цифр.'; return; }
+async function loginVerify(btn) {
+  if (loginBusy) return;
+  const code = $('l-code').value.trim();
+  if (code.length !== 6) { loginMsg('Код состоит из шести цифр.', true); return; }
+  loginBusy = true; const release = holdButton(btn); loginMsg('Проверяем код…');
   try { await api('/auth/verify', { method: 'POST', body: JSON.stringify({ email: loginEmail, code }) }); await boot(); }
-  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'wrong_code' ? 'Код не подошел.' : e.code === 'expired' ? 'Код истек — запросите новый.' : 'Не получилось войти.'; }
+  catch (e) { loginMsg(authErrorText(e, 'verify'), true); release(); }
+  finally { loginBusy = false; }
 }
 async function logout() { await api('/auth/logout', { method: 'POST' }).catch(() => {}); location.reload(); }
 
@@ -915,7 +927,7 @@ async function staffDel(email) {
 async function boot() {
   const me = await api('/cabinet/me').catch(() => null);
   if (!me) { show('login'); renderLogin('email'); return; }
-  S.me = me;
+  S.me = me; if (typeof me.mailReady === 'boolean') cabMailReady = me.mailReady;
   if (!me.roles.length) {
     show('login');
     $('who').innerHTML = me.email ? `<span>${esc(me.email)}</span><button data-on="click:logout" class="btn sm">Выйти</button>` : '';

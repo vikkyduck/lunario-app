@@ -355,14 +355,27 @@ export const overview = withMemo(function overview(q) {
     blocks: cfg.blocks.map((k) => allBlocks.find((b) => b.key === k)).filter(Boolean),
   };
 });
+/* Вход по почте — по последней смене состояния почты (mail-service.mjs пишет ее в errors с path 'mail_state'). Отчет считается
+   в отдельном потоке и живого состояния сервера не видит, поэтому — журнал: «не работает с …» видно, даже если смотреть позже */
+function mailKpi() {
+  const last = one("SELECT ts, message FROM errors WHERE path = 'mail_state' AND (message LIKE 'почта не работает%' OR message LIKE 'почта снова работает%') ORDER BY id DESC LIMIT 1");
+  if (!last) return nodata('Вход по почте', 'сбоев почты не записано');
+  const at = last.ts.replace('T', ' ').slice(0, 16);
+  return /снова работает/.test(last.message) ? kpi('Вход по почте', 'работает', { unit: '', sub: 'снова работает с ' + at })
+    : kpi('Вход по почте', 'не работает', { unit: '', sub: `с ${at}: ${last.message.replace(/^почта не работает: /, '')}`, state: 'bad' });
+}
+/* Сообщения владелице о сбоях — в Telegram через очередь бэклога (не почтой: почта и сломана) */
+const mailAlertsKpi = () => process.env.TELEGRAM_BACKLOG_BOT_TOKEN && process.env.TELEGRAM_BACKLOG_CHAT_ID
+  ? kpi('Оповещения о сбоях', 'Telegram', { unit: '', sub: 'почта не работает дольше 10 минут — сообщение; раз в сутки напоминание' })
+  : off('Оповещения о сбоях', 'не настроены — нужен Telegram-бот бэклога (TELEGRAM_BACKLOG_BOT_TOKEN и TELEGRAM_BACKLOG_CHAT_ID)');
 function problems(from, to) {
   const lc = loginCodes(from, to);
   const errs = all('SELECT path, COUNT(*) n FROM errors WHERE day BETWEEN ? AND ? GROUP BY path ORDER BY n DESC', from, to);
-  const apiErrs = errs.filter((e) => e.path !== 'mail').reduce((s, e) => s + e.n, 0);
+  const apiErrs = errs.filter((e) => e.path !== 'mail' && e.path !== 'mail_state').reduce((s, e) => s + e.n, 0);   /* смены состояния почты — не сбои функций */
   const items = [
     { key: 'login', name: 'Ошибки входа', value: lc.wrong + lc.expired, hint: `неверный код 3+ раза — ${lc.wrong}, код не введен до истечения — ${lc.expired}` },
-    { key: 'mail', name: 'Письма с кодом не ушли', value: lc.mailErr, hint: 'сбои отправки почты' },
-    { key: 'api', name: 'Сбои функций', value: apiErrs, hint: errs.filter((e) => e.path !== 'mail').map((e) => `${e.path} — ${e.n}`).join(', ') || 'сбоев не было' },
+    { key: 'mail', name: 'Письма с кодом не ушли', value: lc.mailErr, hint: 'сбои отправки и часы, когда во входе отказывали: почта не работала' },
+    { key: 'api', name: 'Сбои функций', value: apiErrs, hint: errs.filter((e) => e.path !== 'mail' && e.path !== 'mail_state').map((e) => `${e.path} — ${e.n}`).join(', ') || 'сбоев не было' },
     { key: 'ai', name: 'Рост стоимости ИИ', value: 0, hint: 'ИИ-модели в приложении не подключены', state: 'off' },
     { key: 'support', name: 'Неотвеченные обращения', value: one("SELECT COUNT(*) c FROM tickets WHERE first_reply_at = '' AND status <> 'resolved'").c, hint: 'ждут первого ответа поддержки' },
   ];
@@ -716,12 +729,12 @@ const builders = {
   },
   system(R, { P, days }) {
     const errs = all('SELECT path, COUNT(*) n, MAX(ts) last FROM errors WHERE day BETWEEN ? AND ? GROUP BY path ORDER BY n DESC', P.from, P.to);
-    const errSeries = fill(days, all('SELECT day, COUNT(*) n FROM errors WHERE day BETWEEN ? AND ? GROUP BY day', P.from, P.to));
+    const errSeries = fill(days, all("SELECT day, COUNT(*) n FROM errors WHERE day BETWEEN ? AND ? AND path <> 'mail_state' GROUP BY day", P.from, P.to));   /* смены состояния почты — не сбои */
     let dbSize = null; try { dbSize = Math.round(statSync(join(DATA_DIR, 'app.db')).size / 1048576 * 10) / 10; } catch {}
     const lastPush = one('SELECT MAX(last_ok) d FROM push_subs').d;
     const pr = problems(P.from, P.to);
     const ua = {}; for (const s of all('SELECT ua FROM sessions WHERE last_seen >= ?', addDays(R.today, -30))) { const k = platformOf(s.ua); ua[k] = (ua[k] || 0) + 1; }
-    R.kpis = [kpi('Сбоев за период', errs.reduce((s, e) => s + e.n, 0), { unit: 'шт.', good: 'down' }), kpi('Ночная рассылка', lastPush ? (lastPush >= addDays(R.today, -1) ? 'ок' : 'не было ' + lastPush) : null, { unit: '', sub: 'последняя успешная отправка ' + (lastPush || '—'), state: lastPush ? 'ok' : 'nodata' }), kpi('База данных', dbSize, { unit: 'МБ' }), nodata('Задержка API', 'время ответа не логируется'), nodata('Клиентские ошибки', 'сбор ошибок из браузера не подключен'), off('Почтовые алерты', 'не настроены')];
+    R.kpis = [kpi('Сбоев за период', errs.filter((e) => e.path !== 'mail_state').reduce((s, e) => s + e.n, 0), { unit: 'шт.', good: 'down' }), kpi('Ночная рассылка', lastPush ? (lastPush >= addDays(R.today, -1) ? 'ок' : 'не было ' + lastPush) : null, { unit: '', sub: 'последняя успешная отправка ' + (lastPush || '—'), state: lastPush ? 'ok' : 'nodata' }), mailKpi(), kpi('База данных', dbSize, { unit: 'МБ' }), nodata('Задержка API', 'время ответа не логируется'), nodata('Клиентские ошибки', 'сбор ошибок из браузера не подключен'), mailAlertsKpi()];
     R.charts = [chart('line', 'Сбои по дням', 'ошибки сервера и почты', errSeries), chart('pie', 'Платформы сессий', 'за 30 дней', Object.entries(ua))];
     R.tables = [table('Сигналы', ['Сигнал', 'Значение', 'Пояснение'], pr.items.map((i) => [i.name, i.state === 'off' ? 'не запущено' : i.value, i.hint])), table('Где ломается', ['Адрес', 'Раз', 'Последний'], errs.map((e) => [e.path, e.n, e.last.replace('T', ' ').slice(0, 16)])), table('Последние сбои', ['Когда', 'Где', 'Что'], all('SELECT ts, path, message FROM errors WHERE day BETWEEN ? AND ? ORDER BY ts DESC LIMIT 50', P.from, P.to).map((e) => [e.ts.replace('T', ' ').slice(0, 16), e.path, e.message]))];
     R.how = 'Сбой — ответ сервера с ошибкой или неудачная отправка письма. Напоминания уходят по таймеру раз в 5 минут в часовом поясе человека; «ок», если сегодня или вчера были успешные отправки.';

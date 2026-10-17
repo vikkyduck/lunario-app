@@ -114,6 +114,7 @@ rollback() {
 }
 if ! finish_or_rollback; then rollback; exit 1; fi
 echo "==> выпуск $RELEASE работает"
+if [ -z "${HEALTH_CMD:-}" ]; then mail_report; fi   # вход по почте — вслух: так поломка больше не проживет незамеченной до жалобы
 # хранить пять последних каталогов, не трогая текущий и прежний
 remote "cd $APP_ROOT/releases && ls -t | grep -v -x -e '$RELEASE' -e \"\$(basename \"\$(readlink $APP_ROOT/current)\")\" -e \"\$(basename \"$PREV\")\" | tail -n +$((KEEP_RELEASES - 1)) | while read -r d; do [ -n \"\$d\" ] && rm -rf \"\$d\"; done" || true
 echo "==> проверка"

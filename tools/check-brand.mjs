@@ -87,6 +87,8 @@ export async function checkBrand({browser,base,owner}) {
     }
     // Exercise both login steps without sending email. Catch the input/button collision from the screenshot.
     await page.route(base+'/api/auth/request',route=>route.fulfill({json:{ok:true}}));
+    // Mail is not configured in checks: the login screen would show the honest «not working» block instead of the form.
+    await page.route(base+'/api/mail-status',route=>route.fulfill({json:{mailReady:true,mail:'ok',retryAfter:null}}));
     for(const [width,height] of [[1440,900],[390,844],[320,568],[844,390]]) {
       await page.setViewportSize({width,height});await page.evaluate(()=>openLogin());await ready();
       for(const step of ['email','code']) {
@@ -117,7 +119,7 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(panel.gap>=32,'Registration code input and action should be separate');assert.equal(panel.border,0);assert.equal(panel.overflow,false);
       await shot('registration-code-'+width);
     }
-    await page.unroute(base+'/api/auth/request');
+    await page.unroute(base+'/api/auth/request');await page.unroute(base+'/api/mail-status');
     await page.evaluate(()=>go('hello'));await ready();
     await page.evaluate(()=>{
       Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok){ok({coords:{latitude:-33.8688,longitude:151.2093}});}},configurable:true});

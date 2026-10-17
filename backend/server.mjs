@@ -28,7 +28,9 @@ import { validTz, userTz, userDay, localMoment } from './clock.mjs';
 /* версия каталога — по дате последней правки текстов: экран перезапрашивает каталог, когда тексты обновились */
 const catalogVersion = () => { try { return String(Math.floor(Math.max(statSync(new URL('./content.mjs', import.meta.url)).mtimeMs, ...readdirSync(CONTENT_DIR).filter(f=>f.endsWith('.txt')).map(f=>statSync(join(CONTENT_DIR,f)).mtimeMs)) / 1000)); } catch { return '2026-09-15'; } };
 import { findCities, cityByName, tzOffsetMinutes } from './cities.mjs';
-import { sendMail, mailReady, loginMail, staffMail, deleteMail, verifySmtp } from './mailer.mjs';
+import { sendMail, configProblem, NOT_CONFIGURED, loginMail, staffMail, deleteMail, verifySmtp, timeScale } from './mailer.mjs';
+import { createMailState } from './mail-state.mjs';
+import { createMailService } from './mail-service.mjs';
 import { lunarDay, lunarPeriodText, moonState, moonPhasesBetween } from './lunar.mjs';
 import { initCabinet, rolesFor, isAdmin, ADMIN_EMAILS, ROLES, staffList, staffSet, staffRemove, costAdd, costRemove, logError } from './cabinet.mjs';
 import { initReports, overview, report, userCard, REPORT_META, OVERVIEW_BLOCKS, getConfig, setConfig, resetConfig } from './reports.mjs';
@@ -147,15 +149,12 @@ const sha = (s) => createHash('sha256').update(s).digest('hex');
 // сотруднику, которому только что назначили роль, шлем код входа сразу — не нужно самому запрашивать
 async function notifyStaffAccess(email, roleKeys) {
   const names = (roleKeys || []).filter((r) => r !== 'user' && r in ROLES && r !== 'admin').map((r) => ROLES[r]);
-  if (!names.length || !mailLive()) return;
-  try {
-    const code = issueLoginCode(email);
-    const m = staffMail(names, code);
-    await sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });
-  } catch (e) {
-    console.error('письмо о доступе не ушло:', e.message);
-    logError('mail', e.message);
-  }
+  if (!names.length) return;
+  /* почта сломалась — письмо не уходит, но не молча: строка в журнале сбоев, админ увидит ее в кабинете.
+     Почта вовсе не настроена (компьютер разработчика) — тихо, как раньше */
+  const g = await MailState.admit();
+  if (!g.ok) { if (configProblem() !== NOT_CONFIGURED) logError('mail', `письмо о доступе к кабинету не ушло: почта не работает (${g.error})`); return; }
+  await Mail.deliverCode(email, 'login', (code) => staffMail(names, code), g);   /* сбой отправки пишет в журнал сам */
 }
 /* Возрастная когорта вместо точного возраста: ядро аудитории 35+ смотрим отдельно,
    но саму дату рождения в аналитику не тащим. */
@@ -203,17 +202,28 @@ function ageBand(birth) {
    (backend/http/*) говорят серверу, что дальше искать не нужно. */
 const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); return true; };
 
-/* Кнопка «Прислать код» появляется только после успешной проверки авторизации.
-   Сервис перезапускается скриптом set-smtp.sh — проверка сработает сама. */
-let smtpOk = false;
-if (mailReady()) {
-  verifySmtp().then((r) => {
-    smtpOk = r.ok;
-    console.log(r.ok ? 'SMTP: авторизация прошла — вход по почте включен'
-                     : `SMTP: авторизация НЕ прошла (${r.error}) — вход по почте скрыт`);
-  });
-} else console.log('SMTP: не настроен — вход по почте скрыт');
-const mailLive = () => smtpOk;
+/* Необработанный отказ промиса где-то в фоне не должен ронять весь сервер (раньше так падал старт из-за опечатки
+   в SMTP_PORT): пишем в журнал сбоев и journalctl. Синхронные исключения по-прежнему завершают процесс — systemd поднимет его */
+process.on('unhandledRejection', (e) => { console.error('необработанный отказ:', e); logError('unhandled', String(e && e.stack || e).slice(0, 300)); });
+
+/* Почта — живое состояние с перепроверками (mail-state.mjs), а не флаг, вычисленный один раз при запуске:
+   разовый сбой в момент выкатки больше не выключает вход по почте до следующего перезапуска. Письма с кодом,
+   журнал и оповещение владелицы в Telegram — mail-service.mjs. Строки «SMTP: …» в journalctl остались прежними. */
+const RELEASE_ID = basename(dirname(__dirname));
+const notifyOwner = backlogTelegram.enabled ? (text) => {
+  try { db.prepare('INSERT INTO backlog_telegram_outbox(payload) VALUES(?)').run(JSON.stringify({ kind: 'ops', text })); }
+  catch (e) { console.error('оповещение о почте не записалось:', e.message); }
+} : null;
+const Mail = createMailService({ sendMail, newCode: () => newLoginCode(), saveCode: (email, code, purpose) => saveLoginCode(email, code, purpose),
+  logError, notifyOwner, release: RELEASE_ID, scale: timeScale(),
+  lastState: () => (db.prepare("SELECT message FROM errors WHERE path = 'mail_state' ORDER BY id DESC LIMIT 1").get() || {}).message || '',
+  lastAlert: () => { try { const r = db.prepare("SELECT payload FROM backlog_telegram_outbox WHERE payload LIKE '%\"kind\":\"ops\"%' AND payload LIKE '%вход по почте%' ORDER BY id DESC LIMIT 1").get(); return r ? JSON.parse(r.payload).text : ''; } catch { return ''; } } });
+const MailState = createMailState({ configProblem, verify: verifySmtp, onChange: Mail.onChange, onAnomaly: Mail.onAnomaly, scale: timeScale() });
+Mail.bind(MailState);
+if (!notifyOwner) console.log('SMTP: оповещения о сбоях почты в Telegram выключены (нет TELEGRAM_BACKLOG_BOT_TOKEN / TELEGRAM_BACKLOG_CHAT_ID)');
+MailState.start();
+/* «имеет ли смысл форма входа»: почта работает, проверяется или сбой короткий — то, что клиенты видят как mailReady */
+const mailLive = () => MailState.formUseful();
 
 const codeRate = new Map(), codeRateEmail = new Map(), codeRateAll = { n: 0, t: 0 }, verifyRate = new Map(), anonRate = new Map();
 /* Сколько анонимных аккаунтов заводим с одного адреса за окно и сколько записей принимаем от одного аккаунта:
@@ -449,7 +459,7 @@ const userById = (id) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?
 const userByEmail = (email) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`).get(email);
 const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').get(id) || {}).photo || '';
 /* Кто человек — сессии устройства и коды на почту — в backend/identity.mjs */
-const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, issueLoginCode, checkLoginCode, verifyLogin } =
+const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, newLoginCode, saveLoginCode, checkLoginCode, verifyLogin } =
   createIdentity({ db, basePath: BASE, sha, clean, nowISO, userById, rolesFor });
 function touchStreak(u) {                       // серию продолжает любой ритуал за день
   const d = userDay(u);
@@ -600,7 +610,7 @@ function setSourceLabel(uid, day) {
 const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource: setSourceLabel, mutate });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
-const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
+const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, json, loginMail, mail: MailState, deliverCode: Mail.deliverCode, noteRefusal: Mail.noteRefusal, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
 const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track, mutate });
 const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods, Receipts, mutate });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
@@ -615,7 +625,23 @@ const server = createServer(async (req, res) => {
     if (p.startsWith(BASE)) p = p.slice(BASE.length) || '/';
     if (p === '' ) p = '/';
 
-    if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app', schema: SCHEMA_VERSION, jobs: Reports.pendingSize });   /* глубина очереди заданий — для замера check-load (F09) */
+    /* глубина очереди заданий — для замера check-load (F09); mail — грубое состояние почты (ok | checking | down | off), то же, что уже
+       публично в mailReady. Причина и время — только на прямой запрос с самого сервера (deploy.sh, set-smtp.sh), снаружи через nginx — нет */
+    if (p === '/api/health') {
+      const out = { ok: true, service: 'lunario-app', schema: SCHEMA_VERSION, jobs: Reports.pendingSize, mail: MailState.publicState() };
+      /* три условия сразу: соединение с самого сервера, без X-Forwarded-For (nginx его всегда ставит) и Host — сам сервер
+         (nginx передает публичное имя). Если конфиг nginx однажды потеряет proxy_set_header, причина наружу все равно не уйдет */
+      if (!req.headers['x-forwarded-for'] && LOOPBACK.test(req.socket.remoteAddress || '') && /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(req.headers.host || '')) {
+        const m = MailState.status();
+        out.mailInfo = { kind: m.kind, since: new Date(m.since).toISOString(), lastOkAt: m.lastOkAt ? new Date(m.lastOkAt).toISOString() : '', retryAfter: m.retryAfter, reason: Mail.describe(m) };
+      }
+      return json(res, 200, out);
+    }
+    /* Работает ли вход по почте — для экрана входа и кнопки «Проверить еще раз». Только читает состояние: проверку почты
+       запускают таймер и запуск сервера, иначе любой бот управлял бы частотой наших входов в ящик. Аккаунт не создается */
+    if (p === '/api/mail-status' && req.method === 'GET') {
+      return json(res, 200, { mailReady: MailState.formUseful(), mail: MailState.publicState(), retryAfter: MailState.publicRetryAfter() });
+    }
     /* Кто зовет: по коду из реферальной ссылки — только имя, без аккаунта; страница установки показывает «Ирина зовет вас в Лунарио» */
     if (p === '/api/invite/host' && req.method === 'GET') {
       const host = inviteHost(url.searchParams.get('code') || '');
@@ -719,7 +745,7 @@ const server = createServer(async (req, res) => {
           mood: (db.prepare('SELECT mood FROM moods WHERE user_id = ? AND day = ?').get(u.id, d) || {}).mood || null,
           moods: Moods.ofDay(u.id, d),   /* все отметки дня — панель настроения отмечает несколько; mood (главное) — для старых клиентов и открытки */
           moodStats: db.prepare("SELECT mood, COUNT(*) c FROM moods WHERE user_id=? AND day LIKE ? GROUP BY mood").all(u.id, d.slice(0, 7) + '%'),
-          mailReady: mailLive(),
+          mailReady: mailLive(), mail: MailState.publicState(),
           supportUnread: W.userUnread(u.id),
           memory: { favorite: Memory.favorite(u), about: Memory.aboutLine(u, d) },   /* «Я помню»: любимый способ ответа и строка на «Обо мне» */
         });

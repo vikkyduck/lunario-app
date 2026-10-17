@@ -60,7 +60,10 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('mess
       r = snap.r; S.offlineAt = snap.at;
     }
     clearTimeout(startupDeadline);
-    S.user=r.user; S.day=r.day; S.mood=r.mood; S.moods=r.moods||(r.mood?[r.mood]:[]); S.memory=r.memory||{}; S.mailReady=!!r.mailReady; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;S.ui=r.ui||{};FEATURES=r.features||FEATURES;applyUi();initExperience(r.preferences);
+    /* почта: из снимка lun_me (до суток давности) ее состояние не берем — оно могло давно смениться, а без связи письмо и так не уйдет;
+       с живого ответа — запоминаем время, чтобы проверка при возвращении на вкладку не повторяла его сразу */
+    if (S.offlineAt) S.mailReady = false; else noteMailReady(!!r.mailReady);
+    S.user=r.user; S.day=r.day; S.mood=r.mood; S.moods=r.moods||(r.mood?[r.mood]:[]); S.memory=r.memory||{}; S.localPreview=!!r.localPreview; S.catalogV=r.catalogV||1;S.ui=r.ui||{};FEATURES=r.features||FEATURES;applyUi();initExperience(r.preferences);
     if (S.offlineAt) { const n = $('offline-note'); if (n) { n.hidden = false; n.textContent = `Без связи · показываем то, что было на ${new Date(S.offlineAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${r.day?.date !== new Date().toLocaleDateString('sv-SE') ? ', ' + fmtDay(r.day?.date) : ''}`; } }
     try{ if(r.user&&r.user.lat!=null) window.LunarioSky?.setProfile({lat:r.user.lat,lon:r.user.lon,name:r.user.city||''}); }catch(e){}
     registerWebMcp();

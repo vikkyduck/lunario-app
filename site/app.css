@@ -2011,3 +2011,20 @@ html[data-skin] #v-hello .hello-continue p{margin:0;color:#c9c4d4;font-size:13px
 #v-login .login-new{margin:24px 0;display:grid;gap:8px}
 #v-login .login-new p{margin:0}
 html[data-skin] #v-onb .onb-intro{margin:18px 0;font-size:14px;line-height:1.5;color:var(--muted)}
+/* Вход по почте не работает (сбой на нашей стороне): честная строка вместо формы, «Проверить еще раз» только читает состояние */
+.auth-flow .auth-off-title{margin:0;font-size:20px;line-height:1.35;font-weight:600;color:var(--text)}   /* --text и --muted ночные и на экранах до входа в светлой теме (theme.css body:not(.inner)); --strong и --text-2 там не переопределены */
+.auth-flow .auth-off-text{margin:10px 0 0;font-size:16px;line-height:1.55;color:var(--muted)}
+.auth-flow .auth-exit{width:100%;margin-top:12px;min-height:52px}
+.auth-flow .auth-recheck{width:100%;margin-top:24px;min-height:52px}
+.auth-flow .auth-wait{margin:0}
+#v-login.mail-off .login-intro{display:none}
+/* шаг кода: «Письмо могло задержаться», «Не пришло? Проверьте папку «Спам».» и «Прислать еще раз» с отсчетом */
+.auth-flow .auth-note{margin:16px 0 0;font-size:14px;line-height:1.5;color:var(--muted)}
+.auth-flow .auth-late{margin:-12px 0 24px}
+.auth-flow .auth-note+.auth-secondary{margin-top:8px}
+.auth-flow [aria-busy=true]{cursor:wait}
+/* на анкете при выключенной почте строка о входе заменяет «Уже пользовались?» */
+#v-onb #o-back.mail-off>p{display:none}
+#v-onb #o-back .auth-off-note{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+/* удаление не подтвердилось — строка остается до следующей попытки */
+#v-account .ac-del-note{margin:16px 0 0;font-size:15px;line-height:1.55;color:var(--text-2)}

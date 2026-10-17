@@ -40,9 +40,10 @@ read -r -p "3/3 Подпись отправителя [Лунарио <hello@lun
 SMTP_FROM=${SMTP_FROM:-"Лунарио <hello@lunario.online>"}
 
 umask 077
-# меняем только свои ключи — остальное в .env (например ADMIN_EMAILS) остаётся
+# меняем только свои ключи — остальное в .env (например ADMIN_EMAILS) остаётся. SMTP_SENDER, SMTP_SECURE и SMTP_TLS_NAME
+# тоже убираем: прежний «конверт» от другого ящика давал 553 на каждое письмо, а повторный запуск этого скрипта его не трогал
 touch "$ENV"
-grep -v '^SMTP_HOST=\|^SMTP_PORT=\|^SMTP_USER=\|^SMTP_PASS=\|^SMTP_FROM=' "$ENV" > "$ENV.tmp" || true
+grep -v '^SMTP_HOST=\|^SMTP_PORT=\|^SMTP_USER=\|^SMTP_PASS=\|^SMTP_FROM=\|^SMTP_SENDER=\|^SMTP_SECURE=\|^SMTP_TLS_NAME=' "$ENV" > "$ENV.tmp" || true
 {
   echo "SMTP_HOST=smtp.yandex.ru"
   echo "SMTP_PORT=465"
@@ -55,8 +56,16 @@ echo
 echo "✓ Настройки сохранены в $ENV (права 600, читает только root)"
 
 systemctl restart lunario-app
-sleep 1
-printf "✓ сервис: "; curl -sS http://127.0.0.1:5031/app/api/health; echo
+# Вердикт — от самого сервиса: он проверяет вход в ящик и отправителя при запуске. Раньше здесь была секунда ожидания
+# и безусловное «Готово», даже если Яндекс отклонил пароль
+H=""
+for i in $(seq 1 15); do
+  H="$(curl -sS --max-time 3 http://127.0.0.1:5031/app/api/health 2>/dev/null || true)"
+  case "$H" in *'"mail":"checking"'*|'') sleep 2;; *) break;; esac
+done
+echo
+MAIL_OK=0
+node "$(dirname "$0")/mail-report.mjs" "$H" && MAIL_OK=1 || true
 echo
 
 read -r -p "Куда отправить тестовое письмо (Enter — пропустить): " TESTTO
@@ -66,4 +75,5 @@ if [ -n "$TESTTO" ]; then
   bash "$(dirname "$0")/test-smtp.sh" "$TESTTO" || exit 1
 fi
 echo
-echo "Готово. Кнопка «Прислать код» в «Аккаунт → Вход по почте» теперь работает."
+if [ "$MAIL_OK" = 1 ]; then echo "Готово. Вход по почте (приветствие → «Войти», анкета, кабинет) работает."
+else echo "Вход по почте пока НЕ работает — причина выше. Проверить вход без письма: bash $(dirname "$0")/test-smtp.sh --verify"; exit 1; fi

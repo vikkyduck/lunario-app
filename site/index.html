@@ -27,12 +27,12 @@
 <link rel="icon" href="/app/assets/favicon-32.png?v=3" sizes="32x32" type="image/png">
 <link rel="icon" href="/app/assets/favicon-16.png?v=3" sizes="16x16" type="image/png">
 <link rel="icon" href="/app/assets/favicon-48.png?v=3" sizes="48x48" type="image/png">
-<script defer src="/app/boot.js?v=147"></script>
+<script defer src="/app/boot.js?v=148"></script>
 
 
-<link rel="stylesheet" href="/app/theme.css?v=147">
-<link rel="stylesheet" href="/app/app.css?v=147">
-<link rel="stylesheet" href="/app/frame.css?v=147">
+<link rel="stylesheet" href="/app/theme.css?v=148">
+<link rel="stylesheet" href="/app/app.css?v=148">
+<link rel="stylesheet" href="/app/frame.css?v=148">
 </head>
 <body class="hello">
 <!-- знаки зодиака тонкой линией — вместо системных эмодзи, которые на телефоне цветные и не из палитры; zodiacGlyph() в app.js -->
@@ -300,7 +300,9 @@
       <button data-on="click:logout-true" class="wid" type="button"><i class="ico exit"></i><b>Выйти на всех устройствах</b></button>
       <button data-on="click:exportPersonalData" class="wid" type="button"><i class="ico list"></i><b>Скачать мои данные</b></button>
       <button data-on="click:wipe-data" class="wid" type="button"><i class="ico list"></i><b>Очистить историю</b></button>
-      <button data-on="click:wipe-account" class="wid warn" type="button"><i class="ico exit"></i><b>Удалить аккаунт</b></button></div></section>
+      <button data-on="click:wipe-account" class="wid warn" type="button"><i class="ico exit"></i><b>Удалить аккаунт</b></button></div>
+      <!-- удаление не подтвердилось (письма не уходят, код не подошел) — строка остается до следующей попытки, а не тост на пару секунд -->
+      <p class="card ac-del-note" id="ac-del-note" role="status" hidden></p></section>
     </div><div class="account-col account-settings">
     <section class="account-group" id="ag-app"><h2>Приложение</h2><div class="wids tiles"><button data-on="click:openWidget-remind" class="wid" data-feature="remind" type="button" aria-label="Уведомления"><i class="ico bell"></i><b>Уведомления</b><span>Утро, вечер, неделя</span></button>
       <button data-on="click:openWidget-appinfo" class="wid" type="button"><i class="ico moon"></i><b>О приложении</b><span>Что это и условия</span></button>
@@ -410,23 +412,23 @@
   <button data-on="click:hidePostcard" class="btn ghost sm" type="button">Закрыть</button>
 </div>
 
-<script defer src="/app/moon-logo.js?v=147"></script>
+<script defer src="/app/moon-logo.js?v=148"></script>
 
-<script type="module" src="/app/sky.js?v=147"></script>
+<script type="module" src="/app/sky.js?v=148"></script>
 
-<script defer src="/app/common.js?v=147"></script>
-<script defer src="/app/experience.js?v=147"></script>
-<script defer src="/app/app.js?v=147"></script>
-<script defer src="/app/today.js?v=147"></script>
-<script defer src="/app/diary.js?v=147"></script>
-<script defer src="/app/readings.js?v=147"></script>
-<script defer src="/app/practices.js?v=147"></script>
-<script defer src="/app/about.js?v=147"></script>
-<script defer src="/app/account.js?v=147"></script>
-<script defer src="/app/tour.js?v=147"></script>
-<script defer src="/app/rag.js?v=147"></script>
-<script defer src="/app/handlers.js?v=147"></script>
-<script defer src="/app/on.js?v=147"></script>
-<script defer src="/app/start.js?v=147"></script>
+<script defer src="/app/common.js?v=148"></script>
+<script defer src="/app/experience.js?v=148"></script>
+<script defer src="/app/app.js?v=148"></script>
+<script defer src="/app/today.js?v=148"></script>
+<script defer src="/app/diary.js?v=148"></script>
+<script defer src="/app/readings.js?v=148"></script>
+<script defer src="/app/practices.js?v=148"></script>
+<script defer src="/app/about.js?v=148"></script>
+<script defer src="/app/account.js?v=148"></script>
+<script defer src="/app/tour.js?v=148"></script>
+<script defer src="/app/rag.js?v=148"></script>
+<script defer src="/app/handlers.js?v=148"></script>
+<script defer src="/app/on.js?v=148"></script>
+<script defer src="/app/start.js?v=148"></script>
 </body>
 </html>

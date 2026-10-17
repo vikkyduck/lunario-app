@@ -1,6 +1,8 @@
 [Unit]
 Description=Lunario web app (PWA) — lunario.online/app
-After=network.target
+# сеть и DNS готовы до запуска (консилиум 16.10): после перезагрузки сервера первая проверка почты иначе попадала на неготовый DNS
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple

@@ -1,29 +1,34 @@
 /* Вход по коду на почту, перенос гостевых записей, выход, удаление истории и аккаунта.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
-export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, issueLoginCode, json, logError, loginMail, mailLive, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, knowledgeRebuild, sendMail, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate }) {
+export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, deliverCode, guestRecordCounts, json, loginMail, mail, noteRefusal, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, knowledgeRebuild, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate }) {
+  /* Почта не работает — честный ответ сразу, без попытки и без расхода лимитов: mail_off — не настроена, mail_down — сбой.
+     mailReady говорит экрану, держать ли форму (сбой короткий) или показать «вход временно не работает»; retryAfter — секунды */
+  const mailRefused = (res, g) => { noteRefusal(); return json(res, 503, { ok: false, error: g.error, mailReady: mail.formUseful(), ...(g.retryAfter ? { retryAfter: g.retryAfter } : {}) }); };
+  /* Исход письма с кодом: 200 (возможно, uncertain — письмо могло задержаться), 429 busy — очередь к почте,
+     503 mail_down — почта перестала работать, пока письмо ждало очереди, 502 — не ушло */
+  const delivered = (res, r, extra = {}) => r.ok ? json(res, 200, { ok: true, ...extra, ...(r.uncertain ? { uncertain: true } : {}) })
+    : r.error === 'mail_down' ? mailRefused(res, { error: 'mail_down', retryAfter: mail.publicRetryAfter() })
+    : json(res, r.error === 'busy' ? 429 : 502, { ok: false, error: r.error, mailReady: mail.formUseful() });
   return async function authRoutes({ p, req, res, url, u, d }) {
     /* ── вход по коду на почту ── */
     if (p === '/api/auth/request' && req.method === 'POST') {
       const b = await readBody(req);
       const email = clean(b.email, 200).toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) return json(res, 400, { ok: false, error: 'bad_email' });
+      /* Сначала — работает ли почта, потом лимиты (консилиум 16.10): раньше каждое нажатие при выключенной почте съедало
+         лимит, и с четвертого человек видел «Слишком часто» вместо правды, а после восстановления почты ждал еще 10 минут */
+      await mail.ready();   /* первая проверка после запуска еще идет — дождаться: иначе лимиты потратятся на запросы, которым откажем */
+      const pre = mail.peek();
+      if (!pre.ok) return mailRefused(res, pre);
       if (!allowRate(codeRate, clientIp(req), 5)) return json(res, 429, { ok: false, error: 'too_often' });
       /* на один адрес — не больше 3 кодов за окно, а всего с сервера — не больше 200: чужую почту не бомбим,
          репутацию отправителя не сжигаем, даже если адрес клиента подменен */
       if (!allowRate(codeRateEmail, email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
       if (Date.now() - codeRateAll.t > RATE_WINDOW_MS) { codeRateAll.n = 0; codeRateAll.t = Date.now(); }
-      if (++codeRateAll.n > 200) return json(res, 429, { ok: false, error: 'too_often' });
-      if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
-      const code = issueLoginCode(email);
-      try {
-        const m = loginMail(code);
-        await sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });
-      } catch (e) {
-        console.error('почта не ушла:', e.message);
-        logError('mail', e.message);
-        return json(res, 502, { ok: false, error: 'send_failed' });
-      }
-      return json(res, 200, { ok: true });
+      if (++codeRateAll.n > 200) return json(res, 429, { ok: false, error: 'busy' });
+      const g = await mail.admit();   /* при коротком сбое этот запрос — пробная попытка: одна на сервер и не чаще раза в минуту */
+      if (!g.ok) return mailRefused(res, g);
+      return delivered(res, await deliverCode(email, 'login', loginMail, g));
     }
     if (p === '/api/auth/verify' && req.method === 'POST') {
       if (!allowRate(verifyRate, clientIp(req), 60)) return json(res, 429, { ok: false, error: 'too_often' });   /* перебор кодов по многим почтам с одного адреса */
@@ -83,13 +88,13 @@ export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistor
        одной кнопки на чужом или забытом устройстве мало. Аккаунту без почты подтверждать нечем — там только кнопка. */
     if (p === '/api/account/delete-code' && req.method === 'POST') {
       if (!u.email) return json(res, 200, { ok: true, sent: false, reason: 'no_email' });
+      await mail.ready();
+      const pre = mail.peek();
+      if (!pre.ok) return mailRefused(res, pre);
       if (!allowRate(codeRate, clientIp(req), 5) || !allowRate(codeRateEmail, u.email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
-      if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
-      try {
-        const m = deleteMail(issueLoginCode(u.email, 'delete'));
-        await sendMail({ to: u.email, subject: m.subject, text: m.text, html: m.html });
-      } catch (e) { logError('mail', e.message); return json(res, 502, { ok: false, error: 'send_failed' }); }
-      return json(res, 200, { ok: true, sent: true });
+      const g = await mail.admit();
+      if (!g.ok) return mailRefused(res, g);
+      return delivered(res, await deliverCode(u.email, 'delete', deleteMail, g), { sent: true });
     }
     if (p === '/api/account' && req.method === 'DELETE') {
       if (u.email) {

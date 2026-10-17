@@ -54,6 +54,14 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     await startup.locator('#v-onb.on #o-name').waitFor();
     await startup.locator('#v-onb [data-on="click:go-hello"]').click();
     await startup.locator('#hello-login').click();
+    /* «Войти» видна всегда (2291021), а почта в проверках не настроена (mailReady=false): экран входа не дает форму, которая
+       ответила бы «Отправка почты еще не настроена.», а честно говорит, что вход сейчас не работает; «Начать знакомство» рядом */
+    await startup.locator('#v-login.on #l-box .auth-off-title, #v-login.on #l-box #auth-email').first().waitFor();
+    if (!(await startup.evaluate(() => S.mailReady))) {
+      assert.equal(await startup.locator('#l-box .auth-off-title').innerText(), 'Вход по почте временно не работает', 'mail is off — the login screen says so instead of offering the form');
+      assert.equal(await startup.locator('#l-box #auth-email').count(), 0, 'no email field while mail is off');
+    }
+    assert.equal(await startup.locator('#v-login.on .login-new button').isVisible(), true, '«Начать знакомство» stays on the login screen');
     await startup.locator('#v-login.on .login-new button').click();
     await startup.locator('#v-onb.on #o-name').waitFor();
     await startup.locator('#v-onb [data-on="click:go-hello"]').click();
@@ -253,6 +261,180 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
     console.log('PASS: browser regressions — cross-screen gratitude edit, deleted answer, lost response + edit, cancelled card pick, drafts after history clearing, delayed loads after clearing, week switch during a save (F05), several moods in the panel.');
   } finally { await ctx.close(); }
   await checkOnboardingWithMail({ browser, base, codeFor });
+  await checkMailStates({ browser, base, owner });
+}
+
+/* Вход по почте при разных состояниях почты (16.10: на проде «Прислать код» отвечал красным «Отправка почты еще не настроена.»
+   без объяснения и выхода). Экран входа сам спрашивает GET /api/mail-status, при выключенной почте — честный блок без поля почты,
+   «Проверить еще раз», краткий и долгий сбой, двойное нажатие, письмо с задержкой, «Прислать еще раз» через минуту, возвращение
+   на вкладку, анкета, удаление аккаунта и кабинет. Новые ответы сервера (mail-status, mail_down, uncertain, busy) подменяются
+   page.route — проверяется договор с сервером, а не его реализация; минуты ожидания проматываются page.clock */
+async function checkMailStates({ browser, base, owner }) {
+  const OFF_TITLE = 'Вход по почте временно не работает', OFF_TEXT = 'Ваш профиль и записи сохранены — это сбой на нашей стороне. Загляните чуть позже.';
+  const msgIs = (page, text) => page.waitForFunction((t) => document.getElementById('auth-msg')?.innerText === t, text);
+  const login = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  try {
+    const page = await login.newPage(), errors = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));
+    await page.clock.install();
+    let status = { mailReady: false, mail: 'down', retryAfter: 120 }, statusHits = 0, reply = () => ({ json: { ok: true } });
+    const sends = [];
+    await page.route('**/api/me', async (route) => { const r = await route.fetch(); await route.fulfill({ response: r, json: { ...(await r.json()), mailReady: false, mail: 'down' } }); });
+    await page.route('**/api/mail-status', (route) => { statusHits++; return route.fulfill({ json: status, headers: { 'Cache-Control': 'no-store' } }); });
+    await page.route('**/api/auth/request', async (route) => { sends.push(route.request().postDataJSON().email); return route.fulfill(await reply()); });
+    await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-hello.on');
+    await page.waitForFunction(() => !document.getElementById('hello-login').disabled);
+    /* анкета: «Уже пользовались?» не исчезает молча, а говорит, что вход сейчас не работает; последний шаг — без поля почты */
+    await page.locator('#hello-start').click(); await page.waitForSelector('#v-onb.on');
+    assert.equal(await page.locator('#o-back').isVisible(), true, 'the returning-user block stays on the questionnaire while mail is off');
+    assert.equal(await page.locator('#o-back .auth-off-note').innerText(), 'Уже пользовались Лунарио? Вход по почте сейчас не работает — ваш профиль и записи сохранены, загляните чуть позже.');
+    assert.equal(await page.locator('#o-back').getByRole('button', { name: 'Войти по почте' }).count(), 0, 'no sign-in button that cannot work');
+    await page.locator('#v-onb [data-on="click:go-hello"]').click(); await page.waitForSelector('#v-hello.on');
+    /* (1) «Войти» на приветствии видна → экран входа спросил сервер → честный блок, поля почты нет, «Начать знакомство» на месте */
+    assert.equal(await page.locator('#hello-login').isVisible(), true, '«Войти» on the welcome screen is never hidden');
+    statusHits = 0;   /* анкета выше тоже сверялась с сервером (почта считалась выключенной) — считаем только экран входа */
+    await page.locator('#hello-login').click();
+    await page.locator('#l-box .auth-off-title').waitFor();
+    assert.equal(await page.locator('#l-box .auth-off-title').innerText(), OFF_TITLE);
+    assert.equal(await page.locator('#l-box .auth-off-text').innerText(), OFF_TEXT);
+    assert.equal(await page.locator('#auth-email').count(), 0, 'no email field while mail is off');
+    assert.equal(await page.locator('#v-login .login-intro').isVisible(), false, '«Укажите прежнюю почту» is not shown without the field');
+    assert.equal(await page.locator('#v-login .login-new button').innerText(), 'Начать знакомство');
+    assert.equal(await page.locator('#v-login .login-new button').isVisible(), true);
+    assert.equal(statusHits, 1, 'the login screen asked the server about mail once');
+    await page.getByRole('button', { name: 'Проверить еще раз' }).click(); await msgIs(page, 'Пока не работает. Попробуйте позже.');
+    assert.equal(statusHits, 2); assert.equal(await page.locator('#auth-email').count(), 0);
+    /* (2) почту починили — «Проверить еще раз» рисует форму */
+    status = { mailReady: true, mail: 'ok', retryAfter: null };
+    await page.getByRole('button', { name: 'Проверить еще раз' }).click(); await page.locator('#l-box #auth-email').waitFor();
+    assert.equal(await page.evaluate(() => S.mailReady), true);
+    assert.equal(await page.locator('#v-login .login-intro').isVisible(), true, 'the intro comes back with the form');
+    /* (3) короткий сбой: форма с адресом остается, «через 2 мин.» из retryAfter 90, кнопка снова работает */
+    const mail = 'mail-states@example.test';
+    reply = () => ({ status: 503, json: { ok: false, error: 'mail_down', mailReady: true, retryAfter: 90 } });
+    await page.fill('#auth-email', mail); await page.click('#l-box .auth-submit');
+    await msgIs(page, 'Почта сейчас не отвечает. Попробуйте еще раз через 2 мин.');
+    assert.equal(await page.inputValue('#auth-email'), mail, 'the address stays in the field');
+    assert.equal(await page.locator('#l-box .auth-submit').isEnabled(), true, 'the button works again after a refusal');
+    assert.equal(await page.locator('#l-box .auth-submit').getAttribute('aria-busy'), null);
+    assert.equal(await page.evaluate(() => S.mailReady), true, 'a short outage keeps the form');
+    /* (4) mail_off — честный блок, S.mailReady=false; долгий mail_down (mailReady:false) — так же */
+    for (const body of [{ ok: false, error: 'mail_off', mailReady: false }, { ok: false, error: 'mail_down', mailReady: false, retryAfter: 600 }]) {
+      reply = () => ({ status: 503, json: body });
+      await page.click('#l-box .auth-submit'); await page.locator('#l-box .auth-off-title').waitFor();
+      assert.equal(await page.evaluate(() => S.mailReady), false, body.error + ' turns the login screen off');
+      assert.equal(await page.locator('#auth-email').count(), 0);
+      if (body.error === 'mail_off') {
+        /* (E) возвращение на вкладку: не чаще раза в 5 минут — сразу запроса нет, через 5 минут почта снова работает и форма вернулась */
+        status = { mailReady: true, mail: 'ok', retryAfter: null }; const hits = statusHits;
+        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await page.waitForTimeout(200);
+        assert.equal(statusHits, hits, 'no mail-status request right after an answer about mail');
+        await page.clock.fastForward(5 * 60e3 + 1000);
+        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await page.locator('#l-box #auth-email').waitFor();
+        assert.equal(statusHits, hits + 1);
+      } else {
+        await page.getByRole('button', { name: 'Проверить еще раз' }).click(); await page.locator('#l-box #auth-email').waitFor();
+      }
+      assert.equal(await page.inputValue('#auth-email'), mail, 'the typed address comes back with the form');
+    }
+    /* (5) двойное нажатие «Прислать код» — ровно один запрос; кнопка занята; 8 с без ответа — «Письмо идет дольше обычного…» */
+    let release; const held = new Promise((r) => { release = r; });
+    reply = async () => { await held; return { json: { ok: true } }; };
+    sends.length = 0;
+    await page.locator('#l-box .auth-submit').dblclick();
+    await page.waitForFunction(() => document.querySelector('#l-box .auth-submit')?.getAttribute('aria-busy') === 'true');
+    assert.equal(await page.locator('#l-box .auth-submit').isDisabled(), true, 'the button is disabled while the request is on its way');
+    await page.evaluate(() => { authSend(); });   /* и повторный вызов в обход кнопки ничего не шлет (промис не ждем: без защиты он висел бы на том же ответе) */
+    await page.waitForTimeout(200);
+    await page.clock.fastForward(8500); await msgIs(page, 'Письмо идет дольше обычного…');
+    release(); await page.locator('#l-box #auth-code').waitFor();
+    assert.equal(sends.length, 1, 'a double tap sends exactly one code');
+    /* (7) шаг кода: «Спам», «Прислать еще раз» — не сразу, а через 60 с; тот же адрес */
+    assert.equal(await page.locator('#l-box .auth-note').first().innerText(), 'Не пришло? Проверьте папку «Спам».');
+    assert.equal(await page.locator('#auth-resend').isDisabled(), true, 'resend is not available right away');
+    assert.match(await page.locator('#auth-resend').innerText(), /^Прислать еще раз через (60|59) с$/);
+    await page.clock.fastForward(30000);
+    assert.equal(await page.locator('#auth-resend').isDisabled(), true, 'resend is still waiting at 30 s');
+    await page.clock.fastForward(31000); await page.waitForFunction(() => !document.getElementById('auth-resend').disabled);
+    assert.equal(await page.locator('#auth-resend').innerText(), 'Прислать еще раз');
+    reply = () => ({ json: { ok: true } });
+    await page.locator('#auth-resend').click(); await msgIs(page, 'Отправили новый код — введите его из последнего письма.');
+    assert.deepEqual(sends, [mail, mail], 'resend goes to the same address');
+    assert.equal(await page.locator('#auth-resend').isDisabled(), true, 'the countdown starts again');
+    assert.equal(await page.getByRole('button', { name: 'Изменить адрес' }).isVisible(), true);
+    /* (6) письмо ушло, но ответ почты оборвался (uncertain): шаг кода и мягкая строка про задержку */
+    await page.getByRole('button', { name: 'Изменить адрес' }).click(); await page.locator('#l-box #auth-email').waitFor();
+    reply = () => ({ json: { ok: true, uncertain: true } });
+    await page.click('#l-box .auth-submit'); await page.locator('#l-box #auth-code').waitFor();
+    assert.equal(await page.locator('#l-box .auth-late').innerText(), 'Письмо могло задержаться. Если его нет через пару минут, запросите код еще раз.');
+    /* общий словарь: остальные отказы — своими словами, кнопка возвращается */
+    await page.getByRole('button', { name: 'Изменить адрес' }).click(); await page.locator('#l-box #auth-email').waitFor();
+    for (const [r, text] of [
+      [{ status: 502, json: { ok: false, error: 'send_failed', mailReady: true } }, 'Письмо не ушло из-за сбоя на нашей стороне. Попробуйте через несколько минут.'],
+      [{ status: 502, json: { ok: false, error: 'bad_recipient' } }, 'Почтовый ящик не принял письмо. Проверьте, нет ли опечатки в адресе.'],
+      [{ status: 429, json: { ok: false, error: 'too_often' } }, 'Код уже отправляли несколько раз. Проверьте папку «Спам» или попробуйте через 10 минут.'],
+      [{ status: 429, json: { ok: false, error: 'busy' } }, 'Сейчас много запросов. Попробуйте через 10 минут.'],
+      [{ status: 504, contentType: 'text/html', body: '<html>Gateway Timeout</html>' }, 'Лунарио обновляется. Подождите минуту и нажмите еще раз.'],
+    ]) {
+      reply = () => r; await page.click('#l-box .auth-submit'); await msgIs(page, text);
+      assert.equal(await page.locator('#l-box .auth-submit').isEnabled(), true);
+    }
+    await page.unroute('**/api/auth/request'); await page.route('**/api/auth/request', (route) => route.abort('internetdisconnected'));
+    await page.click('#l-box .auth-submit'); await msgIs(page, 'Нет связи с Лунарио. Проверьте интернет и нажмите еще раз.');
+    assert.deepEqual(errors, [], 'no page errors on the mail states');
+  } finally { await login.close(); }
+
+  /* (8) удаление аккаунта с почтой, а письма не уходят: не тост на 2,6 с, а строка в «Аккаунте» до следующей попытки;
+     DELETE /api/account не уходит вовсе */
+  const DEL_TEXT = 'Подтвердить удаление кодом сейчас не получится: письма временно не уходят. Все записи можно стереть уже сейчас кнопкой «Очистить историю». Удалить аккаунт можно будет, когда письма снова пойдут: нажмите «Удалить аккаунт» еще раз позже.';
+  const acc = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  try {
+    const [name, value] = owner.cookie.split('='); await acc.addCookies([{ name, value, domain: '127.0.0.1', path: '/app', httpOnly: true, sameSite: 'Lax' }]);
+    const page = await acc.newPage(), errors = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message)); page.on('dialog', (d) => d.accept());
+    let deletes = 0, code = null;
+    await page.route('**/api/account', (route) => { deletes++; return route.fulfill({ status: 500, json: { ok: false } }); });   /* страховка: аккаунт проверки не удаляется ни при каком исходе */
+    await page.route('**/api/account/delete-code', (route) => route.fulfill(code));
+    await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#v-home.on');
+    await page.evaluate(() => { S.user.email = 'delete-check@example.test'; go('account'); }); await page.waitForSelector('#v-account.on');
+    for (const r of [{ status: 503, json: { ok: false, error: 'mail_off', mailReady: false } }, { status: 503, json: { ok: false, error: 'mail_down', mailReady: true, retryAfter: 60 } }, { status: 502, json: { ok: false, error: 'send_failed', mailReady: true } }]) {
+      code = r; await page.evaluate(() => delNote(''));
+      await page.locator('#v-account [data-on="click:wipe-account"]').click();
+      /* сначала строка «Отправляем код…», затем итог — ждем итог */
+      await page.waitForFunction((t) => document.querySelector('#ac-del-note')?.innerText === t, DEL_TEXT).catch(() => {});
+      assert.equal(await page.locator('#ac-del-note').innerText(), DEL_TEXT, r.json.error + ' explains what can be done now');
+      if (r.json.error === 'mail_off') { await page.waitForTimeout(3000); assert.equal(await page.locator('#ac-del-note').isVisible(), true, 'the note stays, unlike a 2.6 s toast'); }
+    }
+    assert.equal(await page.locator('#v-account [data-on="click:wipe-data"]').isVisible(), true, '«Очистить историю» is right there');
+    assert.equal(deletes, 0, 'nothing is deleted without a code');
+    assert.deepEqual(errors, []);
+  } finally { await acc.close(); }
+
+  /* (9) кабинет: /api/cabinet/me mailReady:false — строка о неработающем входе, форма все равно видна; тексты — общие с приложением */
+  const cab = await browser.newContext({ viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+  try {
+    const page = await cab.newPage(), errors = []; page.setDefaultTimeout(15000); page.on('pageerror', (e) => errors.push(e.message));
+    let reply = null; const sends = [];
+    await page.route('**/api/cabinet/me', async (route) => { const r = await route.fetch(); await route.fulfill({ response: r, json: { ...(await r.json()), mailReady: false } }); });
+    await page.route('**/api/auth/request', (route) => { sends.push(1); return route.fulfill(reply); });
+    await page.goto(base + '/cabinet', { waitUntil: 'domcontentloaded' }); await page.locator('#v-login.on #l-email').waitFor();
+    assert.equal(await page.locator('#l-mail-off').innerText(), 'Вход по почте сейчас не работает. Если вы уже входили на этом устройстве — обновите страницу; иначе попробуйте позже.');
+    await page.fill('#l-email', 'staff-check@example.test');
+    for (const [r, text] of [
+      [{ status: 503, json: { ok: false, error: 'mail_down', mailReady: true, retryAfter: 90 } }, 'Почта сейчас не отвечает. Попробуйте еще раз через 2 мин.'],
+      [{ status: 503, json: { ok: false, error: 'mail_off', mailReady: false } }, 'Вход по почте сейчас не работает. Это сбой на нашей стороне, ваш профиль и записи сохранены. Загляните чуть позже.'],
+      [{ status: 502, json: { ok: false, error: 'send_failed', mailReady: true } }, 'Письмо не ушло из-за сбоя на нашей стороне. Попробуйте через несколько минут.'],
+      [{ status: 502, json: { ok: false, error: 'bad_recipient' } }, 'Почтовый ящик не принял письмо. Проверьте, нет ли опечатки в адресе.'],
+      [{ status: 429, json: { ok: false, error: 'busy' } }, 'Сейчас много запросов. Попробуйте через 10 минут.'],
+    ]) {
+      reply = r; await page.getByRole('button', { name: 'Прислать код' }).click();
+      await page.waitForFunction((t) => document.getElementById('l-msg')?.innerText === t, text);
+      assert.equal(await page.getByRole('button', { name: 'Прислать код' }).isEnabled(), true);
+    }
+    reply = { json: { ok: true } }; sends.length = 0;
+    await page.getByRole('button', { name: 'Прислать код' }).dblclick(); await page.locator('#l-code').waitFor();
+    assert.equal(sends.length, 1, 'a double tap in the cabinet sends one code');
+    assert.deepEqual(errors, []);
+  } finally { await cab.close(); }
+  console.log('PASS: mail states — login screen asks /api/mail-status and shows an honest block instead of the form, «Проверить еще раз», short (mail_down 2 мин.) and long outages, one request per double tap, slow-letter line, delayed letter (uncertain), resend after 60 s, tab return at most every 5 min, questionnaire note, account deletion note instead of a toast, cabinet line and shared texts.');
 }
 
 /* Анкета, когда письма настроены (как в проде: mailReady=true) и почта уже привязана до анкеты — через «Войти» на приветствии

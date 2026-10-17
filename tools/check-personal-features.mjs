@@ -1118,12 +1118,10 @@ try {
   console.log('PASS: abandoned anonymous accounts are swept by the same lifecycle policy; anything with data or e-mail stays.');
 
   // ── Адрес клиента и лимиты: подменить X-Forwarded-For нельзя, коды на почту и аккаунты ограничены ──
-  const req = (xff, email) => fetch(base + '/api/auth/request', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': xff }, body: JSON.stringify({ email }) }).then((r) => r.status);
-  for (let i = 0; i < 5; i++) assert.equal(await req(`10.0.0.${i}, 198.51.100.1`, `p${i}@example.test`), 503, 'Rate check passes, mail is off in tests');
-  assert.equal(await req('10.0.0.99, 198.51.100.1', 'p9@example.test'), 429, 'A spoofed first X-Forwarded-For entry does not reset the per-address limit');
-  assert.equal(await req('10.0.0.99, 198.51.100.2', 'p9@example.test'), 503, 'A different real (last) address is a different client');
-  for (let i = 0; i < 3; i++) assert.equal(await req(`198.51.100.${10 + i}`, 'victim@example.test'), 503);
-  assert.equal(await req('198.51.100.13', 'victim@example.test'), 429, 'One mailbox gets at most three codes per window whatever the address');
+  /* Почта здесь не настроена: с 16.10 это честный 503 mail_off ДО лимитов — нажатия при выключенной почте лимит не тратят
+     (раньше с четвертого человек видел «Слишком часто»). Лимиты кодов и X-Forwarded-For с работающей почтой — tools/check-mail.mjs */
+  const req = (xff, email) => fetch(base + '/api/auth/request', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': xff }, body: JSON.stringify({ email }) }).then(async (r) => [r.status, (await r.json()).error]);
+  for (let i = 0; i < 6; i++) assert.deepEqual(await req('198.51.100.1', 'same@example.test'), [503, 'mail_off'], 'Mail is off: every press gets the honest mail_off, never too_often');
   const verifyIp = '198.51.100.50';
   for (let i = 0; i < 60; i++) assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '000000' }) })).status, 400);
   assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '000000' }) })).status, 429, 'Code guessing across mailboxes is throttled per address');
@@ -1131,7 +1129,7 @@ try {
   for (let i = 0; i < 40; i++) assert.equal((await fetch(base + '/api/me', { headers: { 'X-Forwarded-For': anonIp } })).status, 200);
   assert.equal((await fetch(base + '/api/me', { headers: { 'X-Forwarded-For': anonIp } })).status, 429, 'Anonymous account creation is capped per address');
   assert.equal((await fetch(base + '/api/me', { headers: { Cookie: evt.cookie, 'X-Forwarded-For': anonIp } })).status, 200, 'An existing session from the same address still works');
-  console.log('PASS: the client address is the proxy-appended one, login codes are capped per address, per mailbox and globally, anonymous sign-ups are capped.');
+  console.log('PASS: mail off is answered before the code limits (limits are checked with a fake SMTP in check-mail), code guessing and anonymous sign-ups are capped per address.');
 
   // ── Бюджет записей: скрипт не раздует базу, человеку хватает с запасом ──
   const writer = account(); await writer.json('/me');

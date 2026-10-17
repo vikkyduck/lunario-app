@@ -154,6 +154,7 @@ td small{display:block;color:var(--faint);font-size:13px}
 .how{margin-top:20px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.045);border:1px dashed var(--line);font-size:15px;color:var(--muted);line-height:1.5}
 .how b{color:var(--text)}
 .notice{margin-top:14px;padding:12px 16px;border-radius:14px;background:rgba(169,184,255,.09);border:1px solid rgba(169,184,255,.35);font-size:14.5px;color:var(--muted);line-height:1.5}
+.notice.mail-off-note{margin:0 0 16px}   /* вход по почте не работает — над формой входа */
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);font-size:14px;color:var(--muted);cursor:pointer;user-select:none}
 .chip.on{background:rgba(224,192,112,.18);border-color:rgba(224,192,112,.6);color:var(--text)}
@@ -259,9 +260,9 @@ img.preview{margin-top:8px;max-height:140px;border-radius:10px}img.preview[hidde
 <div data-on="click:if-event-target-this-closeModal" class="modal" id="modal"><div class="card" id="modal-body"></div></div>
 <div class="toast" id="toast"></div>
 
-<script src="/app/common.js?v=147"></script>
-<script src="/app/cabinet.js?v=147"></script>
-<script src="/app/cabinet-handlers.js?v=147"></script>
-<script src="/app/on.js?v=147"></script>
+<script src="/app/common.js?v=148"></script>
+<script src="/app/cabinet.js?v=148"></script>
+<script src="/app/cabinet-handlers.js?v=148"></script>
+<script src="/app/on.js?v=148"></script>
 </body>
 </html>

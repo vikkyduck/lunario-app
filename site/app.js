@@ -69,6 +69,7 @@ function go(v){
   document.body.classList.toggle('inner', INNER_VIEWS.includes(v));
   document.body.classList.toggle('hello', v==='hello');                // большая луна в фоне — только на приветствии
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on', s.id==='v-'+v));
+  if (['onb','account'].includes(v) && typeof refreshMailState === 'function') setTimeout(() => refreshMailState(true), 0);   /* почта считалась выключенной — свериться с сервером на анкете и в «Аккаунте» (экран входа спрашивает сам, openLogin) */
   document.querySelectorAll('.app-nav button').forEach(b=>{const on=b.dataset.nav===v;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   const active = $('v-'+v); if (active) requestAnimationFrame(()=>revealCommands(active));
   window.refreshMoonLogos?.();window.LunarioSky?.refresh();
@@ -179,17 +180,34 @@ async function rollHelloDice(){
 }
 function openForm(){
   $('v-onb').classList.remove('verifying-email');
+  const goBtn = $('o-go'); goBtn.disabled = false; goBtn.textContent = 'Открыть мой день';   /* после окна кода кнопка могла остаться «Готовим ваш день…» */
   $('o-form').style.display=''; $('o-codebox').style.display='none';
-  const askMail = obAskMail();   /* одно условие с проверкой при отправке (account.js): почта уже привязана — второй раз не спрашиваем */
-  $('o-mailfield').style.display = askMail ? '' : 'none'; $('o-back').style.display = askMail ? '' : 'none';
-  if (askMail) authMount('o-auth', { idle: obAuthIdle, onDone: obDone });
+  $('o-mailfield').style.display = obAskMail() ? '' : 'none';   /* одно условие с проверкой при отправке (account.js): почта уже привязана — второй раз не спрашиваем */
+  paintObBack(true);
   obStep(0);
   go('onb'); track('onboard_start');
 }
-function openLogin(){
+/* «Уже пользовались?» под анкетой: почта уже привязана — блока нет; письма не уходят — блок не прячем, а говорим честно,
+   вместо кнопки входа (раньше он молча исчезал). fresh — при открытии анкеты; иначе (почта сменила состояние) перерисовываем,
+   только пока блок в покое: человека, который уже вводит почту или код (здесь или в окне кода после анкеты), не сбиваем */
+function paintObBack(fresh=false){
+  if (!fresh && !(auth.box === 'o-auth' && ['idle', 'off'].includes(auth.step))) return;
+  const known = !!S.user?.email; $('o-back').style.display = known ? 'none' : '';
+  if (!known) authMount('o-auth', { step: S.mailReady ? 'idle' : 'off', idle: obAuthIdle, off: obAuthOff, onDone: obDone });
+}
+/* Экран входа: «Войти» на приветствии видна всегда, поэтому экран сам узнает, работает ли почта. Было «не работает» — сначала
+   спрашиваем сервер (не дольше пары секунд: вдруг уже починили); ответа нет — остается прежнее. Дальше форма или честный блок,
+   «Впервые здесь? Начать знакомство» видна в любом случае */
+async function openLogin(){
   $('l-box').style.display=''; $('l-after').style.display='none';
-  authMount('l-box', { step: 'email', onDone: obDone });
   go('login'); track('login_open');
+  if (!S.mailReady) {
+    authMount('l-box', { step: 'wait', onDone: obDone });
+    const gen = auth.gen, st = await fetchMailStatus();
+    if (gen !== auth.gen) return;   /* пока ждали, человек ушел с экрана или нажал еще раз */
+    if (st) noteMailReady(st.mailReady);
+  }
+  authMount('l-box', { step: S.mailReady ? 'email' : 'off', onDone: obDone });
 }
 
 /* ── реестр функций: раздел и название панели, где живет (view), полноэкранная практика (page), ключ напоминания (reminder).
