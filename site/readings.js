@@ -139,16 +139,20 @@ function pickCards(box,kind,need,{scroll=false}={}){
   const total=kind==='tarot'?(Object.keys(CAT?.cards||{}).length||22):(Object.keys(CAT?.runes||{}).length||24);
   box.innerHTML=pickerHtml(kind,need,total); box.style.display='block';
   requestAnimationFrame(()=>{ if(scroll)box.scrollIntoView({behavior:'smooth',block:'center'}); });
-  return new Promise((res,rej)=>{ PICK={need,chosen:[],res,rej}; });
+  /* веер текущего выбора — свой: веер «Карты дня» (#t-pick) остается в разметке со своим id="picker", и касание раньше
+     отмечало карты в нем, а не под пальцем (check-design, 17.10) */
+  return new Promise((res,rej)=>{ PICK={need,chosen:[],res,rej,box}; });
 }
 /* Ожидание выбора карт завершается явно (повторный аудит v112, R11): закрыли панель, перерисовали экран, начали новый вопрос —
    обещание отклоняется с code «cancelled», вызвавший сценарий снимает «занято» в своем finally, и кнопка снова работает */
+/* выбор, который могут отменить (другой веер, закрытое окно): отмена — тихий выход (null), а не необработанная ошибка страницы */
+const pickOrStop=(...a)=>pickCards(...a).catch((e)=>{ if(e&&e.code==='cancelled')return null; throw e; });
 function cancelPick(){ if(!PICK)return; const p=PICK; PICK=null; p.rej(Object.assign(new Error('cancelled'),{code:'cancelled'})); }
 function pickerTap(i){
   if(!PICK)return; i=+i;
-  const el=document.querySelector(`#picker .fan-card[data-a0="${i}"]`); if(!el||PICK.chosen.includes(i))return;
+  const el=PICK.box.querySelector(`#picker .fan-card[data-a0="${i}"]`); if(!el||PICK.chosen.includes(i))return;
   PICK.chosen.push(i); el.classList.add('on'); el.setAttribute('aria-pressed','true'); el.querySelector('.pick-n').textContent=PICK.need>1?PICK.chosen.length:''; hap();
-  if(PICK.chosen.length>=PICK.need){ const p=PICK; PICK=null; $('picker')?.classList.add('done'); setTimeout(()=>p.res(p.chosen),480); }
+  if(PICK.chosen.length>=PICK.need){ const p=PICK; PICK=null; p.box.querySelector('#picker')?.classList.add('done'); setTimeout(()=>p.res(p.chosen),480); }
 }
 /* карта дня: пока не открыта — веер вместо одной рубашки; выбранная становится картой дня и переворачивается */
 async function paintCardPick(){
@@ -156,7 +160,7 @@ async function paintCardPick(){
   if(S.flipped){ pick.hidden=true; pick.innerHTML=''; card.hidden=false; return; }
   card.hidden=true; pick.hidden=false;
   await loadCatalog().catch(()=>{});
-  await pickCards(pick,'tarot',1);
+  if(!(await pickOrStop(pick,'tarot',1)))return;   /* открыли другой веер — этот выбор отменен */
   if(S.flipped||wgOpen!=='card')return;
   pick.hidden=true; pick.innerHTML=''; card.hidden=false;
   await openCard();

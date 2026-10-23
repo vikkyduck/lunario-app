@@ -54,6 +54,7 @@ import { createCabinetRoutes } from './http/cabinet-routes.mjs';
 import * as CE from './content-edit.mjs';
 import { FEATURES } from './features.mjs';
 import { HTML_HEADERS } from './http/headers.mjs';
+import { ipNetwork, crossSiteWrite } from './http/request-guard.mjs';
 import { createIdentity } from './identity.mjs';
 import { offerTransfer, readOffer, guestRecordCounts, transferGuestRecords } from './transfer.mjs';
 import { createPracticeRoutes } from './http/practice-routes.mjs';
@@ -80,6 +81,7 @@ const Backup = createBackup({ dataDir: DATA_DIR, contentDir: CONTENT_DIR, backup
 const CONSENT_VERSION = '2026-08-23';
 const PUSH = vapidKeys(DATA_DIR);
 const PUBLIC_BASE = (process.env.PUBLIC_BASE || 'https://lunario.online').replace(/\/+$/, '');
+const PUBLIC_ORIGIN = new URL(PUBLIC_BASE).origin;   /* Origin своей страницы за nginx — для отказа запросам с чужих сайтов */
 /* Какие события принимает /api/event и какие пишет сам обработчик — в реестре events.mjs */
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
@@ -240,16 +242,17 @@ function allowRate(map, key, max) {
 }
 /* Адрес клиента для лимитов. За nginx (слушаем 127.0.0.1) настоящий адрес — ПОСЛЕДНИЙ в X-Forwarded-For: его дописывает
    сам nginx (proxy_add_x_forwarded_for), а первые элементы мог прислать клиент, чтобы обойти лимит одним заголовком.
-   Без прокси (прямое подключение не с loopback) заголовку не верим вовсе. */
+   Без прокси (прямое подключение не с loopback) заголовку не верим вовсе. IPv6 — сетью /64 (request-guard.mjs): абоненту
+   выдают целую сеть, и лимит «на адрес» обходился сменой адреса внутри нее. Все, кто зовет clientIp, — лимиты. */
 const LOOPBACK = /^(::1|127\.\d+\.\d+\.\d+|::ffff:127\.\d+\.\d+\.\d+)$/;
 let warnedNoXff = false;
 function clientIp(req) {
   const peer = req.socket.remoteAddress || '';
   const xff = req.headers['x-forwarded-for'];
-  if (xff && LOOPBACK.test(peer)) { const last = String(xff).split(',').pop().trim(); if (last) return last; }
+  if (xff && LOOPBACK.test(peer)) { const last = String(xff).split(',').pop().trim(); if (last) return ipNetwork(last); }
   /* За прокси без этого заголовка все люди считаются одним клиентом и делят один лимит на коды входа — говорим об этом вслух */
   if (!xff && LOOPBACK.test(peer) && !warnedNoXff) { warnedNoXff = true; console.log('ВНИМАНИЕ: запрос с loopback без X-Forwarded-For — лимиты считаются на весь сервер. В nginx нужен proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;'); }
-  return peer;
+  return ipNetwork(peer);
 }
 
 /* ── астро/числа ── */
@@ -459,7 +462,7 @@ const userById = (id) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?
 const userByEmail = (email) => db.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`).get(email);
 const userPhoto = (id) => (db.prepare('SELECT photo FROM users WHERE id = ?').get(id) || {}).photo || '';
 /* Кто человек — сессии устройства и коды на почту — в backend/identity.mjs */
-const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, newLoginCode, saveLoginCode, checkLoginCode, verifyLogin } =
+const { parseCookies, setSessionCookie, clearSessionCookie, newSession, getUser, newLoginCode, saveLoginCode, codePause, checkLoginCode, verifyLogin } =
   createIdentity({ db, basePath: BASE, sha, clean, nowISO, userById, rolesFor });
 function touchStreak(u) {                       // серию продолжает любой ритуал за день
   const d = userDay(u);
@@ -490,12 +493,21 @@ const publicUser = (u) => ({
   roles: rolesFor(u.email),   /* сотрудники после входа попадают в кабинет */
 });
 
-/* Тело больше max — не читаем дальше, но соединение не рвем: сначала человеку уходит 413 (см. catch внизу), потом сокет закрывается */
+/* Тело больше max — не читаем дальше, но соединение не рвем: сначала человеку уходит 413 (см. catch внизу), потом сокет закрывается.
+   Непустое тело — только с Content-Type: application/json (консилиум 16.10): простой запрос с чужой страницы (text/plain, форма)
+   не дойдет до обработчика даже из браузера без Sec-Fetch-Site и Origin. Свой клиент шлет этот заголовок всегда (api() в common.js,
+   sendBeacon с Blob application/json). Пустое тело — по-прежнему {}. Фото дня (PUT /day/photo, octet-stream) идет мимо readBody */
+const JSON_TYPE = /^application\/json\s*(;|$)/i;
 function readBody(req, max = 32768) {
   return new Promise((resolve, reject) => {
     let size = 0, done = false; const chunks = [];
     req.on('data', (c) => { if (done) return; size += c.length; if (size > max) { done = true; chunks.length = 0; req.pause(); reject(new Error('too_big')); } else chunks.push(c); });
-    req.on('end', () => { if (done) return; done = true; try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { reject(new Error('bad_json')); } });
+    req.on('end', () => {
+      if (done) return; done = true;
+      const raw = Buffer.concat(chunks).toString('utf8');
+      if (raw && !JSON_TYPE.test(req.headers['content-type'] || '')) return reject(new Error('bad_content_type'));
+      try { resolve(JSON.parse(raw || '{}')); } catch { reject(new Error('bad_json')); }
+    });
     req.on('error', (e) => { if (!done) { done = true; reject(e); } });
   });
 }
@@ -610,7 +622,7 @@ function setSourceLabel(uid, day) {
 const Week = createWeek({ db, open: open_, seal, C, MOOD_RU, habitList, askesisList, track, nowISO, cleanText, setSource: setSourceLabel, mutate });
 const weekRoutes = createWeekRoutes({ json, readBody, week: Week, track });
 
-const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, json, loginMail, mail: MailState, deliverCode: Mail.deliverCode, noteRefusal: Mail.noteRefusal, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
+const authRoutes = createAuthRoutes({ knowledgeRebuild: (u, d) => Knowledge.rebuild(u, d), allowRate, checkLoginCode, codePause, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, guestRecordCounts, json, loginMail, mail: MailState, deliverCode: Mail.deliverCode, noteRefusal: Mail.noteRefusal, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate });
 const readingRoutes = createReadingRoutes({ compatSave: (u, d, r) => Knowledge.compatSave(u, d, r), natalMeanings, C, cardOfDay, cardPublic, clean, DAILY_WRITES, dayNum, db, destinyNum, drawDistinct, hash32, ISO_DAY, json, markOpened, Morning, natalFor, nowISO, numFormula, parseData, personalYearAt, readBody, runePublic, seal, signOf, topicOf, touchStreak, track, mutate });
 const journalRoutes = createJournalRoutes({ C, clean, cleanText, DAILY_WRITES, dataUrlOk, db, entryPage, json, nowISO, open_, readable, publicUser, readBody, seal, sendDataUrl, touchStreak, track, userById, userPhoto, weekSummary, WISHES_MAX, wishList , Moods, Receipts, mutate });
 const pushRoutes = createPushRoutes({ allowRate, clean, db, firstName, inviteHost, json, listReminders, nativePlan, nowISO, pendingFor, previewNotification, PUBLIC_BASE, PUSH, PUSH_DEVICES, pushEndpointOk, readBody, refCodeOf, REMINDER_FEATURES, saveReminder, sendNow, testRate, track });
@@ -680,6 +692,9 @@ const server = createServer(async (req, res) => {
 
     /* ── API ── */
     if (p.startsWith('/api/')) {
+      /* Изменяющий запрос с чужой страницы — отказ до всякой работы, в том числе до заведения гостя (request-guard.mjs):
+         иначе любой сайт просил бы коды входа на чужие адреса с IP своих посетителей */
+      if (crossSiteWrite(req, PUBLIC_ORIGIN)) return json(res, 403, { ok: false, error: 'cross_site' });
       /* Анонимный аккаунт заводится только там, где начинается работа, и не чаще ANON_RATE с адреса за окно;
          остальным без сессии — 401, а не новый пользователь */
       let u = getUser(req, res, false);
@@ -884,7 +899,7 @@ const server = createServer(async (req, res) => {
     if ((req.method === 'GET' || req.method === 'HEAD') && !p.includes('..')) return serveStatic(res, p, url.search.includes('v=') ? 31536000 : 86400, req.method === 'HEAD');
     res.writeHead(404); res.end();
   } catch (e) {
-    const known = e.message === 'bad_json' ? 400 : e.message === 'too_big' ? 413 : 0;   /* ошибки запроса — человеку по имени; внутренние — только в журнал */
+    const known = e.message === 'bad_json' ? 400 : e.message === 'bad_content_type' ? 415 : e.message === 'too_big' ? 413 : 0;   /* ошибки запроса — человеку по имени; внутренние — только в журнал */
     if (!known) { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
     if (known === 413) { res.setHeader('Connection', 'close'); res.once('finish', () => req.destroy()); }   /* недочитанное тело не тянем — закрываем после ответа */
     /* запись не расшифровалась (чужой ключ или испорченные данные) — по имени, а не server_error: это не «пустая запись» и не наша ошибка кода (F14) */
@@ -892,3 +907,19 @@ const server = createServer(async (req, res) => {
   }
 });
 server.listen(PORT, HOST, () => console.log(`lunario-app: http://${HOST}:${PORT}${BASE} · site=${SITE_DIR} · db=${DATA_DIR}/app.db`));
+/* Аккуратная остановка (консилиум 16.10, надежность): выкатка шлет SIGTERM, и раньше запросы обрывались на середине — в том числе
+   отправка кода, когда письмо уже ушло, а ответа человек не получил. Новых соединений не принимаем, начатые запросы дожидаемся
+   до 8 секунд (письмо — до 30, но выкатку дольше не держим), затем выходим. Второй сигнал — выход сразу */
+let stopping = false;
+function shutdown(sig) {
+  if (stopping) process.exit(0);
+  stopping = true;
+  console.log(`lunario-app: ${sig} — дожидаюсь начатых запросов (до 8 с)`);
+  MailState.stop(); Mail.stop();
+  const force = setTimeout(() => { console.log('lunario-app: не все запросы закончились за 8 с — выхожу'); process.exit(0); }, 8000);
+  force.unref();
+  server.close(() => { clearTimeout(force); try { db.close(); } catch {} process.exit(0); });
+  server.closeIdleConnections();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

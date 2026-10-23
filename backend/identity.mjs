@@ -87,12 +87,24 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
      который уже лежит у человека в почте. */
   const newLoginCode = () => String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
   function saveLoginCode(email, code, purpose = 'login') {
+    /* attempts — попытки к этому коду (не больше 5); fails — неверные подряд по адресу, новым кодом не обнуляются (сутки — да) */
     db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
       VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET
       code_hash = excluded.code_hash, created_at = excluded.created_at,
-      expires_at = excluded.expires_at, attempts = 0, purpose = excluded.purpose`)
-      .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString(), purpose);
+      expires_at = excluded.expires_at, attempts = 0, purpose = excluded.purpose,
+      fails = CASE WHEN login_codes.fails_at < ? THEN 0 ELSE login_codes.fails END`)
+      .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString(), purpose, new Date(Date.now() - FAILS_FOR_MS).toISOString());
     return code;
+  }
+  /* Пауза перед новым кодом после неверных подряд: 5 — минута, 10 — 5 минут, 15 и больше — 15 минут; сутки без неверных — с нуля.
+     Не блокировка на сутки: иначе посторонний, знающий адрес, закрыл бы человеку вход в собственный дневник. Секунды до кода или 0 */
+  const FAILS_FOR_MS = 24 * 3600e3;
+  function codePause(email) {
+    const r = db.prepare('SELECT fails, fails_at FROM login_codes WHERE email = ?').get(email);
+    if (!r || !r.fails || !r.fails_at) return 0;
+    const at = Date.parse(r.fails_at); if (!(at > Date.now() - FAILS_FOR_MS)) return 0;
+    const pause = r.fails >= 15 ? 900e3 : r.fails >= 10 ? 300e3 : r.fails >= 5 ? 60e3 : 0;
+    return Math.max(0, Math.ceil((at + pause - Date.now()) / 1000));
   }
   const issueLoginCode = (email, purpose = 'login') => saveLoginCode(email, newLoginCode(), purpose);
   /* Ровно шесть ASCII-цифр. Раньше код резался до шести символов, и «1234567» с верными первыми шестью подходил —
@@ -107,7 +119,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
     if (!rec || (rec.purpose || 'login') !== purpose) return 'no_code';
     if (rec.attempts >= 5) return 'too_many';
     if (new Date(rec.expires_at) < new Date()) return 'expired';
-    if (rec.code_hash !== sha(code + email)) { db.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').run(email); return 'wrong_code'; }
+    if (rec.code_hash !== sha(code + email)) { db.prepare('UPDATE login_codes SET attempts = attempts + 1, fails = fails + 1, fails_at = ? WHERE email = ?').run(nowISO(), email); return 'wrong_code'; }
     db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);
     return null;
   }
@@ -177,7 +189,7 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
     }
   }
 
-  return { parseCookies, setSessionCookie, clearSessionCookie, newSession, createSession, getUser, issueLoginCode, newLoginCode, saveLoginCode, checkLoginCode, codeFormatOk, verifyLogin,
+  return { parseCookies, setSessionCookie, clearSessionCookie, newSession, createSession, getUser, issueLoginCode, newLoginCode, saveLoginCode, codePause, checkLoginCode, codeFormatOk, verifyLogin,
     /* для проверок и отчетов: какая политика сейчас действует */
     policy: { SESSION_MAX_MS, SESSION_IDLE_MS, STAFF_MAX_MS, STAFF_IDLE_MS, SEEN_STEP_MS } };
 }

@@ -39,32 +39,36 @@ export async function checkBrand({browser,base,owner}) {
   const shot=async label=>{if(folder)await page.screenshot({path:join(folder,'brand-'+label+'.png'),fullPage:true});};
   try {
     await page.goto(base+'/');await page.locator('#v-home.on').waitFor();await ready();
-    await page.waitForFunction(()=>document.querySelector('#sky').dataset.locationSource==='moscow');
+    await page.waitForFunction(()=>['moscow','profile'].includes(document.querySelector('#sky').dataset.locationSource));   /* у владельца в анкете Москва с координатами: небо берет город из анкеты (sky.js fallbackPlace), это та же Москва */
     assert.ok((await page.locator('#sky').getAttribute('data-constellations')).length>0);
     for(const [width,height] of [[1440,900],[390,844],[320,568],[844,390]]) {
       await page.setViewportSize({width,height});await page.evaluate(()=>go('home'));await ready();
+      /* Луна «Сегодня» — холст #moonHero в кнопке лунного дня, настрой дня — под ней (упрощение «Сегодня», f5aadcf); раньше здесь
+         сверялась картинка .home-moon img слева от текста, и проверка падала на каждом прогоне */
       const geometry=await page.evaluate(()=>{
-        const image=document.querySelector('.home-moon img'),moon=image.getBoundingClientRect(),text=document.querySelector('#h-wish').getBoundingClientRect();
-        return {width:innerWidth,scroll:document.documentElement.scrollWidth,moon:{x:moon.x,y:moon.y,right:moon.right,bottom:moon.bottom,width:moon.width,height:moon.height},textRight:text.right,
-          loaded:image.complete&&image.naturalWidth>0,font:getComputedStyle(document.querySelector('#h-wish')).fontFamily,
-          clip:getComputedStyle(image).clipPath,mask:getComputedStyle(image.parentElement).maskImage};
+        const canvas=document.querySelector('#moonHero'),moon=canvas.getBoundingClientRect(),text=document.querySelector('#h-wish').getBoundingClientRect();
+        return {width:innerWidth,scroll:document.documentElement.scrollWidth,moon:{x:moon.x,y:moon.y,right:moon.right,bottom:moon.bottom,width:moon.width,height:moon.height},
+          text:{x:text.x,y:text.y,right:text.right,bottom:text.bottom},
+          loaded:canvas.width>0&&canvas.height>0,font:getComputedStyle(document.querySelector('#h-wish')).fontFamily,
+          clip:getComputedStyle(canvas).clipPath,mask:getComputedStyle(canvas.parentElement).maskImage};
       });
       assert.ok(geometry.loaded);assert.ok(geometry.scroll<=width+1);
-      assert.ok(geometry.moon.x>=0 && geometry.moon.right<=width+1);
-      assert.ok(geometry.moon.width<=280 && Math.abs(geometry.moon.width-geometry.moon.height)<1);
-      assert.ok(geometry.textRight<=geometry.moon.x+1,'Text and moon occupy separate columns');
+      assert.ok(geometry.moon.x>=0 && geometry.moon.right<=width+1,'Moon fits the screen width');
+      assert.ok(geometry.moon.width<=300 && Math.abs(geometry.moon.width-geometry.moon.height)<1,'Moon is a circle no wider than 300 px');
+      const apart=geometry.text.y>=geometry.moon.bottom-1||geometry.text.right<=geometry.moon.x+1||geometry.text.x>=geometry.moon.right-1;
+      assert.ok(apart,'Text of the day does not overlap the moon');
       assert.equal(geometry.clip,'none');assert.equal(geometry.mask,'none');assert.match(geometry.font,/Onest/);
       coverage.push({width,height,...geometry});await shot('home-'+width);
     }
     await page.setViewportSize({width:390,height:844});
+    /* «Одна шапка» (v65, app.css: .section-brand{display:none}): на внутренних экранах логотипа раздела нет — заголовок Onest и знак
+       Лунарио в нижней навигации; раньше проверка требовала видимый .section-brand и падала на каждом прогоне */
     for(const view of ['ask','history','about','account']) {
       await page.evaluate(v=>go(v),view);await ready();
-      assert.ok(await page.locator('.section-brand').isVisible());
-      const logo=await page.locator('.section-brand').evaluate(e=>({font:getComputedStyle(e).fontFamily,weight:getComputedStyle(e).fontWeight}));
-      assert.match(logo.font,/Comfortaa/);assert.equal(logo.weight,'300');
-      const font=await page.locator('#v-'+view+'>h1').evaluate(e=>getComputedStyle(e).fontFamily);assert.match(font,/Onest/);
+      assert.equal(await page.locator('.section-brand').isVisible(),false,'one header: no section logo on '+view);
+      const font=await page.locator('#v-'+view+' h1').first().evaluate(e=>getComputedStyle(e).fontFamily);assert.match(font,/Onest/);   /* в «Аккаунте» заголовок — внутри шапки профиля */
     }
-    await page.evaluate(()=>openWidget('habits'));await ready();assert.ok(await page.locator('.section-brand').isVisible());
+    await page.evaluate(()=>openWidget('habits'));await ready();
     await page.evaluate(()=>go('home'));await page.evaluate(()=>openWidget('tone'));await ready();
     assert.ok(await page.locator('.widget-brand').isVisible());
     const c=page.locator('.widget-brand canvas'),before=await c.evaluate(e=>e.toDataURL());
@@ -78,11 +82,15 @@ export async function checkBrand({browser,base,owner}) {
       assert.ok(await page.locator('.heromoon').evaluate(e=>e.getBoundingClientRect().width<=650));
       const layout=await page.evaluate(()=>{
         const text=document.querySelector('#v-hello .hello-claim').getBoundingClientRect(),moon=document.querySelector('#v-hello .heromoon').getBoundingClientRect(),header=document.querySelector('#v-hello .hello-header');
-        return {separate:text.right<=moon.left,overflow:document.documentElement.scrollWidth>innerWidth+1,fits:document.documentElement.scrollHeight<=innerHeight+1,header:getComputedStyle(header).position,login:document.querySelector('#hello-login').getBoundingClientRect().height};
+        /* в нынешнем приветствии (8c32a21, be713ff) большой луны нет — .heromoon скрыт и нулевого размера; если она есть — не на заголовке */
+        const hidden=moon.width===0||moon.height===0, apart=text.right<=moon.left||text.left>=moon.right||text.bottom<=moon.top||text.top>=moon.bottom;
+        return {separate:hidden||apart,overflow:document.documentElement.scrollWidth>innerWidth+1,fits:document.documentElement.scrollHeight<=innerHeight+1,header:getComputedStyle(header).position,login:document.querySelector('#hello-login').getBoundingClientRect().height};
       });
       assert.ok(layout.separate,'Welcome moon must not collide with the heading at '+width);assert.equal(layout.overflow,false);
-      assert.equal(layout.header,'sticky');assert.ok(layout.login>=44);
-      if(width<=390&&height>=568)assert.equal(layout.fits,true,'Welcome must fit without scrolling at '+width+'x'+height);
+      /* шапка прилипает, только если приветствие прокручивается: новое (8c32a21) помещается на экран, и шапка там на месте (app.css) */
+      assert.ok(layout.header==='sticky'||layout.fits,'«Войти» stays reachable at '+width+'x'+height+': header '+layout.header+', fits '+layout.fits);assert.ok(layout.login>=44);
+      /* обычный телефон — без прокрутки; низкий (320×568) прокручивается по замыслу (app.css), и тогда «Войти» прилипает — проверено выше */
+      if(width<=390&&height>=800)assert.equal(layout.fits,true,'Welcome must fit without scrolling at '+width+'x'+height);
       await shot('welcome-'+width);
     }
     // Exercise both login steps without sending email. Catch the input/button collision from the screenshot.
@@ -132,7 +140,8 @@ export async function checkBrand({browser,base,owner}) {
       Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){fail({code:3});}},configurable:true});
       return window.LunarioSky.locate(true);
     });
-    assert.equal(await page.locator('#sky').getAttribute('data-location-source'),'moscow');
+    /* устройство отказало — небо по анкете (у владельца там Москва с координатами), без анкеты — по Москве (sky.js fallbackPlace) */
+    assert.ok(['profile','moscow'].includes(await page.locator('#sky').getAttribute('data-location-source')),'after a device refusal the sky falls back to the profile city or Moscow');
     assert.deepEqual(fonts,[]);assert.deepEqual(errors,[]);
     if(folder)await writeFile(join(folder,'brand-coverage.json'),JSON.stringify({coverage,errors,fonts},null,2));
     console.log('PASS: Onest/Comfortaa, animated interior logos, reduced motion, unclipped moon, glass welcome, local fonts, device/Moscow geolocation in a foreign timezone.');

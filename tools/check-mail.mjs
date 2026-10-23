@@ -148,6 +148,11 @@ async function unitMailer(fake, fake587, smtpEnv) {
   assert.ok(fake.maxActive <= 2, `Одновременно не больше 2 соединений, было ${fake.maxActive}`);
   fake.mode = 'ok';
   assert.equal(M.maskEmails('550 No such user <victim.name@mail.ru>'), '550 No such user <v***@mail.ru>');
+  /* ключ лимита: IPv6 — сеть /64 в одной записи, IPv4 (и ::ffff:a.b.c.d) — сам адрес */
+  const { ipNetwork } = await import(join(repo, 'backend/http/request-guard.mjs'));
+  assert.equal(ipNetwork('2001:db8:0:a::1'), ipNetwork('2001:0db8:0000:000a:ffff::9')); assert.equal(ipNetwork('2001:db8:0:a::1'), '2001:db8:0:a::/64');
+  assert.notEqual(ipNetwork('2001:db8:0:a::1'), ipNetwork('2001:db8:0:b::1'));
+  assert.equal(ipNetwork('::ffff:203.0.113.7'), '203.0.113.7'); assert.equal(ipNetwork('203.0.113.7'), '203.0.113.7');
   console.log('PASS: mailer — 4 режима отправки, 16 сценариев отказа с этапом и причиной, секреты вырезаны, QUIT не держит, STARTTLS, IP + имя сертификата, очередь из 2 соединений');
 }
 
@@ -368,6 +373,25 @@ async function serverChecks(fake, smtpEnv, dir, servers) {
   assert.equal((await A.status()).mailReady, true, 'Сетевой сбой — форма остается, следующая попытка возможна');
   fake.mode = 'ok';
   await until('восстановление после молчания', T, async () => (await A.status()).mail === 'ok');
+  step('защита формы');
+  /* запросы с чужих сайтов — отказ до всякой работы; тело не JSON — отказ; свой Origin — как обычно (request-guard.mjs) */
+  const rawPost = (headers, body) => fetch(A.base + '/auth/request', { method: 'POST', headers: { 'X-Forwarded-For': '203.0.113.201', ...headers }, body, signal: AbortSignal.timeout(10000) })
+    .then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) }));
+  const ask = JSON.stringify({ email: 'guard@example.test' }), JSONH = { 'Content-Type': 'application/json' };
+  assert.deepEqual(await rawPost({ ...JSONH, 'Sec-Fetch-Site': 'cross-site' }, ask), { status: 403, body: { ok: false, error: 'cross_site' } }, 'Запрос кода с чужой страницы (Sec-Fetch-Site) — отказ');
+  assert.equal((await rawPost({ ...JSONH, Origin: 'https://evil.example' }, ask)).body.error, 'cross_site', 'Чужой Origin — отказ');
+  assert.equal((await rawPost({ 'Content-Type': 'text/plain' }, ask)).status, 415, 'Тело не JSON (простой запрос с чужой формы) — отказ');
+  assert.equal((await rawPost({ ...JSONH, Origin: 'https://lunario.online', 'Sec-Fetch-Site': 'same-origin' }, ask)).status, 200, 'Своя страница — код уходит');
+  /* лимит по IPv6 — сетью /64: смена адреса внутри сети его не обходит */
+  for (let i = 1; i <= 5; i++) assert.equal((await A.code(`v6-${i}@example.test`, { xff: `2001:db8:0:7::${i}` })).status, 200);
+  assert.equal((await A.code('v6-6@example.test', { xff: '2001:db8:0:7:ffff::9' })).body.error, 'too_often', 'Тот же /64 — тот же лимит');
+  assert.equal((await A.code('v6-7@example.test', { xff: '2001:db8:0:8::1' })).status, 200, 'Другая сеть /64 — другой клиент');
+  /* неверные коды копятся на адрес: после пяти новый код — через паузу, а не сразу с новыми пятью попытками */
+  const pc = await A.code('pause@example.test', { xff: '203.0.113.202' }); assert.equal(pc.status, 200);
+  const right = fake.codeFor('pause@example.test'), wrong = right === '111111' ? '222222' : '111111';
+  for (let i = 0; i < 5; i++) assert.equal((await A.req('/auth/verify', { method: 'POST', body: { email: 'pause@example.test', code: wrong }, cookie: pc.cookie, xff: '203.0.113.202' })).body.error, 'wrong_code');
+  const again = await A.code('pause@example.test', { xff: '203.0.113.203', cookie: pc.cookie });
+  assert.equal(again.status, 429); assert.equal(again.body.error, 'code_pause'); assert.ok(again.body.retryAfter > 0 && again.body.retryAfter <= 60, `Пауза ${again.body.retryAfter} с`);
   step('пароль отозван');
   /* пароль отозван, пока шесть писем стоят в очереди: в ящик входят только первые два, остальные — уже «почта не работает»;
      дальше к Яндексу по запросам людей не ходим (раньше очередь входила с неверным паролем до 32 раз подряд — ревью 16.10) */
@@ -392,7 +416,7 @@ async function serverChecks(fake, smtpEnv, dir, servers) {
   for (const srv of [A, B]) assert.ok(!secrets.some((x) => srv.log.includes(x)), `${srv.name}: секретов в журнале сервера нет`);
   assert.ok(!secrets.some((x) => rows.some((r) => r.message.includes(x))), 'Секретов в журнале сбоев нет');
   await A.stop();
-  console.log('PASS: сервер — код из письма, «письмо, потом база», uncertain, удаление по коду, лимиты и X-Forwarded-For, 550/552/554/молчание/535 и очередь по правилам');
+  console.log('PASS: сервер — код из письма, «письмо, потом база», uncertain, удаление по коду, лимиты и X-Forwarded-For, защита от чужих сайтов, IPv6 /64, пауза после неверных кодов, 550/552/554/молчание/535 и очередь по правилам');
 }
 
 if (!process.argv.includes('--inner')) {

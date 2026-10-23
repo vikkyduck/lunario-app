@@ -85,7 +85,7 @@ registerReset(() => { natalCache = null; }, { profile: true });   /* живет 
 /* ── руна дня: одна на день, тянется на сервере при первом открытии и дальше показывается та же ── */
 async function loadDayRune(){
   const box=$('dayrune-box');if(!box||S.preview)return;
-  if(!S.day?.runeOpened){ await loadCatalog().catch(()=>{}); await pickCards(box,'rune',1); if(wgOpen!=='dayrune')return; }   /* руну выбирают руками — камень из мешочка */
+  if(!S.day?.runeOpened){ await loadCatalog().catch(()=>{}); if(!(await pickOrStop(box,'rune',1))||wgOpen!=='dayrune')return; }   /* руну выбирают руками — камень из мешочка */
   box.innerHTML='<p class="hint">Тянем руну…</p>';
   try{
     const [r]=await Promise.all([api('/dayrune',{method:'POST'}),loadCatalog()]);

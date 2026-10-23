@@ -356,6 +356,12 @@ MIGRATIONS.push({ v: 28, name: 'цифровая карта и каталог н
   )`);
   seedNumerology(db);
 }});
+/* Неверные коды копятся на адрес и новым кодом не обнуляются (консилиум 16.10, безопасность): раньше каждый новый код давал
+   еще 5 попыток, и на один адрес выходило ~2160 угадываний в сутки. fails — неверных подряд с последнего входа, fails_at — когда последняя */
+MIGRATIONS.push({ v: 29, name: 'накопительный счетчик неверных кодов на адрес', up(db) {
+  addColumn(db, 'login_codes', 'fails', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn(db, 'login_codes', 'fails_at', "TEXT NOT NULL DEFAULT ''");
+}});
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
 
 /* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера (и отдельными процессами перед работой).
@@ -367,7 +373,7 @@ export const REQUIRED = {
   users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref', 'data_rev', 'numerology_data'],
   sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
   entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text', 'start_day', 'tz'], wishes: ['photo', 'photo_ts'],
-  events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose'],
+  events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose', 'fails', 'fails_at'],
   daily_sets: ['user_id', 'day', 'idx', 'text_key', 'text', 'question', 'theme'],
   moods: ['user_id', 'day', 'mood'], mood_marks: ['user_id', 'day', 'mood'], week_echoes: ['user_id', 'day', 'verdict'], day_photos: ['user_id', 'day', 'thumb', 'full'],
   knowledge: ['user_id', 'doc', 'json', 'updated_at', 'day', 'rev'], compat_checks: ['user_id', 'other_birth', 'rings', 'text'],

@@ -49,7 +49,8 @@ export async function checkDesign({browser,base,owner}){
     await page.evaluate(id=>supThread(id),ticket.id);assert.equal(await page.locator('#sup-reply').inputValue(),'Несохранённый ответ');await page.unroute('**/api/support/ticket?*');
     await close();await page.evaluate(()=>openWidget('support'));await page.locator('#sup-text').waitFor();await page.evaluate(id=>supThread(id),ticket.id);await page.locator('#sup-reply').waitFor();assert.equal(await page.locator('#sup-reply').inputValue(),'Несохранённый ответ');await close();
 
-    const panes=['card','dayrune','mood','worry','day','tone','gratitude','journal','habits','askesis','wishes','sky','lunar','hmood','hentries','week','year','birthnum','compat','natal','edit','remind','support','invite','appinfo','terms','tools','appearance'];
+    /* «journal» и «tools» как окна сняты при упрощении «Сегодня» (f5aadcf): openWidget для них молча ничего не делал, а проверка ждала шторку */
+    const panes=['card','dayrune','mood','worry','day','tone','gratitude','habits','askesis','wishes','sky','lunar','hmood','hentries','week','year','birthnum','compat','natal','edit','remind','support','invite','appinfo','terms','appearance'];
     for(const theme of ['light','dark'])for(const [width,height] of [[320,568],[390,844],[1440,900]]){
       await page.setViewportSize({width,height});await page.evaluate(t=>applyTheme(t),theme);
       for(const view of ['home','ask','history','about','account']){
@@ -61,7 +62,7 @@ export async function checkDesign({browser,base,owner}){
         await page.evaluate(k=>openWidget(k),key);await ready();await fit(theme+' '+width+' '+key);
         if(key==='remind')assert.ok(await page.locator('.rem-head .sw').first().evaluate(e=>e.getBoundingClientRect().height>=44),'Switch has a usable touch target');
         if(width===390&&['mood','habits','askesis','journal','tone','remind','edit','wishes'].includes(key))await shot(theme+'-'+key);
-        if(key==='tools'&&width<760){const rect=await page.locator('.wg').boundingBox();assert.ok(rect.y>=0&&rect.y+rect.height<=height+1,'short sheet fits '+key);}
+        if(key==='appearance'&&width<760){const rect=await page.locator('.wg').boundingBox();assert.ok(rect.y>=0&&rect.y+rect.height<=height+1,'short sheet fits '+key);}
         await close();
       }
       for(const mode of ['yesno','rune','spread']){await page.evaluate(m=>openAsk(m),mode);await page.locator('#a-q').waitFor();await ready();await fit(theme+' '+width+' '+mode);await close();}
@@ -70,17 +71,18 @@ export async function checkDesign({browser,base,owner}){
     assert.ok(await page.locator('#o-form .field label').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=15));await shot('onboarding');
     await page.evaluate(()=>go('hello'));await ready();await fit('welcome');assert.ok(await page.locator('.heromoon img').evaluate(e=>e.complete&&e.naturalWidth>0));await shot('welcome');
     await page.evaluate(()=>openLogin());await ready();await fit('email login');await shot('login');
-    await page.evaluate(()=>go('history'));await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#v-history [data-feature=habits]').hover();assert.equal(await page.locator('[data-feature=habits]').evaluate(e=>getComputedStyle(e).transform),'none');
+    await page.evaluate(()=>go('ask'));await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#v-ask [data-feature=hentries]').hover();assert.equal(await page.locator('#v-ask [data-feature=hentries]').evaluate(e=>getComputedStyle(e).transform),'none');   /* в «Дневнике» плиток-функций нет с a27a29a — проверяем плитку раздела «Свериться с собой»: при reduced motion не двигается */
     await page.setViewportSize({width:390,height:844});
-    await page.evaluate(async()=>{go('ask');await loadCatalog();pickCards(document.getElementById('a-result'),'tarot',3).catch(()=>{});});
-    await page.locator('#picker.tarot .fan-card').first().waitFor();
-    const tarotBoxes=await page.locator('#picker.tarot .fan-card').evaluateAll(cards=>cards.map(c=>c.getBoundingClientRect().toJSON()));
+    await page.evaluate(async()=>{go('ask');openWidget('ask');await loadCatalog();pickCards(document.getElementById('a-result'),'tarot',3).catch(()=>{});});
+    /* веер — в окне ответа: в DOM может остаться скрытый веер из окна, открытого раньше в этом прогоне */
+    await page.locator('#a-result #picker.tarot .fan-card').first().waitFor();
+    const tarotBoxes=await page.locator('#a-result #picker.tarot .fan-card').evaluateAll(cards=>cards.map(c=>c.getBoundingClientRect().toJSON()));
     assert.equal(tarotBoxes.length,22,'the full tarot deck is available');
     assert.ok(tarotBoxes.every(b=>b.width>=56&&b.height>=96),'every tarot card has a clear touch target');
     assert.ok(tarotBoxes.every((a,i)=>tarotBoxes.slice(i+1).every(b=>a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top)),'tarot cards do not overlap');
-    for(let i=0;i<2;i++)await page.locator('#picker.tarot .fan-card').nth(i).click();
-    assert.deepEqual(await page.locator('#picker.tarot .fan-card.on .pick-n').allTextContents(),['1','2']);
-    assert.deepEqual(await page.locator('#picker.tarot .fan-card.on').evaluateAll(cards=>cards.map(c=>c.getAttribute('aria-pressed'))),['true','true']);
+    for(let i=0;i<2;i++)await page.locator('#a-result #picker.tarot .fan-card').nth(i).click();
+    assert.deepEqual(await page.locator('#a-result #picker.tarot .fan-card.on .pick-n').allTextContents(),['1','2']);
+    assert.deepEqual(await page.locator('#a-result #picker.tarot .fan-card.on').evaluateAll(cards=>cards.map(c=>c.getAttribute('aria-pressed'))),['true','true']);
     await shot('tarot-picker');await page.evaluate(()=>cancelPick());
     assert.deepEqual(errors,[]);
     if(folder)await writeFile(join(folder,'design-coverage.json'),JSON.stringify({coverage,errors},null,2));

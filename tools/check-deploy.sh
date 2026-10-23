@@ -8,6 +8,12 @@ set -euo pipefail
 # Источник — настоящий репозиторий: из пакета выпуска (deploy.sh гоняет проверки над пакетом без .git) его путь приходит в LUNARIO_REPO
 REPO="${LUNARIO_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1 || { echo "❌ check-deploy: $REPO — не git-репозиторий (из пакета выпуска задайте LUNARIO_REPO)"; exit 1; }
+# Старые пути до раскладки releases/current (ревью v114, F11): скрипт или подсказка, которые ходят в /opt/lunario-app/backend или /site,
+# работают не с текущим выпуском, а со старой копией — так test-smtp.sh проверял почту чужим кодом (консилиум 16.10). Разрешены
+# только строки, где рядом назван current/ (запасной путь в обновить-тексты.sh, пояснение в test-smtp.sh)
+STALE="$(cd "$REPO" && grep -rnE '/opt/lunario-app/(backend|site)([/ "]|$)' -- *.sh backend tools docs README.md 2>/dev/null | grep -v 'current/' | grep -v '^tools/check-deploy.sh:' || true)"
+if [ -n "$STALE" ]; then echo "❌ старые пути сервера (нужно /opt/lunario-app/current/...):"; echo "$STALE"; exit 1; fi
+echo "✅ старых путей /opt/lunario-app/backend и /site в скриптах и подсказках нет"
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 CLONE="$T/clone"; SRV="$T/srv"
 git clone -q "$REPO" "$CLONE"

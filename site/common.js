@@ -65,6 +65,10 @@ function authErrorText(e, step = 'send') {
   if (e && e.code === 'cancelled') return '';   /* запрос отменен выходом или очисткой — молчим */
   if (!e || !e.status) return t._net || AUTH_NET;
   if (!e.code && RETRY_STATUS.has(e.status)) return t._upd || AUTH_UPDATING;
+  if (e.code === 'code_pause') {   /* неверные коды подряд — новый код через паузу (сервер говорит, через сколько секунд) */
+    const sec = Number(e.body?.retryAfter);
+    return 'Слишком много неверных кодов. Новый код можно запросить через ' + (sec > 0 ? Math.max(1, Math.ceil(sec / 60)) + ' мин.' : 'несколько минут.');
+  }
   if (e.code === 'mail_down') {
     if (e.body?.mailReady === false) return MAIL_OFF_TEXT;
     const sec = Number(e.body?.retryAfter);   /* секунды до следующей проверки сервером — в минутах вверх, не меньше одной */
@@ -90,6 +94,9 @@ function holdButton(btn) {
   return () => { if (btn && btn.isConnected) { btn.disabled = false; btn.removeAttribute('aria-busy'); } };
 }
 const fmtDay = (d) => String(d || '').split('-').reverse().join('.');   /* 19.09.2026 */
+/* «19 сентября» (withYear — «19 сентября 2026»): аскеза пишет «до …». Жила в today.js и пропала вместе с личным годом (a2c9e3d) —
+   экран аскезы с активной аскезой падал на ReferenceError и показывал «Не получилось загрузить» (найдено check-design, 17.10) */
+const ruDate = (d, withYear) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}) }).replace(/\s*г\.$/, '');
 const fmtDayShort = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });   /* 19 сент. */
 
 /* Черновики на устройстве — один механизм на все поля (аудит v98, F06): по аккаунту, виду записи и ключу (дата, неделя, материал).

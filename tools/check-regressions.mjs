@@ -262,6 +262,48 @@ export async function checkRegressions({ browser, base, owner, codeFor }) {
   } finally { await ctx.close(); }
   await checkOnboardingWithMail({ browser, base, codeFor });
   await checkMailStates({ browser, base, owner });
+  await checkGuestTransfer({ browser, base, codeFor });
+}
+
+/* Записи, сделанные без входа, после входа в существующий аккаунт (консилиум 16.10: сервер предлагал перенос — state
+   guest_transfer_required и transfer.token, — а приложение сразу перезагружалось, и записи оставались у брошенного гостя).
+   Аккаунт с почтой заводится через API, гость на другом устройстве отмечает настроение и входит по той же почте:
+   до перезагрузки — вопрос с числом записей, «Перенести» — запись в аккаунте, гостевой профиль пуст */
+async function checkGuestTransfer({ browser, base, codeFor }) {
+  if (!codeFor) return;
+  const mail = 'transfer-owner@example.test';
+  /* существующий аккаунт: гость → анкета → код на почту → привязан */
+  let cookie = '';
+  const call = async (path, method = 'GET', body) => {
+    const r = await fetch(base + '/api' + path, { method, headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '198.51.100.240', ...(cookie ? { Cookie: cookie } : {}) }, body: body ? JSON.stringify(body) : undefined });
+    const set = (r.headers.get('set-cookie') || '').split(';')[0]; if (set) cookie = set;
+    return r.json();
+  };
+  await call('/me'); await call('/profile', 'POST', { name: 'Владелица записей', birth: '1990-02-02', city: 'Москва', consent: true });
+  codeFor(mail); assert.equal((await call('/auth/verify', 'POST', { email: mail, code: '123456' })).state, 'attached');
+  /* свой адрес клиента: к этому месту прогон уже завел много гостей с loopback и уперся бы в лимит анонимных аккаунтов */
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', extraHTTPHeaders: { 'X-Forwarded-For': '198.51.100.241' } });
+  try {
+    const page = await ctx.newPage(); page.setDefaultTimeout(15000); const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+    await page.route('**/api/me', async (route) => { const r = await route.fetch(); const body = await r.json(); await route.fulfill({ response: r, json: { ...body, mailReady: true } }); });
+    await page.route('**/api/auth/request', (route) => route.fulfill({ json: { ok: true } }));
+    await page.goto(base + '/'); await page.waitForFunction(() => typeof S !== 'undefined' && !!S.user?.id);   /* приветствие видно из разметки раньше, чем пришла сессия */
+    /* гость на этом устройстве: анкета и одна отметка настроения — без входа */
+    await page.evaluate(async () => { await api('/profile', { method: 'POST', body: JSON.stringify({ name: 'Гость', birth: '1990-02-02', city: 'Москва', consent: true }) }); await api('/mood', { method: 'POST', body: JSON.stringify({ mood: 'joy' }) }); });
+    await page.evaluate(() => { S.user.onboarded = false; openLogin(); });
+    await page.locator('#l-box #auth-email').fill(mail); await page.locator('#l-box .auth-submit').click();
+    codeFor(mail); await page.locator('#l-box #auth-code').fill('123456'); await page.locator('#l-box [data-on="click:authCheck"]').click();
+    await page.locator('#l-box .auth-transfer').waitFor();
+    assert.match(await page.locator('#l-box .auth-off-title').innerText(), /^На этом устройстве есть 1 запись, сделанная без входа/);
+    assert.match(await page.locator('#l-box .auth-off-text').innerText(), /Настроение — 1\. Перенести ее в ваш аккаунт\?/);
+    assert.equal(await page.locator('#v-login .login-new').isVisible(), false, 'while the question is open, «Начать знакомство» does not distract');
+    await Promise.all([page.waitForEvent('load'), page.locator('#l-box [data-on="click:authTransfer-this"]').click()]);
+    await page.locator('#v-home.on').waitFor();
+    assert.equal(await page.evaluate(() => S.user.email), mail, 'the device is now signed in to the existing account');
+    assert.equal((await call('/day')).moods.includes('joy'), true, 'the guest mood moved into the account');
+    assert.deepEqual(errors, [], 'no page errors during the transfer');
+  } finally { await ctx.close(); }
+  console.log('PASS: guest transfer — after signing in to an existing account the device asks before reloading, shows what was made without signing in, and «Перенести» moves it into the account.');
 }
 
 /* Вход по почте при разных состояниях почты (16.10: на проде «Прислать код» отвечал красным «Отправка почты еще не настроена.»

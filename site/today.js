@@ -314,15 +314,16 @@ function applyMailState(){
   if (v === 'account') loadAccount();
 }
 
-/* box — id контейнера; step — idle | wait (спрашиваем сервер о почте) | off (вход по почте не работает) | email | code;
+/* box — id контейнера; step — idle | wait (спрашиваем сервер о почте) | off (вход по почте не работает) | email | code
+   | transfer (код подошел к другому аккаунту, а на устройстве остались записи без входа — спрашиваем, переносить ли; offer — ответ входа);
    idle() — что показать в покое, off() — когда почта не работает; onDone(r) — что делать после кода.
    gen — номер подключения: ответ, пришедший после смены экрана, не рисуется в чужой контейнер. busy — идет запрос: повторное
    нажатие ничего не шлет (два письма подряд — и код из первого уже не подходит). sentAt — когда ушел код, late — письмо могло задержаться */
 const AUTH_RESEND_MS = 60000, AUTH_SLOW_MS = 8000;
-const auth = { box: '', step: 'idle', email: '', idle: () => '', off: () => authOffHtml(), onDone: () => {}, gen: 0, busy: false, sentAt: 0, late: false, timer: 0 };
+const auth = { box: '', step: 'idle', email: '', idle: () => '', off: () => authOffHtml(), onDone: () => {}, gen: 0, busy: false, sentAt: 0, late: false, timer: 0, offer: null };
 function authMount(box, o){
   if (auth.box && auth.box !== box) { const prev = $(auth.box); if (prev) prev.innerHTML = ''; }
-  Object.assign(auth, { step: 'idle', email: '', idle: () => '', off: authOffHtml, busy: false, sentAt: 0, late: false }, o, { box, gen: auth.gen + 1 });
+  Object.assign(auth, { step: 'idle', email: '', idle: () => '', off: authOffHtml, busy: false, sentAt: 0, late: false, offer: null }, o, { box, gen: auth.gen + 1 });
   paintAuth();
 }
 /* Честное состояние вместо формы: письма не уходят — поле почты ни к чему, профиль и записи на месте */
@@ -335,6 +336,8 @@ function paintAuth(){
   box.classList.add('auth-flow');
   if (auth.box === 'o-auth') $('o-back')?.classList.toggle('mail-off', auth.step === 'off');   /* на анкете честная строка заменяет «Уже пользовались?» */
   if (auth.box === 'l-box') $('v-login')?.classList.toggle('mail-off', auth.step === 'off');   /* «Укажите прежнюю почту» без поля почты не показываем */
+  box.closest('.view')?.classList.toggle('auth-asking', auth.step === 'transfer');   /* пока решается перенос, «Назад», «Начать знакомство» и анкета не мешают */
+  if (auth.step === 'transfer') { box.innerHTML = transferHtml(); setTimeout(() => box.querySelector('.auth-off-title')?.focus(), 60); return; }
   if (auth.step === 'idle') { box.innerHTML = auth.idle(); return; }
   if (auth.step === 'wait') { box.innerHTML = '<p class="hint auth-wait" role="status">Проверяем вход по почте…</p>'; return; }
   if (auth.step === 'off') { box.innerHTML = auth.off(); setTimeout(() => box.querySelector('.auth-off-title, .auth-off-note')?.focus(), 60); return; }   /* фокус — на честную строку: нажатая кнопка исчезла, диктор прочтет, что случилось */
@@ -418,11 +421,68 @@ async function authCheck(){
     const r = await api('/auth/verify', { method:'POST', body: JSON.stringify({ email: auth.email, code }) });
     if (gen !== auth.gen) return;
     hap('done'); track('login_done'); showMsg(msg);
-    if (isStaff(r.user) && !inApp()) { location.href = '/app/cabinet'; return; }   // сотрудник — сначала в кабинет
-    auth.onDone(r);   /* кнопка остается занятой: дальше перезагрузка или другой экран, второй раз код не уйдет */
+    /* вход уже состоялся (кука — нового аккаунта), записи гостя ждут решения: спросить до перезагрузки, иначе они останутся в брошенном профиле */
+    if (r.transfer?.token && transferTotal(r.transfer.counts)) { auth.offer = r; auth.step = 'transfer'; paintAuth(); scrollToTop(0); return; }
+    authFinish(r);   /* кнопка остается занятой: дальше перезагрузка или другой экран, второй раз код не уйдет */
   } catch (e) { if (gen === auth.gen) { showMsg(msg, authErrorText(e, 'verify'), true); release(); } }
   finally { if (gen === auth.gen) auth.busy = false; }
 }
+function authFinish(r){
+  document.querySelectorAll('.auth-asking').forEach((v) => v.classList.remove('auth-asking'));
+  if (isStaff(r.user) && !inApp()) { location.href = '/app/cabinet'; return; }   // сотрудник — сначала в кабинет
+  auth.onDone(r);
+}
+
+/* Перенос записей гостя (POST /api/account/transfer). Код подошел к другому, уже существующему аккаунту, а на устройстве есть записи,
+   сделанные без входа (state guest_transfer_required). Сервер сам их не переносит — на общем компьютере это может быть чужой дневник, —
+   и дает подписанное приглашение на полчаса. Решает человек; любой ответ ведет дальше тем же onDone, что и вход без записей.
+   Считаем то, что человек узнает как свое; установку дня и счетчик раскладов — нет: установка дня есть у любого после анкеты,
+   и «1 запись» про нее была бы неправдой. Отметки настроения внутри дня — тоже нет: день с настроением уже посчитан в moods */
+const TRANSFER_KINDS = [['journal', 'дневник'], ['entries', 'вопросы и расклады'], ['moods', 'настроение'], ['day_photos', 'фото дня'],
+  ['wishes', 'желания'], ['habits', 'привычки'], ['askesis', 'аскезы'], ['compat_checks', 'совместимость'], ['rag_turns', 'разговоры с Лунарио'], ['week_echoes', '«отозвалось»']];
+const transferParts = (counts) => TRANSFER_KINDS.map(([k, label]) => [label, Number(counts?.[k]) || 0]).filter(([, n]) => n > 0);
+const transferTotal = (counts) => transferParts(counts).reduce((a, [, n]) => a + n, 0);
+const transferList = (counts) => { const s = transferParts(counts).map(([label, n]) => `${label} — ${n}`).join(', '); return s.charAt(0).toUpperCase() + s.slice(1); };
+function transferHtml(){
+  const t = auth.offer.transfer, n = transferTotal(t.counts);
+  if (t.failed) return `<div class="auth-off auth-transfer"><h2 class="auth-off-title" tabindex="-1">Записи не перенеслись</h2>
+    <p class="auth-off-text">${t.failed}</p></div>
+    <button data-on="click:authTransferDone" class="btn auth-submit" type="button">Продолжить</button>`;
+  if (t.kept) return `<div class="auth-off auth-transfer"><h2 class="auth-off-title" tabindex="-1">Записи перенесены</h2>
+    <p class="auth-off-text">На некоторые дни в аккаунте уже было свое — его оставили. С этого устройства за эти дни не перенеслось: ${esc(transferList(t.kept).toLowerCase())}.</p></div>
+    <button data-on="click:authTransferDone" class="btn auth-submit" type="button">Продолжить</button>`;
+  return `<div class="auth-off auth-transfer"><h2 class="auth-off-title" tabindex="-1">На этом устройстве есть ${n} ${plural(n, 'запись', 'записи', 'записей')}, ${plural(n, 'сделанная', 'сделанные', 'сделанных')} без входа</h2>
+    <p class="auth-off-text">${esc(transferList(t.counts))}. Перенести ${n === 1 ? 'ее' : 'их'} в ваш аккаунт?</p></div>
+    <button data-on="click:authTransfer-this" class="btn auth-submit" type="button">Перенести</button>
+    <button data-on="click:authTransferDone" class="btn ghost auth-secondary" type="button">Не переносить</button>
+    <p class="msg" id="auth-msg" role="status"></p>
+    <p class="auth-note">Если не переносить, эти записи не появятся в аккаунте.</p>`;
+}
+async function authTransfer(btn){
+  if (auth.busy || auth.step !== 'transfer') return;
+  const gen = auth.gen, t = auth.offer.transfer; auth.busy = true;
+  const release = holdButton(btn), skip = holdButton(btn.parentElement.querySelector('.auth-secondary'));   /* пока идет перенос, «Не переносить» не нажать */
+  showMsg($('auth-msg'), 'Переносим записи…');
+  try {
+    const done = await api('/account/transfer', { method: 'POST', body: JSON.stringify({ token: t.token }) });
+    if (gen !== auth.gen) return;
+    hap('ok');
+    /* часть записей уступила место тому, что в аккаунте уже было на тот же день, — говорим об этом, а не молчим */
+    /* настроение — не потеря: отметки дня (mood_marks) переезжают и сливаются с отметками аккаунта, уступает только «главное» дня */
+    const lost = { ...done.kept, moods: 0 };
+    if (transferTotal(lost)) { t.kept = lost; auth.busy = false; paintAuth(); return; }
+    showMsg($('auth-msg'), 'Записи перенесены'); authFinish(auth.offer);   /* повтор (already) — тоже успех: записи уже в аккаунте */
+  } catch (e) {
+    if (gen !== auth.gen || e.code === 'no_session') return;   /* сессии нет — api() уже перезагружает страницу */
+    auth.busy = false;
+    /* нет связи или сбой сервера — записи на месте, перенос можно повторить (повтор безобиден) */
+    if (!e.status || e.status >= 500) { release(); skip(); showMsg($('auth-msg'), e.status ? 'Не получилось перенести — нажмите еще раз' : 'Нет связи — записи на месте, нажмите еще раз', true); return; }
+    t.failed = e.code === 'bad_transfer_token' ? 'Время на перенос вышло: вопрос действует полчаса. Записи без входа остались отдельно от аккаунта.'
+      : 'Сервер не принял перенос. Записи без входа остались отдельно от аккаунта.';
+    paintAuth();
+  }
+}
+function authTransferDone(){ if (!auth.busy && auth.step === 'transfer') { auth.busy = true; authFinish(auth.offer); } }
 /* Почта в «Аккаунте» — строкой под датой рождения (решение владелицы 20.09, панель «Вход по почте» снята). У аккаунта без почты —
    кнопка «Привязать почту»: тот же поток кода, что на анкете, разворачивается прямо в карточке профиля */
 function accountMailOpen(){

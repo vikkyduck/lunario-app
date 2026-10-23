@@ -4,7 +4,8 @@
 # ничего не ломает: пользователь создается один раз, владельцы и режимы выставляются заново.
 #   код (site/, backend/)            — root:lunario, только чтение для сервиса, посторонним недоступен
 #   данные, контент, копии           — lunario:lunario, сервис пишет; data/secret.key — 0600
-#   .env (SMTP, BACKUP_SECRET)       — root:lunario 0640: systemd читает его сам до смены пользователя
+#   .env (SMTP, BACKUP_SECRET)       — root:root 0600: systemd читает его сам, от root, до смены пользователя;
+#                                      сервису (lunario) пароль почты и ключ копий видеть незачем (консилиум 16.10)
 #   bash backend/service-user.sh [APP_DIR] [CONTENT_DIR] [BACKUP_DIR]
 set -euo pipefail
 USER_NAME="${SERVICE_USER:-lunario}"
@@ -27,5 +28,5 @@ for d in "$APP/data" "$CONTENT" "$BACKUPS"; do
   chmod -R o-rwx "$d"
 done
 [ -e "$APP/data/secret.key" ] && chmod 0600 "$APP/data/secret.key" || true
-[ -e "$APP/.env" ] && chown "root:$USER_NAME" "$APP/.env" && chmod 0640 "$APP/.env" || true
+[ -e "$APP/.env" ] && chown root:root "$APP/.env" && chmod 0600 "$APP/.env" || true
 echo "права выставлены: код root:$USER_NAME (чтение), данные/контент/копии $USER_NAME:$USER_NAME"

@@ -15,21 +15,30 @@ export async function checkDaylight({browser,base,owner}) {
   try {
     await page.goto(base+'/');await page.locator('#v-home.on').waitFor();
     await page.evaluate(()=>{applyTheme('light');go('history');});
-    await page.locator('.timeline-entry').first().waitFor();
+    /* «Дневник» с 02.10 (a27a29a) — строки дней .day-row вместо карточек ленты .timeline-entry со стеклом; сверяем то, что важно
+       и сейчас: навигация на месте, текст и значки читаются на светлом, строка дня контрастна */
+    await page.locator('.day-row').first().waitFor();
     for(const [width,height] of [[390,844],[1440,900]]) {
       await page.setViewportSize({width,height});
       const state=await page.evaluate(()=>{
         const nav=document.querySelector('.app-nav'),s=getComputedStyle(nav),r=nav.getBoundingClientRect();
-        const entry=document.querySelector('.timeline-entry'),cs=getComputedStyle(entry);
+        const row=document.querySelector('.day-row'),label=row.querySelector('p')||row;
+        /* фон строки — первый непрозрачный снизу вверх (строка может быть прозрачной поверх страницы) */
+        let bgEl=row,bg='rgba(0, 0, 0, 0)';while(bgEl&&/rgba\(0, 0, 0, 0\)|transparent/.test(bg)){bg=getComputedStyle(bgEl).backgroundColor;bgEl=bgEl.parentElement;}
         return {position:s.position,navBottom:r.bottom,navTop:r.top,height:innerHeight,
           text:getComputedStyle(document.body).color,icons:[...nav.querySelectorAll('.ico')].map(e=>getComputedStyle(e).backgroundColor),
-          base:cs.backgroundColor,navBase:s.backgroundColor,glass:cs.backdropFilter,fill:cs.backgroundImage,shadow:cs.boxShadow,edge:getComputedStyle(entry,'::before').backgroundImage};
+          rowText:getComputedStyle(label).color,rowBg:bg,glass:getComputedStyle(row).backdropFilter};
       });
       assert.equal(state.position,'fixed');assert.ok(state.navBottom<=height&&state.navTop>=0,'Navigation stays in view');
       assert.equal(state.text,'rgb(29, 23, 56)');assert.ok(state.icons.every(c=>c==='rgb(42, 33, 80)'));
-      assert.equal(state.base,'rgb(245, 242, 234)');assert.equal(state.navBase,state.base);assert.equal(state.glass,'none');assert.match(state.fill,/0\.96/);assert.equal((state.fill.match(/linear-gradient/g)||[]).length,2);assert.match(state.edge,/conic-gradient/);assert.notEqual(state.shadow,'none');
+      const rgb=(c)=>(c.match(/[\d.]+/g)||[]).slice(0,3).map(Number);
+      const ratio=(a,b)=>{const [x,y]=[luminance(rgb(a)),luminance(rgb(b))].sort((m,n)=>n-m);return (x+.05)/(y+.05);};
+      assert.ok(ratio(state.rowText,state.rowBg)>=4.5,`Diary row text is readable on its background (${state.rowText} on ${state.rowBg})`);assert.equal(state.glass,'none','No blur on diary rows');
     }
-    const pixels=async()=>page.locator('.section-brand canvas').evaluate(cv=>{
+    /* логотип раздела скрыт («одна шапка», v65), а скрытые холсты moon-logo.js не перерисовывает — берем видимый знак Лунарио на «Сегодня» */
+    await page.evaluate(()=>go('home'));
+    const pixels=async()=>page.evaluate(()=>{
+      const cv=[...document.querySelectorAll('canvas[data-brand-moon]')].find(c=>c.offsetParent);
       const ctx=cv.getContext('2d'),p=ctx.getImageData(0,0,cv.width,cv.height).data;
       let opaque=0,alpha=0;for(let i=3;i<p.length;i+=4){alpha+=p[i];if(p[i]>128)opaque++;}
       return {opaque,alpha,center:[...ctx.getImageData(cv.width/2,cv.height/2,1,1).data]};
@@ -46,7 +55,10 @@ export async function checkDaylight({browser,base,owner}) {
     await page.evaluate(()=>applyTheme('dark'));const nightStill=await pixels();
     assert.ok(nightStill.alpha>lightStill.alpha*2,'Theme switches redraw even with animation disabled');
     await page.evaluate(()=>applyTheme('light'));
-    assert.equal(await page.locator('.timeline-entry').first().evaluate(e=>getComputedStyle(e,'::after').display),'none');
-    console.log('PASS: lilac/indigo contrast, fixed navigation and readable icons, dense two-layer diary glass without blur, full-moon cutout, immediate theme redraw under reduced motion.');
+    await page.evaluate(()=>go('history'));await page.locator('.day-row').first().waitFor();
+    /* слой поверх строки появляется только с content — display у пустого ::after (общее правило кнопок) ни на что не влияет */
+    const after=await page.locator('.day-row').first().evaluate(e=>{const a=getComputedStyle(e,'::after');return {content:a.content,display:a.display};});
+    assert.ok(after.content==='none'||after.content==='normal'||after.display==='none','No decorative overlay on diary rows in the light theme: '+JSON.stringify(after));
+    console.log('PASS: lilac/indigo contrast, fixed navigation and readable icons, readable diary rows without blur, full-moon cutout, immediate theme redraw under reduced motion.');
   } finally {await context.close();}
 }

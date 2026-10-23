@@ -1,6 +1,6 @@
 /* Вход по коду на почту, перенос гостевых записей, выход, удаление истории и аккаунта.
    Тонкий HTTP-слой поверх server.mjs: возвращает true, если запрос обработан. */
-export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, deliverCode, guestRecordCounts, json, loginMail, mail, noteRefusal, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, knowledgeRebuild, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate }) {
+export function createAuthRoutes({ allowRate, checkLoginCode, codePause, clean, clearHistory, clearSessionCookie, clientIp, codeRate, codeRateAll, codeRateEmail, dayPack, db, deleteAccount, deleteMail, deliverCode, guestRecordCounts, json, loginMail, mail, noteRefusal, offerTransfer, parseCookies, publicUser, RATE_WINDOW_MS, readBody, readOffer, knowledgeRebuild, setSessionCookie, sha, transferGuestRecords, userById, verifyLogin, verifyRate }) {
   /* Почта не работает — честный ответ сразу, без попытки и без расхода лимитов: mail_off — не настроена, mail_down — сбой.
      mailReady говорит экрану, держать ли форму (сбой короткий) или показать «вход временно не работает»; retryAfter — секунды */
   const mailRefused = (res, g) => { noteRefusal(); return json(res, 503, { ok: false, error: g.error, mailReady: mail.formUseful(), ...(g.retryAfter ? { retryAfter: g.retryAfter } : {}) }); };
@@ -9,6 +9,8 @@ export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistor
   const delivered = (res, r, extra = {}) => r.ok ? json(res, 200, { ok: true, ...extra, ...(r.uncertain ? { uncertain: true } : {}) })
     : r.error === 'mail_down' ? mailRefused(res, { error: 'mail_down', retryAfter: mail.publicRetryAfter() })
     : json(res, r.error === 'busy' ? 429 : 502, { ok: false, error: r.error, mailReady: mail.formUseful() });
+  /* после неверных кодов подряд новый код — не сразу (identity.mjs, codePause): подбор кода новыми письмами упирается в паузу */
+  const paused = (res, email) => { const wait = codePause(email); return wait ? json(res, 429, { ok: false, error: 'code_pause', retryAfter: wait }) : false; };
   return async function authRoutes({ p, req, res, url, u, d }) {
     /* ── вход по коду на почту ── */
     if (p === '/api/auth/request' && req.method === 'POST') {
@@ -20,6 +22,7 @@ export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistor
       await mail.ready();   /* первая проверка после запуска еще идет — дождаться: иначе лимиты потратятся на запросы, которым откажем */
       const pre = mail.peek();
       if (!pre.ok) return mailRefused(res, pre);
+      if (paused(res, email)) return true;
       if (!allowRate(codeRate, clientIp(req), 5)) return json(res, 429, { ok: false, error: 'too_often' });
       /* на один адрес — не больше 3 кодов за окно, а всего с сервера — не больше 200: чужую почту не бомбим,
          репутацию отправителя не сжигаем, даже если адрес клиента подменен */
@@ -91,6 +94,7 @@ export function createAuthRoutes({ allowRate, checkLoginCode, clean, clearHistor
       await mail.ready();
       const pre = mail.peek();
       if (!pre.ok) return mailRefused(res, pre);
+      if (paused(res, u.email)) return true;
       if (!allowRate(codeRate, clientIp(req), 5) || !allowRate(codeRateEmail, u.email, 3)) return json(res, 429, { ok: false, error: 'too_often' });
       const g = await mail.admit();
       if (!g.ok) return mailRefused(res, g);
