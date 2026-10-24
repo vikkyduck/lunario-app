@@ -5,13 +5,15 @@
    Здесь — три слоя:
      1) mailer.mjs напрямую против поддельного сервера: ни один сценарий не висит, у каждой ошибки есть этап и вид сбоя;
      2) mail-state.mjs с подставной проверкой: расписание, пробная попытка, «отказ адреса флаг не трогает», срок проверки;
-     3) настоящий backend/server.mjs: в том числе авария с прода — почта лежала при запуске и ожила, вход включается сам.
+     3) настоящий backend/server.mjs: в том числе авария с прода — почта лежала при запуске и ожила, вход включается сам;
+        защита формы кода (чужие сайты, IPv6 /64, пауза после неверных кодов) и права на .env (service-user.sh в песочнице).
    Сроки ускорены (LUNARIO_TEST=1 + MAIL_TIME_SCALE): без LUNARIO_TEST рабочий код ускорение не принимает.
    Сертификат создается на прогон (openssl); NODE_EXTRA_CA_CERTS читается Node только при запуске, поэтому проверка
    перезапускает сама себя дочерним процессом.   node tools/check-mail.mjs */
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, rm, mkdir } from 'node:fs/promises';
+import { mkdirSync, writeFileSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { once } from 'node:events';
 import { tmpdir } from 'node:os';
@@ -47,7 +49,7 @@ async function inner() {
   let failed = null;
   try {
     /* MAIL_CHECK_ONLY=server — только сценарии сервера: так их можно прогнать и на старом коде, где mailer еще прежний */
-    if (process.env.MAIL_CHECK_ONLY !== 'server') { await unitMailer(fake, fake587, smtpEnv); await unitState(); }
+    if (process.env.MAIL_CHECK_ONLY !== 'server') { await unitMailer(fake, fake587, smtpEnv); await unitState(); envRights(dir); }
     await serverChecks(fake, smtpEnv, dir, servers);
   } catch (e) { failed = e; }
   /* уборка не должна прятать причину падения: у каждого шага свой предел */
@@ -216,6 +218,25 @@ async function unitState() {
   console.log('PASS: mail-state — само восстановление, срок проверки, редкие повторы после 535, одна пробная попытка, отказы одного письма вход не закрывают, очередь после сбоя в ящик не входит');
 }
 
+/* ── 2б. права на .env с паролем почты: root:root 0600 (консилиум 16.10) ── */
+/* service-user.sh зовет deploy.sh после каждого rsync. Раньше он ставил .env root:lunario 0640 — пароль ящика читал сервис, хотя
+   systemd читает файл сам, от root. Здесь скрипт идет в песочнице: chown, id и useradd подставные (нужен root), chmod настоящий */
+function envRights(dir) {
+  const box = join(dir, 'service-user'), bin = join(box, 'bin'), app = join(box, 'app'), log = join(box, 'chown.log');
+  mkdirSync(join(app, 'data'), { recursive: true }); mkdirSync(bin, { recursive: true });
+  for (const [cmd, body] of [['id', 'exit 0'], ['useradd', 'echo "useradd $*" >> "$LOG"'], ['chown', 'echo "chown $*" >> "$LOG"']]) writeFileSync(join(bin, cmd), `#!/bin/sh\n${body}\n`, { mode: 0o755 });
+  writeFileSync(join(app, '.env'), 'SMTP_PASS=app-password-16ch\n', { mode: 0o640 }); writeFileSync(join(app, 'data', 'secret.key'), 'k', { mode: 0o644 });
+  const r = spawnSync('bash', [join(repo, 'backend/service-user.sh'), app, join(box, 'content'), join(box, 'backups')], { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, LOG: log } });
+  assert.equal(r.status, 0, `service-user.sh: ${r.stdout}${r.stderr}`);
+  const mode = (f) => (statSync(f).mode & 0o777).toString(8);
+  assert.equal(mode(join(app, '.env')), '600', '.env — только владельцу (0600)');
+  const calls = readFileSync(log, 'utf8');
+  assert.ok(calls.includes(`chown root:root ${join(app, '.env')}`), `.env — владелец root:root: ${calls}`);
+  assert.ok(!/chown \S*:lunario \S*\.env/.test(calls), '.env не отдается группе сервиса');
+  assert.equal(mode(join(app, 'data', 'secret.key')), '600', 'ключ шифрования по-прежнему 0600');
+  console.log('PASS: права — .env с паролем почты root:root 0600, сервису недоступен');
+}
+
 /* ── 3. настоящий сервер приложения ── */
 async function serverChecks(fake, smtpEnv, dir, servers) {
   /* база городов в git не лежит (собирается из GeoNames) — для сервера хватает одной строки, как в check-personal-features */
@@ -226,11 +247,10 @@ async function serverChecks(fake, smtpEnv, dir, servers) {
     const port = await freePort(), data = join(dir, name);
     await mkdir(data, { recursive: true });
     let log = '';
-    const child = spawn(process.execPath, ['--no-warnings', join(repo, 'backend/server.mjs')], {
-      env: { PATH: process.env.PATH, NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS, LUNARIO_TEST: '1', MAIL_TIME_SCALE: SCALE, LUNARIO_QUIET: '1',
-        PORT: String(port), HOST: '127.0.0.1', BASE_PATH: '/app', DATA_DIR: join(data, 'data'), BACKUP_DIR: join(data, 'backups'),
-        CONTENT_DIR: process.env.CONTENT_DIR || join(repo, 'content'), CITIES_DB: citiesDb, SITE_DIR: join(repo, 'site'), ANON_RATE: '500', ...env },
-      stdio: ['ignore', 'pipe', 'pipe'] });
+    const childEnv = { PATH: process.env.PATH, NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS, LUNARIO_TEST: '1', MAIL_TIME_SCALE: SCALE, LUNARIO_QUIET: '1',
+      PORT: String(port), HOST: '127.0.0.1', BASE_PATH: '/app', DATA_DIR: join(data, 'data'), BACKUP_DIR: join(data, 'backups'),
+      CONTENT_DIR: process.env.CONTENT_DIR || join(repo, 'content'), CITIES_DB: citiesDb, SITE_DIR: join(repo, 'site'), ANON_RATE: '500', ...env };
+    const child = spawn(process.execPath, ['--no-warnings', join(repo, 'backend/server.mjs')], { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', (d) => { log += d; }); child.stderr.on('data', (d) => { log += d; });
     const base = `http://127.0.0.1:${port}/app/api`;
     for (let i = 0; ; i++) {
@@ -242,6 +262,9 @@ async function serverChecks(fake, smtpEnv, dir, servers) {
     let ip = 0;
     const srv = {
       name, base, get log() { return log; }, db: () => new DatabaseSync(join(data, 'data', 'app.db'), { readOnly: true }),
+      /* «прошло время»: правка базы рядом с работающим сервером (WAL) и уборка планировщика — тот же send-daily.mjs, что на таймере раз в 5 минут */
+      sql(q, ...args) { const w = new DatabaseSync(join(data, 'data', 'app.db')); try { w.exec('PRAGMA busy_timeout=5000'); return w.prepare(q).run(...args); } finally { w.close(); } },
+      sweep() { const r = spawnSync(process.execPath, ['--no-warnings', join(repo, 'backend/send-daily.mjs')], { env: childEnv, encoding: 'utf8', timeout: 20000 }); if (r.status !== 0) throw new Error(`${name}: send-daily упал\n${r.stdout}${r.stderr}`); },
       async req(path, { method = 'GET', body, cookie = '', xff } = {}) {
         /* xff: null — запрос «с самого сервера», без X-Forwarded-For (так ходят deploy.sh и set-smtp.sh) */
         const fwd = xff === null ? {} : { 'X-Forwarded-For': xff || `203.0.113.${1 + (ip++ % 250)}` };
@@ -392,6 +415,22 @@ async function serverChecks(fake, smtpEnv, dir, servers) {
   for (let i = 0; i < 5; i++) assert.equal((await A.req('/auth/verify', { method: 'POST', body: { email: 'pause@example.test', code: wrong }, cookie: pc.cookie, xff: '203.0.113.202' })).body.error, 'wrong_code');
   const again = await A.code('pause@example.test', { xff: '203.0.113.203', cookie: pc.cookie });
   assert.equal(again.status, 429); assert.equal(again.body.error, 'code_pause'); assert.ok(again.body.retryAfter > 0 && again.body.retryAfter <= 60, `Пауза ${again.body.retryAfter} с`);
+  /* ступени паузы: 10 неверных — до 5 минут, 15 и больше — до 15 минут (счетчик подставляем в базу: ждать минуты незачем) */
+  const PM = 'pause@example.test';
+  const pauseAt = (fails) => { A.sql('UPDATE login_codes SET fails = ?, fails_at = ? WHERE email = ?', fails, new Date().toISOString(), PM); return A.code(PM, { xff: `203.0.113.${200 + fails}` }); };
+  { const r = await pauseAt(10); assert.equal(r.body.error, 'code_pause'); assert.ok(r.body.retryAfter > 60 && r.body.retryAfter <= 300, `10 неверных — пауза до 5 минут, а не ${r.body.retryAfter} с`); }
+  { const r = await pauseAt(15); assert.equal(r.body.error, 'code_pause'); assert.ok(r.body.retryAfter > 300 && r.body.retryAfter <= 900, `15 неверных — пауза до 15 минут, а не ${r.body.retryAfter} с`); }
+  /* код просрочен, уборка планировщика (send-daily, раз в 5 минут) прошла — счетчик на месте. Раньше она стирала его вместе
+     с просроченным кодом, и через 15–20 минут после последнего кода подбор начинался с нуля */
+  A.sql('UPDATE login_codes SET expires_at = ? WHERE email = ?', new Date(Date.now() - 60000).toISOString(), PM);
+  A.sweep();
+  assert.equal(A.db().prepare('SELECT fails FROM login_codes WHERE email = ?').get(PM)?.fails, 15, 'Уборка просроченных кодов не обнуляет неверные попытки');
+  assert.equal((await A.code(PM, { xff: '203.0.113.231' })).body.error, 'code_pause', 'После уборки пауза та же');
+  /* сутки без неверных — с нуля: уборка убирает строку, новый код уходит */
+  A.sql('UPDATE login_codes SET fails_at = ? WHERE email = ?', new Date(Date.now() - 25 * 3600e3).toISOString(), PM);
+  A.sweep();
+  assert.equal(A.db().prepare('SELECT COUNT(*) c FROM login_codes WHERE email = ?').get(PM).c, 0, 'Через сутки без неверных уборка убирает строку');
+  assert.equal((await A.code(PM, { xff: '203.0.113.232' })).status, 200, 'Через сутки без неверных новый код уходит');
   step('пароль отозван');
   /* пароль отозван, пока шесть писем стоят в очереди: в ящик входят только первые два, остальные — уже «почта не работает»;
      дальше к Яндексу по запросам людей не ходим (раньше очередь входила с неверным паролем до 32 раз подряд — ревью 16.10) */

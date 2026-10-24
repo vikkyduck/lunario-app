@@ -230,7 +230,9 @@ export async function runDue(keys, log = console.log, deliver = sendPush) {
     }
   }
   db.prepare('DELETE FROM push_queue WHERE ts < ?').run(new Date(now - 2 * 864e5).toISOString());
-  db.prepare('DELETE FROM login_codes WHERE expires_at < ?').run(nowISO);
+  /* просроченные коды убираем, кроме тех, где копятся неверные (identity.mjs, codePause): счетчик живет сутки после последнего
+     неверного. Раньше эта уборка (раз в 5 минут) стирала его через 15–20 минут после последнего кода, и подбор начинался с нуля */
+  db.prepare('DELETE FROM login_codes WHERE expires_at < ? AND (fails = 0 OR fails_at < ?)').run(nowISO, new Date(now - 864e5).toISOString());
   db.prepare('DELETE FROM sessions WHERE last_seen < ?').run(new Date(now - 400 * 864e5).toISOString());
   db.prepare('DELETE FROM push_shown WHERE item_id NOT IN (SELECT id FROM push_queue)').run();
   return stat;
