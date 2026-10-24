@@ -5,7 +5,6 @@
    node tools/check-load.mjs   (в составе tools/check-all.mjs отдельным шагом) */
 import assert from 'node:assert/strict';
 import { mkdtemp, cp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -14,6 +13,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { copyContent, makeCitiesDb } from './fixtures.mjs';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = await mkdtemp(join(tmpdir(), 'lunario-load-'));
@@ -33,13 +33,9 @@ async function start() {
 const p95 = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * 0.95))]; };
 try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true, filter: (p) => !/\.db(-wal|-shm)?$/.test(p) });
-  const contentSrc = realpathSync(join(repo, 'content'));
-  await cp(contentSrc, join(fixture, 'content'), { recursive: true, dereference: true, filter: (p) => p === contentSrc || (dirname(p) === contentSrc && p.endsWith('.txt')) });
+  await copyContent(join(fixture, 'content'));   /* тексты приложения без картинок и архива: настоящие, а без них — тестовые (tools/fixtures.mjs) */
   await mkdir(join(fixture, 'data'));
-  const cities = new DatabaseSync(join(fixture, 'backend/cities.db'));
-  cities.exec(`CREATE TABLE cities (name TEXT, region TEXT, country TEXT, lat REAL, lon REAL, tz TEXT, pop INTEGER, norm TEXT, w2 TEXT, alt TEXT);
-    INSERT INTO cities VALUES ('Москва','Москва','Россия',55.7558,37.6173,'Europe/Moscow',13000000,'москва','','moscow');`);
-  cities.close();
+  makeCitiesDb(join(fixture, 'backend/cities.db'));   /* справочник городов на одну строку — tools/fixtures.mjs */
   await start();
   let cookie = '';
   const raw = async (path, method = 'GET', data, headers = {}) => { const r = await fetch(base + '/api' + path, { method, headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Forwarded-For': '203.0.113.9', ...headers }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) }); const set = r.headers.get('set-cookie'); if (set) cookie = set.split(';')[0]; return r; };

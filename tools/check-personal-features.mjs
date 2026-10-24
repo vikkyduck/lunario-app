@@ -15,6 +15,7 @@ import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
 import { versionMismatch, shellGaps } from './bump-version.mjs';
+import { copyContent, makeCitiesDb } from './fixtures.mjs';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = await mkdtemp(join(tmpdir(), 'lunario-personal-features-'));
@@ -76,10 +77,10 @@ const photo = `data:image/png;base64,${png}`;
 try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true,
     filter: path => !path.endsWith('.db') && !path.endsWith('.db-wal') && !path.endsWith('.db-shm') });
-  /* тексты приложения, без картинок и архива: запасных копий в коде нет. Папка берется по настоящему пути (realpath): в пакете выпуска
-     content — символьная ссылка на рабочую копию (deploy.sh, F11), и копия ссылки вместо папки заставила бы проверки писать в настоящий контент */
-  const contentSrc = (await import('node:fs')).realpathSync(join(repo, 'content'));
-  await cp(contentSrc, join(fixture, 'content'), { recursive: true, dereference: true, filter: (p) => p === contentSrc || (dirname(p) === contentSrc && p.endsWith('.txt')) });
+  /* тексты приложения, без картинок и архива: запасных копий в коде нет; настоящие, а без них — тестовые (tools/fixtures.mjs). Папка берется
+     по настоящему пути (realpath): в пакете выпуска content — символьная ссылка на рабочую копию (deploy.sh, F11), и копия ссылки вместо папки
+     заставила бы проверки писать в настоящий контент */
+  await copyContent(join(fixture, 'content'));
   assert.ok(!(await import('node:fs')).lstatSync(join(fixture, 'content')).isSymbolicLink(), 'the fixture content folder is a real copy, never a link to the working copy');
   /* «Новое в приложении» живёт только в content/новое.txt (запасного списка в коде нет): две новинки на текущий месяц,
      чтобы экран новостей было чем проверять — плитка ведёт в существующий раздел */
@@ -87,10 +88,7 @@ try {
   await writeFile(join(fixture, 'content', 'новое.txt'), `# месяц | название | раздел:виджет | о чём\n${newsMonth} | Взять аскезу | today:askesis | Отказ или ограничение до выбранной даты\n${newsMonth} | Карта дня | today:card | Все 22 аркана с картинками\n`);
   await mkdir(join(fixture, 'data'));
   // Deterministic tiny city catalogue; the untracked production catalogue is never read.
-  const cities = new DatabaseSync(join(fixture, 'backend/cities.db'));
-  cities.exec(`CREATE TABLE cities (name TEXT, region TEXT, country TEXT, lat REAL, lon REAL, tz TEXT, pop INTEGER, norm TEXT, w2 TEXT, alt TEXT);
-    INSERT INTO cities VALUES ('Москва','Москва','Россия',55.7558,37.6173,'Europe/Moscow',13000000,'москва','','moscow');`);
-  cities.close();
+  makeCitiesDb(join(fixture, 'backend/cities.db'));   /* справочник городов на одну строку — tools/fixtures.mjs */
   await start();
   const owner = account(); const other = account();
   await owner.json('/me'); await other.json('/me');

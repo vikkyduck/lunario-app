@@ -7,6 +7,7 @@ import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { contentSource, contentNote } from './fixtures.mjs';
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const quick = process.argv.includes('--quick');
 const run = (args) => spawnSync(process.execPath, args, { cwd: repo, encoding: 'utf8', env: process.env, maxBuffer: 64 * 1024 * 1024 });
@@ -23,6 +24,13 @@ step(`синтаксис: ${files.length} файлов`, { status: syntaxOk ? 0 
 
 /* 2. версии оболочки согласованы */
 step('версии ?v= оболочки', run(['tools/bump-version.mjs']));
+
+/* тексты: в git их нет — настоящие из content/, а без них (CI, свежий клон) тестовые из tools/fixtures/content. Каждая проверка
+   выбирает их тем же tools/fixtures.mjs; здесь — чтобы прогон говорил, на каких текстах шел. LUNARIO_CHECK_CONTENT=real (deploy.sh) —
+   без настоящих текстов дальше не идем: выпуск проверяется на них */
+let texts;
+try { texts = contentSource().kind; console.log(`ℹ️ ${contentNote(texts)}`); }
+catch (e) { console.log(`❌ ${e.message}`); process.exit(1); }
 
 /* 3. проверки по темам — каждая своим процессом; сначала быстрые и статические, потом интеграционные (с настоящим сервером) */
 const CHECKS = ['check-rag', 'check-natal-texts', 'check-numerology', 'check-startup-worker', 'check-backlog-telegram', 'check-yo', 'check-features', 'check-daily-sets', 'check-entry-history', 'check-brand', 'check-daylight', 'check-design', 'check-experience',
@@ -43,5 +51,5 @@ else if (process.env.ALLOW_NO_UI === '1') console.log('⚠️ регрессии
 else { results.push(['регрессии в браузере (Playwright)', 'FAIL']); console.log('❌ регрессии в браузере не выполнены: Playwright не установлен — npm install && npx playwright install chromium (ALLOW_NO_UI=1 — осознанно пропустить, прогон будет неполным)'); }
 console.log(ui ? 'ℹ️ полный UI-прогон: node tools/check-personal-features.mjs --ui' : '⚠️ полный UI-прогон недоступен без Playwright (мобильная навигация, диктовка, доставка уведомлений)');
 const failed = results.filter(([, s]) => s === 'FAIL');
-console.log(`\n${failed.length ? '❌' : '✅'} итог: ${results.length - failed.length} из ${results.length} проверок прошли${failed.length ? `; не прошли: ${failed.map(([n]) => n).join(', ')}` : ''}${quick ? ' (--quick: без интеграционных)' : ''}`);
+console.log(`\n${failed.length ? '❌' : '✅'} итог: ${results.length - failed.length} из ${results.length} проверок прошли${failed.length ? `; не прошли: ${failed.map(([n]) => n).join(', ')}` : ''}${quick ? ' (--quick: без интеграционных)' : ''}${texts === 'fixtures' ? ' — на тестовых текстах' : ''}`);
 process.exit(failed.length ? 1 : 0);

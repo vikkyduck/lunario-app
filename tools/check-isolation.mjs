@@ -20,6 +20,7 @@ import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { copyContent, makeCitiesDb } from './fixtures.mjs';
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -77,11 +78,8 @@ const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcS
 try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true,
     filter: (p) => !p.endsWith('.db') && !p.endsWith('.db-wal') && !p.endsWith('.db-shm') });
-  await cp(join(repo, 'content'), join(fixture, 'content'), { recursive: true, filter: (p) => p === join(repo, 'content') || (dirname(p) === join(repo, 'content') && p.endsWith('.txt')) });   /* тексты приложения, без картинок и архива: запасных копий в коде нет */ await mkdir(join(fixture, 'data'));
-  const cities = new DatabaseSync(join(fixture, 'backend/cities.db'));
-  cities.exec(`CREATE TABLE cities (name TEXT, region TEXT, country TEXT, lat REAL, lon REAL, tz TEXT, pop INTEGER, norm TEXT, w2 TEXT, alt TEXT);
-    INSERT INTO cities VALUES ('Москва','Москва','Россия',55.7558,37.6173,'Europe/Moscow',13000000,'москва','','moscow');`);
-  cities.close();
+  await copyContent(join(fixture, 'content'));   /* тексты приложения без картинок и архива: настоящие, а без них — тестовые (tools/fixtures.mjs) */ await mkdir(join(fixture, 'data'));
+  makeCitiesDb(join(fixture, 'backend/cities.db'));   /* справочник городов на одну строку — tools/fixtures.mjs */
   await start();
   const db = new DatabaseSync(join(fixture, 'data/app.db'));
   const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });   /* день человека сервер считает по Москве (заголовка X-Tz тут нет), а не по UTC — иначе проверка падала между 00:00 и 03:00 МСК */

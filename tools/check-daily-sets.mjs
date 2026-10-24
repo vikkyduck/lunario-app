@@ -4,9 +4,9 @@ import { initDailySets, dailySet } from '../backend/daily-sets.mjs';
 import { migrate } from '../backend/schema.mjs';   /* таблицу и колонки создают миграции, не модуль (F12) */
 /* Настрой дня: пары «настрой | вопрос» по темам. Внутри темы — без повторов, пока тема не исчерпана; исчерпана — по второму
    кругу (allowRepeat), но никогда пусто. Выпавшая пара снимается в daily_sets и в течение дня не меняется.
-   Папка текстов в git не попадает, поэтому чередование проверяется на условных парах; у владельца — и на настоящих. */
-import { fileURLToPath } from 'node:url';
-process.env.CONTENT_DIR ||= fileURLToPath(new URL('../content', import.meta.url)); process.env.LUNARIO_QUIET = '1';   /* .pathname ломал кириллический путь (R15) */
+   Чередование проверяется на условных парах; содержимое — на текстах из tools/fixtures.mjs (у владельца — настоящих). */
+import { contentSource } from './fixtures.mjs';
+process.env.CONTENT_DIR ||= contentSource().dir; process.env.LUNARIO_QUIET = '1';   /* настоящие тексты, а без них — тестовые (tools/fixtures.mjs) */
 const C = await import('../backend/content.mjs');
 const real = [...C.NASTROY], themes = [...C.THEMES];
 if (real.length) {
