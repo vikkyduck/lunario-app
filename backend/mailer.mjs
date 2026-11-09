@@ -5,6 +5,7 @@
    Пароль приложения создаётся в id.yandex.ru → Безопасность → Пароли приложений
    и доступа к самому ящику не даёт. */
 import { connect } from 'node:tls';
+import { randomBytes } from 'node:crypto';
 
 const CFG = () => ({
   host: process.env.SMTP_HOST || '',
@@ -16,28 +17,72 @@ const CFG = () => ({
 });
 export const mailReady = () => { const c = CFG(); return !!(c.host && c.user && c.pass); };
 
+/* Одна реплика разговора: отправить строку и дождаться полного ответа сервера.
+   Ответа может не быть вовсе: сервер закрыл соединение молча (так делают при
+   подозрении на спам и при перегрузке). Раньше на этом месте обещание повисало
+   навсегда: запрос кода не завершался, человек бесконечно видел "Отправляем код...".
+   Теперь закрытое соединение - такая же ошибка, как неверный код ответа. */
 function talk(sock, expect, line) {
   return new Promise((res, rej) => {
+    if (sock.destroyed) return rej(new Error('smtp_closed'));
     let buf = '';
+    const stop = () => { sock.off('data', onData); sock.off('error', onError); sock.off('close', onClose); };
+    const onError = (e) => { stop(); rej(e); };
+    const onClose = () => { stop(); rej(new Error('smtp_closed' + (buf ? `: ${buf.trim().slice(0, 120)}` : ''))); };
     const onData = (d) => {
       buf += d.toString('utf8');
       if (!/\r\n$/.test(buf)) return;                       // ждём конца ответа
       const last = buf.trim().split('\r\n').pop();
       if (/^\d{3}-/.test(last)) return;                     // многострочный ответ ещё не закончен
-      sock.off('data', onData); sock.off('error', rej);
+      stop();
       const code = Number(buf.slice(0, 3));
       if (expect && !expect.includes(code)) return rej(new Error(`SMTP ${code}: ${buf.trim().slice(0, 120)}`));
       res(buf);
     };
     sock.on('data', onData);
-    sock.once('error', rej);
+    sock.once('error', onError);
+    sock.once('close', onClose);
     if (line !== undefined) sock.write(line + '\r\n');
   });
 }
 
+/* Соединение, приветствие и вход - общие для отправки и для проверки.
+   Два ограничения по времени: тишина дольше idleMs и весь разговор дольше totalMs. */
+async function open(c, idleMs, totalMs) {
+  const sock = connect({ host: c.host, port: c.port, servername: c.host });
+  sock.setTimeout(idleMs, () => sock.destroy(new Error('smtp_timeout')));
+  const deadline = setTimeout(() => sock.destroy(new Error('smtp_timeout')), totalMs);
+  deadline.unref();
+  sock.once('close', () => clearTimeout(deadline));
+  sock.on('error', () => {});   // ошибку разбирает текущая реплика; без слушателя процесс бы упал
+  try {
+    await new Promise((r, j) => {
+      const ok = () => { sock.off('error', j); sock.off('close', closed); r(); };
+      const closed = () => j(new Error('smtp_closed'));
+      sock.once('secureConnect', ok); sock.once('error', j); sock.once('close', closed);
+    });
+    await talk(sock, [220]);
+    await talk(sock, [250], 'EHLO lunario.online');
+    await talk(sock, [334], 'AUTH LOGIN');
+    await talk(sock, [334], b64(c.user));
+    await talk(sock, [235], b64(c.pass));
+    return sock;
+  } catch (e) { sock.destroy(); throw e; }
+}
+
 const b64 = (s) => Buffer.from(String(s), 'utf8').toString('base64');
-/* Тема письма по RFC 2047: кириллица иначе приедет крокозябрами */
-const mimeWord = (s) => `=?UTF-8?B?${b64(s)}?=`;
+/* Тема и имя по RFC 2047: кириллица иначе приедет крокозябрами.
+   Одно закодированное слово - не длиннее 75 знаков, поэтому длинная тема
+   режется на несколько слов по границам символов и переносится строкой с пробелом. */
+const mimeWord = (s) => {
+  const words = []; let cur = '';
+  for (const ch of String(s)) {
+    if (cur && Buffer.byteLength(cur + ch, 'utf8') > 45) { words.push(cur); cur = ''; }
+    cur += ch;
+  }
+  if (cur || !words.length) words.push(cur);
+  return words.map((w) => `=?UTF-8?B?${b64(w)}?=`).join('\r\n ');
+};
 /* «Лунарио <hello@lunario.online>» → имя по RFC 2047, адрес как есть.
    Сырую кириллицу в From сервер выбрасывает вместе со всем заголовком:
    письмо уходит без отправителя, DKIM ломается (bad signature format),
@@ -49,27 +94,45 @@ const formatFrom = (raw) => {
   if (!name) return `<${addr}>`;
   return `${/^[\x20-\x7E]*$/.test(name) ? name : mimeWord(name)} <${addr}>`;
 };
+const addrOf = (raw) => { const m = String(raw).match(/<([^>]+)>/); return (m ? m[1] : String(raw)).trim(); };
 
-export async function sendMail({ to, subject, text, html }) {
+/* Яндекс отправляет только от имени ящика, под которым вошли (и его подтвержденных
+   алиасов). Если SMTP_FROM или SMTP_SENDER указывают на другой адрес, письмо отбивается
+   ответом 553 "Sender address rejected: not owned by auth user" и код не доходит.
+   Тогда пробуем еще раз от адреса логина: имя отправителя остается прежним. */
+const NOT_OWNER = /^SMTP 55\d\b.*(not owned|sender address rejected)/i;
+let warnedOwner = false;
+export async function sendMail(msg) {
   const c = CFG();
   if (!mailReady()) throw new Error('smtp_not_configured');
-  const sock = connect({ host: c.host, port: c.port, servername: c.host });
-  sock.setTimeout(15000, () => sock.destroy(new Error('smtp_timeout')));
   try {
-    await new Promise((r, j) => { sock.once('secureConnect', r); sock.once('error', j); });
-    await talk(sock, [220]);
-    await talk(sock, [250], 'EHLO lunario.online');
-    await talk(sock, [334], 'AUTH LOGIN');
-    await talk(sock, [334], b64(c.user));
-    await talk(sock, [235], b64(c.pass));
+    return await sendOnce(c, msg);
+  } catch (e) {
+    const user = c.user.toLowerCase();
+    const mismatch = c.sender.toLowerCase() !== user || addrOf(c.from).toLowerCase() !== user;
+    if (!mismatch || !NOT_OWNER.test(e.message)) throw e;
+    if (!warnedOwner) { warnedOwner = true; console.warn(`SMTP: адрес отправителя не принадлежит ${c.user}, письма уходят от адреса логина. Поправьте SMTP_FROM: bash set-smtp.sh`); }
+    const name = (String(c.from).match(/^(.*?)\s*</) || [])[1] || '';
+    return sendOnce({ ...c, sender: c.user, from: name ? `${name} <${c.user}>` : c.user }, msg);
+  }
+}
+
+async function sendOnce(c, { to, subject, text, html }) {
+  const sock = await open(c, 15000, 40000);
+  try {
     await talk(sock, [250], `MAIL FROM:<${c.sender}>`);
     await talk(sock, [250, 251], `RCPT TO:<${to}>`);
     await talk(sock, [354], 'DATA');
     const boundary = 'lun' + Math.random().toString(36).slice(2);
+    /* Date и Message-ID обязательны по RFC 5322. Без них часть почтовых служб
+       (Gmail - прямо, остальные - через спам-фильтр) письмо не принимает или прячет. */
+    const domain = (addrOf(c.from).split('@')[1] || 'lunario.online').toLowerCase();
     const body = [
       `From: ${formatFrom(c.from)}`,
       `To: <${to}>`,
       `Subject: ${mimeWord(subject)}`,
+      `Date: ${new Date().toUTCString().replace('GMT', '+0000')}`,
+      `Message-ID: <${Date.now().toString(36)}.${randomBytes(8).toString('hex')}@${domain}>`,
       'MIME-Version: 1.0',
       `Content-Type: multipart/alternative; boundary="${boundary}"`,
       '',
@@ -87,7 +150,7 @@ export async function sendMail({ to, subject, text, html }) {
       '.',
     ].join('\r\n');
     await talk(sock, [250], body);
-    await talk(sock, [221], 'QUIT');
+    await talk(sock, [221], 'QUIT').catch(() => {});   // письмо уже принято: молчание на QUIT - не ошибка
   } finally { sock.destroy(); }
 }
 
@@ -96,20 +159,14 @@ export async function sendMail({ to, subject, text, html }) {
 export async function verifySmtp() {
   const c = CFG();
   if (!mailReady()) return { ok: false, error: 'not_configured' };
-  const sock = connect({ host: c.host, port: c.port, servername: c.host });
-  sock.setTimeout(10000, () => sock.destroy(new Error('smtp_timeout')));
+  let sock = null;
   try {
-    await new Promise((r, j) => { sock.once('secureConnect', r); sock.once('error', j); });
-    await talk(sock, [220]);
-    await talk(sock, [250], 'EHLO lunario.online');
-    await talk(sock, [334], 'AUTH LOGIN');
-    await talk(sock, [334], b64(c.user));
-    await talk(sock, [235], b64(c.pass));
-    await talk(sock, [221], 'QUIT');
+    sock = await open(c, 10000, 25000);
+    await talk(sock, [221], 'QUIT').catch(() => {});
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
-  } finally { sock.destroy(); }
+  } finally { if (sock) sock.destroy(); }
 }
 
 /* Письмо с кодом входа — в стиле бренда, без обещаний и давления.

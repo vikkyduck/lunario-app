@@ -40,13 +40,19 @@ read -r -p "3/3 Подпись отправителя [Лунарио <hello@lun
 SMTP_FROM=${SMTP_FROM:-"Лунарио <hello@lunario.online>"}
 
 umask 077
-cat > "$ENV" <<CONF
+touch "$ENV"
+# Переписываем только строки почты. Раньше файл перезаписывался целиком, и вместе
+# со старыми настройками почты пропадали ключ Продамуса, пароль статистики и все остальное.
+# SMTP_SENDER тоже убираем: конверт берет адрес из SMTP_USER, как подсказывает test-smtp.sh
+grep -v '^SMTP_HOST=\|^SMTP_PORT=\|^SMTP_USER=\|^SMTP_PASS=\|^SMTP_FROM=\|^SMTP_SENDER=' "$ENV" > "$ENV.tmp" || true
+cat >> "$ENV.tmp" <<CONF
 SMTP_HOST=smtp.yandex.ru
 SMTP_PORT=465
 SMTP_USER=$SMTP_USER
 SMTP_PASS=$SMTP_PASS
 SMTP_FROM=$SMTP_FROM
 CONF
+mv "$ENV.tmp" "$ENV"
 chmod 600 "$ENV"
 echo
 echo "✓ Настройки сохранены в $ENV (права 600, читает только root)"
