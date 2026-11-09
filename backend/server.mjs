@@ -282,6 +282,7 @@ async function notifyStaffAccess(email, roleKeys) {
   } catch (e) {
     console.error('письмо о доступе не ушло:', e.message);
     logError('mail', e.message);
+    checkSmtp();
   }
 }
 /* Возрастная когорта вместо точного возраста: ядро аудитории 35+ смотрим отдельно,
@@ -439,16 +440,37 @@ function hash32(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.c
 const json = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 
 /* Кнопка «Прислать код» появляется только после успешной проверки авторизации.
-   Сервис перезапускается скриптом set-smtp.sh — проверка сработает сама. */
-let smtpOk = false;
-if (mailReady()) {
+   Раньше проверка была одна, при старте сервиса. Один сбой сети или задумчивость
+   Яндекса в момент деплоя прятали вход по почте до следующего перезапуска: у тех,
+   кто уже пользовался приложением, пропадала ссылка "Войти по почте", а анкета
+   переставала спрашивать почту. Теперь проверка повторяется сама: через минуту,
+   потом реже (до раза в 10 минут), пока не пройдет. Когда письмо с кодом не ушло,
+   почта перепроверяется: если сломалась авторизация, кнопка спрячется до починки. */
+let smtpOk = false, smtpTimer = null, smtpFails = 0, smtpChecking = false;
+function checkSmtp() {
+  clearTimeout(smtpTimer);
+  if (!mailReady()) { smtpOk = false; console.log('SMTP: не настроен — вход по почте скрыт'); return; }
+  if (smtpChecking) return;
+  smtpChecking = true;
   verifySmtp().then((r) => {
+    smtpChecking = false;
+    const was = smtpOk;
     smtpOk = r.ok;
-    console.log(r.ok ? 'SMTP: авторизация прошла — вход по почте включён'
-                     : `SMTP: авторизация НЕ прошла (${r.error}) — вход по почте скрыт`);
+    if (r.ok) {
+      if (!was) console.log(`SMTP: авторизация прошла — вход по почте включён${smtpFails ? ` (после ${smtpFails} неудачных проверок)` : ''}`);
+      smtpFails = 0;
+      return;
+    }
+    smtpFails++;
+    console.log(`SMTP: авторизация НЕ прошла (${r.error}) — вход по почте скрыт, повторная проверка через ${Math.min(10, smtpFails)} мин.`);
+    if (was || smtpFails === 1) logError('smtp', `проверка почты не прошла, вход по почте скрыт: ${r.error}`);   // в "Здоровье системы" - один раз на сбой, без повторов
+    smtpTimer = setTimeout(checkSmtp, Math.min(10, smtpFails) * 60000);
+    smtpTimer.unref();
   });
-} else console.log('SMTP: не настроен — вход по почте скрыт');
+}
+checkSmtp();
 const mailLive = () => smtpOk;
+const mailState = () => (smtpOk ? 'ok' : mailReady() ? 'error' : 'off');
 
 const codeRate = new Map();
 const RATE_WINDOW_MS = 10 * 60000;
@@ -844,7 +866,8 @@ const server = createServer(async (req, res) => {
     if (p.startsWith(BASE)) p = p.slice(BASE.length) || '/';
     if (p === '' ) p = '/';
 
-    if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app' });
+    /* mail: ok - код на почту уходит, error - почта настроена, но проверка не проходит, off - не настроена */
+    if (p === '/api/health') return json(res, 200, { ok: true, service: 'lunario-app', mail: mailState() });
 
     /* Каталог карт и рун: тексты, картинки, расклады. Личного здесь нет, поэтому кэшируется на 10 минут —
        правки в content/ доедут до людей не позже. */
@@ -1115,6 +1138,7 @@ const server = createServer(async (req, res) => {
         } catch (e) {
           console.error('почта не ушла:', e.message);
           logError('mail', e.message);
+          checkSmtp();   // сломалась авторизация - кнопка спрячется, виноват один адрес - останется
           return json(res, 502, { ok: false, error: 'send_failed' });
         }
         return json(res, 200, { ok: true });
