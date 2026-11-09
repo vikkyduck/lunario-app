@@ -472,7 +472,6 @@ checkSmtp();
 const mailLive = () => smtpOk;
 const mailState = () => (smtpOk ? 'ok' : mailReady() ? 'error' : 'off');
 
-const codeRate = new Map();
 const RATE_WINDOW_MS = 10 * 60000;
 function allowRate(map, key, max) {
   const now = Date.now();
@@ -484,7 +483,27 @@ function allowRate(map, key, max) {
 }
 function clientIp(req) {
   const xff = req.headers['x-forwarded-for'];
-  return xff ? String(xff).split(',')[0].trim() : (req.socket.remoteAddress || '');
+  if (xff) return String(xff).split(',')[0].trim();
+  return String(req.headers['x-real-ip'] || '').trim() || req.socket.remoteAddress || '';
+}
+/* Запросы кода на почту: три счетчика за 10 минут, считаются только принятые запросы.
+   - на адрес почты 5: чужой ящик не завалить письмами
+   - на IP 5, если nginx передал адрес человека. Без X-Forwarded-For и X-Real-IP все запросы
+     приходят с 127.0.0.1, и прежний лимит "5 на IP" становился общим на всех: в час наплыва
+     шестой человек за 10 минут получал "Слишком часто" вместо кода
+   - на весь сервис 100: бот, подменяющий адреса, не сожжет репутацию ящика в Яндексе */
+const codeRateMail = new Map(), codeRateIp = new Map(), codeRateAll = new Map();
+const isLoopback = (ip) => !ip || ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+const rateCount = (map, key) => { const r = map.get(key); return r && Date.now() - r.t <= RATE_WINDOW_MS ? r.n : 0; };
+let warnedNoIp = false;
+function allowCode(req, email) {
+  const ip = clientIp(req);
+  const byIp = !isLoopback(ip);
+  if (!byIp && !warnedNoIp) { warnedNoIp = true; console.warn('Вход по почте: nginx не передает IP человека (X-Forwarded-For или X-Real-IP), лимит по IP выключен, работают лимиты по почте и общий'); }
+  if (rateCount(codeRateMail, email) >= 5 || rateCount(codeRateAll, '*') >= 100 || (byIp && rateCount(codeRateIp, ip) >= 5)) return false;
+  allowRate(codeRateMail, email, 5); allowRate(codeRateAll, '*', 100);
+  if (byIp) allowRate(codeRateIp, ip, 5);
+  return true;
 }
 
 /* ── астро/числа ── */
@@ -1129,7 +1148,7 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) return json(res, 400, { ok: false, error: 'bad_email' });
-        if (!allowRate(codeRate, clientIp(req), 5)) return json(res, 429, { ok: false, error: 'too_often' });
+        if (!allowCode(req, email)) return json(res, 429, { ok: false, error: 'too_often' });
         if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
         const code = issueLoginCode(email);
         try {

@@ -96,9 +96,28 @@ const formatFrom = (raw) => {
 };
 const addrOf = (raw) => { const m = String(raw).match(/<([^>]+)>/); return (m ? m[1] : String(raw)).trim(); };
 
-export async function sendMail({ to, subject, text, html }) {
+/* Яндекс отправляет только от имени ящика, под которым вошли (и его подтвержденных
+   алиасов). Если SMTP_FROM или SMTP_SENDER указывают на другой адрес, письмо отбивается
+   ответом 553 "Sender address rejected: not owned by auth user" и код не доходит.
+   Тогда пробуем еще раз от адреса логина: имя отправителя остается прежним. */
+const NOT_OWNER = /^SMTP 55\d\b.*(not owned|sender address rejected)/i;
+let warnedOwner = false;
+export async function sendMail(msg) {
   const c = CFG();
   if (!mailReady()) throw new Error('smtp_not_configured');
+  try {
+    return await sendOnce(c, msg);
+  } catch (e) {
+    const user = c.user.toLowerCase();
+    const mismatch = c.sender.toLowerCase() !== user || addrOf(c.from).toLowerCase() !== user;
+    if (!mismatch || !NOT_OWNER.test(e.message)) throw e;
+    if (!warnedOwner) { warnedOwner = true; console.warn(`SMTP: адрес отправителя не принадлежит ${c.user}, письма уходят от адреса логина. Поправьте SMTP_FROM: bash set-smtp.sh`); }
+    const name = (String(c.from).match(/^(.*?)\s*</) || [])[1] || '';
+    return sendOnce({ ...c, sender: c.user, from: name ? `${name} <${c.user}>` : c.user }, msg);
+  }
+}
+
+async function sendOnce(c, { to, subject, text, html }) {
   const sock = await open(c, 15000, 40000);
   try {
     await talk(sock, [250], `MAIL FROM:<${c.sender}>`);
