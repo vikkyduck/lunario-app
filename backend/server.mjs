@@ -830,29 +830,38 @@ const publicUser = (u) => ({
   roles: rolesFor(u.email),   /* сотрудники после входа попадают в кабинет */
 });
 
-function readRaw(req) {
+/* Тело больше лимита: дальше не читаем и отвечаем 413. Раньше соединение рвалось сразу,
+   и человек вместо понятного ответа видел обрыв связи. Сокет закроется после ответа. */
+function readRaw(req, max = 65536) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
-    req.on('data', (c) => { size += c.length; if (size > 65536) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
+    const onData = (c) => {
+      size += c.length;
+      if (size <= max) return void chunks.push(c);
+      req.off('data', onData); req.pause(); reject(new Error('too_big'));
+    };
+    req.on('data', onData);
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
 }
 
-function readBody(req, max = 32768) {
-  return new Promise((resolve, reject) => {
-    let size = 0; const chunks = [];
-    req.on('data', (c) => { size += c.length; if (size > max) { reject(new Error('too_big')); req.destroy(); } else chunks.push(c); });
-    req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); } catch { reject(new Error('bad_json')); } });
-    req.on('error', reject);
-  });
+/* Маршруты ждут объект: null, массив или число в теле - ошибка клиента (400), а не падение маршрута (500) */
+async function readBody(req, max = 32768) {
+  const raw = await readRaw(req, max);
+  let v; try { v = JSON.parse(raw || '{}'); } catch { throw new Error('bad_json'); }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('bad_json');
+  return v;
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
+/* Отдаем только обычные файлы. Запрос каталога (/app/assets/) раньше проходил проверку existsSync,
+   чтение каталога падало, обработчик ошибки отвечал второй раз, и процесс завершался */
+const isFile = (f) => { try { return statSync(f).isFile(); } catch { return false; } };
 function serveStatic(res, rel, cacheSec = 3600, headOnly = false) {
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const file = join(SITE_DIR, safe);
-  if (!file.startsWith(normalize(SITE_DIR)) || !existsSync(file)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Не найдено'); }
+  if (!file.startsWith(normalize(SITE_DIR)) || !isFile(file)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Не найдено'); }
   res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache' });
   res.end(headOnly ? undefined : readFileSync(file));
 }
@@ -1661,7 +1670,7 @@ const server = createServer(async (req, res) => {
       const dir = IMAGE_DIRS[kind];
       if (!dir || !file || !/^[\w.-]+$/.test(file) || file.startsWith('.')) { res.writeHead(404); return res.end(); }
       const f = join(CONTENT_DIR, 'картинки', dir, file);
-      if (!existsSync(f)) { res.writeHead(404); return res.end(); }
+      if (!isFile(f)) { res.writeHead(404); return res.end(); }
       res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': url.search.includes('v=') ? 'public, max-age=31536000, immutable' : 'public, max-age=86400' });
       return res.end(req.method === 'HEAD' ? undefined : readFileSync(f));
     }
@@ -1678,8 +1687,14 @@ const server = createServer(async (req, res) => {
     if ((req.method === 'GET' || req.method === 'HEAD') && !p.includes('..')) return serveStatic(res, p, url.search.includes('v=') ? 31536000 : 86400, req.method === 'HEAD');
     res.writeHead(404); res.end();
   } catch (e) {
-    if (e.message !== 'bad_json') { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
-    json(res, e.message === 'bad_json' ? 400 : 500, { ok: false, error: e.message || 'server_error' });
+    /* Ошибка клиента - 400 или 413 с ее кодом. Внутренняя - 500 без подробностей: текст ошибки
+       базы или файловой системы уходит в журнал, а не человеку. Если ответ уже начат, второй раз
+       не отвечаем: раньше повторный writeHead бросал исключение вне try, и процесс завершался. */
+    const status = e.message === 'bad_json' ? 400 : e.message === 'too_big' ? 413 : 500;
+    if (status === 500) { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
+    if (res.headersSent) { res.destroy(); return; }
+    if (status === 413) res.setHeader('Connection', 'close');
+    json(res, status, { ok: false, error: status === 500 ? 'server_error' : e.message });
   }
 });
 server.listen(PORT, HOST, () => console.log(`lunario-app: http://${HOST}:${PORT}${BASE} · site=${SITE_DIR} · db=${DATA_DIR}/app.db`));

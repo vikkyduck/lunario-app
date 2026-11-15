@@ -3,7 +3,7 @@
    обращения и чат с пользователем (поддержка). Всё — в той же базе, что и приложение.
    Тексты сообщений шифруются тем же ключом, что и дневник; ключи ИИ — тоже. */
 
-import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
@@ -129,7 +129,7 @@ export function mediaArchive(id, on) {
   db.prepare('UPDATE media SET archived = ?, archived_at = ? WHERE id = ?').run(on ? 1 : 0, on ? now() : '', m.id);
   return { ok: true };
 }
-export function mediaFile(id) { const m = one('SELECT * FROM media WHERE id = ?', Number(id)); if (!m) return null; const p = join(UPLOADS, m.archived ? 'archive' : '', m.file); return existsSync(p) ? { path: p, name: m.name, type: m.type } : null; }
+export function mediaFile(id) { const m = one('SELECT * FROM media WHERE id = ?', Number(id)); if (!m) return null; const p = join(UPLOADS, m.archived ? 'archive' : '', m.file); return isFile(p) ? { path: p, name: m.name, type: m.type } : null; }
 export function mediaAdd(b, by) {
   const ext = MEDIA_TYPES[b.type]; if (!ext) return { ok: false, error: 'bad_type' };
   const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]*,/, ''), 'base64');
@@ -144,7 +144,9 @@ export function mediaRemove(id) {
   try { unlinkSync(join(UPLOADS, m.archived ? 'archive' : '', m.file)); } catch {}
   db.prepare('DELETE FROM media WHERE id = ?').run(Number(id)); return { ok: true };
 }
-export function mediaPath(file) { const safe = String(file).replace(/[^a-z0-9.\-]/gi, ''); const p = join(UPLOADS, safe); return safe && existsSync(p) ? p : null; }
+/* только обычный файл: /app/uploads/archive - это каталог архива, его чтение роняло сервер */
+const isFile = (f) => { try { return statSync(f).isFile(); } catch { return false; } };
+export function mediaPath(file) { const safe = String(file).replace(/[^a-z0-9.\-]/gi, ''); const p = join(UPLOADS, safe); return safe && isFile(p) ? p : null; }
 
 /* ── ИИ-провайдеры: ключи хранятся зашифрованными, наружу не отдаются ── */
 export const AI_PROVIDERS = {
