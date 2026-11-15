@@ -9,6 +9,16 @@ import { generateKeyPairSync, createSign, createPrivateKey, createPublicKey } fr
 
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 
+/* Службы уведомлений браузеров. Адрес ячейки присылает браузер, то есть любой клиент: без списка
+   сервер сам стучался бы по любому https-адресу, в том числе во внутренние службы своей машины.
+   FCM - Chrome, Яндекс Браузер, Opera, Samsung и другие на Chromium; Mozilla - Firefox;
+   Apple - Safari и приложение с экрана "Домой" на iPhone; WNS - Edge на Windows. */
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)push\.apple\.com$/, /\.notify\.windows\.com$/];
+export function pushEndpointOk(endpoint) {
+  let u; try { u = new URL(String(endpoint)); } catch { return false; }
+  return u.protocol === 'https:' && (!u.port || u.port === '443') && !u.username && !u.password && PUSH_HOSTS.some((re) => re.test(u.hostname));
+}
+
 /* Ключи создаются при первом запуске и живут рядом с базой. */
 export function vapidKeys(dataDir) {
   const file = join(dataDir, 'push-keys.json');
@@ -45,6 +55,9 @@ function jwt(audience, keys, contact) {
 
 /* Одно уведомление. Возвращает true, если ячейка приняла; false — если её больше нет. */
 export async function sendPush(sub, keys, contact = 'mailto:hello@lunario.online') {
+  /* Подписки, сохраненные до списка служб, проверяются и здесь. Чужой адрес не удаляем,
+     а пропускаем с записью в журнал: если в списке не хватит настоящей службы, подписка уцелеет */
+  if (!pushEndpointOk(sub.endpoint)) throw new Error(`служба уведомлений не из списка: ${String(sub.endpoint).slice(0, 60)}`);
   const url = new URL(sub.endpoint);
   const token = jwt(`${url.protocol}//${url.host}`, keys, contact);
   const res = await fetch(sub.endpoint, {
@@ -54,6 +67,8 @@ export async function sendPush(sub, keys, contact = 'mailto:hello@lunario.online
       Authorization: `vapid t=${token}, k=${keys.publicKey}`,
       'Content-Length': '0',
     },
+    redirect: 'error',                       // служба не переадресует; переадресация - повод не идти дальше
+    signal: AbortSignal.timeout(10000),      // зависшая служба не держит планировщик
   });
   if (res.status === 404 || res.status === 410) return false;   // человек отписался
   if (!res.ok) throw new Error(`почтовая служба ответила ${res.status}`);

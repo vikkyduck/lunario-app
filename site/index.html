@@ -2422,7 +2422,7 @@ async function pushSubscribe(){
     const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(S.pushKey) }));
     await api('/push', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) });
     S.pushOn = true; track('push_on'); return true;
-  } catch (e) { console.error('push:', e); toast('Не получилось включить напоминания. Попробуйте позже.'); return false; }
+  } catch (e) { console.error('push:', e); toast(e.code === 'bad_endpoint' ? 'Этот браузер присылает уведомления через службу, которую приложение пока не знает. Напишите нам в чат поддержки.' : 'Не получилось включить напоминания. Попробуйте позже.'); return false; }
 }
 /* оболочка App Store: локальные уведомления телефона в то же время и с той же регулярностью */
 async function nativeSchedule(f){

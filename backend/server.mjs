@@ -7,7 +7,7 @@ import { join, extname, normalize, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomInt, createHash, createCipheriv, createDecipheriv, scryptSync } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { vapidKeys } from './push.mjs';
+import { vapidKeys, pushEndpointOk } from './push.mjs';
 import { sign as paySign, verify as payVerify, parseForm as payParse, payLink } from './prodamus.mjs';
 import * as C from './content.mjs';
 import { CONTENT_DIR, IMAGE_DIRS } from './content.mjs';
@@ -1477,7 +1477,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/push' && req.method === 'POST') {
         const b = await readBody(req);
         const endpoint = clean(b.endpoint, 500);
-        if (!/^https:\/\//.test(endpoint)) return json(res, 400, { ok: false });
+        if (!pushEndpointOk(endpoint)) return json(res, 400, { ok: false, error: 'bad_endpoint' });   // только службы браузеров, см. push.mjs
         db.prepare('INSERT INTO push_subs (endpoint, user_id, created_at) VALUES (?,?,?) ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id')
           .run(endpoint, u.id, nowISO());
         return json(res, 200, { ok: true });
