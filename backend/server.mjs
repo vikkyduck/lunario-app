@@ -586,6 +586,7 @@ function cardOfDay(u, day) {
 function setOfDay(u, day) {
   const n = C.SETS.length; if (!n) return null;
   let row = db.prepare('SELECT idx FROM daily_sets WHERE user_id = ? AND day = ?').get(u.id, day);
+  if (!row && !u.id) row = { idx: hash32(`guest:${day}`) % n };   // гость: та же установка весь день, без записи в базу
   if (!row) {
     const since = new Date(Date.parse(day) - 365 * 864e5).toISOString().slice(0, 10);
     const used = new Set(db.prepare('SELECT idx FROM daily_sets WHERE user_id = ? AND day >= ?').all(u.id, since).map((r) => r.idx));
@@ -803,24 +804,38 @@ function newSession(userId, res, ua = '') {
   setSessionCookie(res, token);
   return token;
 }
-function getUser(req, res, create = true) {
-  const tok = parseCookies(req).lunario_app;
-  if (tok) {
-    const sess = db.prepare('SELECT user_id FROM sessions WHERE token_hash = ?').get(sha(tok));
-    if (sess) {
-      const u = db.prepare('SELECT * FROM users WHERE id = ?').get(sess.user_id);
-      if (u) {
-        db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), sha(tok));
-        db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
-        return u;
-      }
-    }
-  }
-  if (!create) return null;
+/* Аккаунт заводится на первом действии человека, а не на первом запросе. Раньше любой запрос к /api/
+   без куки заводил строку в users и сессию: 200 запросов сканера - 200 "людей" в базе и в отчетах.
+   Теперь первый ответ ставит в куку гостевой токен, а в базе ничего не появляется. Аккаунт создается,
+   когда человек что-то делает (анкета, карта дня, вопрос, событие на экране), и привязывается к этому
+   токену: запросы страницы, ушедшие одновременно, попадают в один аккаунт, а не в несколько.
+   Действие без токена (самый первый запрос - сразу запись) аккаунт не заводит: ответ 401 no_session
+   вместе с гостевым токеном, повтор проходит. */
+const TOKEN_RE = /^[0-9a-f]{64}$/;
+const sessionToken = (req) => { const t = parseCookies(req).lunario_app; return typeof t === 'string' && TOKEN_RE.test(t) ? t : ''; };
+const guestUser = () => ({ id: 0, created_at: '', last_seen: '', name: '', birth: '', birth_time: '', city: '', city_region: '', lat: null, lon: null, tz: '',
+  email: '', consent_version: '', consent_ts: '', streak: 0, streak_date: '', onboarded: 0, photo: '', photo_ts: '', plus_until: '', bonus_until: '', ref_code: '', invited_by: null });
+function userByToken(tok) {
+  const sess = db.prepare('SELECT user_id FROM sessions WHERE token_hash = ?').get(sha(tok));
+  const u = sess && db.prepare('SELECT * FROM users WHERE id = ?').get(sess.user_id);
+  if (!u) return null;
+  db.prepare('UPDATE sessions SET last_seen = ? WHERE token_hash = ?').run(nowISO(), sha(tok));
+  db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(nowISO(), u.id);
+  return u;
+}
+function createUser(tok, req, res) {
   const info = db.prepare('INSERT INTO users (created_at, last_seen) VALUES (?,?)').run(nowISO(), nowISO());
-  newSession(info.lastInsertRowid, res, req.headers['user-agent']);
+  db.prepare(`INSERT INTO sessions (token_hash, user_id, created_at, last_seen, ua) VALUES (?,?,?,?,?)
+    ON CONFLICT(token_hash) DO UPDATE SET user_id = excluded.user_id, created_at = excluded.created_at, last_seen = excluded.last_seen, ua = excluded.ua`)
+    .run(sha(tok), info.lastInsertRowid, nowISO(), nowISO(), clean(req.headers['user-agent'], 200));
+  setSessionCookie(res, tok);
   return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
 }
+/* Действия, которые заводят аккаунт сразу. Остальные запросы гостя только читают или ничего не меняют;
+   событие экрана и вход по коду заводят аккаунт сами, после проверки запроса */
+const CREATES = new Set(['POST /api/utm', 'POST /api/interest', 'POST /api/profile', 'POST /api/card', 'POST /api/ask', 'POST /api/spread', 'POST /api/ritual',
+  'POST /api/mood', 'POST /api/journal', 'POST /api/wishes', 'POST /api/photo', 'POST /api/pay', 'POST /api/push', 'POST /api/invite', 'POST /api/reminders',
+  'POST /api/habits', 'POST /api/askesis', 'POST /api/support/tickets']);
 function touchStreak(u) {                       // серию продолжает любой ритуал за день
   const d = today();
   if (u.streak_date === d) return u.streak;
@@ -1009,9 +1024,14 @@ const server = createServer(async (req, res) => {
 
     /* ── API ── */
     if (p.startsWith('/api/')) {
-      const u = getUser(req, res);
+      const tok = sessionToken(req);
+      let u = (tok && userByToken(tok)) || guestUser();   // гость: id 0, в базе его нет
+      if (!tok) setSessionCookie(res, randomBytes(32).toString('hex'));   // гостевой токен, строк в базе нет
+      /* завести аккаунт для действия; null - запрос пришел без токена */
+      const ensureUser = () => { if (!u.id && tok) u = userByToken(tok) || createUser(tok, req, res); return u.id ? u : null; };
+      if (CREATES.has(`${req.method} ${p}`) && !ensureUser()) return json(res, 401, { ok: false, error: 'no_session' });
       const d = today();
-      if (req.method !== 'GET' && SHELF_TOUCH.has(p) && u && u.id) { const uid = u.id; res.once('finish', () => Shelves.refresh(uid, d)); }
+      if (req.method !== 'GET' && SHELF_TOUCH.has(p)) res.once('finish', () => { if (u.id) Shelves.refresh(u.id, d); });
 
       /* ── рабочие кабинеты: роли по почте, единый дашборд, доступы ── */
       if (p.startsWith('/api/cabinet/')) {
@@ -1203,6 +1223,7 @@ const server = createServer(async (req, res) => {
       }
 
       if (p === '/api/auth/verify' && req.method === 'POST') {
+        if (!u.id && !tok) return json(res, 401, { ok: false, error: 'no_session' });   // до проверки кода: код не сгорит
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
         const code = String(b.code ?? '').replace(/\D/g, '').slice(0, 8);
@@ -1219,7 +1240,8 @@ const server = createServer(async (req, res) => {
 
         let existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
         if (!existing) {
-          // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся
+          // почты ещё нет — закрепляем её за текущим аккаунтом, всё написанное остаётся; у гостя аккаунт заводится здесь
+          ensureUser();
           db.prepare('UPDATE users SET email = ?, email_at = ? WHERE id = ?').run(email, nowISO(), u.id);
           return json(res, 200, { ok: true, merged: false, user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
         }
@@ -1227,13 +1249,13 @@ const server = createServer(async (req, res) => {
 
         // аккаунт с этой почтой уже есть — переключаем устройство на него
         newSession(existing.id, res, req.headers['user-agent']);
-        if (u.onboarded && !existing.onboarded) {   // анкету только что заполнили на этом устройстве — она едет в найденный аккаунт
+        if (u.id && u.onboarded && !existing.onboarded) {   // анкету только что заполнили на этом устройстве — она едет в найденный аккаунт
           db.prepare(`UPDATE users SET name=?, birth=?, birth_time=?, city=?, city_region=?, lat=?, lon=?, tz=?, onboarded=1,
                       consent_version=?, consent_ts=? WHERE id=?`)
             .run(u.name, u.birth, u.birth_time, u.city, u.city_region, u.lat, u.lon, u.tz, u.consent_version, u.consent_ts, existing.id);
           existing = db.prepare('SELECT * FROM users WHERE id = ?').get(existing.id);
         }
-        const empty = !u.email && !db.prepare('SELECT 1 FROM entries WHERE user_id = ? LIMIT 1').get(u.id)
+        const empty = u.id && !u.email && !db.prepare('SELECT 1 FROM entries WHERE user_id = ? LIMIT 1').get(u.id)
           && !db.prepare('SELECT 1 FROM journal WHERE user_id = ? LIMIT 1').get(u.id);
         if (empty) {                              // пустой анонимный профиль этого устройства не копим
           db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
@@ -1257,6 +1279,7 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const type = clean(b.t, 40);
         if (!EVENT_TYPES.has(type)) return json(res, 400, { ok: false });
+        if (!ensureUser()) return json(res, 200, { ok: false, error: 'no_session' });   // без гостевого токена событие не пишем
         db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
           .run(nowISO(), d, u.id, type, clean(b.d, 60), ageBand(u.birth));
         return json(res, 200, { ok: true });
@@ -1429,7 +1452,7 @@ const server = createServer(async (req, res) => {
           db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)').run(nowISO(), d, u.id, 'photo_set', '', ageBand(u.birth));
         }
         if (req.method === 'DELETE') db.prepare("UPDATE users SET photo = '', photo_ts = '' WHERE id = ?").run(u.id);
-        return json(res, 200, { ok: true, user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(u.id)) });
+        return json(res, 200, { ok: true, user: publicUser(u.id ? db.prepare('SELECT * FROM users WHERE id = ?').get(u.id) : u) });
       }
 
       if (p === '/api/wishes') {
@@ -1496,6 +1519,7 @@ const server = createServer(async (req, res) => {
       /* Приглашение подруги: у каждого свой код. Пришла по ссылке — обеим
          на неделю открывается вдвое больше подробных разборов. */
       if (p === '/api/invite' && req.method === 'GET') {
+        if (!u.id) return json(res, 200, { link: '', brought: 0, bonusUntil: '', bonusActive: false });   // код приглашения - только у аккаунта
         let code = u.ref_code;
         if (!code) {
           code = randomBytes(4).toString('hex');
@@ -1562,6 +1586,7 @@ const server = createServer(async (req, res) => {
         return json(res, 200, r);
       }
       if (p === '/api/reminders/test' && req.method === 'POST') {
+        if (!u.id) return json(res, 400, { ok: false, error: 'no_push' });
         const b = await readBody(req);
         if (!allowRate(testRate, String(u.id), 3)) return json(res, 429, { ok: false, error: 'too_many' });
         const r = await sendNow(u, String(b.feature || 'card'), PUSH);
@@ -1649,6 +1674,7 @@ const server = createServer(async (req, res) => {
       if (p === '/api/sky' && req.method === 'GET') return json(res, 200, skyNow(Date.now(), u.tz || 'Europe/Moscow'));
 
       /* ── полочки: что Лунарио знает о человеке — три полки и досье текстом для разборов ── */
+      if ((p === '/api/shelves' || p === '/api/shelves/context') && !u.id) return json(res, 400, { ok: false, error: 'no_birth' });   // у гостя полок нет
       if (p === '/api/shelves' && req.method === 'GET') return json(res, 200, Shelves.read(u, d));
       if (p === '/api/shelves/context' && req.method === 'GET') return json(res, 200, { text: Shelves.contextText(Shelves.read(u, d)) });
 
