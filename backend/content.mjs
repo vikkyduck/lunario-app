@@ -15,10 +15,21 @@ export const CONTENT_DIR = process.env.CONTENT_DIR || join(dirname(fileURLToPath
    Приложение отдаёт их по /app/content/<вид>/<файл> — см. маршрут в server.mjs. */
 export const IMAGE_DIRS = { tarot: 'таро', runes: 'руны', year: 'личный-год', lunar: 'лунные-дни' };
 const img = (kind, file) => (file ? `/app/content/${kind}/${file}` : '');
+/* Словарь без прототипа для ключей из файлов. В обычном объекте раздел [constructor] или поле
+   __proto__ попадали в свойства Object.prototype: разбор падал на push у функции, сервер завершался
+   и после перезапуска не поднимался, пока файл не исправят. */
+const dict = (entries = []) => { const o = Object.create(null); for (const [k, v] of entries) o[k] = v; return o; };
+/* Испорченный файл не роняет сервер: ошибка разбора дает null, и раздел берет запасные тексты */
+let fallbackOnly = false;
+const guard = (read) => (file, ...a) => {
+  if (fallbackOnly) return null;
+  try { return read(file, ...a); }
+  catch (e) { console.error(`Тексты: ${file} не прочитался (${e.message}), взяты запасные`); return null; }
+};
 
 /* Читает файл как таблицу: строка = запись, поля разделены «|».
    Пустые строки и строки с # пропускаются — там заметки для человека. */
-function rows(file, minCols) {
+const rows = guard(function rows(file, minCols) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
   const out = [];
@@ -32,20 +43,20 @@ function rows(file, minCols) {
   }
   if (skipped) console.log(`Тексты: в файле ${file} пропущено строк — ${skipped} (не хватает полей, разделённых «|»)`);
   return out.length ? out : null;
-}
+});
 /* Файл, где каждая строка — просто фраза (аффирмации, вопросы дня). */
-function lines(file) {
+const lines = guard(function lines(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
   const out = readFileSync(path, 'utf8').split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('#'));
   return out.length ? out : null;
-}
+});
 const num = (v, d) => { const n = Number(String(v).trim()); return Number.isFinite(n) ? n : d; };
 
 /* Файл-«книга»: запись начинается со строки «=== Название», дальше короткие поля
    «поле: значение», затем разделы [Название] с абзацами (пустая строка — новый абзац).
    Так лежат карты Таро и руны: у них длинные тексты, в одну строку их не уложить. */
-function book(file) {
+const book = guard(function book(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
   const text = readFileSync(path, 'utf8');
@@ -56,7 +67,7 @@ function book(file) {
   for (const raw of text.split('\n')) {
     const line = raw.trim();
     if (line.startsWith('#')) continue;
-    if (line.startsWith('=== ')) { flush(); cur = { name: line.slice(4).trim(), fields: {}, sections: {} }; out.push(cur); sec = null; continue; }
+    if (line.startsWith('=== ')) { flush(); cur = { name: line.slice(4).trim(), fields: dict(), sections: dict() }; out.push(cur); sec = null; continue; }
     if (!cur) continue;
     const m = line.match(/^\[(.+)\]$/);
     if (m) { flush(); sec = m[1].trim(); continue; }
@@ -67,12 +78,12 @@ function book(file) {
   flush();
   const ok = out.filter((e) => e.name);
   return ok.length ? ok : null;
-}
+});
 
 /* Файл-«статья»: как книга, но текст раздела хранится построчно, со структурой — «## подзаголовок»,
    списки «- » и «1. » («  - » — вложенный), строки таблицы «| … |», выделения **жирный** и *курсив*.
    Так лежит личный год: длинное описание с таблицами, которое экран рисует как есть. */
-function article(file) {
+const article = guard(function article(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
   const out = [];
@@ -80,7 +91,7 @@ function article(file) {
   for (const raw of readFileSync(path, 'utf8').split('\n')) {
     const line = raw.replace(/\s+$/, ''), t = line.trim();
     if (!t) continue;
-    if (t.startsWith('=== ')) { cur = { name: t.slice(4).trim(), fields: {}, sections: {} }; out.push(cur); sec = null; continue; }
+    if (t.startsWith('=== ')) { cur = { name: t.slice(4).trim(), fields: dict(), sections: dict() }; out.push(cur); sec = null; continue; }
     if (!cur) continue;
     const m = t.match(/^\[(.+)\]$/);
     if (m) { sec = m[1].trim(); continue; }
@@ -95,7 +106,7 @@ function article(file) {
   }
   const ok = out.filter((e) => e.name);
   return ok.length ? ok : null;
-}
+});
 
 /* ── 22 старших аркана: имя · о чём карта · что сделать сегодня ── */
 const ARCANA_FALLBACK = [
@@ -320,7 +331,7 @@ const MOOD_FAMILIES_FALLBACK = { joy: ['Радость', '#f2c94c'], trust: ['Д
   sadness: ['Грусть', '#4c78c8'], disgust: ['Отвращение', '#8f5fb8'], anger: ['Злость', '#e0475c'], anticipation: ['Ожидание', '#f0932b'], dyad: ['На стыке', '#b9b2cf'] };
 /* прежние пять отметок — чтобы старая история читалась */
 export const LEGACY_MOODS = { joy: 'joy', calm: 'serenity', tired: 'pensiveness', anx: 'apprehension', sad: 'sadness' };
-export const moodInfo = (key) => (data.MOOD_BY_KEY[LEGACY_MOODS[key] || key]) || null;
+export const moodInfo = (key) => data.MOOD_BY_KEY[Object.hasOwn(LEGACY_MOODS, key) ? LEGACY_MOODS[key] : key] || null;
 /* Тексты напоминаний по функции — запасные, те же, что в content/напоминания.txt */
 const REMINDER_TEXTS_FALLBACK = {
   card: ['Лунарио', 'Ваша карта дня готова ✦'], mood: ['Как прошёл день?', 'Отметьте настроение — одно нажатие, и вечером станет яснее.'],
@@ -485,15 +496,15 @@ function build() {
     : RUNES_FALLBACK.map(runeFromFallback);
 
   const dest = rows('нумерология-судьба.txt', 3);
-  r.NUM_DESTINY = dest ? Object.fromEntries(dest.map((c) => [c[0], [c[1], c[2]]])) : NUM_DESTINY_FALLBACK;
+  r.NUM_DESTINY = dest ? dict(dest.map((c) => [c[0], [c[1], c[2]]])) : NUM_DESTINY_FALLBACK;
 
   const year = rows('нумерология-год.txt', 2);
-  r.NUM_YEAR = year ? Object.fromEntries(year.map((c) => [c[0], c[1]])) : NUM_YEAR_FALLBACK;
+  r.NUM_YEAR = year ? dict(year.map((c) => [c[0], c[1]])) : NUM_YEAR_FALLBACK;
 
-  r.YEARS = Object.fromEntries((article('личный-год.txt') || []).map(yearFromArticle).filter((y) => y.n).map((y) => [y.n, y]));
+  r.YEARS = dict((article('личный-год.txt') || []).map(yearFromArticle).filter((y) => y.n).map((y) => [y.n, y]));
 
   const nday = rows('нумерология-день.txt', 2);
-  r.NUM_DAY = nday ? Object.fromEntries(nday.map((c) => [c[0], c[1]])) : NUM_DAY_FALLBACK;
+  r.NUM_DAY = nday ? dict(nday.map((c) => [c[0], c[1]])) : NUM_DAY_FALLBACK;
 
   /* Лунные дни: статья на каждый день (число 1…30) или старый строчный файл «номер | название | рекомендация».
      LUNAR_DAYS — пары [название, рекомендация] по номеру, как раньше; LUNAR_INFO — полные записи с картинкой и описанием. */
@@ -521,18 +532,18 @@ function build() {
   const fams = em ? em.filter((c) => c[0] === 'лепесток') : [];
   const moods = em ? em.filter((c) => c[0] !== 'лепесток').map((c) => M(c[0], c[1], c[2], c[3])) : [];
   r.MOODS = moods.length >= 8 ? moods : MOODS_FALLBACK;
-  r.MOOD_FAMILIES = fams.length >= 8 ? Object.fromEntries(fams.map((c) => [c[1], [c[2], c[3]]])) : MOOD_FAMILIES_FALLBACK;
-  r.MOOD_BY_KEY = Object.fromEntries(r.MOODS.map((m) => [m.key, m]));
+  r.MOOD_FAMILIES = fams.length >= 8 ? dict(fams.map((c) => [c[1], [c[2], c[3]]])) : MOOD_FAMILIES_FALLBACK;
+  r.MOOD_BY_KEY = dict(r.MOODS.map((m) => [m.key, m]));
   /* Тексты напоминаний, поддержка аскезы, награды за привычки, плашки-запросы */
   const rt = rows('напоминания.txt', 3);
-  r.REMINDER_TEXTS = Object.assign({}, REMINDER_TEXTS_FALLBACK, rt ? Object.fromEntries(rt.map((c) => [c[0], [c[1], c[2]]])) : {});
+  r.REMINDER_TEXTS = dict([...Object.entries(REMINDER_TEXTS_FALLBACK), ...(rt ? rt.map((c) => [c[0], [c[1], c[2]]]) : [])]);
   r.ASKESIS_SUPPORT = lines('поддержка-аскезы.txt') || ASKESIS_SUPPORT_FALLBACK;
   const aw = rows('награды.txt', 3);
   r.AWARDS = aw ? aw.map((c) => [num(c[0], 0), c[1], c[2]]).filter((a) => a[0] > 0) : AWARDS_FALLBACK;
   r.WORRIES = lines('запросы.txt') || WORRIES_FALLBACK;
   /* Тексты неба: тип | ключ | … — в объект по типам; чего нет в файле, то возьмёт sky.mjs из своих запасных */
   const sk = rows('небо.txt', 3) || [];
-  const sky = { phase: {}, eclipse: {}, retro: {}, season: {} };
+  const sky = { phase: dict(), eclipse: dict(), retro: dict(), season: dict() };
   for (const c of sk) {
     if (c[0] === 'фаза' && c.length >= 4) sky.phase[c[1]] = [c[2], c[3]];
     else if (c[0] === 'затмение' && c.length >= 4) sky.eclipse[c[1]] = [c[2], c[3]];
@@ -546,14 +557,25 @@ function build() {
   r.DAY_QUESTIONS = lines('вопросы-дня.txt') || DAY_QUESTIONS_FALLBACK;
 
   const yn = rows('ответы-да-нет.txt', 4);
-  r.YN_RIDERS = yn ? Object.fromEntries(yn.map((c) => [c[0], [c[1], c[2], c[3]]])) : YN_RIDERS_FALLBACK;
+  r.YN_RIDERS = yn ? dict(yn.map((c) => [c[0], [c[1], c[2], c[3]]])) : YN_RIDERS_FALLBACK;
 
   r.YN_VERDICTS = YN_VERDICTS_FALLBACK;
   r.TOPICS = TOPICS_FALLBACK;
   return r;
 }
 
-let data = build();
+/* Сборка не должна ронять процесс ни при старте, ни при перечитывании. Ошибка перечитывания
+   оставляет прежние тексты. Ошибка при старте дает запасные тексты из кода: сервер поднимается. */
+function safeBuild(prev) {
+  try { return build(); }
+  catch (e) {
+    console.error(`Тексты: сборка не прошла (${e.message}), ${prev ? 'остаются прежние' : 'взяты запасные из кода'}`);
+    if (prev) return prev;
+    fallbackOnly = true;
+    try { return build(); } finally { fallbackOnly = false; }
+  }
+}
+let data = safeBuild(null);
 export const ARCANA = new Proxy([], { get: (_, k) => Reflect.get(data.ARCANA, k) });
 export const SIGNS = new Proxy([], { get: (_, k) => Reflect.get(data.SIGNS, k) });
 export const DAY_TONES = new Proxy([], { get: (_, k) => Reflect.get(data.DAY_TONES, k) });
@@ -590,7 +612,9 @@ try {
     const w = watch(CONTENT_DIR, () => {
       clearTimeout(reloadTimer);
       reloadTimer = setTimeout(() => {
-        data = build();
+        const next = safeBuild(data);
+        if (next === data) return;
+        data = next;
         console.log(`Тексты перечитаны: карт ${data.ARCANA.length}, рун ${data.RUNES.length}, тонов дня ${data.DAY_TONES.length}`);
       }, 1200);
     });

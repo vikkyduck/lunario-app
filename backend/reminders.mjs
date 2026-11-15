@@ -80,7 +80,7 @@ export const listReminders = (userId) => Object.keys(FEATURES).map((f) => pub(f,
 
 export function saveReminder(userId, patch) {
   const feature = String(patch.feature || '');
-  const d = FEATURES[feature]; if (!d) return { ok: false, error: 'bad_feature' };
+  const d = Object.hasOwn(FEATURES, feature) ? FEATURES[feature] : null; if (!d) return { ok: false, error: 'bad_feature' };   // feature=constructor давал 500
   const cur = rowOf(userId, feature) || { enabled: 0, time: d.time, freq: d.freq, weekday: d.weekday, tz: '' };
   const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.time || '') ? patch.time : cur.time;
   let freq = FREQS.includes(patch.freq) ? patch.freq : cur.freq;
@@ -202,7 +202,7 @@ export function pendingFor(userId, endpoint) {
 
 /* Пробное уведомление прямо сейчас — чтобы человек увидел, как оно выглядит. */
 export async function sendNow(u, feature, keys) {
-  const n = FEATURES[feature] ? (notificationFor(feature, u) || { ...tpl('пробное'), url: FEATURES[feature].url }) : null;
+  const n = Object.hasOwn(FEATURES, feature) ? (notificationFor(feature, u) || { ...tpl('пробное'), url: FEATURES[feature].url }) : null;
   if (!n) return { ok: false, error: 'bad_feature' };
   const subs = db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ?').all(u.id);
   if (!subs.length) return { ok: false, error: 'no_push' };

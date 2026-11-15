@@ -1302,7 +1302,7 @@ const server = createServer(async (req, res) => {
         let title, body, extra = {}, stored = kind, data = '';
         if (kind === 'rune') {
           /* руны выпадают случайно, без повторов внутри расклада; одна руна — kind «rune», расклад — «runes» */
-          const L = C.LAYOUTS.rune[b.layout] ? b.layout : 'one';
+          const L = Object.hasOwn(C.LAYOUTS.rune, b.layout) ? b.layout : 'one';   // layout=constructor давал 500
           const pos = C.LAYOUTS.rune[L].pos;
           const runes = drawDistinct([...C.RUNES], pos.length).map((r, i) => ({ pos: pos[i].name, ...runePublic(r) }));
           title = runes.map((r) => r.name).join(' · ');
@@ -1328,7 +1328,7 @@ const server = createServer(async (req, res) => {
         const used = row ? row.spreads : 0;
         if (used >= 2) return json(res, 429, { ok: false, error: 'limit' });
         /* карты выпадают случайно и не повторяются внутри расклада; любой расклад — один разбор из дневного лимита */
-        const L = C.LAYOUTS.tarot[b.layout] ? b.layout : 'three';
+        const L = Object.hasOwn(C.LAYOUTS.tarot, b.layout) ? b.layout : 'three';
         const pos = C.LAYOUTS.tarot[L].pos;
         const cards = drawDistinct([...C.ARCANA], pos.length).map((a, i) => ({ pos: pos[i].name, ...cardPublic(a) }));
         db.prepare('INSERT INTO usage (user_id, day, spreads) VALUES (?,?,1) ON CONFLICT(user_id, day) DO UPDATE SET spreads = spreads + 1').run(u.id, d);
@@ -1667,7 +1667,7 @@ const server = createServer(async (req, res) => {
        Папка контента живёт отдельно от кода (на сервере — /opt/lunario-content) и в git не попадает. */
     if (p.startsWith('/content/') && (req.method === 'GET' || req.method === 'HEAD')) {
       const [kind, file] = p.slice('/content/'.length).split('/');
-      const dir = IMAGE_DIRS[kind];
+      const dir = Object.hasOwn(IMAGE_DIRS, kind) ? IMAGE_DIRS[kind] : '';   // /content/constructor/… давал 500
       if (!dir || !file || !/^[\w.-]+$/.test(file) || file.startsWith('.')) { res.writeHead(404); return res.end(); }
       const f = join(CONTENT_DIR, 'картинки', dir, file);
       if (!isFile(f)) { res.writeHead(404); return res.end(); }
