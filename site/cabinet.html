@@ -235,7 +235,10 @@ const api = async (path, opts) => {
   if (!r.ok) throw Object.assign(new Error(j.error || 'err'), { code: j.error, status: r.status });
   return j;
 };
-const esc = (s) => String(s ?? '').replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+/* Одинарная кавычка тоже экранируется. jsq - строка внутри обработчика onclick="f(…)": JSON-строка, затем esc.
+   Раньше '${esc(email)}' в обработчике обрывался кавычкой в адресе или имени файла */
+const esc = (s) => String(s ?? '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
+const jsq = (s) => esc(JSON.stringify(String(s ?? '')));
 const fmt = (n) => (n === null || n === undefined ? '—' : typeof n === 'number' ? n.toLocaleString('ru-RU') : String(n));
 const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 const daysWord = (n) => { const a = n % 10, b = n % 100; return n + ' ' + (b >= 11 && b <= 14 ? 'дней' : a === 1 ? 'день' : a >= 2 && a <= 4 ? 'дня' : 'дней'); };
@@ -287,7 +290,7 @@ function renderRoles() {
   $('who').innerHTML = `<span>${esc(me.name || '')}${me.name ? ' · ' : ''}${esc(me.email)}</span><a class="btn sm" href="/app/?app=1">В приложение</a><button class="btn sm" onclick="logout()">Выйти</button>`;
   renderTeam();
 }
-const staffRows = (items) => items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="text-align:right">${s.locked ? '<span class="lock">защищён</span>' : `<button class="btn sm" onclick="staffForm('${esc(s.email)}')">Изменить</button> <button class="btn sm warn" onclick="staffDel('${esc(s.email)}')">Удалить</button>`}</td></tr>`).join('');
+const staffRows = (items) => items.map((s) => `<tr><td>${esc(s.name) || '<span class="lock">—</span>'}</td><td>${esc(s.email)}</td><td>${s.roles.filter((x) => x !== 'user').map((x) => `<span class="pill">${ROLE_META[x] ? ROLE_META[x][0] : x}</span>`).join('')}</td><td style="text-align:right">${s.locked ? '<span class="lock">защищён</span>' : `<button class="btn sm" onclick="staffForm(${jsq(s.email)})">Изменить</button> <button class="btn sm warn" onclick="staffDel(${jsq(s.email)})">Удалить</button>`}</td></tr>`).join('');
 async function renderTeam() {
   const box = $('team');
   if (!S.me.isAdmin) {
@@ -307,7 +310,7 @@ function staffForm(email) {
     <div class="row" style="margin-top:14px"><input id="st-name" placeholder="ФИО" maxlength="80" value="${esc(s ? s.name : '')}"><input id="st-email" type="email" placeholder="почта" maxlength="120" value="${esc(s ? s.email : '')}" ${s ? 'readonly' : ''}></div>
     <div class="chips" style="margin-top:12px" id="st-roles">${['marketing', 'product', 'content', 'support'].map((k) => { const on = s && s.roles.includes(k); return `<label class="chip${on ? ' on' : ''}"><input type="checkbox" value="${k}" ${on ? 'checked' : ''} onchange="this.parentNode.classList.toggle('on',this.checked)"> ${ROLE_META[k][0]}</label>`; }).join('')}</div>
     <p class="hint">Роль «Пользователь» доступна каждому. Назначить дополнительного администратора нельзя — их двое и они заданы почтой.</p>
-    <div class="row" style="margin-top:14px"><button class="btn gold fixed" onclick="staffSave()">Сохранить доступы</button>${s ? `<button class="btn sm warn fixed" onclick="staffDel('${esc(s.email)}')">Удалить из команды</button>` : ''}<span class="hint" id="st-msg"></span></div>`);
+    <div class="row" style="margin-top:14px"><button class="btn gold fixed" onclick="staffSave()">Сохранить доступы</button>${s ? `<button class="btn sm warn fixed" onclick="staffDel(${jsq(s.email)})">Удалить из команды</button>` : ''}<span class="hint" id="st-msg"></span></div>`);
   setTimeout(() => $(s ? 'st-name' : 'st-email').focus(), 60);
 }
 function openRole(k) { S.role = k; const menu = S.me.menus[k] || []; S.page = null; show('cab'); renderMenu(); openPage(menu[0]); history.replaceState(null, '', '#' + k); }
@@ -675,13 +678,13 @@ async function costDel(id) { if (!confirm('Убрать строку расхо�
 function contentFiles(r) {
   const files = r.files || [];
   return `<div class="notice">Тексты приложения — обычные файлы: одна строка — одна запись, поля через «|». Строки с решёткой # — заметки, приложение их не читает. Сохранение публикует сразу: статусов «черновик / на проверке / запланирован» пока нет.</div>
-    <div class="files">${files.map((f) => `<button class="file" onclick="editFile('${esc(f.name)}')"><span>${esc(f.name)}<br><small>${f.lines} записей · изменён ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
+    <div class="files">${files.map((f) => `<button class="file" onclick="editFile(${jsq(f.name)})"><span>${esc(f.name)}<br><small>${f.lines} записей · изменён ${f.mtime}</small></span><span class="btn sm">Править</span></button>`).join('')}</div>`;
 }
 async function editFile(name) {
   openModal('<p class="empty">Открываем…</p>');
   try {
     const f = await api('/cabinet/content?file=' + encodeURIComponent(name));
-    openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${esc(name)}</h2></div><div class="row"><button class="btn gold fixed" onclick="saveFile('${esc(name)}')">Сохранить и опубликовать</button><button class="btn sm fixed" onclick="closeModal()">Закрыть</button></div></div>
+    openModal(`<div class="head"><div><span class="eyebrow">Материал</span><h2 style="margin-top:6px">${esc(name)}</h2></div><div class="row"><button class="btn gold fixed" onclick="saveFile(${jsq(name)})">Сохранить и опубликовать</button><button class="btn sm fixed" onclick="closeModal()">Закрыть</button></div></div>
       <textarea id="f-text" style="margin-top:12px" spellcheck="true">${esc(f.text)}</textarea><p class="note" id="f-msg">Формат описан в «ПРОЧТИ-МЕНЯ.txt». После сохранения приложение перечитает файл само.</p>`);
   } catch (e) { openModal(`<p class="msg err">Не получилось открыть: ${esc(e.code || e.message)}</p>`); }
 }
