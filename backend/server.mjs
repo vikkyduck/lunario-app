@@ -207,6 +207,7 @@ function wipePersonal(userId) {
   add('habits', 'rule', "TEXT DEFAULT 'daily'"); add('habits', 'rule_text', "TEXT DEFAULT ''");
   add('wishes', 'photo', "TEXT DEFAULT ''"); add('wishes', 'photo_ts', "TEXT DEFAULT ''");
   add('users', 'photo', "TEXT DEFAULT ''"); add('users', 'photo_ts', "TEXT DEFAULT ''");
+  add('login_codes', 'fails_since', "TEXT DEFAULT ''");   /* начало часа, в котором считаются неверные коды */
 }
 
 /* История хранит не только текст, но и коды выпавших карт и рун — по ним расклад открывается заново */
@@ -261,13 +262,18 @@ const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: MSK }); /
 const nowISO = () => new Date().toISOString();
 const clean = (s, max) => String(s ?? '').replace(/[\x00-\x1f]/g, ' ').trim().slice(0, max);
 const sha = (s) => createHash('sha256').update(s).digest('hex');
-// код действует 15 минут; используется и на обычном входе, и при выдаче доступа сотруднику
+/* Код входа: 8 цифр, действует 15 минут; используется и на обычном входе, и при выдаче доступа сотруднику.
+   Неверных кодов - не больше 5 за час на один адрес, и новый код счетчик не обнуляет. Раньше было
+   6 цифр и 5 попыток на каждый новый код: подбор шел со скоростью 3600 попыток в сутки, теперь 120
+   при вдесятеро большем числе вариантов. */
+const CODE_FAILS_MAX = 5, CODE_FAILS_WINDOW_MS = 60 * 60000;
+const codeLocked = (rec) => !!rec && rec.attempts >= CODE_FAILS_MAX && !!rec.fails_since && Date.now() - Date.parse(rec.fails_since) < CODE_FAILS_WINDOW_MS;
 function issueLoginCode(email) {
-  const code = String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
-  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts)
-    VALUES (?,?,?,?,0) ON CONFLICT(email) DO UPDATE SET
+  const code = String(randomInt(10000000, 100000000));
+  db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, fails_since)
+    VALUES (?,?,?,?,0,'') ON CONFLICT(email) DO UPDATE SET
     code_hash = excluded.code_hash, created_at = excluded.created_at,
-    expires_at = excluded.expires_at, attempts = 0`)
+    expires_at = excluded.expires_at`)
     .run(email, sha(code + email), nowISO(), new Date(Date.now() + 15 * 60000).toISOString());
   return code;
 }
@@ -1174,6 +1180,7 @@ const server = createServer(async (req, res) => {
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(email)) return json(res, 400, { ok: false, error: 'bad_email' });
+        if (codeLocked(db.prepare('SELECT attempts, fails_since FROM login_codes WHERE email = ?').get(email))) return json(res, 429, { ok: false, error: 'too_many' });
         if (!allowCode(req, email)) return json(res, 429, { ok: false, error: 'too_often' });
         if (!mailLive()) return json(res, 503, { ok: false, error: 'mail_off' });
         const code = issueLoginCode(email);
@@ -1192,13 +1199,14 @@ const server = createServer(async (req, res) => {
       if (p === '/api/auth/verify' && req.method === 'POST') {
         const b = await readBody(req);
         const email = clean(b.email, 200).toLowerCase();
-        const code = clean(b.code, 6);
+        const code = String(b.code ?? '').replace(/\D/g, '').slice(0, 8);
         const rec = db.prepare('SELECT * FROM login_codes WHERE email = ?').get(email);
         if (!rec) return json(res, 400, { ok: false, error: 'no_code' });
-        if (rec.attempts >= 5) return json(res, 429, { ok: false, error: 'too_many' });
+        if (codeLocked(rec)) return json(res, 429, { ok: false, error: 'too_many' });
         if (new Date(rec.expires_at) < new Date()) return json(res, 400, { ok: false, error: 'expired' });
         if (rec.code_hash !== sha(code + email)) {
-          db.prepare('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?').run(email);
+          const fresh = !rec.fails_since || Date.now() - Date.parse(rec.fails_since) >= CODE_FAILS_WINDOW_MS;   // прошлый час истек - счет заново
+          db.prepare('UPDATE login_codes SET attempts = ?, fails_since = ? WHERE email = ?').run(fresh ? 1 : rec.attempts + 1, fresh ? nowISO() : rec.fails_since, email);
           return json(res, 400, { ok: false, error: 'wrong_code' });
         }
         db.prepare('DELETE FROM login_codes WHERE email = ?').run(email);

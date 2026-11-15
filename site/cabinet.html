@@ -255,7 +255,7 @@ function renderLogin(step) {
   const box = $('l-box');
   if (step === 'code') {
     box.innerHTML = `<p style="font-size:15px;color:#e8e2f5">Код отправлен на <b>${esc(loginEmail)}</b></p>
-      <input id="l-code" inputmode="numeric" maxlength="6" placeholder="000000" style="margin-top:12px;letter-spacing:8px;text-align:center;font-size:22px">
+      <input id="l-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="00000000" style="margin-top:12px;letter-spacing:8px;text-align:center;font-size:22px">
       <button class="btn gold" style="width:100%;margin-top:12px" onclick="loginVerify()">Войти</button>
       <button class="btn sm" style="margin-top:8px" onclick="renderLogin('email')">Изменить адрес</button><p class="msg" id="l-msg"></p>`;
     setTimeout(() => $('l-code').focus(), 60); return;
@@ -269,13 +269,13 @@ async function loginRequest() {
   if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) { msg.classList.add('err'); msg.textContent = 'Проверьте адрес почты.'; return; }
   msg.textContent = 'Отправляем код…';
   try { await api('/auth/request', { method: 'POST', body: JSON.stringify({ email }) }); loginEmail = email; renderLogin('code'); }
-  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'too_often' ? 'Слишком часто. Попробуйте через несколько минут.' : e.code === 'mail_off' ? 'Отправка почты не настроена.' : 'Не получилось отправить код.'; }
+  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'too_often' ? 'Слишком часто. Попробуйте через несколько минут.' : e.code === 'too_many' ? 'Слишком много неверных кодов. Попробуйте через час.' : e.code === 'mail_off' ? 'Отправка почты не настроена.' : 'Не получилось отправить код.'; }
 }
 async function loginVerify() {
-  const code = $('l-code').value.trim(), msg = $('l-msg'); msg.className = 'msg';
-  if (code.length !== 6) { msg.classList.add('err'); msg.textContent = 'Код состоит из шести цифр.'; return; }
+  const code = $('l-code').value.replace(/\D/g, ''), msg = $('l-msg'); msg.className = 'msg';
+  if (code.length !== 8) { msg.classList.add('err'); msg.textContent = 'Код состоит из восьми цифр.'; return; }
   try { await api('/auth/verify', { method: 'POST', body: JSON.stringify({ email: loginEmail, code }) }); await boot(); }
-  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'wrong_code' ? 'Код не подошёл.' : e.code === 'expired' ? 'Код истёк — запросите новый.' : 'Не получилось войти.'; }
+  catch (e) { msg.classList.add('err'); msg.textContent = e.code === 'wrong_code' ? 'Код не подошёл.' : e.code === 'expired' ? 'Код истёк — запросите новый.' : e.code === 'too_many' ? 'Слишком много неверных кодов. Попробуйте через час.' : 'Не получилось войти.'; }
 }
 async function logout() { await api('/auth/logout', { method: 'POST' }).catch(() => {}); location.reload(); }
 

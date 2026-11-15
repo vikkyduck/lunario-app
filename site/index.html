@@ -647,7 +647,7 @@ if (navigator.userAgent.indexOf('LunarioShell-iOS') !== -1 || window.__LUN_IOS__
     <div class="card sec" id="o-codebox" style="display:none">
       <p style="font-size:15px;color:#ded8ee">Код отправлен на <b id="o-codemail"></b></p>
       <div class="field" style="margin:12px 0 0"><label>Код из письма</label>
-        <input id="o-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
+        <input id="o-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="00000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
       <button class="btn" style="margin-top:10px" onclick="obFinish()">Открыть мой день</button>
       <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="obResend()">Прислать код</button>
       <p class="msg" id="o-codemsg"></p>
@@ -1593,7 +1593,7 @@ function renderAuth(){
   if (authStep === 'code') {
     box.innerHTML = `<p style="font-size:15px;color:#ded8ee">Код отправлен на <b>${esc(authEmail)}</b></p>
       <div class="field" style="margin:12px 0 0"><label>Код из письма</label>
-        <input id="a-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
+        <input id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="00000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
       <button class="btn" style="margin-top:10px" onclick="authVerify()">Войти</button>
       <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="authStep='idle';renderAuth()">Изменить адрес</button>
       <p class="msg" id="a-authmsg"></p>`;
@@ -1624,7 +1624,7 @@ function renderObAuth(){
   }
   box.innerHTML = `<p style="font-size:13.5px;margin:13px 0 0">Код отправлен на <b>${esc(obEmail)}</b></p>
     <div class="field" style="margin:10px 0 0"><label>Код из письма</label>
-      <input id="ob-code" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
+      <input id="ob-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="00000000" style="letter-spacing:8px;text-align:center;font-size:22px"></div>
     <button class="btn" onclick="obVerify()">Войти</button>
     <button class="btn ghost sm" style="width:100%;margin-top:9px" onclick="obStep='email';renderObAuth()">Изменить адрес</button>
     <p class="msg" id="ob-msg"></p>`;
@@ -1641,14 +1641,15 @@ async function obRequest(){
   }catch(e){
     msg.classList.add('err');
     msg.textContent = e.code==='too_often' ? 'Слишком часто. Попробуйте через несколько минут.'
+      : e.code==='too_many' ? 'Слишком много неверных кодов. Попробуйте через час.'
       : e.code==='mail_off' ? 'Отправка почты ещё не настроена.'
       : 'Не получилось отправить код.';
   }
 }
 async function obVerify(){
-  const code = $('ob-code').value.trim(), msg = $('ob-msg');
+  const code = $('ob-code').value.replace(/\D/g, ''), msg = $('ob-msg');
   msg.className='msg';
-  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
+  if(code.length!==8){ msg.classList.add('err'); msg.textContent='Код состоит из восьми цифр.'; return; }
   try{
     const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:obEmail,code})});
     hap([0,14,45,22]);
@@ -1662,7 +1663,7 @@ async function obVerify(){
     msg.classList.add('err');
     msg.textContent = e.code==='wrong_code' ? 'Код не подошёл. Проверьте письмо.'
       : e.code==='expired' ? 'Код истёк — запросите новый.'
-      : e.code==='too_many' ? 'Слишком много попыток. Запросите новый код.'
+      : e.code==='too_many' ? 'Слишком много неверных кодов. Попробуйте через час.'
       : 'Не получилось войти.';
   }
 }
@@ -1677,15 +1678,16 @@ async function authRequest(){
   }catch(e){
     msg.classList.add('err');
     msg.textContent = e.code==='too_often' ? 'Слишком часто. Попробуйте через несколько минут.'
+      : e.code==='too_many' ? 'Слишком много неверных кодов. Попробуйте через час.'
       : e.code==='mail_off' ? 'Отправка почты ещё не настроена.'
       : e.code==='send_failed' ? 'Письмо не ушло. Проверьте адрес или попробуйте позже.'
       : 'Не получилось отправить код.';
   }
 }
 async function authVerify(){
-  const code = $('a-code').value.trim(), msg = $('a-authmsg');
+  const code = $('a-code').value.replace(/\D/g, ''), msg = $('a-authmsg');
   msg.className='msg';
-  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
+  if(code.length!==8){ msg.classList.add('err'); msg.textContent='Код состоит из восьми цифр.'; return; }
   try{
     const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:authEmail,code})});
     if (isStaff(r.user) && !inApp()) { location.href = '/app/cabinet'; return; }   // сотрудник — в кабинет
@@ -1697,7 +1699,7 @@ async function authVerify(){
     msg.classList.add('err');
     msg.textContent = e.code==='wrong_code' ? 'Код не подошёл. Проверьте письмо.'
       : e.code==='expired' ? 'Код истёк — запросите новый.'
-      : e.code==='too_many' ? 'Слишком много попыток. Запросите новый код.'
+      : e.code==='too_many' ? 'Слишком много неверных кодов. Попробуйте через час.'
       : 'Не получилось войти.';
   }
 }
@@ -1835,14 +1837,14 @@ async function obSendCode(){
     window.scrollTo(0,0); setTimeout(()=>$('o-code').focus(),80); track('login_code_sent');
   }catch(e){
     // код не ушёл — не держим человека на пороге: открываем главную, почту можно привязать в аккаунте
-    toast(e.code==='too_often' ? 'Слишком часто. Попробуйте через несколько минут.' : 'Не получилось отправить код');
+    toast(e.code==='too_often' ? 'Слишком часто. Попробуйте через несколько минут.' : e.code==='too_many' ? 'Слишком много неверных кодов. Попробуйте через час.' : 'Не получилось отправить код');
     startApp();
   }
 }
 async function obResend(){ await obSendCode(); toast('Код отправлен ещё раз'); }
 async function obFinish(){
-  const code=$('o-code').value.trim(), msg=$('o-codemsg'); msg.className='msg';
-  if(code.length!==6){ msg.classList.add('err'); msg.textContent='Код состоит из шести цифр.'; return; }
+  const code=$('o-code').value.replace(/\D/g, ''), msg=$('o-codemsg'); msg.className='msg';
+  if(code.length!==8){ msg.classList.add('err'); msg.textContent='Код состоит из восьми цифр.'; return; }
   try{
     const r = await api('/auth/verify',{method:'POST',body:JSON.stringify({email:obEmail,code})});
     hap([0,14,45,22]); track('login_done');
@@ -1853,7 +1855,7 @@ async function obFinish(){
     msg.classList.add('err');
     msg.textContent = e.code==='wrong_code' ? 'Код не подошёл. Проверьте письмо.'
       : e.code==='expired' ? 'Код истёк — запросите новый.'
-      : e.code==='too_many' ? 'Слишком много попыток. Запросите новый код.'
+      : e.code==='too_many' ? 'Слишком много неверных кодов. Попробуйте через час.'
       : 'Не получилось войти.';
   }
 }
