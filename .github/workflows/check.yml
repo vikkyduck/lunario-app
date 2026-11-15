@@ -1,10 +1,12 @@
 # Проверки перед выпуском — ровно те же, что запускает deploy.sh: один runner tools/check-all.mjs (аудит v98, F21).
-# Без Playwright, без секретов, без настоящих данных: check-personal-features поднимает настоящий сервер во временной папке.
+# Без секретов и без настоящих данных: проверки поднимают настоящий сервер во временной папке. Тексты приложения в git не лежат —
+# здесь проверки идут на тестовых текстах tools/fixtures/content, города — справочник на одну строку (tools/fixtures.mjs);
+# deploy.sh перед выпуском гоняет тот же набор на настоящих текстах (LUNARIO_CHECK_CONTENT=real).
 name: Проверки
 on:
-  push:
-    branches: [main, desktop]
+  push:   # любая ветка: правки проверяются до слияния в desktop, а не после
   pull_request:
+  workflow_dispatch:
 jobs:
   check:
     runs-on: ubuntu-latest

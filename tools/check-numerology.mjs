@@ -14,6 +14,7 @@ import { privateText, hasEncrypted } from '../backend/private-text.mjs';
 import { createMutation } from '../backend/mutation.mjs';
 import { clearHistory, deleteAccount, sweepAbandoned } from '../backend/account-data.mjs';
 import { personalExport } from '../backend/personal-export.mjs';
+import { contentSource, makeCitiesDb } from './fixtures.mjs';   /* тексты и база городов: настоящие или тестовые — в git их нет */
 
 for (const [input, expected] of [[11, [2, 11, 11]], [22, [4, 22, 22]], [29, [2, 11, 11]], [33, [6, 6, 6]], [39, [3, 12, 3]]]) {
   assert.deepEqual(['base9', 'range22', 'expression'].map(k => reduceNumber(input, k).value), expected);
@@ -88,7 +89,7 @@ try {
   const probe = createServer(); probe.listen(0, '127.0.0.1'); await once(probe, 'listening');
   const port = probe.address().port; await new Promise(r => probe.close(r));
   let logs = '';
-  server = spawn(process.execPath, ['backend/server.mjs'], { cwd: resolve('.'), env: { PATH: process.env.PATH, PORT: String(port), HOST: '127.0.0.1', BASE_PATH: '/app', DATA_DIR: dir, CONTENT_DIR: resolve('content'), CITIES_DB: resolve('backend/cities.db'), SITE_DIR: resolve('site'), PUBLIC_BASE: `http://127.0.0.1:${port}`, LUNARIO_QUIET: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  server = spawn(process.execPath, ['backend/server.mjs'], { cwd: resolve('.'), env: { PATH: process.env.PATH, PORT: String(port), HOST: '127.0.0.1', BASE_PATH: '/app', DATA_DIR: dir, CONTENT_DIR: contentSource().dir, CITIES_DB: makeCitiesDb(join(dir, 'cities.db')), SITE_DIR: resolve('site'), PUBLIC_BASE: `http://127.0.0.1:${port}`, LUNARIO_QUIET: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   server.stdout.on('data', d => logs += d); server.stderr.on('data', d => logs += d);
   const base = `http://127.0.0.1:${port}/app`;
   for (let i = 0; i < 150; i++) { if (server.exitCode !== null) throw new Error(logs); try { if ((await fetch(base + '/api/health')).ok) break; } catch {} await delay(100); }

@@ -11,6 +11,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
+import { copyContent, makeCitiesDb } from './fixtures.mjs';
 import { createHash } from 'node:crypto';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -60,11 +61,8 @@ function account(ip = `198.51.100.${1 + (seq++ % 250)}`) {
 try {
   await cp(join(repo, 'backend'), join(fixture, 'backend'), { recursive: true,
     filter: (p) => !p.endsWith('.db') && !p.endsWith('.db-wal') && !p.endsWith('.db-shm') });
-  await cp(join(repo, 'content'), join(fixture, 'content'), { recursive: true, filter: (p) => p === join(repo, 'content') || (dirname(p) === join(repo, 'content') && p.endsWith('.txt')) });   /* тексты приложения, без картинок и архива: запасных копий в коде нет */ await mkdir(join(fixture, 'data'));
-  const cities = new DatabaseSync(join(fixture, 'backend/cities.db'));
-  cities.exec(`CREATE TABLE cities (name TEXT, region TEXT, country TEXT, lat REAL, lon REAL, tz TEXT, pop INTEGER, norm TEXT, w2 TEXT, alt TEXT);
-    INSERT INTO cities VALUES ('Москва','Москва','Россия',55.7558,37.6173,'Europe/Moscow',13000000,'москва','','moscow');`);
-  cities.close();
+  await copyContent(join(fixture, 'content'));   /* тексты приложения без картинок и архива: настоящие, а без них — тестовые (tools/fixtures.mjs) */ await mkdir(join(fixture, 'data'));
+  makeCitiesDb(join(fixture, 'backend/cities.db'));   /* справочник городов на одну строку — tools/fixtures.mjs */
   await start();
   const db = new DatabaseSync(join(fixture, 'data/app.db'));
   const code = '123456';
