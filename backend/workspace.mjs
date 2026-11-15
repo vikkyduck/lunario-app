@@ -3,7 +3,7 @@
    обращения и чат с пользователем (поддержка). Все — в той же базе, что и приложение.
    Тексты сообщений шифруются тем же ключом, что и дневник; ключи ИИ — тоже. */
 
-import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync, renameSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { MSK, dayIn, isDay, cleanText as clean } from './util.mjs';   /* тексты материалов многострочные */
@@ -133,7 +133,9 @@ export function mediaRemove(id) {
   try { unlinkSync(join(UPLOADS, m.archived ? 'archive' : '', m.file)); } catch {}
   db.prepare('DELETE FROM media WHERE id = ?').run(Number(id)); return { ok: true };
 }
-export function mediaPath(file) { const safe = String(file).replace(/[^a-z0-9.\-]/gi, ''); const p = join(UPLOADS, safe); return safe && existsSync(p) ? p : null; }
+/* только обычный файл: /app/uploads/archive - каталог архива */
+const isFile = (f) => { try { return statSync(f).isFile(); } catch { return false; } };
+export function mediaPath(file) { const safe = String(file).replace(/[^a-z0-9.\-]/gi, ''); const p = join(UPLOADS, safe); return safe && isFile(p) ? p : null; }
 
 /* ── ИИ-провайдеры: ключи хранятся зашифрованными, наружу не отдаются ── */
 export const AI_PROVIDERS = {

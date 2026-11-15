@@ -514,10 +514,13 @@ function readBody(req, max = 32768) {
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json; charset=utf-8', '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
 /* Заголовки страниц (CSP, кликджекинг, nosniff) — backend/http/headers.mjs, общие с локальным просмотром */
+/* Отдаем только обычные файлы. Запрос каталога (/app/assets/) проходил проверку existsSync: заголовки 200 уходили,
+   чтение каталога падало, и соединение висело без ответа до таймаута nginx (в main тот же запрос ронял процесс) */
+const isFile = (f) => { try { return statSync(f).isFile(); } catch { return false; } };
 function serveStatic(res, rel, cacheSec = 3600, headOnly = false, extra = {}) {
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const file = join(SITE_DIR, safe);
-  if (!file.startsWith(normalize(SITE_DIR)) || !existsSync(file)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Не найдено'); }
+  if (!file.startsWith(normalize(SITE_DIR)) || !isFile(file)) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Не найдено'); }
   const type = MIME[extname(file)] || 'application/octet-stream';
   res.writeHead(200, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': cacheSec ? `public, max-age=${cacheSec}${cacheSec >= 31536000 ? ', immutable' : ''}` : 'no-cache', ...(type.startsWith('text/html') ? HTML_HEADERS : {}), ...extra });
   res.end(headOnly ? undefined : readFileSync(file));
@@ -850,10 +853,10 @@ const server = createServer(async (req, res) => {
        Папка контента живет отдельно от кода (на сервере — /opt/lunario-content) и в git не попадает. */
     if (p.startsWith('/content/') && (req.method === 'GET' || req.method === 'HEAD')) {
       const [kind, file] = p.slice('/content/'.length).split('/');
-      const dir = IMAGE_DIRS[kind];
+      const dir = Object.hasOwn(IMAGE_DIRS, kind) ? IMAGE_DIRS[kind] : '';   // /content/constructor/… давал 500
       if (!dir || !file || !/^[\w.-]+$/.test(file) || file.startsWith('.')) { res.writeHead(404); return res.end(); }
       const f = join(CONTENT_DIR, 'картинки', dir, file);
-      if (!existsSync(f)) { res.writeHead(404); return res.end(); }
+      if (!isFile(f)) { res.writeHead(404); return res.end(); }
       res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': url.search.includes('v=') ? 'public, max-age=31536000, immutable' : 'public, max-age=86400' });
       return res.end(req.method === 'HEAD' ? undefined : readFileSync(f));
     }
@@ -901,6 +904,8 @@ const server = createServer(async (req, res) => {
   } catch (e) {
     const known = e.message === 'bad_json' ? 400 : e.message === 'bad_content_type' ? 415 : e.message === 'too_big' ? 413 : 0;   /* ошибки запроса — человеку по имени; внутренние — только в журнал */
     if (!known) { console.error('[ошибка]', req.url, e.stack || e.message); logError(req.url, e.message); }
+    /* ответ уже начат: второй writeHead бросил бы исключение вне try. Закрываем соединение, а не оставляем висеть */
+    if (res.headersSent) { res.destroy(); return; }
     if (known === 413) { res.setHeader('Connection', 'close'); res.once('finish', () => req.destroy()); }   /* недочитанное тело не тянем — закрываем после ответа */
     /* запись не расшифровалась (чужой ключ или испорченные данные) — по имени, а не server_error: это не «пустая запись» и не наша ошибка кода (F14) */
     json(res, known || 500, { ok: false, error: known ? e.message : isDecryptFailed(e) ? 'decrypt_failed' : 'server_error' });
