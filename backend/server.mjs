@@ -931,46 +931,63 @@ const server = createServer(async (req, res) => {
     if (p === '/api/pay/webhook' && req.method === 'POST') {
       if (!payReady()) { res.writeHead(503); return res.end('not configured'); }
       const raw = await readRaw(req);
-      const data = payParse(raw);
-      const signHeader = req.headers['sign'] || req.headers['Sign'];
-      console.log(`[вебхук] пришёл: order_id=${data.order_id||'?'} status=${data.payment_status||'?'} demo=${data.demo_mode||'0'} подпись=${signHeader?'есть':'нет'}`);
+      const ctype = String(req.headers['content-type'] || '');
+      const data = payParse(raw, ctype);
+      const signHeader = req.headers['sign'];
+      /* Свой номер заказа (lun-N) ищем в order_num, потом в order_id. По справке Продамуса order_num -
+         "номер заказа на стороне магазина", order_id - "ID заказа в системе Prodamus". Примера, где
+         магазин передал свой order_id в ссылке, в справке нет: поэтому смотрим оба поля, а журнал
+         показывает, какое пришло на самом деле. Проверяется демо-платежом, см. /api/pay. */
+      const orderId = [data.order_num, data.order_id].map((v) => String(v ?? '')).find((v) => /^lun-\d+$/.test(v)) || '';
+      console.log(`[вебхук] пришел: формат=${ctype.split(';')[0] || '?'} order_num=${String(data.order_num ?? '?').slice(0, 40)} order_id=${String(data.order_id ?? '?').slice(0, 40)} sum=${String(data.sum ?? '?').slice(0, 20)} status=${String(data.payment_status ?? '?').slice(0, 20)} подпись=${signHeader ? 'есть' : 'нет'}`);
 
       /* Продамус проверяет адрес пробным запросом перед сохранением: в нём нет
          нашего номера заказа. Отвечаем «принято», иначе адрес не сохранится.
          Ничего при этом не активируем — деньги двигают только подписанные уведомления. */
-      if (!/^lun-\d+$/.test(String(data.order_id || ''))) {
-        console.log('[вебхук] пробный запрос — отвечаем принято');
+      if (!orderId) {
+        console.log('[вебхук] нашего номера заказа нет - пробный запрос, отвечаем принято');
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         return res.end('success');
       }
       if (!payVerify(data, PAY_SECRET, signHeader)) {
-        console.error('[оплата] подпись уведомления не сошлась, order_id:', data.order_id);
+        console.error('[оплата] подпись уведомления не сошлась, заказ:', orderId);
         res.writeHead(400); return res.end('bad sign');
       }
-      const orderId = String(data.order_id || '');
-      const m = orderId.match(/^lun-(\d+)$/);
       const status = String(data.payment_status || '');
-      if (m && status === 'success') {
-        const pay = db.prepare('SELECT * FROM payments WHERE id = ?').get(Number(m[1]));
-        if (pay && pay.status !== 'paid') {
-          const isDemo = String(data.demo_mode || '') === '1' || String(data.payment_type || '').includes('demo');
-          db.prepare("UPDATE payments SET status='paid', paid_ts=?, payment_type=?, demo=? WHERE id=?")
-            .run(nowISO(), clean(String(data.payment_type || ''), 60), isDemo ? 1 : 0, pay.id);
-          const u2 = db.prepare('SELECT * FROM users WHERE id = ?').get(pay.user_id);
-          if (u2) {
-            const grants = (PAY_ITEMS[pay.feature] || {}).grants;
-            if (grants === 'plus') {
-              /* Лунарио+ на 30 дней; повторная оплата продлевает от конца текущего срока */
-              const from = hasPlus(u2) ? new Date(u2.plus_until + 'T00:00:00Z') : new Date();
-              const until = new Date(from.getTime() + 30 * 864e5).toISOString().slice(0, 10);
-              db.prepare('UPDATE users SET plus_until=? WHERE id=?').run(until, u2.id);
-              console.log(`[оплата] заказ ${orderId} оплачен${isDemo ? ' (демо)' : ''}, Лунарио+ до ${until} у пользователя ${u2.id}`);
-            } else {
-              /* Разовая услуга (консультация): доступ не выдаём, эксперт свяжется вручную. */
-              console.log(`[оплата] заказ ${orderId} (${pay.feature}) оплачен${isDemo ? ' (демо)' : ''}, пользователь ${u2.id}`);
+      if (status === 'success') {
+        const pay = db.prepare('SELECT * FROM payments WHERE id = ?').get(Number(orderId.slice(4)));
+        if (!pay) console.error(`[оплата] заказ ${orderId} не найден в базе`);
+        else if (pay.status === 'created') {
+          const isDemo = pay.demo === 1 || String(data.demo_mode || '') === '1' || String(data.payment_type || '').includes('demo');
+          /* Сумма из уведомления должна совпасть с суммой заказа до копейки. Не совпала - доступ не выдаем,
+             заказ получает статус mismatch, а ошибка видна админу в "Здоровье системы": решение за человеком. */
+          const kop = (v) => Math.round(Number(String(v ?? '').trim().replace(',', '.')) * 100);
+          const paidKop = kop(data.sum);
+          if (!String(data.sum ?? '').trim() || !Number.isFinite(paidKop) || paidKop !== kop(pay.amount)) {
+            db.prepare("UPDATE payments SET status='mismatch', paid_ts=?, payment_type=?, demo=? WHERE id=?")
+              .run(nowISO(), clean(String(data.payment_type || ''), 60), isDemo ? 1 : 0, pay.id);
+            const note = `заказ ${orderId}: сумма не совпала, ждали ${pay.amount}, пришло ${clean(String(data.sum ?? ''), 20) || 'пусто'}. Доступ не выдан, проверьте платеж в кабинете Продамуса`;
+            console.error('[оплата]', note);
+            logError('/api/pay/webhook', note);
+          } else {
+            db.prepare("UPDATE payments SET status='paid', paid_ts=?, payment_type=?, demo=? WHERE id=?")
+              .run(nowISO(), clean(String(data.payment_type || ''), 60), isDemo ? 1 : 0, pay.id);
+            const u2 = db.prepare('SELECT * FROM users WHERE id = ?').get(pay.user_id);
+            if (u2) {
+              const grants = (PAY_ITEMS[pay.feature] || {}).grants;
+              if (grants === 'plus') {
+                /* Лунарио+ на 30 дней; повторная оплата продлевает от конца текущего срока */
+                const from = hasPlus(u2) ? new Date(u2.plus_until + 'T00:00:00Z') : new Date();
+                const until = new Date(from.getTime() + 30 * 864e5).toISOString().slice(0, 10);
+                db.prepare('UPDATE users SET plus_until=? WHERE id=?').run(until, u2.id);
+                console.log(`[оплата] заказ ${orderId} оплачен${isDemo ? ' (демо)' : ''}, Лунарио+ до ${until} у пользователя ${u2.id}`);
+              } else {
+                /* Разовая услуга (консультация): доступ не выдаём, эксперт свяжется вручную. */
+                console.log(`[оплата] заказ ${orderId} (${pay.feature}) оплачен${isDemo ? ' (демо)' : ''}, пользователь ${u2.id}`);
+              }
+              db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
+                .run(nowISO(), today(), u2.id, 'payment_success', pay.feature + (isDemo ? ':demo' : ''), ageBand(u2.birth));
             }
-            db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
-              .run(nowISO(), today(), u2.id, 'payment_success', pay.feature + (isDemo ? ':demo' : ''), ageBand(u2.birth));
           }
         }
       }
@@ -1425,8 +1442,11 @@ const server = createServer(async (req, res) => {
         const feature = ['subscription', 'unlimited', 'expert'].includes(b.feature) ? b.feature : 'subscription';
         const item = PAY_ITEMS[feature];
         const amount = item.amount();
-        const ins = db.prepare('INSERT INTO payments (ts, user_id, feature, amount) VALUES (?,?,?,?)')
-          .run(nowISO(), u.id, feature, amount);
+        /* Демо-платеж для проверки связки с Продамусом: ссылка с demo_mode=1 только для админа.
+           Обычный человек демо-ссылку не получит, иначе Плюс можно было бы оплатить тестовой картой. */
+        const demo = b.demo === true && isAdmin(u.email);
+        const ins = db.prepare('INSERT INTO payments (ts, user_id, feature, amount, demo) VALUES (?,?,?,?,?)')
+          .run(nowISO(), u.id, feature, amount, demo ? 1 : 0);
         const orderId = `lun-${ins.lastInsertRowid}`;
         const params = {
           do: 'pay',
@@ -1436,6 +1456,7 @@ const server = createServer(async (req, res) => {
           urlReturn: `${PUBLIC_BASE}/app/?paid=no`,
           urlNotification: `${PUBLIC_BASE}/app/api/pay/webhook`,
           ...(u.email ? { customer_email: u.email } : {}),
+          ...(demo ? { demo_mode: '1' } : {}),
         };
         db.prepare('INSERT INTO events (ts, day, user_id, type, detail, age_band) VALUES (?,?,?,?,?,?)')
           .run(nowISO(), d, u.id, 'pay_start', feature, ageBand(u.birth));
