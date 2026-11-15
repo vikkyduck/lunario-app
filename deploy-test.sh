@@ -7,7 +7,8 @@ SERVER="${SERVER_USER:-root}@${SERVER_HOST:-5.129.198.180}"
 echo "==> site/ и backend/ → /opt/lunario-app-test (тексты и картинки стенд читает из общей /opt/lunario-content)"
 ssh "$SERVER" 'mkdir -p /opt/lunario-app-test/{site,backend,data}'
 rsync -az --delete site/ "$SERVER:/opt/lunario-app-test/site/"
-rsync -az --delete backend/ "$SERVER:/opt/lunario-app-test/backend/"
+# cities.db в git не входит: без защиты rsync --delete стирал ее на сервере, и сервис не поднимался. P - не удалять на сервере, но обновить, если она есть локально
+rsync -az --delete --filter="P cities.db" backend/ "$SERVER:/opt/lunario-app-test/backend/"
 echo "==> systemd"
 ssh "$SERVER" 'install -m644 /opt/lunario-app-test/backend/lunario-app-test.service /etc/systemd/system/lunario-app-test.service \
   && systemctl daemon-reload && systemctl enable lunario-app-test >/dev/null \

@@ -5,29 +5,37 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const db = new DatabaseSync(process.env.CITIES_DB || join(__dirname, 'cities.db'), { readOnly: true });
+/* Без cities.db сервер обязан подняться (из 92bcc82 в main): иначе вместе с подсказками городов пропадало бы
+   все приложение, включая вход по почте. deploy.sh не выкатывает выпуск без базы, но файл можно потерять и на
+   месте. Без базы подсказок нет, анкета принимает город текстом, натальная карта считается без координат. */
+let db = null;
+try { db = new DatabaseSync(process.env.CITIES_DB || join(__dirname, 'cities.db'), { readOnly: true }); }
+catch (e) { console.error('Города: cities.db не открылась, подсказки выключены:', e.message); }
+const prep = (sql) => { try { return db ? db.prepare(sql) : null; } catch (e) { console.error('Города:', e.message); return null; } };
 
 const norm = (s) => String(s).toLowerCase().replace(/\u0451/g, '\u0435').replace(/[^0-9a-zа-я\s-]/gi, '').trim();   /* «е с точками» → е, чтобы «Орел» и с точками находились одинаково */
 const HI = '￿';
 const row = (r) => ({ name: r.name, region: r.region, country: r.country, lat: r.lat, lon: r.lon, tz: r.tz, pop: r.pop });
 
 /* Приоритет: точное совпадение → крупные города → все остальное */
-const qPrefix = db.prepare(`
+const qPrefix = prep(`
   SELECT name, region, country, lat, lon, tz, pop FROM cities
   WHERE norm >= ? AND norm < ?
   ORDER BY (norm = ?) DESC, pop DESC LIMIT ?`);
-const qWord = db.prepare(`
+const qWord = prep(`
   SELECT name, region, country, lat, lon, tz, pop FROM cities
   WHERE w2 >= ? AND w2 < ?
   ORDER BY pop DESC LIMIT ?`);
-const qAlt = db.prepare(`
+const qAlt = prep(`
   SELECT name, region, country, lat, lon, tz, pop FROM cities
   WHERE alt >= ? AND alt < ?
   ORDER BY pop DESC LIMIT ?`);
 
+const qExact = prep(`SELECT name, region, country, lat, lon, tz, pop FROM cities WHERE norm = ? ORDER BY pop DESC LIMIT 20`);
+
 export function findCities(q, limit = 8) {
   const n = norm(q);
-  if (n.length < 2) return [];
+  if (n.length < 2 || !qPrefix) return [];
   const out = [], seen = new Set();
   const add = (rows) => {
     for (const r of rows) {
@@ -39,8 +47,8 @@ export function findCities(q, limit = 8) {
     return false;
   };
   if (add(qPrefix.all(n, n + HI, n, limit))) return out;
-  if (add(qWord.all(n, n + HI, limit))) return out;         // «новгород» → Нижний Новгород
-  add(qAlt.all(n, n + HI, limit));                          // латиницей: «moscow»
+  if (qWord && add(qWord.all(n, n + HI, limit))) return out;   // «новгород» → Нижний Новгород
+  if (qAlt) add(qAlt.all(n, n + HI, limit));                   // латиницей: «moscow»
   return out;
 }
 
@@ -49,8 +57,8 @@ export function cityByName(name) {
   // «Арсеньев, Приморский край» и «г. Арсеньев» — берем сам город; регион помогает выбрать из одноименных
   const [cityPart, regionPart = ''] = raw.split(',').map((x) => x.trim());
   const n = norm(cityPart.replace(/^(г|гор|город|пос|с|д|ст)\.?\s+/i, ''));
-  if (!n) return null;
-  const rows = db.prepare(`SELECT name, region, country, lat, lon, tz, pop FROM cities WHERE norm = ? ORDER BY pop DESC LIMIT 20`).all(n);
+  if (!n || !qExact) return null;
+  const rows = qExact.all(n);
   if (!rows.length) return null;
   const rg = norm(regionPart);
   const r = (rg && rows.find((x) => norm(x.region).includes(rg) || norm(x.country).includes(rg))) || rows[0];
