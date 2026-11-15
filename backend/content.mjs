@@ -93,7 +93,7 @@ function book(file) {
   for (const raw of text.split('\n')) {
     const line = raw.trim();
     if (line.startsWith('#')) continue;
-    if (line.startsWith('=== ')) { flush(); cur = { name: line.slice(4).trim(), fields: {}, sections: {} }; out.push(cur); sec = null; continue; }
+    if (line.startsWith('=== ')) { flush(); cur = { name: line.slice(4).trim(), fields: dict(), sections: dict() }; out.push(cur); sec = null; continue; }
     if (!cur) continue;
     const m = line.match(/^\[(.+)\]$/);
     if (m) { flush(); sec = m[1].trim(); continue; }
@@ -109,6 +109,11 @@ function book(file) {
 /* Файл-«статья»: как книга, но текст раздела хранится построчно, со структурой — «## подзаголовок»,
    списки «- » и «1. » («  - » — вложенный), строки таблицы «| … |», выделения **жирный** и *курсив*.
    Так лежит личный год: длинное описание с таблицами, которое экран рисует как есть. */
+/* Словарь без прототипа для ключей из файлов. В обычном объекте раздел [constructor] или поле __proto__ попадали
+   в свойства Object.prototype: разбор падал на push у функции. На ходу ошибку ловит перечитывание (тексты остаются
+   прежние), но при следующем запуске сервер с таким файлом не поднимался. Раздел с любым названием может набрать
+   роль "Контент" в редакторе кабинета */
+function dict(entries = []) { const o = Object.create(null); for (const [k, v] of entries) o[k] = v; return o; }
 function article(file) {
   const path = join(CONTENT_DIR, file);
   if (!existsSync(path)) return null;
@@ -117,7 +122,7 @@ function article(file) {
   for (const raw of readWithoutYo(path).split('\n')) {
     const line = raw.replace(/\s+$/, ''), t = line.trim();
     if (!t) continue;
-    if (t.startsWith('=== ')) { cur = { name: t.slice(4).trim(), fields: {}, sections: {} }; out.push(cur); sec = null; continue; }
+    if (t.startsWith('=== ')) { cur = { name: t.slice(4).trim(), fields: dict(), sections: dict() }; out.push(cur); sec = null; continue; }
     if (!cur) continue;
     const m = t.match(/^\[(.+)\]$/);
     if (m) { sec = m[1].trim(); continue; }
@@ -307,7 +312,7 @@ const MOOD_FAMILIES_FALLBACK = { joy: ['Радость', '#f2c94c'], trust: ['Д
 /* прежние пять отметок — чтобы старая история читалась */
 export const LEGACY_MOODS = { joy: 'joy', calm: 'serenity', tired: 'pensiveness', anx: 'apprehension', sad: 'sadness' };
 export const QUICK_MOODS = [M('quick:well','Хорошо','joy','+'),M('quick:calm','Спокойно','trust','+'),M('quick:tired','Устала','sadness','-'),M('quick:anxious','Тревожно','fear','-'),M('quick:heavy','Тяжело','sadness','-')];
-export const moodInfo = (key) => QUICK_MOODS.find(m=>m.key===key) || data.MOOD_BY_KEY[LEGACY_MOODS[key] || key] || null;
+export const moodInfo = (key) => QUICK_MOODS.find(m=>m.key===key) || data.MOOD_BY_KEY[Object.hasOwn(LEGACY_MOODS, key) ? LEGACY_MOODS[key] : key] || null;
 /* Тексты напоминаний по функции — запасные, те же, что в content/напоминания.txt */
 /* Тексты экрана «Моя неделя» — запасные, те же, что в content/неделя.txt: ключ → варианты (ритм — несколько, берется по неделе) */
 const WEEK_TEXTS_FALLBACK = {
@@ -373,13 +378,13 @@ function build() {
   /* Руны: книга со знаком-рисунком в каждой записи. */
   r.RUNES = must('руны.txt', book('руны.txt')).map(runeFromBook);
 
-  r.NUM_DESTINY = Object.fromEntries(must('нумерология-судьба.txt', rows('нумерология-судьба.txt', 3)).map((c) => [c[0], [c[1], c[2]]]));
+  r.NUM_DESTINY = dict(must('нумерология-судьба.txt', rows('нумерология-судьба.txt', 3)).map((c) => [c[0], [c[1], c[2]]]));
 
-  r.NUM_YEAR = Object.fromEntries(must('нумерология-год.txt', rows('нумерология-год.txt', 2)).map((c) => [c[0], c[1]]));
+  r.NUM_YEAR = dict(must('нумерология-год.txt', rows('нумерология-год.txt', 2)).map((c) => [c[0], c[1]]));
 
-  r.YEARS = Object.fromEntries((article('личный-год.txt') || []).map(yearFromArticle).filter((y) => y.n).map((y) => [y.n, y]));
+  r.YEARS = dict((article('личный-год.txt') || []).map(yearFromArticle).filter((y) => y.n).map((y) => [y.n, y]));
 
-  r.NUM_DAY = Object.fromEntries(must('нумерология-день.txt', rows('нумерология-день.txt', 2)).map((c) => [c[0], c[1]]));
+  r.NUM_DAY = dict(must('нумерология-день.txt', rows('нумерология-день.txt', 2)).map((c) => [c[0], c[1]]));
 
   /* Лунные дни: статья на каждый день (число 1…30) или старый строчный файл «номер | название | рекомендация».
      LUNAR_DAYS — пары [название, рекомендация] по номеру, как раньше; LUNAR_INFO — полные записи с картинкой и описанием. */
@@ -398,8 +403,8 @@ function build() {
   /* Темы дня и настрой: тема выбирается по источнику (тон, карта, руна, небо), к теме — настрой и вопрос дня */
   r.THEMES = must('темы-дня.txt', rows('темы-дня.txt', 2)).filter((t) => THEME_KEY.test(t[0])).map(([key, title, about]) => ({ key, title, about: about || '' }));
   const themeKeys = new Set(r.THEMES.map((t) => t.key));
-  r.THEME_OF = {};
-  for (const [src, code, key] of must('темы-источников.txt', rows('темы-источников.txt', 3))) { if (!themeKeys.has(key)) continue; (r.THEME_OF[src] ||= {})[code.replace(/\s+/g, ' ')] = key; }
+  r.THEME_OF = dict();
+  for (const [src, code, key] of must('темы-источников.txt', rows('темы-источников.txt', 3))) { if (!themeKeys.has(key)) continue; (r.THEME_OF[src] ||= dict())[code.replace(/\s+/g, ' ')] = key; }
   r.NASTROY = must('настрой.txt', rows('настрой.txt', 3)).filter((n) => themeKeys.has(n[0]) && /\?\s*$/.test(n[2]));
   for (const t of r.THEMES) if (!r.NASTROY.some((n) => n[0] === t.key) && !process.env.LUNARIO_QUIET) console.warn(`Тексты: у темы «${t.title}» нет ни одного настроя в настрой.txt`);
   /* «Новое в приложении»: месяц | название | раздел:виджет | описание */
@@ -415,12 +420,12 @@ function build() {
   const fams = em ? em.filter((c) => c[0] === 'лепесток') : [];
   const moods = em ? em.filter((c) => c[0] !== 'лепесток').map((c) => M(c[0], c[1], c[2], c[3])) : [];
   r.MOODS = [...new Map([...MOODS_FALLBACK, ...moods.filter(m=>m.key!=='displeasure')].map(m => [m.key, m])).values()];
-  r.MOOD_FAMILIES = fams.length >= 8 ? Object.fromEntries(fams.map((c) => [c[1], [c[2], c[3]]])) : MOOD_FAMILIES_FALLBACK;
-  r.MOOD_BY_KEY = Object.fromEntries(r.MOODS.map((m) => [m.key, m]));
+  r.MOOD_FAMILIES = fams.length >= 8 ? dict(fams.map((c) => [c[1], [c[2], c[3]]])) : MOOD_FAMILIES_FALLBACK;
+  r.MOOD_BY_KEY = dict(r.MOODS.map((m) => [m.key, m]));
   r.MOOD_BY_KEY.displeasure = M('displeasure', 'неудовольствие', 'disgust', '-');
   /* Тексты напоминаний */
   const rt = rows('напоминания.txt', 2);   /* текст может быть одной фразой — только заголовок, без тела */
-  r.REMINDER_TEXTS = Object.fromEntries(must('напоминания.txt', rt).map((c) => [c[0], [c[1], c[2] || '']]));
+  r.REMINDER_TEXTS = dict(must('напоминания.txt', rt).map((c) => [c[0], [c[1], c[2] || '']]));
   /* Тексты «Моей недели»: ключ | текст; ключ может повторяться — это варианты, файл целиком заменяет запасной список по ключу */
   /* фразы интерфейса — интерфейс.txt (ключ | текст); чего нет в файле — как в коде (UI_DEFAULT). Правится в кабинете, вкладка «Тексты» */
   r.UI = { ...UI_DEFAULT };
@@ -441,14 +446,14 @@ function build() {
 
   /* «Я помню» — фразы памяти (ключ | текст; пустой текст выключает правило) и вопросы дня по теме (тема | вопрос).
      Файлы не обязательны: без них приложение просто молчит */
-  r.MEMORY = Object.fromEntries((rows('память.txt', 1) || []).map((c) => [c[0], c[1] || '']));
+  r.MEMORY = dict((rows('память.txt', 1) || []).map((c) => [c[0], c[1] || '']));
   r.TOPIC_QUESTIONS = (rows('вопросы-по-темам.txt', 2) || []).map((c) => [c[0], c[1]]);
   /* значения натальной карты — планеты в знаках и домах, аспекты, точки, баланс (natal-texts.mjs); файлы не обязательны */
   r.NATAL = loadNatalTexts(rows);
   r.AFFIRMATIONS = must('аффирмации.txt', lines('аффирмации.txt'));
   r.DAY_QUESTIONS = must('вопросы-дня.txt', lines('вопросы-дня.txt'));
 
-  r.YN_RIDERS = Object.fromEntries(must('ответы-да-нет.txt', rows('ответы-да-нет.txt', 4)).map((c) => [c[0], [c[1], c[2], c[3]]]));
+  r.YN_RIDERS = dict(must('ответы-да-нет.txt', rows('ответы-да-нет.txt', 4)).map((c) => [c[0], [c[1], c[2], c[3]]]));
 
   r.YN_VERDICTS = YN_VERDICTS_FALLBACK;
   r.TOPICS = TOPICS_FALLBACK;

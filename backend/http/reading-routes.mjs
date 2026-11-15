@@ -73,7 +73,7 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
       let title, body, extra = {}, stored = kind, data = '';
       if (kind === 'rune') {
         /* руны выпадают случайно, без повторов внутри расклада; одна руна — kind «rune», расклад — «runes» */
-        const L = C.LAYOUTS.rune[b.layout] ? b.layout : 'one';
+        const L = Object.hasOwn(C.LAYOUTS.rune, b.layout) ? b.layout : 'one';   // layout=constructor давал 500
         const pos = C.LAYOUTS.rune[L].pos;
         const runes = drawDistinct([...C.RUNES], pos.length).map((r, i) => ({ pos: pos[i].name, ...runePublic(r) }));
         title = runes.map((r) => r.name).join(' · ');
@@ -97,7 +97,7 @@ export function createReadingRoutes({ compatSave, natalMeanings, C, cardOfDay, c
       if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
       /* Дневного лимита раскладов нет (решение владелицы 18.09: лимит был на случай платных ИИ-разборов, а тексты — свои).
          Счетчик usage.spreads остается для статистики. Карты выпадают случайно и не повторяются внутри расклада */
-      const L = C.LAYOUTS.tarot[b.layout] ? b.layout : 'three';
+      const L = Object.hasOwn(C.LAYOUTS.tarot, b.layout) ? b.layout : 'three';
       const pos = C.LAYOUTS.tarot[L].pos;
       const cards = drawDistinct([...C.ARCANA], pos.length).map((a, i) => ({ pos: pos[i].name, ...cardPublic(a) }));
       const ins = mutate(u.id, () => {

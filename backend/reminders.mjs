@@ -85,7 +85,7 @@ export const listReminders = (userId) => Object.keys(FEATURES).map((f) => pub(f,
 
 export function saveReminder(userId, patch) {
   const feature = String(patch.feature || '');
-  const d = FEATURES[feature]; if (!d) return { ok: false, error: 'bad_feature' };
+  const d = Object.hasOwn(FEATURES, feature) ? FEATURES[feature] : null; if (!d) return { ok: false, error: 'bad_feature' };   // feature=constructor давал 500
   const cur = rowOf(userId, feature) || { enabled: 0, time: d.time, freq: d.freq, weekday: d.weekday, tz: '' };
   const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.time || '') ? patch.time : cur.time;
   let freq = FREQS.includes(patch.freq) ? patch.freq : cur.freq;
@@ -122,7 +122,7 @@ const tpl = (key, vars) => {
    Иначе вечерний пуш «не видит» записанный день у тех, кто западнее Москвы, а утро снимает настрой на вчера у тех, кто восточнее. */
 export const userDayOf = userDay;
 export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK) {
-  if (!FEATURES[feature]) return null;
+  if (!Object.hasOwn(FEATURES, feature)) return null;
   const d = userDayOf(u, atMs), url = FEATURES[feature].url;
   if (feature === 'morning') return morningNotification(u, d, atMs, tz);
   if (feature === 'evening') {
@@ -197,7 +197,7 @@ export function nativePlan(u, feature, fromMs = Date.now()) {
 }
 
 export function previewNotification(u, feature) {
-  if (!FEATURES[feature]) return null;
+  if (!Object.hasOwn(FEATURES, feature)) return null;
   return notificationFor(feature, u) || (feature === 'evening' ? { ...tpl('evening'), url: FEATURES.evening.url } : feature === 'week' ? { ...tpl('week'), url: FEATURES.week.url } : null) || { title: FEATURES[feature].title, body: 'Пробное уведомление — все готово к вашим напоминаниям', url: FEATURES[feature].url };
 }
 

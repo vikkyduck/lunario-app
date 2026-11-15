@@ -59,7 +59,7 @@ export const safeName = (name) => { const s = String(name ?? ''); if (!/^[\wа-�
 export const safeVersionId = (id) => { const s = String(id ?? ''); if (!/^[\w.@-]+\.txt$/u.test(s) || s.includes('..')) throw refuse('bad_version'); return s; };
 /* версия картинки: base__время__кто.ext, расширение — только из тех, что принимает загрузка; «..» и разделителей нет по форме */
 export const safeImageId = (id) => { const s = String(id ?? ''); if (!/^[\wа-яА-Я.@-]+__[\w.@-]+\.(?:jpe?g|png|webp)$/u.test(s) || s.includes('..')) throw refuse('bad_version'); return s; };
-const imageDirOf = (kind) => { const dir = IMAGE_DIRS[String(kind ?? '')]; if (!dir) throw refuse('bad_kind'); return dir; };
+const imageDirOf = (kind) => { const k = String(kind ?? ''); const dir = Object.hasOwn(IMAGE_DIRS, k) ? IMAGE_DIRS[k] : null; if (!dir) throw refuse('bad_kind'); return dir; };
 /* настоящий путь файла — внутри корня (или сам корень); файла нет или ссылка ведет наружу — false */
 export const inside = (file, root) => { try { const real = realpathSync(file), r = realpathSync(root); return real === r || real.startsWith(r + sep); } catch { return false; } };
 const path = (name) => join(CONTENT_DIR, safeName(name));
