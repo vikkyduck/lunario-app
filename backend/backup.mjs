@@ -37,6 +37,7 @@ export function createBackup({ dataDir, contentDir, backupDir }) {
     if (existsSync(dbFile)) {
       const tmp = join(backupDir, `app-${stamp}.db`);
       const src = new DatabaseSync(dbFile, { readOnly: true });
+      src.exec('PRAGMA busy_timeout = 5000');   // сервис может писать в эту секунду: ждем, а не падаем
       try { await sqliteBackup(src, tmp); } finally { src.close(); }
       writeFileSync(tmp + '.gz', gzipSync(readFileSync(tmp)));
       unlinkSync(tmp);

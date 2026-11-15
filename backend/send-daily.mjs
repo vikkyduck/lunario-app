@@ -9,6 +9,7 @@ import { initReminders, runDue } from './reminders.mjs';
 
 const DATA_DIR = process.env.DATA_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'data');
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
+db.exec('PRAGMA busy_timeout = 5000');   // сервис пишет в ту же базу: ждем, а не падаем
 initReminders(db);
 const stat = await runDue(vapidKeys(DATA_DIR));
 if (stat.due) console.log(`Напоминания: подошло ${stat.due}, в очередь ${stat.queued}, отправлено ${stat.sent}, отписались ${stat.gone}, не дошло ${stat.failed}`);

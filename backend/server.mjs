@@ -72,8 +72,11 @@ const EVENT_TYPES = new Set([
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(join(DATA_DIR, 'app.db'));
 
+/* busy_timeout: пока в базу пишет другой процесс (планировщик раз в 5 минут, ночная копия, команда по SSH),
+   запрос ждет до 5 секунд, а не получает сразу "database is locked" и ошибку 500 */
 db.exec(`
   PRAGMA journal_mode = WAL;
+  PRAGMA busy_timeout = 5000;
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TEXT NOT NULL,
@@ -141,6 +144,9 @@ db.exec(`
     age_band TEXT DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_events_day ON events (day, type);
+  /* События одного человека: отчеты кабинета спрашивают "первое действие", "был ли активен в эти дни"
+     по каждому человеку. Без этого индекса каждый такой вопрос просматривал всю таблицу событий */
+  CREATE INDEX IF NOT EXISTS idx_events_user ON events (user_id, day);
   /* Платежи: заказ создаётся у нас, подтверждение приходит вебхуком Продамуса. */
   CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
