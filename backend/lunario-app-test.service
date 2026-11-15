@@ -4,6 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
+# Свой пользователь стенда: даже при ошибке в настройках ниже стенд не может писать в файлы прода
+User=lunario-test
+Group=lunario-test
 WorkingDirectory=/opt/lunario-app-test/backend
 Environment=PORT=5032
 Environment=HOST=127.0.0.1
@@ -12,6 +15,7 @@ Environment=DATA_DIR=/opt/lunario-app-test/data
 Environment=BASE_PATH=/app-test
 # тексты и картинки общие с продом, но стенду они только на чтение
 Environment=CONTENT_DIR=/opt/lunario-content
+Environment=BACKUP_DIR=/opt/lunario-app-test/backups
 # Свой .env: только почта для входа по коду, без ключей оплаты — со стенда нельзя случайно создать реальный заказ
 EnvironmentFile=-/opt/lunario-app-test/.env
 ExecStart=/usr/bin/node /opt/lunario-app-test/backend/server.mjs
@@ -20,7 +24,9 @@ RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/opt/lunario-app-test/data
+ReadWritePaths=/opt/lunario-app-test/data /opt/lunario-app-test/backups
+# Контент прода стенд только читает: сохранение текста из кабинета стенда получит отказ, а не испортит прод
+ReadOnlyPaths=/opt/lunario-content
 # Прод-база стенду не видна
 InaccessiblePaths=/opt/lunario-app/data
 

@@ -9,8 +9,12 @@ export const ROLES = {
   support:   'Поддержка',
   user:      'Пользователь',
 };
-export const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'vikavika.utkina@yandex.ru,e.ratochka@gmail.com')
+/* Админы задаются только в окружении: ADMIN_EMAILS в .env на сервере, см. backend/set-admins.sh.
+   В коде адресов нет: репозиторий публичный, а адрес админа - половина входа в кабинет.
+   deploy.sh не выкатывает новую версию, пока строки ADMIN_EMAILS на сервере нет. */
+export const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
   .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+if (!ADMIN_EMAILS.length) console.warn('Кабинет: ADMIN_EMAILS не задан, админов нет. Задать: bash backend/set-admins.sh');
 export const isAdmin = (email) => ADMIN_EMAILS.includes(String(email || '').toLowerCase());
 
 let db;

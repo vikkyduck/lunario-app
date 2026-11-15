@@ -4,6 +4,11 @@ After=network.target
 
 [Service]
 Type=simple
+# Свой пользователь, а не root: ошибка в коде не дает прав на всю машину. Папки данных, контента
+# и копий принадлежат lunario (это делает deploy.sh). Команды с базой на сервере запускайте от него же:
+# sudo -u lunario node …, иначе служебные файлы SQLite станут чужими для сервиса
+User=lunario
+Group=lunario
 WorkingDirectory=/opt/lunario-app/backend
 Environment=PORT=5031
 Environment=HOST=127.0.0.1

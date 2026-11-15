@@ -22,6 +22,10 @@ for i in 1 2 3 4 5; do
   echo "   связь оборвалась, пробую ещё раз ($i)"; sleep 15
 done
 
+# Сервис работает от пользователя lunario и сохраняет правки из кабинета "Контент": файлы,
+# пришедшие через rsync от root, отдаем ему. До первой выкатки с этим пользователем шаг пропускается
+ssh "$SERVER" "id -u lunario >/dev/null 2>&1 && chown -R lunario:lunario $REMOTE || true"
+
 echo "==> проверяю, что приложение их увидело"
 sleep 3
 ssh "$SERVER" 'curl -s -o /dev/null -w "   сайт отвечает: %{http_code}\n" https://lunario.online/app/'

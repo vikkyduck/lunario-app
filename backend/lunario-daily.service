@@ -3,6 +3,9 @@ Description=Лунарио — напоминания по функциям (к�
 
 [Service]
 Type=oneshot
+# тот же пользователь, что у сервиса: оба пишут в одну базу
+User=lunario
+Group=lunario
 WorkingDirectory=/opt/lunario-app
 Environment=CONTENT_DIR=/opt/lunario-content
 EnvironmentFile=-/opt/lunario-app/.env
