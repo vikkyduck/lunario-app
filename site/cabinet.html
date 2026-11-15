@@ -409,7 +409,7 @@ const EXTRAS = {
     const live = r.items.filter((m) => !m.archived), arch = r.items.filter((m) => m.archived);
     $('extra').innerHTML = `<div class="kpis" style="margin-top:14px">${kpiCard({ title: 'Отдаётся пользователям', value: +mb(r.totals.live).replace(',', '.').split(' ')[0], unit: 'МБ', sub: `${live.length} файлов · в приложение попадает только то, что вставлено в опубликованный материал`, state: 'ok' })}${kpiCard({ title: 'В архиве на сервере', value: +mb(r.totals.archived).split(' ')[0], unit: 'МБ', sub: `${arch.length} файлов · не отдаются, можно вернуть или скачать`, state: 'ok' })}</div>
       <div class="notice">Приложение у пользователей хранит только оболочку (шрифты, иконки, ~1 МБ); картинки материалов грузятся по сети при показе и на телефоне не оседают. Чтобы облегчить сервер, сгружайте файлы, которые больше не нужны в приложении: запись и доступ к скачиванию останутся.</div>
-      <div class="viz" style="margin-top:14px"><h3>Загрузить</h3><div class="row" style="margin-top:10px"><input type="file" id="m-file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,application/pdf" style="padding:8px"><button class="btn gold fixed" onclick="mediaUpload()">Загрузить</button><span class="hint" id="m-msg"></span></div><p class="hint">До 5 МБ. Для картинок в приложении лучше WebP или JPG шириной до 1600px — они в разы легче PNG.</p></div>
+      <div class="viz" style="margin-top:14px"><h3>Загрузить</h3><div class="row" style="margin-top:10px"><input type="file" id="m-file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" style="padding:8px"><button class="btn gold fixed" onclick="mediaUpload()">Загрузить</button><span class="hint" id="m-msg"></span></div><p class="hint">До 5 МБ. Для картинок в приложении лучше WebP или JPG шириной до 1600px — они в разы легче PNG.</p></div>
       <h3 style="margin-top:18px">Активные</h3><div class="files" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${live.map(card).join('') || '<p class="empty">Файлов пока нет.</p>'}</div>
       ${arch.length ? `<h3 style="margin-top:18px">Архив</h3><div class="files" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${arch.map(card).join('')}</div>` : ''}`;
   },
@@ -476,7 +476,7 @@ function mediaUpload() {
   const f = $('m-file').files[0], msg = $('m-msg'); if (!f) { msg.textContent = 'Выберите файл.'; return; }
   if (f.size > 5 * 1024 * 1024) { msg.textContent = 'До 5 МБ.'; return; }
   msg.textContent = 'Загружаем…';
-  const rd = new FileReader(); rd.onload = async () => { try { const r = await api('/cabinet/media', { method: 'POST', body: JSON.stringify({ name: f.name, type: f.type, data: rd.result }) }); if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Такой тип не принимаем.' : 'Не загрузилось.'; return; } toast('Загружено'); EXTRAS.media(); } catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); } }; rd.readAsDataURL(f);
+  const rd = new FileReader(); rd.onload = async () => { try { const r = await api('/cabinet/media', { method: 'POST', body: JSON.stringify({ name: f.name, type: f.type, data: rd.result }) }); if (!r.ok) { msg.textContent = r.error === 'bad_type' ? 'Такой тип не принимаем: подойдут PNG, JPEG, WebP, GIF или PDF.' : 'Не загрузилось.'; return; } toast('Загружено'); EXTRAS.media(); } catch (e) { msg.textContent = 'Не загрузилось: ' + (e.code || e.message); } }; rd.readAsDataURL(f);
 }
 async function backupNow() {
   const b = $('bk-run'), m = $('bk-msg'); b.disabled = true; m.textContent = 'Снимаем копию…';

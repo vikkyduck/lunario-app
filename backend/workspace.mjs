@@ -114,7 +114,9 @@ export function materialForDay(kind, day) {
 }
 
 /* ── картинки и файлы ── */
-const MEDIA_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg', 'application/pdf': 'pdf', 'text/plain': 'txt' };
+/* SVG не принимаем: это документ со скриптами, а не картинка. С адреса приложения такой файл
+   выполнял бы свой код с правами того, кто его открыл, в том числе админа */
+const MEDIA_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'application/pdf': 'pdf', 'text/plain': 'txt' };
 export function mediaList() {
   const items = all('SELECT * FROM media ORDER BY archived, created_at DESC');
   const live = items.filter((m) => !m.archived).reduce((s, m) => s + m.size, 0), archived = items.filter((m) => m.archived).reduce((s, m) => s + m.size, 0);

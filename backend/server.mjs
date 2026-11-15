@@ -1698,7 +1698,11 @@ const server = createServer(async (req, res) => {
     if (p.startsWith('/uploads/') && (req.method === 'GET' || req.method === 'HEAD')) {
       const f = W.mediaPath(p.slice('/uploads/'.length));
       if (!f) { res.writeHead(404); return res.end(); }
-      res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400' });
+      /* Загрузки кабинета - вложения: в <img> картинка показывается как раньше, а открытая напрямую
+         скачивается. nosniff и sandbox не дают браузеру выполнить файл как страницу приложения,
+         в том числе SVG, загруженные до запрета */
+      res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream', 'Cache-Control': 'public, max-age=86400',
+        'Content-Disposition': 'attachment', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox" });
       return res.end(req.method === 'HEAD' ? undefined : readFileSync(f));
     }
     if (p === '/' || p === '/index.html') return serveStatic(res, 'index.html', 0);
