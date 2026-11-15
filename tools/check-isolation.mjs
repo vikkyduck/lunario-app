@@ -234,8 +234,8 @@ try {
   const staffMail = 'staff@example.test';
   db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
     VALUES (?,?,?,?,0,'login') ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0`)
-    .run(staffMail, createHash('sha256').update('123456' + staffMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
-  await staff.json('/auth/verify', 'POST', { email: staffMail, code: '123456' });
+    .run(staffMail, createHash('sha256').update('12345678' + staffMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+  await staff.json('/auth/verify', 'POST', { email: staffMail, code: '12345678' });
   const staffLeak = [];
   for (const kind of ['rituals', 'activity', 'features', 'topics', 'supportmetrics', 'quality', 'concerns', 'feedback', 'ai', 'lifecycle']) {
     const r = await staff.raw(`/cabinet/report?kind=${kind}`);
@@ -260,8 +260,8 @@ try {
   const twoMail = 'two-roles@example.test';
   await staff.json('/cabinet/staff', 'POST', { email: twoMail, name: 'Контент и поддержка', roles: ['content', 'support'] });
   db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login')`)
-    .run(twoMail, createHash('sha256').update('123456' + twoMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
-  const two = account(); await two.json('/me'); await two.json('/auth/verify', 'POST', { email: twoMail, code: '123456' });
+    .run(twoMail, createHash('sha256').update('12345678' + twoMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+  const two = account(); await two.json('/me'); await two.json('/auth/verify', 'POST', { email: twoMail, code: '12345678' });
   const visible = async (q = '') => (await two.json('/cabinet/tasks' + q)).items.map((t) => t.id);
   assert.deepEqual((await visible()).filter((id) => [tContent, tSupport, tProduct].includes(id)).sort(), [tContent, tSupport].sort(),
     'сотрудник с двумя ролями видит задачи обеих своих областей и не видит продуктовую');
@@ -276,8 +276,8 @@ try {
     const email = `links-${role}@example.test`;
     await staff.json('/cabinet/staff', 'POST', { email, name: role, roles: [role] });
     db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login')`)
-      .run(email, createHash('sha256').update('123456' + email).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
-    const actor = account(); await actor.json('/me'); await actor.json('/auth/verify', 'POST', { email, code: '123456' });
+      .run(email, createHash('sha256').update('12345678' + email).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
+    const actor = account(); await actor.json('/me'); await actor.json('/auth/verify', 'POST', { email, code: '12345678' });
     if (role === 'content') {
       const browser = await chromium.launch({ headless: true });
       try {

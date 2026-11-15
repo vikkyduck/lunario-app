@@ -66,7 +66,7 @@ async function unitMailer(fake, fake587, smtpEnv) {
   const setEnv = (env) => { for (const k of Object.keys(process.env)) if (k.startsWith('SMTP_')) delete process.env[k]; Object.assign(process.env, env); };
   setEnv(smtpEnv());
   const M = await import(join(repo, 'backend/mailer.mjs'));
-  const letter = { subject: 'Код входа в Лунарио: 123456 — проверка длинной темы письма с кириллицей', text: 'Ваш код для входа в Лунарио: 123456', html: '<p>123456</p>' };
+  const letter = { subject: 'Код входа в Лунарио: 12345678 — проверка длинной темы письма с кириллицей', text: 'Ваш код для входа в Лунарио: 12345678', html: '<p>123456</p>' };
   const send = (to = 'a@example.test') => M.sendMail({ to, ...letter }).then(() => ({ ok: true }), (e) => ({ ok: false, e }));
   const LIMIT = 4000;
 
@@ -80,7 +80,7 @@ async function unitMailer(fake, fake587, smtpEnv) {
   assert.match(h, /^Date: /m); assert.match(h, /^Message-ID: <.+@lunario\.test>$/m); assert.match(h, /^Subject: =\?UTF-8\?B\?/m);
   assert.match(h, /^From: =\?UTF-8\?B\?.+\?= <hello@lunario\.test>$/m, 'Кириллица в имени отправителя — по RFC 2047');
   assert.ok(h.split('\n').every((l) => l.length <= 78), 'Ни одна строка заголовков не длиннее 78 символов');
-  assert.equal(fake.codeFor('ok@example.test'), '123456');
+  assert.equal(fake.codeFor('ok@example.test'), '12345678');
 
   for (const mode of ['bytes', 'lines', 'multiline_greet', 'quit_no_reply']) {
     fake.mode = mode;
@@ -142,7 +142,7 @@ async function unitMailer(fake, fake587, smtpEnv) {
   setEnv(smtpEnv({ SMTP_PORT: String(fake587.port), SMTP_SECURE: 'starttls' }));
   fake587.mode = 'ok';
   assert.equal((await within(LIMIT, 'send starttls', send('tls@example.test'))).ok, true, 'STARTTLS: письмо уходит');
-  assert.equal(fake587.codeFor('tls@example.test'), '123456');
+  assert.equal(fake587.codeFor('tls@example.test'), '12345678');
 
   /* не больше двух разговоров с SMTP одновременно */
   setEnv(smtpEnv()); fake.mode = 'lines'; fake.maxActive = 0;
@@ -416,7 +416,7 @@ async function serverChecks(fake, smtpEnv, dir, servers) {
   assert.equal((await A.code('v6-7@example.test', { xff: '2001:db8:0:8::1' })).status, 200, 'Другая сеть /64 — другой клиент');
   /* неверные коды копятся на адрес: после пяти новый код — через паузу, а не сразу с новыми пятью попытками */
   const pc = await A.code('pause@example.test', { xff: '203.0.113.202' }); assert.equal(pc.status, 200);
-  const right = fake.codeFor('pause@example.test'), wrong = right === '111111' ? '222222' : '111111';
+  const right = fake.codeFor('pause@example.test'), wrong = right === '11111111' ? '22222222' : '11111111';
   for (let i = 0; i < 5; i++) assert.equal((await A.req('/auth/verify', { method: 'POST', body: { email: 'pause@example.test', code: wrong }, cookie: pc.cookie, xff: '203.0.113.202' })).body.error, 'wrong_code');
   const again = await A.code('pause@example.test', { xff: '203.0.113.203', cookie: pc.cookie });
   assert.equal(again.status, 429); assert.equal(again.body.error, 'code_pause'); assert.ok(again.body.retryAfter > 0 && again.body.retryAfter <= 60, `Пауза ${again.body.retryAfter} с`);

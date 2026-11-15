@@ -13,7 +13,7 @@
 
    Коды на почту различаются целью: 'login' открывает вход, 'delete' подтверждает удаление аккаунта.
    Код одной цели не подходит для другой — письмо «подтвердите удаление» не должно открывать вход. */
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 
 export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rolesFor }) {
   const COOKIE = 'lunario_app';
@@ -85,7 +85,9 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
   /* Письмо уходит раньше, чем код попадает в базу (mail-service.mjs): newLoginCode — только придумать код,
      saveLoginCode — записать его, когда письмо принято. Неудачная повторная отправка так не отменяет код,
      который уже лежит у человека в почте. */
-  const newLoginCode = () => String(100000 + (randomBytes(4).readUInt32BE(0) % 900000));
+  /* 8 цифр (ревью 15.11): при паузах по адресу 6 цифр давали около 4% за год упорного подбора к одному адресу,
+     8 цифр - в сто раз меньше. crypto.randomInt - без перекоса остатка от деления */
+  const newLoginCode = () => String(randomInt(10000000, 100000000));
   function saveLoginCode(email, code, purpose = 'login') {
     /* attempts — попытки к этому коду (не больше 5); fails — неверные подряд по адресу, новым кодом не обнуляются (сутки — да) */
     db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
@@ -107,9 +109,9 @@ export function createIdentity({ db, basePath, sha, clean, nowISO, userById, rol
     return Math.max(0, Math.ceil((at + pause - Date.now()) / 1000));
   }
   const issueLoginCode = (email, purpose = 'login') => saveLoginCode(email, newLoginCode(), purpose);
-  /* Ровно шесть ASCII-цифр. Раньше код резался до шести символов, и «1234567» с верными первыми шестью подходил —
+  /* Ровно восемь ASCII-цифр. Раньше код резался до длины кода, и лишняя цифра в конце не мешала верным первым —
      то есть проверка пропускала не тот код, который человек получил в письме. */
-  const CODE = /^[0-9]{6}$/;
+  const CODE = /^[0-9]{8}$/;
   const codeFormatOk = (code) => typeof code === 'string' && CODE.test(code);
 
   /* Проверка кода: та же для входа и для удаления. Возвращает причину отказа или null, если код подошел (и погашен). */

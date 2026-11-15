@@ -25,7 +25,7 @@ function renderLogin(step) {
   const box = $('l-box');
   if (step === 'code') {
     box.innerHTML = `<p class="lead">Код отправлен на <b>${esc(loginEmail)}</b></p>
-      <input id="l-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" class="mt-12 code-input">
+      <input id="l-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="00000000" class="mt-12 code-input">
       <button data-on="click:loginVerify-this" class="btn gold w-full mt-12" type="button">Войти</button>
       <button data-on="click:renderLogin-email" class="btn sm mt-8" type="button">Изменить адрес</button><p class="msg" id="l-msg" role="status"></p>`;
     setTimeout(() => $('l-code').focus(), 60); return;
@@ -50,7 +50,7 @@ async function loginRequest(btn) {
 async function loginVerify(btn) {
   if (loginBusy) return;
   const code = $('l-code').value.trim();
-  if (code.length !== 6) { loginMsg('Код состоит из шести цифр.', true); return; }
+  if (code.length !== 8) { loginMsg('Код состоит из восьми цифр.', true); return; }
   loginBusy = true; const release = holdButton(btn); loginMsg('Проверяем код…');
   try { await api('/auth/verify', { method: 'POST', body: JSON.stringify({ email: loginEmail, code }) }); await boot(); }
   catch (e) { loginMsg(authErrorText(e, 'verify'), true); release(); }

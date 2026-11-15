@@ -346,7 +346,7 @@ function paintAuth(){
       <button data-on="click:authSend" class="btn auth-submit" type="button">Прислать код</button><p class="msg" id="auth-msg" role="status"></p>`
     : `<p class="auth-sent">Код отправлен на <b>${esc(auth.email)}</b></p>
       ${auth.late ? '<p class="auth-note auth-late" role="status">Письмо могло задержаться. Если его нет через пару минут, запросите код еще раз.</p>' : ''}
-      <div class="field"><label for="auth-code">Код из письма</label><input id="auth-code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"></div>
+      <div class="field"><label for="auth-code">Код из письма</label><input id="auth-code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="00000000"></div>
       <button data-on="click:authCheck" class="btn auth-submit" type="button">Войти</button><p class="msg" id="auth-msg" role="status"></p>
       <p class="auth-note">Не пришло? Проверьте папку «Спам».</p>
       <button data-on="click:authResend" class="btn ghost sm auth-secondary" id="auth-resend" type="button" disabled>Прислать еще раз</button>
@@ -413,7 +413,7 @@ async function authCheck(){
   if (auth.busy) return;
   const input = $('auth-code'), msg = $('auth-msg'); if (!input) return;
   const code = input.value.trim();
-  if (code.length !== 6) { showMsg(msg, 'Код состоит из шести цифр.', true); return; }
+  if (code.length !== 8) { showMsg(msg, 'Код состоит из восьми цифр.', true); return; }
   const gen = auth.gen; auth.busy = true;
   const release = holdButton(document.querySelector(`#${auth.box} .auth-submit`));
   showMsg(msg, 'Проверяем код…');

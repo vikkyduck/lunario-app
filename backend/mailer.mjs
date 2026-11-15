@@ -314,7 +314,7 @@ export function staffMail(roleNames, code) {
       <p style="margin:0 0 20px;font-family:${FONT};font-size:15px;line-height:1.6;color:#cdc6e2">Кабинеты: <span style="color:#f0d79a">${rolesLine}</span></p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:22px;background-color:rgba(217,184,104,.06)"><tr><td style="padding:8px">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#34293e" style="border-radius:16px;background-color:rgba(217,184,104,.12);border:1px solid #6e5c4d;border-color:rgba(217,184,104,.35)"><tr>
-          <td align="center" style="padding:20px 10px 20px 20px;font-family:${FONT};font-weight:600;font-size:40px;line-height:1.2;letter-spacing:10px;color:#f0d79a">${code}</td>
+          <td align="center" style="padding:20px 8px 20px 14px;font-family:${FONT};font-weight:600;font-size:32px;line-height:1.2;letter-spacing:6px;color:#f0d79a">${code}</td>
         </tr></table>
       </td></tr></table>
       <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:#b9b2cf">Откройте <span style="color:#f0d79a">lunario.online/app/cabinet</span>, укажите эту почту и введите код — он действует 15 минут.</p>
@@ -348,7 +348,7 @@ export function deleteMail(code) {
       <h1 style="margin:0 0 20px;font-family:${FONT};font-weight:600;font-size:26px;line-height:1.25;color:#f5f2ea">Код подтверждения</h1>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:22px;background-color:rgba(217,184,104,.06)"><tr><td style="padding:8px">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#34293e" style="border-radius:16px;background-color:rgba(217,184,104,.12);border:1px solid #6e5c4d;border-color:rgba(217,184,104,.35)"><tr>
-          <td align="center" style="padding:20px 10px 20px 20px;font-family:${FONT};font-weight:600;font-size:40px;line-height:1.2;letter-spacing:10px;color:#f0d79a">${code}</td>
+          <td align="center" style="padding:20px 8px 20px 14px;font-family:${FONT};font-weight:600;font-size:32px;line-height:1.2;letter-spacing:6px;color:#f0d79a">${code}</td>
         </tr></table>
       </td></tr></table>
       <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:#b9b2cf">После ввода кода будут удалены профиль, дневник, желания, привычки, аскезы, настроения, история вопросов и переписка с поддержкой. Восстановить их будет нельзя.</p>
@@ -379,7 +379,7 @@ export function loginMail(code) {
       <h1 style="margin:0 0 20px;font-family:${FONT};font-weight:600;font-size:26px;line-height:1.25;color:#f5f2ea">Ваш код</h1>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:22px;background-color:rgba(217,184,104,.06)"><tr><td style="padding:8px">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#34293e" style="border-radius:16px;background-color:rgba(217,184,104,.12);border:1px solid #6e5c4d;border-color:rgba(217,184,104,.35)"><tr>
-          <td align="center" style="padding:20px 10px 20px 20px;font-family:${FONT};font-weight:600;font-size:40px;line-height:1.2;letter-spacing:10px;color:#f0d79a">${code}</td>
+          <td align="center" style="padding:20px 8px 20px 14px;font-family:${FONT};font-weight:600;font-size:32px;line-height:1.2;letter-spacing:6px;color:#f0d79a">${code}</td>
         </tr></table>
       </td></tr></table>
       <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:#b9b2cf">Код действует 15 минут. Введите его в приложении — записи, дневник и серия дней перенесутся на это устройство.</p>

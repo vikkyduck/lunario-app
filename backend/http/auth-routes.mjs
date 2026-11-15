@@ -103,7 +103,7 @@ export function createAuthRoutes({ allowRate, checkLoginCode, codePause, clean, 
     if (p === '/api/account' && req.method === 'DELETE') {
       if (u.email) {
         const b = await readBody(req).catch(() => ({}));
-        const bad = checkLoginCode(u.email, clean(b.code, 6), 'delete');
+        const bad = checkLoginCode(u.email, typeof b.code === 'string' ? b.code.trim() : '', 'delete');   /* код не режем, как при входе: формат проверяет checkLoginCode */
         if (bad) return json(res, bad === 'too_many' ? 429 : 400, { ok: false, error: bad });
       }
       deleteAccount(db, u);

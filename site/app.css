@@ -622,7 +622,7 @@ body.nav-swipe-prev .view.on{animation:nav-swipe-prev .24s var(--sp)}
 .num-mark{font-family:Onest,ui-sans-serif,system-ui,sans-serif;font-weight:600;font-size:36px;line-height:1.1;color:var(--gold);width:44px;flex:0 0 44px;text-align:center}
 .row.top{align-items:flex-start;gap:var(--s4)}
 .sub{color:var(--muted);font-weight:400;font-size:13px}
-.code-input{letter-spacing:8px;text-align:center;font-size:22px}
+.code-input{letter-spacing:6px;text-align:center;font-size:22px}
 .consent{display:flex;gap:var(--s3);align-items:flex-start;color:var(--muted);cursor:pointer}
 .consent input{width:20px;flex:0 0 20px;margin-top:2px;accent-color:var(--gold)}
 /* ── привычки ── */

@@ -1,5 +1,5 @@
 /* Вход по коду на почту: настоящий сервер, временная база, синтетические письма.
-   node tools/check-sync.mjs — ровно шесть цифр кода, счётчик попыток, «почта привязана» и «это уже мой аккаунт»,
+   node tools/check-sync.mjs — ровно восемь цифр кода, счётчик попыток, «почта привязана» и «это уже мой аккаунт»,
    перенос записей гостя только по согласию, повреждённая cookie не роняет запрос, POST /api/journal работает. */
 import assert from 'node:assert/strict';
 import { mkdtemp, cp, mkdir, rm } from 'node:fs/promises';
@@ -65,17 +65,17 @@ try {
   makeCitiesDb(join(fixture, 'backend/cities.db'));   /* справочник городов на одну строку — tools/fixtures.mjs */
   await start();
   const db = new DatabaseSync(join(fixture, 'data/app.db'));
-  const code = '123456';
+  const code = '12345678';
   const putCode = (email, purpose = 'login') => db.prepare(`INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose)
     VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0, purpose=excluded.purpose`)
     .run(email, createHash('sha256').update(code + email).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString(), purpose);
 
   const me = account(); await me.json('/me');
 
-  // ── Код входа: ровно шесть цифр ──
+  // ── Код входа: ровно восемь цифр ──
   const strict = account(); await strict.json('/me');
   const mail = 'strict@example.test';
-  for (const bad of ['1234567', '12345', '12345a', '', '１２３４５６']) {
+  for (const bad of ['123456789', '1234567', '123456', '1234567a', '', '１２３４５６７８']) {
     putCode(mail);
     const r = await strict.raw('/auth/verify', 'POST', { email: mail, code: bad });
     assert.equal(r.status, 400, `код «${bad}» отклонён`);
@@ -83,14 +83,14 @@ try {
     assert.ok(db.prepare('SELECT 1 FROM login_codes WHERE email = ?').get(mail), 'негодный формат не гасит настоящий код');
   }
   assert.equal((await strict.json('/auth/verify', 'POST', { email: mail, code: `  ${code}  ` })).state, 'attached', 'внешние пробелы срезаются');
-  console.log('PASS: принимается ровно шесть цифр; «1234567» больше не подходит вместо «123456».');
+  console.log('PASS: принимается ровно восемь цифр; ни «123456789», ни прежние шесть цифр не подходят вместо «12345678».');
 
   // ── Отказ входа не съедает код и сохраняет счётчик попыток ──
   const tries = account(); await tries.json('/me');
   const triesMail = 'tries@example.test';
   putCode(triesMail);
   for (let i = 1; i <= 3; i++) {
-    assert.equal((await (await tries.raw('/auth/verify', 'POST', { email: triesMail, code: '000000' })).json()).error, 'wrong_code');
+    assert.equal((await (await tries.raw('/auth/verify', 'POST', { email: triesMail, code: '00000000' })).json()).error, 'wrong_code');
     assert.equal(db.prepare('SELECT attempts FROM login_codes WHERE email = ?').get(triesMail).attempts, i, 'счётчик попыток пережил отказ');
   }
   assert.ok(db.prepare('SELECT 1 FROM login_codes WHERE email = ?').get(triesMail), 'код не пропал после неверных попыток');

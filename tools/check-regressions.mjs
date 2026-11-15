@@ -280,7 +280,7 @@ async function checkGuestTransfer({ browser, base, codeFor }) {
     return r.json();
   };
   await call('/me'); await call('/profile', 'POST', { name: 'Владелица записей', birth: '1990-02-02', city: 'Москва', consent: true });
-  codeFor(mail); assert.equal((await call('/auth/verify', 'POST', { email: mail, code: '123456' })).state, 'attached');
+  codeFor(mail); assert.equal((await call('/auth/verify', 'POST', { email: mail, code: '12345678' })).state, 'attached');
   /* свой адрес клиента: к этому месту прогон уже завел много гостей с loopback и уперся бы в лимит анонимных аккаунтов */
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', extraHTTPHeaders: { 'X-Forwarded-For': '198.51.100.241' } });
   try {
@@ -292,7 +292,7 @@ async function checkGuestTransfer({ browser, base, codeFor }) {
     await page.evaluate(async () => { await api('/profile', { method: 'POST', body: JSON.stringify({ name: 'Гость', birth: '1990-02-02', city: 'Москва', consent: true }) }); await api('/mood', { method: 'POST', body: JSON.stringify({ mood: 'joy' }) }); });
     await page.evaluate(() => { S.user.onboarded = false; openLogin(); });
     await page.locator('#l-box #auth-email').fill(mail); await page.locator('#l-box .auth-submit').click();
-    codeFor(mail); await page.locator('#l-box #auth-code').fill('123456'); await page.locator('#l-box [data-on="click:authCheck"]').click();
+    codeFor(mail); await page.locator('#l-box #auth-code').fill('12345678'); await page.locator('#l-box [data-on="click:authCheck"]').click();
     await page.locator('#l-box .auth-transfer').waitFor();
     assert.match(await page.locator('#l-box .auth-off-title').innerText(), /^На этом устройстве есть 1 запись, сделанная без входа/);
     assert.match(await page.locator('#l-box .auth-off-text').innerText(), /Настроение — 1\. Перенести ее в ваш аккаунт\?/);
@@ -503,7 +503,7 @@ async function checkOnboardingWithMail({ browser, base, codeFor }) {
     await fillSteps(page,'Первое знакомство');
     const mail='new-welcome@example.test';codeFor(mail);
     await page.locator('#o-email').fill(mail);await page.locator('#o-consent').check();await page.locator('#o-go').click();
-    await page.locator('#o-codebox #auth-code').fill('123456');await page.locator('#o-codebox [data-on="click:authCheck"]').click();
+    await page.locator('#o-codebox #auth-code').fill('12345678');await page.locator('#o-codebox [data-on="click:authCheck"]').click();
     await page.locator('#v-home.on').waitFor();
     assert.deepEqual(await page.evaluate(()=>[S.user.onboarded,S.user.email,S.user.name]),[true,mail,'Первое знакомство']);
     await page.reload();await page.locator('#v-home.on').waitFor();
@@ -517,7 +517,7 @@ async function checkOnboardingWithMail({ browser, base, codeFor }) {
     await page.locator('#hello-login').click(); await page.waitForSelector('#v-login.on #auth-email');
     const mail = 'onboard-login@example.test'; codeFor(mail);
     await page.fill('#auth-email', mail); await page.click('#l-box [data-on="click:authSend"]'); await page.waitForSelector('#auth-code');
-    await page.fill('#auth-code', '123456'); await page.click('#l-box [data-on="click:authCheck"]');
+    await page.fill('#auth-code', '12345678'); await page.click('#l-box [data-on="click:authCheck"]');
     await page.waitForFunction(() => document.getElementById('l-after').style.display !== 'none');
     assert.equal(await page.evaluate(() => S.user.email), mail, 'the new address is attached to the device account before the questionnaire');
     await page.locator('#l-after [data-on="click:openForm"]').click(); await page.waitForSelector('#v-onb.on');
@@ -548,7 +548,7 @@ async function checkOnboardingWithMail({ browser, base, codeFor }) {
     await page.click('#o-auth [data-on="click:auth-step-email-paintAuth"]'); await page.waitForSelector('#o-auth #auth-email');
     const mail = 'onboard-inline@example.test'; codeFor(mail);
     await page.fill('#o-auth #auth-email', mail); await page.click('#o-auth [data-on="click:authSend"]'); await page.waitForSelector('#o-auth #auth-code');
-    await page.fill('#o-auth #auth-code', '123456'); await page.click('#o-auth [data-on="click:authCheck"]');
+    await page.fill('#o-auth #auth-code', '12345678'); await page.click('#o-auth [data-on="click:authCheck"]');
     await page.waitForFunction((m) => S.user && S.user.email === m, mail);
     await page.waitForFunction(() => document.getElementById('ob-done-q').innerText === 'Почти готово');
     assert.equal(await page.locator('#o-mailfield').evaluate((e) => e.style.display), 'none', 'after signing in on the form the email field is hidden');

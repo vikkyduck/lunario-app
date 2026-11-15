@@ -436,7 +436,7 @@ try {
   assert.equal(count('push_on'), 1);
 
   // ── Статус задачи меняет только сотрудник своей области ──
-  const staffMail = 'content@example.test', code = '123456';
+  const staffMail = 'content@example.test', code = '12345678';
   qaDB.prepare('INSERT INTO staff (email, name, roles, added_by, created_at) VALUES (?,?,?,?,?)').run(staffMail, 'Редактор', JSON.stringify(['content']), 'test', new Date().toISOString());
   qaDB.prepare('INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts) VALUES (?,?,?,?,0)').run(staffMail, createHash('sha256').update(code + staffMail).digest('hex'), new Date().toISOString(), new Date(Date.now() + 600000).toISOString());
   const staff = account(); await staff.json('/me'); await staff.json('/auth/verify', 'POST', { email: staffMail, code });
@@ -1121,8 +1121,8 @@ try {
   const req = (xff, email) => fetch(base + '/api/auth/request', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': xff }, body: JSON.stringify({ email }) }).then(async (r) => [r.status, (await r.json()).error]);
   for (let i = 0; i < 6; i++) assert.deepEqual(await req('198.51.100.1', 'same@example.test'), [503, 'mail_off'], 'Mail is off: every press gets the honest mail_off, never too_often');
   const verifyIp = '198.51.100.50';
-  for (let i = 0; i < 60; i++) assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '000000' }) })).status, 400);
-  assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '000000' }) })).status, 429, 'Code guessing across mailboxes is throttled per address');
+  for (let i = 0; i < 60; i++) assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '00000000' }) })).status, 400);
+  assert.equal((await fetch(base + '/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': verifyIp, Cookie: evt.cookie }, body: JSON.stringify({ email: 'nobody@example.test', code: '00000000' }) })).status, 429, 'Code guessing across mailboxes is throttled per address');
   const anonIp = '198.51.100.77';
   for (let i = 0; i < 40; i++) assert.equal((await fetch(base + '/api/me', { headers: { 'X-Forwarded-For': anonIp } })).status, 200);
   assert.equal((await fetch(base + '/api/me', { headers: { 'X-Forwarded-For': anonIp } })).status, 429, 'Anonymous account creation is capped per address');
@@ -1206,7 +1206,7 @@ try {
   assert.equal((await doomed.raw('/account', 'DELETE', { code })).status, 400, 'A login code does not delete the account');
   assert.equal(qaDB.prepare('SELECT COUNT(*) c FROM users WHERE id=?').get(doomedId).c, 1, 'The account is still there after refused attempts');
   putCode(doomedMail, 'delete');
-  assert.equal((await doomed.raw('/account', 'DELETE', { code: '000000' })).status, 400, 'A wrong code does not delete the account');
+  assert.equal((await doomed.raw('/account', 'DELETE', { code: '00000000' })).status, 400, 'A wrong code does not delete the account');
   putCode(doomedMail, 'delete');
   assert.equal((await doomed.raw('/auth/verify', 'POST', { email: doomedMail, code })).status, 400, 'A deletion code does not open a login');
   putCode(doomedMail, 'delete');
@@ -1300,7 +1300,7 @@ try {
       if(process.argv.includes('--ui')||process.argv.includes('--ui-experience')){const xpOwner=account();await xpOwner.json('/me');await xpOwner.json('/profile','POST',{name:'Новый интерфейс',birth:'1990-01-01',city:'Москва',consent:true});const {checkExperience}=await import('./check-experience.mjs');await checkExperience({browser,base,owner:xpOwner});}
       if(process.argv.includes('--ui')||process.argv.includes('--ui-regression')){const rgOwner=account();await rgOwner.json('/me');await rgOwner.json('/profile','POST',{name:'Регрессии',birth:'1990-01-01',city:'Москва',consent:true});
         /* код входа кладется в базу напрямую — письма в проверках не ходят; своя связь с базой, qaDB выше уже закрыта */
-        const codeFor=(email)=>{const c='123456',db=new DatabaseSync(join(fixture,'data/app.db'));db.prepare("INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login') ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0, purpose='login'").run(email,createHash('sha256').update(c+email).digest('hex'),new Date().toISOString(),new Date(Date.now()+600000).toISOString());db.close();return c;};
+        const codeFor=(email)=>{const c='12345678',db=new DatabaseSync(join(fixture,'data/app.db'));db.prepare("INSERT INTO login_codes (email, code_hash, created_at, expires_at, attempts, purpose) VALUES (?,?,?,?,0,'login') ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, attempts=0, purpose='login'").run(email,createHash('sha256').update(c+email).digest('hex'),new Date().toISOString(),new Date(Date.now()+600000).toISOString());db.close();return c;};
         const {checkRegressions}=await import('./check-regressions.mjs');await checkRegressions({browser,base,owner:rgOwner,codeFor});}
       if(!process.argv.includes('--ui-recovery')&&!process.argv.includes('--ui-restoration')&&!process.argv.includes('--ui-experience')&&!process.argv.includes('--ui-design')&&!process.argv.includes('--ui-brand')&&!process.argv.includes('--ui-regression')){
       const repeatOwner=account();await repeatOwner.json('/me');await repeatOwner.json('/profile','POST',{name:'Повторные действия',birth:'1990-01-01',city:'Москва',consent:true});

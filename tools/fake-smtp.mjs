@@ -142,7 +142,7 @@ export async function startFakeSmtp({ cert: files, mode = 'ok', starttls = false
   };
   fake.headersOf = (letter) => letter.lines.slice(0, letter.lines.indexOf(''));
   fake.lastTo = (email) => [...fake.letters].reverse().find((l) => l.to === email);
-  fake.codeFor = (email) => { const l = fake.lastTo(email); const m = l && fake.textOf(l).match(/\b(\d{6})\b/); return m ? m[1] : ''; };
+  fake.codeFor = (email) => { const l = fake.lastTo(email); const m = l && fake.textOf(l).match(/\b(\d{8})\b/); return m ? m[1] : ''; };
   fake.close = () => new Promise((r) => { for (const s of sockets) s.destroy(); srv.close(() => r()); });
   return fake;
 }
