@@ -23,6 +23,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { get as httpGet } from 'node:http';
 import { makeTestCert, startFakeSmtp } from './fake-smtp.mjs';
+import { copyContent } from './fixtures.mjs';
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const SCALE = '0.05';
@@ -243,13 +244,17 @@ async function serverChecks(fake, smtpEnv, dir, servers) {
   const citiesDb = join(dir, 'cities.db');
   { const c = new DatabaseSync(citiesDb); c.exec(`CREATE TABLE IF NOT EXISTS cities (name TEXT, region TEXT, country TEXT, lat REAL, lon REAL, tz TEXT, pop INTEGER, norm TEXT, w2 TEXT, alt TEXT);
       INSERT INTO cities VALUES ('Москва','Москва','Россия',55.7558,37.6173,'Europe/Moscow',13000000,'москва','','moscow');`); c.close(); }
+  /* тексты, как у остальных проверок (tools/fixtures.mjs): настоящие из content/, а без них (CI) - тестовые.
+     Раньше сервер этой проверки читал content/ напрямую и в CI падал на "Нет файла контента" */
+  const contentDir = join(dir, 'content');
+  await copyContent(contentDir);
   async function boot(name, env) {
     const port = await freePort(), data = join(dir, name);
     await mkdir(data, { recursive: true });
     let log = '';
     const childEnv = { PATH: process.env.PATH, NODE_EXTRA_CA_CERTS: process.env.NODE_EXTRA_CA_CERTS, LUNARIO_TEST: '1', MAIL_TIME_SCALE: SCALE, LUNARIO_QUIET: '1',
       PORT: String(port), HOST: '127.0.0.1', BASE_PATH: '/app', DATA_DIR: join(data, 'data'), BACKUP_DIR: join(data, 'backups'),
-      CONTENT_DIR: process.env.CONTENT_DIR || join(repo, 'content'), CITIES_DB: citiesDb, SITE_DIR: join(repo, 'site'), ANON_RATE: '500', ...env };
+      CONTENT_DIR: contentDir, CITIES_DB: citiesDb, SITE_DIR: join(repo, 'site'), ANON_RATE: '500', ...env };
     const child = spawn(process.execPath, ['--no-warnings', join(repo, 'backend/server.mjs')], { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.on('data', (d) => { log += d; }); child.stderr.on('data', (d) => { log += d; });
     const base = `http://127.0.0.1:${port}/app/api`;
