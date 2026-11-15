@@ -10,8 +10,8 @@ content/*
 # cities.db собирается сам: node tools/build-cities.mjs (данные GeoNames, CC BY)
 backend/cities.db
 
-# локальный тулчейн и артефакты сборки
-mobile/toolchain/
+# мобильная оболочка (Capacitor) — отдельный проект: в этом репозитории не версионируется, на диске остаётся
+mobile/
 lunario-mobile.zip
 *.jks
 *.keystore
@@ -19,8 +19,18 @@ lunario-mobile.zip
 # системный мусор
 .DS_Store
 node_modules/
+.local-preview/
 
 # артефакты Xcode
 mobile/ios/**/xcuserdata/
 mobile/ios/build/
 *.xcarchive
+
+# локальные настройки Claude Code
+.claude/
+.deploy-snapshot
+
+# Local Python RAG runtime and model cache
+**/__pycache__/
+**/.venv/
+**/chroma_db/

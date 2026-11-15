@@ -1,0 +1,11 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://lunario.online/app/api/",
+      "service-doc": [{ "href": "https://lunario.online/app/llms.txt", "type": "text/markdown" }],
+      "status": [{ "href": "https://lunario.online/app/api/health", "type": "application/json" }],
+      "privacy-policy": [{ "href": "https://lunario.online/politika" }],
+      "terms-of-service": [{ "href": "https://lunario.online/soglasie" }]
+    }
+  ]
+}

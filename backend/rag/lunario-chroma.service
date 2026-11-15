@@ -1,0 +1,22 @@
+[Unit]
+Description=Lunario private vector index
+After=network.target
+
+[Service]
+User=lunario-rag
+Group=lunario-rag
+UMask=0077
+Environment=ANONYMIZED_TELEMETRY=False
+ExecStart=/opt/lunario-rag-venv/bin/chroma run --host 127.0.0.1 --port 5033 --path /opt/lunario-rag/chroma
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/lunario-rag
+MemoryMax=1500M
+CPUQuota=150%
+
+[Install]
+WantedBy=multi-user.target

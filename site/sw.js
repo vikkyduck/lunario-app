@@ -1,12 +1,16 @@
 /* Оболочка приложения работает офлайн; данные всегда идут в сеть.
 
-   ВАЖНО про стратегию: саму страницу берём ИЗ СЕТИ (кэш — только запасной путь
-   при пропавшей связи). Прежняя версия отдавала её из кэша всегда, и человек,
+   ВАЖНО про стратегию: саму страницу берем ИЗ СЕТИ (кэш — только запасной путь
+   при пропавшей связи). Прежняя версия отдавала ее из кэша всегда, и человек,
    один раз открывший приложение, навсегда оставался на старой версии:
    обновления до него не доезжали. */
-const CACHE = 'lunario-app-v7';
+const V = '150';   /* одна версия для оболочки: index.html, sky.js и импорты внутри него ссылаются на тот же ?v= */
+const CACHE = 'lunario-app-v' + V;
 const RUNTIME_LIMIT = 60;   // сколько файлов статики держим на устройстве сверх оболочки
-const SHELL = ['/app/', '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2'];
+const SHELL = ['/app/', '/app/theme.css?v=' + V, '/app/app.css?v=' + V, '/app/frame.css?v=' + V,
+  /* скрипты оболочки: раньше жили внутри index.html, вынесены ради CSP без инлайна — офлайн без них экран пустой */
+  '/app/boot.js?v=' + V, '/app/moon-logo.js?v=' + V, '/app/common.js?v=' + V, '/app/experience.js?v=' + V, '/app/app.js?v=' + V, '/app/today.js?v=' + V, '/app/diary.js?v=' + V, '/app/readings.js?v=' + V, '/app/practices.js?v=' + V, '/app/about.js?v=' + V, '/app/account.js?v=' + V, '/app/start.js?v=' + V, '/app/tour.js?v=' + V, '/app/rag.js?v=' + V, '/app/handlers.js?v=' + V, '/app/on.js?v=' + V,
+  '/app/assets/fonts/onest-400-cyrillic.woff2', '/app/assets/fonts/onest-400-latin.woff2', '/app/assets/fonts/comfortaa-300-700-cyrillic.woff2', '/app/assets/fonts/comfortaa-300-700-latin.woff2', '/app/sky.js?v=' + V, '/app/sky-model.js?v=' + V, '/app/constellations.js?v=' + V, '/app/assets/moon-hero-560.webp', '/app/assets/moon-hero-1120.webp'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -15,7 +19,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((ks) => Promise.all(ks.filter((k) => k.startsWith('lunario-app-') && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -27,18 +31,19 @@ self.addEventListener('fetch', (e) => {
   // манифест и сам воркер — мимо кэша: иначе Chrome не видит новые иконки и имя приложения
   if (e.request.destination === 'manifest' || u.pathname === '/app/manifest.webmanifest' || u.pathname === '/app/sw.js') return;
 
-  // страница приложения: сначала сеть, чтобы правки появлялись сразу
+  // страница приложения: сначала сеть, чтобы правки появлялись сразу. Запасной копией под ключом '/app/' становится
+  // только сама страница приложения: переход на /app/install или /app/cabinet не должен подменять офлайн-оболочку
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
     e.respondWith(
-      fetch(e.request)
+      fetchDocument(e.request)
         .then((r) => {
-          if (r.ok && u.origin === location.origin) {
+          if (r.ok && u.origin === location.origin && (u.pathname === '/app/' || u.pathname === '/app/index.html')) {
             const cp = r.clone();
             caches.open(CACHE).then((c) => c.put('/app/', cp)).catch(() => {});
           }
           return r;
         })
-        .catch(() => caches.match('/app/'))
+        .catch(async () => (await caches.match('/app/')) || Response.error())
     );
     return;
   }
@@ -51,23 +56,31 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then(async (c) => { await c.put(e.request, cp); trim(c); });
       }
       return r;
-    }).catch(() => caches.match('/app/')))
+    }).catch(() => Response.error()))
   );
 });
 
-/* кеш не растёт бесконечно: старые файлы сверх лимита выбрасываем, оболочка остаётся */
+/* Сохраненная страница доступна и при зависшем соединении, а не только при отказе сети. */
+async function fetchDocument(request) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try { return await fetch(request, {signal: controller.signal}); }
+  finally { clearTimeout(timeout); }
+}
+
+/* кеш не растет бесконечно: старые файлы сверх лимита выбрасываем, оболочка остается */
 async function trim(c) {
   const keys = await c.keys();
-  const extra = keys.filter((k) => !SHELL.includes(new URL(k.url).pathname));
+  const extra = keys.filter((k) => { const u = new URL(k.url); return !SHELL.includes(u.pathname + u.search); });
   for (const k of extra.slice(0, Math.max(0, extra.length - RUNTIME_LIMIT))) await c.delete(k);
 }
 
-/* Уведомление «карта дня готова». Текст живёт здесь, поэтому сервер шлёт
+/* Уведомление «карта дня готова». Текст живет здесь, поэтому сервер шлет
    пустой сигнал — личных данных в пути нет вовсе. */
-/* Сервер шлёт пустой сигнал «проснись» — через чужие почтовые службы не летит ни слова.
+/* Сервер шлет пустой сигнал «проснись» — через чужие почтовые службы не летит ни слова.
    По сигналу забираем тексты со своего сервера (по куке аккаунта) и показываем каждое:
    карта дня, настроение, привычки, аскеза, лунный день, небо. */
-const FALLBACK = { title: 'Лунарио', body: 'Ваша карта дня готова ✦', url: '/app/?open=card', feature: 'card' };
+const FALLBACK = { title: 'Лунарио', body: 'Ваше напоминание — загляните в приложение', url: '/app/', feature: 'reminder' };
 self.addEventListener('push', (e) => {
   e.waitUntil((async () => {
     let items = [];
@@ -89,17 +102,23 @@ self.addEventListener('push', (e) => {
   })());
 });
 
+/* Нажатие на уведомление. Приложение уже открыто — переводим фокус и передаем адрес сообщением: страница сама откроет нужный
+   раздел без перезагрузки (openFromUrl в app.js). Раньше здесь был client.navigate(): на iPhone с экрана «Домой» он не переходил,
+   и человек оставался на том экране, где был (в Аккаунте, откуда слал пробное). Если страница не ответила за секунду
+   (старая версия, экран до входа) — пробуем navigate, как прежде. Окна нет — открываем новое по адресу. */
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || '/app/';
   e.waitUntil((async () => {
     const all = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const open = all.find((c) => c.url.includes('/app'));
-    if (open) {
-      await open.focus();
-      if ('navigate' in open) { try { await open.navigate(url); } catch (err) { /* окно не даёт перейти — оно уже открыто */ } }
-      return;
-    }
-    return clients.openWindow(url);
+    const open = all.find((c) => new URL(c.url).pathname === '/app/' || new URL(c.url).pathname === '/app/index.html');
+    if (!open) return clients.openWindow(url);
+    try { await open.focus(); } catch (err) { /* фокус не обязателен */ }
+    const acked = await new Promise((resolve) => {
+      const ch = new MessageChannel(); const t = setTimeout(() => resolve(false), 1000);
+      ch.port1.onmessage = () => { clearTimeout(t); resolve(true); };
+      try { open.postMessage({ type: 'open', url }, [ch.port2]); } catch (err) { clearTimeout(t); resolve(false); }
+    });
+    if (!acked && 'navigate' in open) { try { await open.navigate(url); } catch (err) { /* окно не дает перейти — оно уже открыто */ } }
   })());
 });

@@ -1,27 +1,40 @@
 [Unit]
 Description=Lunario web app (PWA) — lunario.online/app
-After=network.target
+# сеть и DNS готовы до запуска (консилиум 16.10): после перезагрузки сервера первая проверка почты иначе попадала на неготовый DNS
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/lunario-app/backend
+# Код живет в /opt/lunario-app/releases/<выпуск>, ссылка current указывает на работающий выпуск (ревью v114, F11):
+# deploy.sh переключает ссылку, rollback.sh возвращает прежнюю. Данные, контент и копии — вне releases/
+WorkingDirectory=/opt/lunario-app/current/backend
 Environment=PORT=5031
 Environment=HOST=127.0.0.1
-Environment=SITE_DIR=/opt/lunario-app/site
+Environment=SITE_DIR=/opt/lunario-app/current/site
 Environment=DATA_DIR=/opt/lunario-app/data
 Environment=BASE_PATH=/app
 # тексты и картинки — отдельно от кода, в git не попадают
 Environment=CONTENT_DIR=/opt/lunario-content
 # резервные копии: ночной cron и кнопка в кабинете админа пишут сюда
 Environment=BACKUP_DIR=/opt/lunario-app-backups
-# Секреты (SMTP) — только на сервере, деплой этот файл не трогает
+# Секреты (SMTP и BACKUP_SECRET — пароль шифрования резервных копий) — только на сервере,
+# деплой этот файл не трогает. Без BACKUP_SECRET копии снимаются открытыми, рядом с ключом шифрования записей.
+
 EnvironmentFile=-/opt/lunario-app/.env
-ExecStart=/usr/bin/node /opt/lunario-app/backend/server.mjs
+ExecStart=/usr/bin/node /opt/lunario-app/current/backend/server.mjs
 Restart=on-failure
 RestartSec=3
+# Свой пользователь без входа (ревью v114, F02): процесс не root, код (site/, backend/) ему только на чтение,
+# писать может лишь в данные, контент и копии. Пользователя и права ставит backend/service-user.sh — его зовет deploy.sh.
+# ProtectSystem=strict делает всю систему только для чтения, кроме ReadWritePaths; UMask — новые файлы видны только сервису
+User=lunario
+Group=lunario
+UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=full
+ProtectSystem=strict
+ProtectHome=true
 ReadWritePaths=/opt/lunario-app/data /opt/lunario-content /opt/lunario-app-backups
 
 [Install]

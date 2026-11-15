@@ -1,68 +1,73 @@
-/* Напоминания по функциям: карта дня, настроение, отчёт по настроениям, привычки, аскеза,
-   лунный день, небо. Человек сам включает каждое, выбирает время и регулярность.
+/* Три напоминания — утро, вечер, неделя (решение владелицы 16.09). Человек включает каждое, выбирает время,
+   для недели — день. Утро — настрой дня и выбранные плитки утра; вечер — «Что хочется оставить от этого дня?»
+   (молчит, если день уже записан); неделя — «Моя неделя: про что она». В пуш ничего не дописывается.
 
    Как доходит: планировщик (send-daily.mjs, раз в 5 минут) находит напоминания, у которых
-   подошло время, собирает текст, кладёт его в очередь push_queue и шлёт в браузер пустой
+   подошло время, собирает текст, кладет его в очередь push_queue и шлет в браузер пустой
    сигнал. Service worker по сигналу забирает тексты из очереди (/api/push/next) и показывает.
    Так личное не летит через чужие почтовые службы — только «проснись».
    В оболочке App Store веб-пуша нет: там те же настройки превращаются в локальные
-   уведомления телефона (NativeBridge.swift), сервер ничего не шлёт. */
-import { tzOffsetMinutes } from './cities.mjs';
+   уведомления телефона (NativeBridge.swift), сервер ничего не шлет. */
 import { lunarDay } from './lunar.mjs';
-import { skyNow } from './sky.mjs';
 import { sendPush } from './push.mjs';
 import * as C from './content.mjs';
+import { preferences } from './experience.mjs';
+import { MSK, MOSCOW, dayIn, plural } from './util.mjs';
+import { validTz, userDay, localMoment } from './clock.mjs';
 
 export const FEATURES = {
-  card:       { title: 'Карта дня',            hint: 'Утром: карта дня готова',                   time: '09:00', freq: 'daily',  weekday: 7, url: '/app/?open=card' },
-  mood:       { title: 'Настроение дня',       hint: 'Вечером: как прошёл день',                  time: '21:00', freq: 'daily',  weekday: 7, url: '/app/?open=mood' },
-  moodreport: { title: 'Отчёт по настроениям', hint: 'Раз в неделю: итог по отметкам',            time: '20:00', freq: 'weekly', weekday: 7, url: '/app/?open=moodreport' },
-  habits:     { title: 'Дневник привычек',     hint: 'Вечером: отметить привычки',                time: '20:00', freq: 'daily',  weekday: 7, url: '/app/?open=habits' },
-  askesis:    { title: 'Аскеза',               hint: 'Поддержка и сколько дней осталось',         time: '20:00', freq: 'daily',  weekday: 7, url: '/app/?open=askesis' },
-  gratitude:  { title: 'Дневник благодарности', hint: 'Вечером: кому и за что я благодарна сегодня', time: '21:30', freq: 'daily', weekday: 7, url: '/app/?open=gratitude' },
-  lunar:      { title: 'Лунный день',          hint: 'Утром: лунный день и рекомендация',         time: '09:00', freq: 'daily',  weekday: 7, url: '/app/?open=lunar' },
-  sky:        { title: 'На небе',              hint: 'Когда что-то происходит: полнолуние, затмение, ретроградный Меркурий', time: '10:00', freq: 'events', weekday: 7, url: '/app/?open=sky' },
+  morning: { title: 'Утро',    hint: 'Настрой дня и то, что вы выбрали на «Сегодня»',      time: '09:00', freq: 'daily',  weekday: 7, url: '/app/?open=today' },
+  evening: { title: 'Вечер',   hint: 'Запомнить этот день — молчит, если день уже записан', time: '21:00', freq: 'daily',  weekday: 7, url: '/app/?open=diary' },
+  week:    { title: 'Неделя',  hint: 'Моя неделя: про что она',                             time: '13:00', freq: 'weekly', weekday: 7, url: '/app/?open=week' },
 };
-const FREQS = ['daily', 'weekdays', 'weekly', 'events'];
-const MSK = 'Europe/Moscow';
-const todayMSK = () => new Date().toLocaleDateString('sv-SE', { timeZone: MSK });
-const validTz = (tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } };
+/* Прежние восемь поштучных напоминаний: переносятся один раз в три новых, дальше не показываются и не срабатывают */
+const LEGACY = { morning: ['card', 'lunar', 'sky'], evening: ['mood', 'habits', 'askesis', 'gratitude'], week: ['moodreport'] };
+const FREQS = ['daily', 'weekdays', 'weekly'];
 
 let db = null, hooks = {};
 export function initReminders(database, h = {}) {
   db = database; hooks = h;   // habitList/askesisList из сервера — чтобы тексты считались одинаково
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS reminders (
-      user_id INTEGER NOT NULL, feature TEXT NOT NULL, enabled INTEGER DEFAULT 0,
-      time TEXT DEFAULT '09:00', freq TEXT DEFAULT 'daily', weekday INTEGER DEFAULT 7, tz TEXT DEFAULT '',
-      next_at TEXT DEFAULT '', last_at TEXT DEFAULT '', PRIMARY KEY (user_id, feature)
-    );
-    CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders (enabled, next_at);
-    CREATE TABLE IF NOT EXISTS push_queue (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL,
-      feature TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, url TEXT DEFAULT ''
-    );
-    CREATE TABLE IF NOT EXISTS push_shown (item_id INTEGER NOT NULL, endpoint TEXT NOT NULL, PRIMARY KEY (item_id, endpoint));
-  `);
+  /* таблицы reminders, push_queue (с endpoint), push_shown — в миграциях schema.mjs (шаг 22, F12): модуль ничего не создает */
   /* Раньше было одно напоминание — о карте дня в 9 утра для всех, кто подписался.
      Переносим его в новую систему один раз, чтобы у людей ничего не пропало. */
   if (!db.prepare('SELECT COUNT(*) c FROM reminders').get().c) {
     const users = db.prepare('SELECT DISTINCT user_id FROM push_subs').all();
-    for (const { user_id } of users) saveReminder(user_id, { feature: 'card', enabled: true });
+    for (const { user_id } of users) saveReminder(user_id, { feature: 'morning', enabled: true });
     if (users.length) console.log(`Напоминания: перенесено прежних подписок на карту дня — ${users.length}`);
   }
+  migrateLegacyReminders();
+}
+/* Восемь поштучных → три. Утро берет самое раннее время из включенных утренних, вечер — самое позднее из вечерних,
+   неделя — день и время отчета по настроениям. Прежние строки выключаются, чтобы не срабатывать, но не удаляются. */
+export function migrateLegacyReminders() {
+  const legacyKeys = Object.values(LEGACY).flat();
+  const users = db.prepare(`SELECT DISTINCT user_id FROM reminders WHERE feature IN (${legacyKeys.map(() => '?').join(',')}) AND enabled = 1`).all(...legacyKeys).map((r) => r.user_id);
+  let moved = 0;
+  for (const uid of users) {
+    if (db.prepare("SELECT 1 FROM reminders WHERE user_id = ? AND feature IN ('morning','evening','week')").get(uid)) continue;
+    for (const [feature, olds] of Object.entries(LEGACY)) {
+      const rows = db.prepare(`SELECT * FROM reminders WHERE user_id = ? AND enabled = 1 AND feature IN (${olds.map(() => '?').join(',')})`).all(uid, ...olds);
+      if (!rows.length) continue;
+      const times = rows.map((r) => r.time).sort();
+      const time = feature === 'morning' ? times[0] : feature === 'evening' ? times[times.length - 1] : rows[0].time;
+      saveReminder(uid, { feature, enabled: true, time, tz: rows[0].tz || '', ...(feature === 'week' ? { freq: 'weekly', weekday: rows[0].weekday } : {}) });
+    }
+    moved++;
+  }
+  db.prepare(`UPDATE reminders SET enabled = 0, next_at = '' WHERE feature IN (${legacyKeys.map(() => '?').join(',')}) AND enabled = 1`).run(...legacyKeys);
+  if (moved) console.log(`Напоминания: перенесено на три пуша — ${moved}`);
+  return moved;
 }
 
 /* Следующий момент срабатывания (мс UTC) — в часовом поясе человека. */
 export function nextAt(r, fromMs = Date.now()) {
   const tz = r.tz && validTz(r.tz) ? r.tz : MSK;
-  let day = new Date(fromMs).toLocaleDateString('sv-SE', { timeZone: tz });
+  let day = dayIn(tz, fromMs);
   for (let i = 0; i < 400; i++) {
     const wd = ((new Date(day + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;   // 1 — понедельник … 7 — воскресенье
     const okDay = r.freq === 'weekly' ? wd === Number(r.weekday) : r.freq === 'weekdays' ? wd <= 5 : true;
     if (okDay) {
-      const local = `${day}T${r.time}:00`;
-      const ms = Date.parse(local + 'Z') - tzOffsetMinutes(tz, local) * 60000;
+      const ms = localMoment(day, r.time, tz);   /* clock.mjs: тот же «локальный момент», что у лунных дней и дня записи (F13) */
       if (ms > fromMs) return ms;
     }
     day = new Date(Date.parse(day + 'T12:00:00Z') + 864e5).toISOString().slice(0, 10);
@@ -80,11 +85,11 @@ export const listReminders = (userId) => Object.keys(FEATURES).map((f) => pub(f,
 
 export function saveReminder(userId, patch) {
   const feature = String(patch.feature || '');
-  const d = FEATURES[feature]; if (!d) return { ok: false, error: 'bad_feature' };
+  const d = Object.hasOwn(FEATURES, feature) ? FEATURES[feature] : null; if (!d) return { ok: false, error: 'bad_feature' };   // feature=constructor давал 500
   const cur = rowOf(userId, feature) || { enabled: 0, time: d.time, freq: d.freq, weekday: d.weekday, tz: '' };
   const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(patch.time || '') ? patch.time : cur.time;
   let freq = FREQS.includes(patch.freq) ? patch.freq : cur.freq;
-  if (freq === 'events' && feature !== 'sky') freq = 'daily';
+  if (feature === 'week') freq = 'weekly';   /* неделя — всегда раз в неделю */
   const weekday = Number(patch.weekday) >= 1 && Number(patch.weekday) <= 7 ? Number(patch.weekday) : cur.weekday;
   const tz = typeof patch.tz === 'string' && validTz(patch.tz) ? patch.tz : cur.tz;
   const enabled = patch.enabled === undefined ? !!cur.enabled : !!patch.enabled;
@@ -95,71 +100,109 @@ export function saveReminder(userId, patch) {
     .run(userId, feature, enabled ? 1 : 0, time, freq, weekday, tz, next ? new Date(next).toISOString() : '');
   return { ok: true, item: pub(feature, rowOf(userId, feature)) };
 }
-export const clearReminders = (userId) => { db.prepare('DELETE FROM reminders WHERE user_id = ?').run(userId); db.prepare('DELETE FROM push_queue WHERE user_id = ?').run(userId); };
 
 /* ── текст уведомления по функции; null — сегодня напоминать не о чем ── */
-const plural = (n, a, b, c) => { const m = n % 100; if (m >= 11 && m <= 14) return c; const l = n % 10; return l === 1 ? a : l >= 2 && l <= 4 ? b : c; };
 /* Текст из content/напоминания.txt с подстановками {…}; лишние подстановки убираются */
+const firstSentence = (s) => { const m = String(s || '').match(/^.+?[.!?…](\s|$)/); return (m ? m[0] : String(s || '')).trim(); };
+/* Темы чтения человека: если выбрана ровно одна содержательная тема и у дня есть такой раздел — {title, text} */
+export function lunarTopicLine(u, n) {
+  const content = (preferences(u.preferences).topics || []).filter((k) => !C.READING_META.has(k));
+  if (content.length !== 1) return null;
+  const day = C.LUNAR_INFO.find((d) => d.n === n), sec = day && (day.sections || []).find((s) => s.key === content[0]);
+  const para = sec && sec.blocks.find((b) => b.t === 'p');
+  return para ? { title: sec.title, text: firstSentence(para.text) } : null;
+}
 const tpl = (key, vars) => {
   const [title, body] = C.REMINDER_TEXTS[key] || ['Лунарио', ''];
-  const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => (vars && vars[k] != null ? String(vars[k]) : '')).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
+  /* {n} — как есть, {Аскеза} — то же значение с большой буквы (подстановки в напоминания.txt пишут люди, не код) */
+  const fill = (t) => String(t).replace(/\{([^}]+)\}/g, (_, k) => { const lower = k[0].toLowerCase() + k.slice(1); const v = vars && (vars[k] ?? vars[lower]); if (v == null) return ''; const sv = String(v); return k[0] !== lower[0] ? sv[0].toUpperCase() + sv.slice(1) : sv; }).replace(/\s{2,}/g, ' ').replace(/\s+([.,!?])/g, '$1').trim();
   return { title: fill(title), body: fill(body) };
 };
-const MOOD_RU = { joy: 'радостно', calm: 'спокойно', tired: 'устало', anx: 'тревожно', sad: 'грустно' };
-export function notificationFor(feature, u) {
-  const d = todayMSK(), url = FEATURES[feature].url;
-  if (feature === 'card') return { ...tpl('card'), url };
-  if (feature === 'mood') {
-    if (db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ?').get(u.id, d)) return null;
-    return { ...tpl('mood'), url };
+/* День человека — тем же правилом, что сервер: clock.mjs userDay (пояс устройства → город анкеты → Москва; F13).
+   Иначе вечерний пуш «не видит» записанный день у тех, кто западнее Москвы, а утро снимает настрой на вчера у тех, кто восточнее. */
+export const userDayOf = userDay;
+export function notificationFor(feature, u, atMs = Date.now(), tz = u.tz || MSK) {
+  if (!Object.hasOwn(FEATURES, feature)) return null;
+  const d = userDayOf(u, atMs), url = FEATURES[feature].url;
+  if (feature === 'morning') return morningNotification(u, d, atMs, tz);
+  if (feature === 'evening') {
+    if (dayWritten(u.id, d)) return null;   /* день уже записан словами или настроением — не напоминаем; отметка привычки днем вопрос не глушит */
+    const personal = hooks.eveningPersonal ? hooks.eveningPersonal(u, d) : null;   /* вечер, который видит день (memory.mjs): аскеза, серия, тревога, привычка */
+    return { ...(personal ? tpl(personal.key, personal.vars) : tpl(eveningKey(d))), url };
   }
-  if (feature === 'moodreport') {
-    const since = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
-    const moods = db.prepare('SELECT mood, COUNT(*) c FROM moods WHERE user_id = ? AND day >= ? GROUP BY mood ORDER BY c DESC').all(u.id, since);
-    const total = moods.reduce((s, m) => s + m.c, 0);
-    if (!total) return { ...tpl('moodreport-пусто'), url };
-    const top = moods[0], m = C.moodInfo(top.mood);
-    return { ...tpl('moodreport', { 'дней': `${total} ${plural(total, 'день', 'дня', 'дней')}`, 'настроение': m ? m.label : top.mood }), url };
-  }
-  if (feature === 'habits') {
-    const items = hooks.habitList ? hooks.habitList(u.id, d) : [];
-    if (!items.length) return { ...tpl('habits-пусто'), url };
-    const left = items.filter((h) => h.due && !h.today && h.rule !== 'free');   /* свой ритм не подгоняем напоминаниями */
-    if (!left.length) return null;
-    const t = tpl('habits', { 'список': left.map((h) => h.title).join(', '), 'осталось': left.length, 'всего': items.filter((h) => h.due).length });
-    return { title: t.title, body: t.body.slice(0, 220), url };
-  }
-  if (feature === 'askesis') {
-    const act = hooks.askesisList ? hooks.askesisList(u.id, d).active : [];
-    if (!act.length) return null;
-    const a = act[0];
-    const leftText = a.left === 0 ? 'Сегодня последний день' : `До конца осталось ${a.left} ${plural(a.left, 'день', 'дня', 'дней')}`;
-    const more = act.length > 1 ? ` Ещё ${act.length - 1} ${plural(act.length - 1, 'аскеза', 'аскезы', 'аскез')} — в приложении.` : '';
-    const t = tpl('askesis', { 'название': a.title, 'день': a.done, 'всего': a.total, 'осталось': leftText, 'поддержка': a.support });
-    return { title: t.title, body: (t.body + more).slice(0, 220), url };
-  }
-  if (feature === 'gratitude') {
-    if (db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind = 'gratitude'").get(u.id, d)) return null;
-    return { ...tpl('gratitude'), url };
-  }
-  if (feature === 'lunar') {
-    const ld = lunarDay(Date.now(), u.lat ?? 55.7558, u.lon ?? 37.6173);
-    if (!ld) return null;
-    const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['Лунный день', ''];
-    return { ...tpl('lunar', { n: ld.n, 'название': name, 'рекомендация': advice }), url };
-  }
-  if (feature === 'sky') {
-    const now = skyNow(Date.now(), u.tz || MSK);
-    if (!now.today.length) return null;
-    const first = now.today[0];
-    const t = tpl('sky', { 'события': now.today.map((e) => e.title).join(' · '), 'совет': first.note });
-    return { title: t.title, body: t.body.slice(0, 220), url };
+  if (feature === 'week') {
+    const n = weekMoments(u.id, d);
+    if (!n) return null;                        /* записей не было — пуш не нужен, экран скажет, что это нормально */
+    if (n < 3) return { ...tpl('week-мало', { n, 'момента': plural(n, 'момент', 'момента', 'моментов') }), url };
+    return { ...tpl('week'), url };
   }
   return null;
 }
+/* Утро: заголовок — настрой дня, тело — по строке на каждую выбранную плитку. Пакет утра считает сервер (hooks.morningPack). */
+function morningNotification(u, d, atMs, tz) {
+  const pack = hooks.morningPack ? hooks.morningPack(u, d) : null;
+  const url = FEATURES.morning.url;
+  if (!pack) return { ...tpl('morning-пусто'), url };
+  const lines = [];
+  for (const k of pack.chosen || []) {
+    if (k === 'card' && pack.card) lines.push(`Карта дня — ${pack.card.name}${pack.card.keys ? ': ' + firstSentence(pack.card.keys) : ''}`);
+    if (k === 'dayrune' && pack.rune) lines.push(`Руна дня — ${pack.rune.name}${pack.rune.keyword ? ': ' + pack.rune.keyword : ''}`);
+    if (k === 'sky' && pack.sky) lines.push(`Планеты — ${pack.sky.title}`);   /* то же событие, что задает тему и стоит на плитке */
+    if (k === 'day' && pack.forecast) lines.push(`${pack.forecast.title} — ${firstSentence(pack.forecast.text)}`);
+    if (k === 'lunar') { const ld = lunarDay(atMs, u.lat ?? MOSCOW.lat, u.lon ?? MOSCOW.lon); if (ld) { const [name, advice] = C.LUNAR_DAYS[ld.n - 1] || ['', '']; const topic = lunarTopicLine(u, ld.n); lines.push(`${ld.n}-й лунный день · ${name} — ${topic ? topic.text : firstSentence(advice)}`); } }
+    if (k === 'tone' && pack.question) lines.push(`Вопрос дня — ${pack.question}`);
+  }
+  const title = pack.set ? pack.set.text : tpl('morning-пусто').title;
+  return { title: title.slice(0, 120), body: (lines.join('\n') || (pack.theme ? pack.theme.title : '')).slice(0, 480), url };
+}
+/* День записан — если сегодня есть хоть что-то: запись, настроение, отметка привычки или аскезы */
+/* Вечерний пуш — приглашение, а не вопрос (вопросы — на экране). Формулировки чередуются по дням, чтобы не приедаться:
+   evening, evening-2, evening-3… из напоминания.txt (номера подряд); есть только evening — он и идет каждый день */
+export function eveningKey(d) {
+  const keys = ['evening']; for (let n = 2; n <= 200; n++) { if (!C.REMINDER_TEXTS['evening-' + n]) break; keys.push('evening-' + n); }   /* подряд, без пропусков в номерах */
+  const n = Math.floor(Date.parse(d + 'T12:00:00Z') / 864e5);
+  return keys[n % keys.length] || 'evening';
+}
+/* День записан вечером — пара строк или настроение, то, о чем спрашивает вечер; утренний ответ на вопрос дня с «Сегодня»,
+   благодарность, привычки и аскезы вечерний пуш не глушат */
+/* «День записан» — одно определение для всего: вечернего пуша (молчит), карточки на «Сегодня» («День записан ✓»),
+   списка прошлых дней (не пустой). Считаются слова человека и его состояние: запись, благодарность, ответ на вопрос дня,
+   мысль к карте, настроение, фото. Отметка привычки или аскезы сама по себе день не записывает (решение 18.09). */
+export function dayWritten(userId, d) {
+  return !!(db.prepare("SELECT 1 FROM journal WHERE user_id = ? AND day = ? AND kind <> 'weekly' LIMIT 1").get(userId, d)
+    || db.prepare('SELECT 1 FROM moods WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d)
+    || db.prepare('SELECT 1 FROM mood_marks WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d)
+    || db.prepare('SELECT 1 FROM day_photos WHERE user_id = ? AND day = ? LIMIT 1').get(userId, d));
+}
+/* Сколько моментов сохранено за неделю: записи всех видов и отмеченные настроения */
+export function weekMoments(userId, d) {
+  const since = new Date(Date.parse(d + 'T12:00:00Z') - 6 * 864e5).toISOString().slice(0, 10);
+  return db.prepare("SELECT COUNT(*) c FROM journal WHERE user_id = ? AND day BETWEEN ? AND ? AND kind <> 'weekly'").get(userId, since, d).c
+    + db.prepare('SELECT COUNT(*) c FROM moods WHERE user_id = ? AND day BETWEEN ? AND ?').get(userId, since, d).c;
+}
+
+/* Локальные уведомления телефона (оболочка App Store): план на 14 дней для одного из трех напоминаний.
+   Утро — настрой каждого дня (пара снимается заранее, поэтому утром на «Сегодня» будет та же); вечер и неделя — общий текст. */
+export function nativePlan(u, feature, fromMs = Date.now()) {
+  const r = listReminders(u.id).find((x) => x.feature === feature);
+  if (!r?.enabled) return { items: [] };
+  const tz = r.tz || MSK, items = []; let cursor = fromMs;
+  for (let i = 0; i < 14; i++) {
+    const at = nextAt(r, cursor); if (!at) break;
+    const day = dayIn(tz, at), n = feature === 'morning' ? morningNotification(u, userDayOf(u, at), at, tz) : { ...tpl(feature), url: FEATURES[feature].url };
+    if (n) items.push({ date: day, ...n });
+    cursor = at + 1000;
+  }
+  return { items, tz, time: r.time };
+}
+
+export function previewNotification(u, feature) {
+  if (!Object.hasOwn(FEATURES, feature)) return null;
+  return notificationFor(feature, u) || (feature === 'evening' ? { ...tpl('evening'), url: FEATURES.evening.url } : feature === 'week' ? { ...tpl('week'), url: FEATURES.week.url } : null) || { title: FEATURES[feature].title, body: 'Пробное уведомление — все готово к вашим напоминаниям', url: FEATURES[feature].url };
+}
 
 /* ── планировщик: что подошло по времени — в очередь и в браузеры ── */
-export async function runDue(keys, log = console.log) {
+export async function runDue(keys, log = console.log, deliver = sendPush) {
   const now = Date.now(), nowISO = new Date(now).toISOString();
   const due = db.prepare("SELECT * FROM reminders WHERE enabled = 1 AND next_at <> '' AND next_at <= ?").all(nowISO);
   const byUser = new Map();
@@ -168,7 +211,7 @@ export async function runDue(keys, log = console.log) {
     let n = null;
     if (!late && FEATURES[r.feature]) {
       const u = db.prepare('SELECT * FROM users WHERE id = ?').get(r.user_id);
-      try { n = u ? notificationFor(r.feature, u) : null; } catch (e) { log('не собралось:', r.feature, e.message); }
+      try { n = u ? notificationFor(r.feature, u, now, r.tz || u.tz || MSK) : null; } catch (e) { log('не собралось:', r.feature, e.message); }
     }
     if (n) { if (!byUser.has(r.user_id)) byUser.set(r.user_id, []); byUser.get(r.user_id).push({ feature: r.feature, ...n }); }
     const next = nextAt(r, now);
@@ -181,33 +224,38 @@ export async function runDue(keys, log = console.log) {
     for (const it of items) { db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url) VALUES (?,?,?,?,?,?)').run(uid, nowISO, it.feature, it.title, it.body, it.url); stat.queued++; }
     for (const s of subs) {
       try {
-        if (await sendPush({ endpoint: s.endpoint }, keys)) stat.sent++;
+        if (await deliver({ endpoint: s.endpoint }, keys)) { stat.sent++; db.prepare('UPDATE push_subs SET last_ok = ?, last_sent = ? WHERE endpoint = ?').run(nowISO.slice(0, 10), nowISO, s.endpoint); }
         else { db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); stat.gone++; }
       } catch (e) { stat.failed++; log('не ушло:', e.message); }
     }
   }
   db.prepare('DELETE FROM push_queue WHERE ts < ?').run(new Date(now - 2 * 864e5).toISOString());
+  /* просроченные коды убираем, кроме тех, где копятся неверные (identity.mjs, codePause): счетчик живет сутки после последнего
+     неверного. Раньше эта уборка (раз в 5 минут) стирала его через 15–20 минут после последнего кода, и подбор начинался с нуля */
+  db.prepare('DELETE FROM login_codes WHERE expires_at < ? AND (fails = 0 OR fails_at < ?)').run(nowISO, new Date(now - 864e5).toISOString());
+  db.prepare('DELETE FROM sessions WHERE last_seen < ?').run(new Date(now - 400 * 864e5).toISOString());
   db.prepare('DELETE FROM push_shown WHERE item_id NOT IN (SELECT id FROM push_queue)').run();
   return stat;
 }
 
-/* Что показать по сигналу: свежие тексты, которые это устройство ещё не показывало. */
+/* Что показать по сигналу: свежие тексты, которые это устройство еще не показывало. */
 export function pendingFor(userId, endpoint) {
   const since = new Date(Date.now() - 3 * 3600e3).toISOString();
-  const items = db.prepare('SELECT id, feature, title, body, url FROM push_queue WHERE user_id = ? AND ts >= ? ORDER BY id').all(userId, since)
+  const items = db.prepare("SELECT id, feature, title, body, url FROM push_queue WHERE user_id = ? AND ts >= ? AND (endpoint = '' OR endpoint = ?) ORDER BY id").all(userId, since, endpoint || '')
     .filter((it) => !endpoint || !db.prepare('SELECT 1 FROM push_shown WHERE item_id = ? AND endpoint = ?').get(it.id, endpoint));
   if (endpoint) for (const it of items) db.prepare('INSERT OR IGNORE INTO push_shown (item_id, endpoint) VALUES (?,?)').run(it.id, endpoint);
   return items;
 }
 
 /* Пробное уведомление прямо сейчас — чтобы человек увидел, как оно выглядит. */
-export async function sendNow(u, feature, keys) {
-  const n = FEATURES[feature] ? (notificationFor(feature, u) || { ...tpl('пробное'), url: FEATURES[feature].url }) : null;
+export async function sendNow(u, feature, keys, endpoint = '', deliver = sendPush) {
+  const n = previewNotification(u, feature);
   if (!n) return { ok: false, error: 'bad_feature' };
-  const subs = db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ?').all(u.id);
+  const subs = endpoint ? db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ? AND endpoint = ?').all(u.id, endpoint)
+    : db.prepare('SELECT endpoint FROM push_subs WHERE user_id = ?').all(u.id);
   if (!subs.length) return { ok: false, error: 'no_push' };
-  db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url) VALUES (?,?,?,?,?,?)').run(u.id, new Date().toISOString(), feature, n.title, n.body, n.url);
+  db.prepare('INSERT INTO push_queue (user_id, ts, feature, title, body, url, endpoint) VALUES (?,?,?,?,?,?,?)').run(u.id, new Date().toISOString(), feature, n.title, n.body, n.url, endpoint);
   let sent = 0;
-  for (const s of subs) { try { if (await sendPush({ endpoint: s.endpoint }, keys)) sent++; else db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); } catch { /* почтовая служба не ответила */ } }
+  for (const s of subs) { try { if (await deliver({ endpoint: s.endpoint }, keys)) sent++; else db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(s.endpoint); } catch { /* почтовая служба не ответила */ } }
   return { ok: sent > 0, sent, preview: n };
 }

@@ -1,19 +1,17 @@
 /* «На небе»: что происходит сейчас и что будет в ближайшие недели.
-   Фазы Луны и затмения — по Меёсу (lunar.mjs), планеты — из astro.mjs (JPL-таблица или кеплеровы элементы).
-   Затмение определяется по близости Солнца к лунному узлу в новолуние/полнолуние: это надёжный
-   астрономический признак, но без расчёта видимости из конкретного города. Тексты — опора, не прогноз. */
-import { skyAt, ASPECT_LIST, SIGNS } from './astro.mjs';
+   Фазы Луны и затмения — по Меесу (lunar.mjs), планеты — из astro.mjs (JPL-таблица или кеплеровы элементы).
+   Затмение определяется по близости Солнца к лунному узлу в новолуние/полнолуние: это надежный
+   астрономический признак, но без расчета видимости из конкретного города. Тексты — опора, не прогноз. */
+import { skyAt, ASPECT_LIST, SIGNS, inSign, ofSign } from './astro.mjs';
 import { moonPhasesBetween, moonState } from './lunar.mjs';
 import * as C from './content.mjs';
+import { MSK, dayIn, norm360 } from './util.mjs';
 
-const norm = (x) => ((x % 360) + 360) % 360;
+const norm = norm360;
 const DAY = 864e5;
 const signOf = (lon) => SIGNS[Math.floor(norm(lon) / 30)];
-/* предложный падеж: «в Весах», «в Рыбах» */
-const SIGN_IN = { Овен: 'в Овне', Телец: 'в Тельце', Близнецы: 'в Близнецах', Рак: 'в Раке', Лев: 'во Льве', Дева: 'в Деве', Весы: 'в Весах', Скорпион: 'в Скорпионе', Стрелец: 'в Стрельце', Козерог: 'в Козероге', Водолей: 'в Водолее', Рыбы: 'в Рыбах' };
-export const inSign = (s) => SIGN_IN[s] || `в ${s}`;
 
-/* Тексты — из content/небо.txt; чего там нет, берётся из запасных ниже */
+/* Тексты — из content/небо.txt; чего там нет, берется из запасных ниже */
 const T = (kind, key, fallback) => (C.SKY[kind] && C.SKY[kind][key]) || fallback;
 const PHASE_TEXT = {
   new: ['Новолуние', 'Хорошее время для намерений и первого малого шага. Не требуйте от себя больших сил — они придут с ростом Луны.'],
@@ -27,19 +25,19 @@ const ECLIPSE_TEXT = {
 };
 /* планета: имя, «ретроградный/ая», «директный/ая», совет на период, совет на выход */
 const RETRO = {
-  mercury: ['Меркурий', 'ретроградный', 'директный', 'Перепроверяйте договорённости, письма, билеты и технику. Хорошо возвращаться к старому, хуже — подписывать новое.', 'Можно снова договариваться, покупать технику и запускать отложенное.'],
+  mercury: ['Меркурий', 'ретроградный', 'директный', 'Перепроверяйте договоренности, письма, билеты и технику. Хорошо возвращаться к старому, хуже — подписывать новое.', 'Можно снова договариваться, покупать технику и запускать отложенное.'],
   venus: ['Венера', 'ретроградная', 'директная', 'Возвращаются старые чувства и вопросы о том, что для вас ценно. Не время резких перемен во внешности и отношениях.', 'Отношения и деньги возвращаются в обычный ритм — можно решать то, что откладывали.'],
   mars: ['Марс', 'ретроградный', 'директный', 'Сил меньше, раздражения больше. Не форсируйте, доделывайте начатое и берегите тело.', 'Энергия возвращается — хорошее время начинать и действовать прямо.'],
-  jupiter: ['Юпитер', 'ретроградный', 'директный', 'Рост замедляется, чтобы вы пересмотрели, куда идёте. Учёба и планы — внутрь, а не наружу.', 'Возможности снова открываются — смотрите шире.'],
+  jupiter: ['Юпитер', 'ретроградный', 'директный', 'Рост замедляется, чтобы вы пересмотрели, куда идете. Учеба и планы — внутрь, а не наружу.', 'Возможности снова открываются — смотрите шире.'],
   saturn: ['Сатурн', 'ретроградный', 'директный', 'Проверка на прочность: структуры и обязательства просят пересмотра. Не бросайте, но и не берите нового груза.', 'Порядок возвращается: то, что выдержало проверку, можно строить дальше.'],
 };
 const SEASON = {
   Овен: 'Начинается месяц действия и смелости: хорошо стартовать и говорить прямо.', Телец: 'Месяц устойчивости: тело, деньги, удовольствие и медленный рост.',
-  Близнецы: 'Месяц разговоров, встреч и учёбы: слова весят больше.', Рак: 'Месяц дома и чувств: берегите своих и себя.',
+  Близнецы: 'Месяц разговоров, встреч и учебы: слова весят больше.', Рак: 'Месяц дома и чувств: берегите своих и себя.',
   Лев: 'Месяц света и творчества: разрешите себе быть видимой.', Дева: 'Месяц порядка и заботы о деталях: наводите чистоту в делах и в теле.',
   Весы: 'Месяц отношений и равновесия: договаривайтесь и выбирайте красивое.', Скорпион: 'Месяц глубины: то, что скрыто, просится наружу. Не бойтесь честности.',
-  Стрелец: 'Месяц горизонта: учёба, дорога, смысл. Смотрите дальше привычного.', Козерог: 'Месяц целей и ответственности: строить долго и всерьёз.',
-  Водолей: 'Месяц свободы и друзей: ищите своё, не оглядываясь.', Рыбы: 'Месяц тишины и интуиции: отдыхайте, слушайте, завершайте круг.',
+  Стрелец: 'Месяц горизонта: учеба, дорога, смысл. Смотрите дальше привычного.', Козерог: 'Месяц целей и ответственности: строить долго и всерьез.',
+  Водолей: 'Месяц свободы и друзей: ищите свое, не оглядываясь.', Рыбы: 'Месяц тишины и интуиции: отдыхайте, слушайте, завершайте круг.',
 };
 
 /* События в интервале: фазы, затмения, ретроградность, вход Солнца в знак. Отсортированы по времени. */
@@ -54,7 +52,7 @@ export function skyEvents(fromMs, days = 60) {
       const node = skyAt(p.at).node.lon;
       const x = norm(p.sunLon - node), d = Math.min(x, 360 - x, Math.abs(x - 180));
       const kind = p.phase === 'new' ? (d < 15.4 ? 'solar' : null) : (d < 12 ? 'lunar' : null);
-      if (kind) { const [t, n] = T('eclipse', kind, ECLIPSE_TEXT[kind]); out.push({ at: new Date(p.at).toISOString(), type: 'eclipse', title: `${t} ${inSign(sign)}`, note: n }); }
+      if (kind) { const [t, n] = T('eclipse', kind, ECLIPSE_TEXT[kind]); out.push({ at: new Date(p.at).toISOString(), type: 'eclipse', kind, title: `${t} ${inSign(sign)}`, note: n }); }
     }
   }
   /* ретроградность и вход Солнца в знак — по дням, момент перемены уточняется делением отрезка */
@@ -72,7 +70,7 @@ export function skyEvents(fromMs, days = 60) {
     }
     if (cur.sun.signIndex !== prev.sun.signIndex) {
       const at = new Date(when(tPrev, t, (x) => x.sun.signIndex === cur.sun.signIndex)).toISOString();
-      out.push({ at, type: 'ingress', title: `Солнце входит в знак ${cur.sun.sign}`, note: T('season', cur.sun.sign, SEASON[cur.sun.sign] || '') });
+      out.push({ at, type: 'ingress', title: `Солнце входит в знак ${ofSign(cur.sun.sign)}`, note: T('season', cur.sun.sign, SEASON[cur.sun.sign] || '') });
     }
     prev = cur; tPrev = t;
   }
@@ -80,10 +78,10 @@ export function skyEvents(fromMs, days = 60) {
 }
 
 /* Сводка на сейчас: Луна, Солнце, ретроградные планеты, точные аспекты и события — сегодняшние и ближайшие. */
-export function skyNow(ms = Date.now(), tz = 'Europe/Moscow') {
+export function skyNow(ms = Date.now(), tz = MSK) {
   const b = skyAt(ms);
   const m = moonState(ms);
-  const phaseName = ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Старая Луна'][Math.floor(((m.cycle + 1 / 16) % 1) * 8)];
+  const phaseName = m.name;
   const retro = Object.keys(RETRO).filter((k) => b[k] && b[k].retro).map((k) => { const r = T('retro', k, RETRO[k]); return { key: k, name: b[k].name, symbol: b[k].symbol, sign: b[k].sign, adj: r[1], note: r[3] }; });
   const keys = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'];
   const aspects = [];
@@ -93,13 +91,13 @@ export function skyNow(ms = Date.now(), tz = 'Europe/Moscow') {
     for (const [key, name, angle, , sym] of ASPECT_LIST) { const off = Math.abs(d - angle); if (off <= 3) aspects.push({ a: A.name, b: B.name, aSym: A.symbol, bSym: B.symbol, name, symbol: sym, orb: Math.round(off * 10) / 10 }); }
   }
   aspects.sort((x, y) => x.orb - y.orb);
-  const day = new Date(ms).toLocaleDateString('sv-SE', { timeZone: tz });
+  const day = dayIn(tz, ms);
   const events = skyEvents(ms - DAY, 62);
-  const dayOf = (e) => new Date(e.at).toLocaleDateString('sv-SE', { timeZone: tz });
+  const dayOf = (e) => dayIn(tz, Date.parse(e.at));
   return {
     date: day,
     moon: { phase: phaseName, illumination: m.illumination, waxing: m.waxing, sign: b.moon.sign, signIn: inSign(b.moon.sign), text: b.moon.text },
-    sun: { sign: b.sun.sign, text: b.sun.text, season: T('season', b.sun.sign, SEASON[b.sun.sign] || '') },
+    sun: { sign: b.sun.sign, signIn: inSign(b.sun.sign), text: b.sun.text, season: T('season', b.sun.sign, SEASON[b.sun.sign] || '') },
     planets: ['mercury', 'venus', 'mars', 'jupiter', 'saturn'].filter((k) => b[k]).map((k) => ({ key: k, name: b[k].name, symbol: b[k].symbol, sign: b[k].sign, retro: b[k].retro })),
     retro, aspects: aspects.slice(0, 5),
     today: events.filter((e) => dayOf(e) === day),

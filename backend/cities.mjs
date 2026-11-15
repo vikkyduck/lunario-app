@@ -1,25 +1,23 @@
-/* Справочник населённых пунктов: GeoNames (CC BY 4.0), собран в cities.db.
+/* Справочник населенных пунктов: GeoNames (CC BY 4.0), собран в cities.db.
    Ищем по префиксу диапазоном — индекс отрабатывает мгновенно даже на 487k строк. */
 import { DatabaseSync } from 'node:sqlite';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-/* Без cities.db сервер обязан подняться: раньше он падал на старте, и вместе с подсказками
-   городов пропадало все приложение, включая вход по почте. Файл не в git, а deploy.sh
-   кладет backend/ через rsync --delete, так что потерять его легко. Без базы подсказок нет,
-   анкета принимает город текстом. */
+/* Без cities.db сервер обязан подняться (из 92bcc82 в main): иначе вместе с подсказками городов пропадало бы
+   все приложение, включая вход по почте. deploy.sh не выкатывает выпуск без базы, но файл можно потерять и на
+   месте. Без базы подсказок нет, анкета принимает город текстом, натальная карта считается без координат. */
 let db = null;
-try { db = new DatabaseSync(join(__dirname, 'cities.db'), { readOnly: true }); }
+try { db = new DatabaseSync(process.env.CITIES_DB || join(__dirname, 'cities.db'), { readOnly: true }); }
 catch (e) { console.error('Города: cities.db не открылась, подсказки выключены:', e.message); }
 const prep = (sql) => { try { return db ? db.prepare(sql) : null; } catch (e) { console.error('Города:', e.message); return null; } };
 
-const norm = (s) => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[^0-9a-zа-я\s-]/gi, '').trim();
+const norm = (s) => String(s).toLowerCase().replace(/\u0451/g, '\u0435').replace(/[^0-9a-zа-я\s-]/gi, '').trim();   /* «е с точками» → е, чтобы «Орел» и с точками находились одинаково */
 const HI = '￿';
 const row = (r) => ({ name: r.name, region: r.region, country: r.country, lat: r.lat, lon: r.lon, tz: r.tz, pop: r.pop });
 
-/* Приоритет: точное совпадение → крупные города → все остальное.
-   Колонки w2 tools/build-cities.mjs не создает: на такой базе поиск по второму слову просто пропускается. */
+/* Приоритет: точное совпадение → крупные города → все остальное */
 const qPrefix = prep(`
   SELECT name, region, country, lat, lon, tz, pop FROM cities
   WHERE norm >= ? AND norm < ?
@@ -32,6 +30,7 @@ const qAlt = prep(`
   SELECT name, region, country, lat, lon, tz, pop FROM cities
   WHERE alt >= ? AND alt < ?
   ORDER BY pop DESC LIMIT ?`);
+
 const qExact = prep(`SELECT name, region, country, lat, lon, tz, pop FROM cities WHERE norm = ? ORDER BY pop DESC LIMIT 20`);
 
 export function findCities(q, limit = 8) {
@@ -55,7 +54,7 @@ export function findCities(q, limit = 8) {
 
 export function cityByName(name) {
   const raw = String(name || '');
-  // «Арсеньев, Приморский край» и «г. Арсеньев» — берём сам город; регион помогает выбрать из одноимённых
+  // «Арсеньев, Приморский край» и «г. Арсеньев» — берем сам город; регион помогает выбрать из одноименных
   const [cityPart, regionPart = ''] = raw.split(',').map((x) => x.trim());
   const n = norm(cityPart.replace(/^(г|гор|город|пос|с|д|ст)\.?\s+/i, ''));
   if (!n || !qExact) return null;
@@ -66,7 +65,7 @@ export function cityByName(name) {
   return row(r);
 }
 
-/* Смещение пояса на конкретный момент — с учётом исторических правил перевода часов */
+/* Смещение пояса на конкретный момент — с учетом исторических правил перевода часов */
 export function tzOffsetMinutes(tz, isoLocal) {
   try {
     const d = new Date(isoLocal + 'Z');

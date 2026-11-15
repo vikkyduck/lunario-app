@@ -1,5 +1,6 @@
-/* Рабочие кабинеты: роли по почте, доступы, расходы. Отчёты и дашборд — в reports.mjs.
-   Личных текстов здесь нет: только счётчики, дни и типы событий. */
+/* Рабочие кабинеты: роли по почте, доступы, расходы. Отчеты и дашборд — в reports.mjs.
+   Личных текстов здесь нет: только счетчики, дни и типы событий. */
+import { MSK, dayIn } from './util.mjs';
 
 export const ROLES = {
   admin:     'Админ',
@@ -14,34 +15,12 @@ export const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || 'vikavika.utkina@yandex
 export const isAdmin = (email) => ADMIN_EMAILS.includes(String(email || '').toLowerCase());
 
 let db;
+/* таблицы staff, costs, errors и их индекс — в миграциях schema.mjs (шаг 22, F12): здесь только привязка к базе */
 export function initCabinet(database) {
   db = database;
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS staff (
-      email TEXT PRIMARY KEY, name TEXT DEFAULT '', roles TEXT DEFAULT '[]',
-      added_by TEXT DEFAULT '', created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS costs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, month TEXT NOT NULL, name TEXT NOT NULL,
-      amount REAL NOT NULL DEFAULT 0, kind TEXT NOT NULL DEFAULT 'fixed', ts TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS errors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, day TEXT NOT NULL,
-      path TEXT DEFAULT '', message TEXT DEFAULT ''
-    );
-    CREATE INDEX IF NOT EXISTS idx_errors_day ON errors (day);
-  `);
-  const cols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-  if (!cols.includes('email_at')) {
-    db.exec("ALTER TABLE users ADD COLUMN email_at TEXT DEFAULT ''");
-    // у тех, кто уже с почтой, момент подтверждения берём из события входа, иначе — из даты создания
-    db.exec(`UPDATE users SET email_at = COALESCE(
-      (SELECT MIN(ts) FROM events e WHERE e.user_id = users.id AND e.type = 'login_done'), created_at)
-      WHERE email <> '' AND email_at = ''`);
-  }
 }
 
-const dayMSK = (d = new Date()) => d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });
+const dayMSK = (d = new Date()) => dayIn(MSK, d.getTime());
 export function logError(path, message) {
   try {
     const ts = new Date().toISOString();

@@ -1,0 +1,420 @@
+import { seedNumerology } from './numerology-store.mjs';
+/* Схема базы приложения и ее история — одно место вместо ALTER TABLE, разбросанных по модулям.
+
+   Как устроено. MIGRATIONS — последовательные шаги с номером; номер последнего примененного лежит в
+   PRAGMA user_version, поэтому на следующем запуске пройденные шаги не выполняются. Каждый шаг идет
+   в своей транзакции: упал — откатился целиком, сервер не стартует (лучше не подняться, чем работать
+   на половине схемы). Шаги идемпотентны: база, которую до нумерации вели прежним кодом, имеет
+   user_version = 0 и проходит все шаги без вреда — колонка уже есть, значит, пропускаем.
+   После миграций verifySchema() проверяет обязательные колонки; только потом слушается порт.
+
+   Весь DDL — здесь (ревью v114, F12): таблицы кабинетов, напоминаний, очереди пушей, установок дня и базы знаний раньше
+   создавали свои модули (cabinet, workspace, reminders, daily-sets, knowledge, reports) при инициализации — теперь они только
+   связывают зависимости, а их таблицы, колонки и индексы пришли в общую историю шагом 22. Отдельные процессы (send-daily,
+   поток отчетов) работают на базе, которую уже провел сервер, и проверяют ее verifySchema() перед работой. */
+
+const columns = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+/* ALTER TABLE ADD COLUMN, если колонки еще нет — безопасно и для баз, где она появилась раньше */
+export function addColumn(db, table, col, def) {
+  if (!columns(db, table).includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+
+const BASE_SQL = `
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    last_seen TEXT NOT NULL,
+    name TEXT DEFAULT '', birth TEXT DEFAULT '', birth_time TEXT DEFAULT '', city TEXT DEFAULT '',
+    email TEXT DEFAULT '',
+    consent_version TEXT DEFAULT '', consent_ts TEXT DEFAULT '',
+    streak INTEGER DEFAULT 0, streak_date TEXT DEFAULT '',
+    onboarded INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL, last_seen TEXT NOT NULL, ua TEXT DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
+  CREATE TABLE IF NOT EXISTS login_codes (
+    email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL, attempts INTEGER DEFAULT 0, sent INTEGER DEFAULT 1
+  );
+  CREATE TABLE IF NOT EXISTS entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+    ts TEXT NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL,
+    question TEXT DEFAULT '', title TEXT DEFAULT '', body TEXT DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_entries_user ON entries (user_id, id DESC);
+  CREATE TABLE IF NOT EXISTS moods (
+    user_id INTEGER NOT NULL, day TEXT NOT NULL, mood TEXT NOT NULL,
+    PRIMARY KEY (user_id, day)
+  );
+  CREATE TABLE IF NOT EXISTS journal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+    ts TEXT NOT NULL, day TEXT NOT NULL, text TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS wishes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+    ts TEXT NOT NULL, text TEXT NOT NULL, done INTEGER DEFAULT 0, done_ts TEXT DEFAULT ''
+  );
+  /* Дневник привычек: привычка и отметки по дням */
+  CREATE TABLE IF NOT EXISTS habits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT NOT NULL,
+    created_at TEXT NOT NULL, archived INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS habit_marks (habit_id INTEGER NOT NULL, day TEXT NOT NULL, PRIMARY KEY (habit_id, day));
+  /* Аскеза: обещание себе на срок, отметки по дням с парой слов */
+  CREATE TABLE IF NOT EXISTS askesis (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, title TEXT NOT NULL, days INTEGER NOT NULL,
+    started TEXT NOT NULL, status TEXT DEFAULT 'active', finished_at TEXT DEFAULT ''
+  );
+  CREATE TABLE IF NOT EXISTS askesis_days (askesis_id INTEGER NOT NULL, day TEXT NOT NULL, kept INTEGER DEFAULT 1, note TEXT DEFAULT '', PRIMARY KEY (askesis_id, day));
+  /* Награды за непрерывные ежедневные привычки: 30, 60, 90, 180, 365 дней — каждая показывается один раз */
+  CREATE TABLE IF NOT EXISTS habit_awards (habit_id INTEGER NOT NULL, days INTEGER NOT NULL, ts TEXT NOT NULL, PRIMARY KEY (habit_id, days));
+  /* Установка дня: какая выпала человеку в какой день — чтобы за год не повторяться */
+  CREATE TABLE IF NOT EXISTS daily_sets (user_id INTEGER NOT NULL, day TEXT NOT NULL, idx INTEGER NOT NULL, PRIMARY KEY (user_id, day));
+  CREATE TABLE IF NOT EXISTS usage (
+    user_id INTEGER NOT NULL, day TEXT NOT NULL, spreads INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, day)
+  );
+  /* События продукта. Текстов вопросов здесь нет и быть не должно —
+     только факт, тип и когорта, чтобы понимать поведение, не читая личное. */
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL, day TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    type TEXT NOT NULL, detail TEXT DEFAULT '',
+    age_band TEXT DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_events_day ON events (day, type);
+  /* Кому слать напоминание про карту дня. */
+  CREATE TABLE IF NOT EXISTS push_subs (
+    endpoint TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL, last_ok TEXT DEFAULT ''
+  );
+`;
+
+export const MIGRATIONS = [
+  { v: 1, name: 'базовые таблицы', up: (db) => db.exec(BASE_SQL) },
+  { v: 2, name: 'приглашения: свой код у каждого и кто кого привел', up(db) {
+    addColumn(db, 'users', 'ref_code', "TEXT DEFAULT ''");
+    addColumn(db, 'users', 'invited_by', 'INTEGER');
+    addColumn(db, 'users', 'bonus_until', "TEXT DEFAULT ''");
+  } },
+  { v: 3, name: 'вид записи дневника, аскеза до даты, регулярность привычек, фото', up(db) {
+    addColumn(db, 'journal', 'kind', "TEXT DEFAULT ''"); addColumn(db, 'journal', 'title', "TEXT DEFAULT ''");
+    addColumn(db, 'askesis', 'until', "TEXT DEFAULT ''");
+    db.exec("UPDATE askesis SET until = date(started, '+' || (days - 1) || ' days') WHERE until = ''");
+    addColumn(db, 'habits', 'rule', "TEXT DEFAULT 'daily'"); addColumn(db, 'habits', 'rule_text', "TEXT DEFAULT ''");
+    addColumn(db, 'wishes', 'photo', "TEXT DEFAULT ''"); addColumn(db, 'wishes', 'photo_ts', "TEXT DEFAULT ''");
+    addColumn(db, 'users', 'photo', "TEXT DEFAULT ''"); addColumn(db, 'users', 'photo_ts', "TEXT DEFAULT ''");
+  } },
+  { v: 4, name: 'коды выпавших карт и рун в истории — по ним расклад открывается заново', up: (db) => addColumn(db, 'entries', 'data', "TEXT DEFAULT ''") },
+  { v: 5, name: 'координаты и часовой пояс города — для натальной карты', up(db) {
+    for (const [col, def] of [['lat', 'REAL'], ['lon', 'REAL'], ['tz', "TEXT DEFAULT ''"], ['city_region', "TEXT DEFAULT ''"]]) addColumn(db, 'users', col, def);
+  } },
+  /* Раньше кука была самим аккаунтом (users.token_hash) — переносим ее в сессии, чтобы один аккаунт открывался
+     на нескольких устройствах. UNIQUE на token_hash не дает завести второй анонимный профиль — пересобираем таблицу;
+     все остальные колонки, в том числе добавленные шагами выше, переезжают как есть — иначе они бы пропали. */
+  { v: 6, name: 'сессии вместо token_hash в users', up(db) {
+    if (columns(db, 'users').includes('token_hash')) {
+      const moved = db.prepare(`INSERT OR IGNORE INTO sessions (token_hash, user_id, created_at, last_seen)
+        SELECT token_hash, id, created_at, last_seen FROM users WHERE token_hash <> ''`).run();
+      if (moved.changes) console.log(`перенесено сессий из старых аккаунтов: ${moved.changes}`);
+      const info = db.prepare('PRAGMA table_info(users)').all().filter((c) => c.name !== 'token_hash');
+      const base = new Set(['id', 'created_at', 'last_seen', 'name', 'birth', 'birth_time', 'city', 'email', 'consent_version', 'consent_ts', 'streak', 'streak_date', 'onboarded']);
+      db.exec(`CREATE TABLE users_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, last_seen TEXT NOT NULL,
+        name TEXT DEFAULT '', birth TEXT DEFAULT '', birth_time TEXT DEFAULT '', city TEXT DEFAULT '',
+        email TEXT DEFAULT '', consent_version TEXT DEFAULT '', consent_ts TEXT DEFAULT '',
+        streak INTEGER DEFAULT 0, streak_date TEXT DEFAULT '', onboarded INTEGER DEFAULT 0)`);
+      for (const c of info) if (!base.has(c.name)) db.exec(`ALTER TABLE users_new ADD COLUMN ${c.name} ${c.type || 'TEXT'}${c.dflt_value !== null ? ' DEFAULT ' + c.dflt_value : ''}`);
+      const keep = info.map((c) => c.name).join(', ');
+      db.exec(`INSERT INTO users_new (${keep}) SELECT ${keep} FROM users`);
+      db.exec('DROP TABLE users');
+      db.exec('ALTER TABLE users_new RENAME TO users');
+      console.log('таблица users пересобрана без token_hash');
+    }
+    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email <> ''");
+  } },
+  { v: 7, name: 'настройки человека (тема, ритуал, темы чтения)', up: (db) => addColumn(db, 'users', 'preferences', "TEXT DEFAULT ''") },
+  { v: 8, name: 'индексы по человеку: лента, желания, привычки, аскезы и события ищутся по user_id, а не полным просмотром', up: (db) => db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_events_user ON events (user_id, day, type);
+    CREATE INDEX IF NOT EXISTS idx_journal_user ON journal (user_id, id);
+    CREATE INDEX IF NOT EXISTS idx_journal_user_day ON journal (user_id, day);
+    CREATE INDEX IF NOT EXISTS idx_wishes_user ON wishes (user_id, id);
+    CREATE INDEX IF NOT EXISTS idx_habits_user ON habits (user_id);
+    CREATE INDEX IF NOT EXISTS idx_askesis_user ON askesis (user_id);`) },
+  /* Раньше эту колонку добавлял кабинет: момент подтверждения почты — точка отсчета когорт в отчетах */
+  { v: 9, name: 'момент подтверждения почты (email_at)', up(db) {
+    if (columns(db, 'users').includes('email_at')) return;
+    db.exec("ALTER TABLE users ADD COLUMN email_at TEXT DEFAULT ''");
+    // у тех, кто уже с почтой, момент подтверждения берем из события входа, иначе — из даты создания
+    db.exec(`UPDATE users SET email_at = COALESCE(
+      (SELECT MIN(ts) FROM events e WHERE e.user_id = users.id AND e.type = 'login_done'), created_at)
+      WHERE email <> '' AND email_at = ''`);
+  } },
+  /* Раньше эти колонки добавляли рабочие кабинеты: первый источник человека (UTM с лендинга или рекламы) */
+  { v: 10, name: 'UTM-метки первого визита', up(db) {
+    for (const c of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'first_ref']) addColumn(db, 'users', c, "TEXT DEFAULT ''");
+  } },
+  /* Отчеты ищут первое действие человека и активность по дням; (user_id, ts) закрывает MIN(ts) по индексу */
+  { v: 11, name: 'индекс событий по человеку и времени', up: (db) => db.exec('CREATE INDEX IF NOT EXISTS idx_events_user_ts ON events (user_id, ts)') },
+  /* Код на почту выдается для разных дел: вход и подтверждение удаления аккаунта.
+     Без явной цели код, присланный «подтвердите удаление», годился бы и для входа. */
+  { v: 12, name: 'цель кода на почту (вход или удаление аккаунта)', up: (db) => addColumn(db, 'login_codes', 'purpose', "TEXT NOT NULL DEFAULT 'login'") },
+  /* Квитанции операций: повтор одного и того же действия не должен создавать вторую запись.
+     Клиент шлет свой operationId; сохраненный ответ возвращается как есть, а тот же id с другим телом — это конфликт.
+     Колонка называется user_id, а не account_id, чтобы таблица попала под общую политику личных данных
+     (account-data.mjs) и ее страж: у каждой таблицы с user_id должно быть явное правило удаления. */
+  { v: 13, name: 'квитанции операций — повтор не создает дубль', up: (db) => db.exec(`
+    CREATE TABLE IF NOT EXISTS sync_receipts (
+      user_id INTEGER NOT NULL, operation_id TEXT NOT NULL,
+      payload_hash TEXT NOT NULL, response_json TEXT NOT NULL, created_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, operation_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_receipts_created ON sync_receipts (created_at);`) },
+  /* Вечером можно отметить несколько настроений, хоть все (решение владелицы 16.09). Первое остается «главным» в moods —
+     отчеты и старые экраны продолжают работать, а полный список живет здесь. */
+  { v: 14, name: 'несколько настроений за день', up: (db) => db.exec(`
+    CREATE TABLE IF NOT EXISTS mood_marks (user_id INTEGER NOT NULL, day TEXT NOT NULL, mood TEXT NOT NULL, PRIMARY KEY (user_id, day, mood));`) },
+  /* «Моя неделя»: связь «утренний настрой ↔ вечерняя запись» подтверждает сам человек — yes / no / unsure, одна отметка на день */
+  { v: 15, name: 'что отозвалось за неделю', up: (db) => db.exec(`
+    CREATE TABLE IF NOT EXISTS week_echoes (user_id INTEGER NOT NULL, day TEXT NOT NULL, verdict TEXT NOT NULL, ts TEXT NOT NULL, PRIMARY KEY (user_id, day));`) },
+  /* Когда устройство в последний раз откликнулось на сигнал (забрало тексты) — чтобы в «Уведомлениях» было видно,
+     доходят ли напоминания именно сюда, а не только «отправлено» */
+  { v: 16, name: 'отклик устройства на пуш', up: (db) => { addColumn(db, 'push_subs', 'last_sent', "TEXT DEFAULT ''"); addColumn(db, 'push_subs', 'last_wake', "TEXT DEFAULT ''"); } },
+  /* Фото дня: один снимок на день, миниатюра и полное — зашифрованными байтами (sealBytes) в базе; полное — до 350 КБ JPEG 1280 px,
+     миниатюра — 240×240 ~10 КБ. Отдельная таблица, а не колонка journal: у дня может не быть текста, а фото — быть */
+  { v: 17, name: 'фото дня', up: (db) => db.exec(`CREATE TABLE IF NOT EXISTS day_photos (
+    user_id INTEGER NOT NULL, day TEXT NOT NULL, ts TEXT NOT NULL, w INTEGER NOT NULL DEFAULT 0, h INTEGER NOT NULL DEFAULT 0,
+    thumb BLOB NOT NULL, full BLOB NOT NULL, PRIMARY KEY (user_id, day))`) },
+  /* «Полки» (снимок только на сегодня, никем не читались) заменены базой знаний — knowledge.mjs создает свои таблицы сам */
+  { v: 18, name: 'база знаний вместо полок', up: (db) => db.exec('DROP TABLE IF EXISTS shelves') },
+  /* Ревизия личных данных (повторный аудит v112, R08): растет при каждой записи, правке и удалении; база знаний хранит ревизию,
+     с которой собран документ, и пересобирает его при чтении, если данные с тех пор менялись — «удаленный текст остается в сводке» невозможно */
+  { v: 19, name: 'ревизия личных данных для базы знаний', up: (db) => db.exec('ALTER TABLE users ADD COLUMN data_rev INTEGER DEFAULT 0') },
+  /* Квитанции v110–v113 хранили весь ответ сервера — то есть текст благодарности открытым, рядом с зашифрованным журналом
+     (ревью v114, F03). Здесь они приводятся к форме v114: только ссылка на запись { table, id, updated }. Политика:
+     нераспознанная квитанция удаляется; повтор такой операции после этого — новая запись (квитанции живут 7 дней, и
+     ближайшие клиенты обновление переживут без повторов). Квитанция отказа ({ id: 0, refused }) — тоже не квитанция (F06) */
+  { v: 20, name: 'квитанции без личного текста', up(db) {
+    const rows = db.prepare('SELECT user_id, operation_id, response_json FROM sync_receipts').all();
+    const put = db.prepare('UPDATE sync_receipts SET response_json = ? WHERE user_id = ? AND operation_id = ?');
+    const del = db.prepare('DELETE FROM sync_receipts WHERE user_id = ? AND operation_id = ?');
+    let fixed = 0, dropped = 0;
+    for (const r of rows) {
+      let j = null; try { j = JSON.parse(r.response_json); } catch { /* мусор — удаляется ниже */ }
+      const ref = j && typeof j === 'object' ? j : null;
+      if (ref && ref.table && Number(ref.id) > 0 && !ref.refused && !('item' in ref)) continue;   /* уже ссылка v114 */
+      if (ref && ref.item && Number(ref.item.id) > 0) { put.run(JSON.stringify({ table: 'journal', id: Number(ref.item.id), updated: !!ref.updated }), r.user_id, r.operation_id); fixed++; continue; }
+      del.run(r.user_id, r.operation_id); dropped++;
+    }
+    if (fixed || dropped) console.log(`квитанции: приведено к ссылке ${fixed}, удалено нераспознанных ${dropped}`);
+  } },
+  /* День начала привычки — день человека, а не Москвы (ревью v114, F13): для ритма «через день» и «каждые N дней» старт задает фазу,
+     а created_at по Москве сдвигал ее у тех, кто западнее или восточнее. Существующие привычки получают дату создания по UTC —
+     совместимая политика: расхождение с прежним московским расчетом возможно только у созданных между 21:00 и 00:00 UTC, это осознанно */
+  { v: 21, name: 'день и пояс начала привычки', up(db) {
+    addColumn(db, 'habits', 'start_day', "TEXT DEFAULT ''"); addColumn(db, 'habits', 'tz', "TEXT DEFAULT ''");
+    db.exec("UPDATE habits SET start_day = substr(created_at, 1, 10) WHERE start_day = ''");
+  } },
+  /* Таблицы модулей — в общей истории (ревью v114, F12): те же CREATE TABLE IF NOT EXISTS, что раньше делали cabinet.mjs,
+     workspace.mjs, reminders.mjs, reports.mjs, daily-sets.mjs и knowledge.mjs при старте, — безопасны для существующих баз;
+     колонки, которые модули добавляли через try/catch или PRAGMA, — через addColumn (только если нет). Модули больше ничего не создают */
+  { v: 22, name: 'таблицы модулей — в общей истории', up(db) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS staff (
+        email TEXT PRIMARY KEY, name TEXT DEFAULT '', roles TEXT DEFAULT '[]',
+        added_by TEXT DEFAULT '', created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS costs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, month TEXT NOT NULL, name TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0, kind TEXT NOT NULL DEFAULT 'fixed', ts TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS errors (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, day TEXT NOT NULL,
+        path TEXT DEFAULT '', message TEXT DEFAULT ''
+      );
+      CREATE INDEX IF NOT EXISTS idx_errors_day ON errors (day);
+      CREATE TABLE IF NOT EXISTS cabinet_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_by TEXT DEFAULT '', updated_at TEXT DEFAULT '');
+      CREATE TABLE IF NOT EXISTS reminders (
+        user_id INTEGER NOT NULL, feature TEXT NOT NULL, enabled INTEGER DEFAULT 0,
+        time TEXT DEFAULT '09:00', freq TEXT DEFAULT 'daily', weekday INTEGER DEFAULT 7, tz TEXT DEFAULT '',
+        next_at TEXT DEFAULT '', last_at TEXT DEFAULT '', PRIMARY KEY (user_id, feature)
+      );
+      CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders (enabled, next_at);
+      CREATE TABLE IF NOT EXISTS push_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL,
+        feature TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, url TEXT DEFAULT ''
+      );
+      CREATE TABLE IF NOT EXISTS push_shown (item_id INTEGER NOT NULL, endpoint TEXT NOT NULL, PRIMARY KEY (item_id, endpoint));
+      CREATE TABLE IF NOT EXISTS campaigns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, source TEXT DEFAULT '', medium TEXT DEFAULT '', campaign TEXT DEFAULT '',
+        content TEXT DEFAULT '', term TEXT DEFAULT '', placement TEXT DEFAULT '', promise TEXT DEFAULT '', cost REAL DEFAULT 0,
+        start_day TEXT DEFAULT '', end_day TEXT DEFAULT '', url TEXT DEFAULT '', created_by TEXT DEFAULT '', created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS materials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL DEFAULT 'note', section TEXT DEFAULT 'Мой день', title TEXT DEFAULT '',
+        text TEXT DEFAULT '', image TEXT DEFAULT '', show_day TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'draft',
+        created_by TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS materials_versions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, material_id INTEGER NOT NULL, json TEXT NOT NULL, by TEXT DEFAULT '', ts TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS media (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, file TEXT NOT NULL, type TEXT DEFAULT '', size INTEGER DEFAULT 0,
+        uploaded_by TEXT DEFAULT '', created_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS ai_providers (
+        provider TEXT PRIMARY KEY, key_enc TEXT DEFAULT '', model TEXT DEFAULT '', extra TEXT DEFAULT '', enabled INTEGER DEFAULT 1,
+        check_ok INTEGER, check_note TEXT DEFAULT '', checked_at TEXT DEFAULT '', updated_by TEXT DEFAULT '', updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, text TEXT DEFAULT '', role TEXT NOT NULL DEFAULT 'content',
+        status TEXT NOT NULL DEFAULT 'new', priority TEXT NOT NULL DEFAULT 'normal', due_day TEXT DEFAULT '',
+        created_by TEXT DEFAULT '', assignee TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, done_at TEXT DEFAULT ''
+      );
+      CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, subject TEXT DEFAULT '', topic TEXT DEFAULT 'Прочее', feature TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'new', priority TEXT NOT NULL DEFAULT 'normal', created_at TEXT NOT NULL,
+        first_reply_at TEXT DEFAULT '', resolved_at TEXT DEFAULT '', last_at TEXT NOT NULL, last_by TEXT DEFAULT 'user'
+      );
+      CREATE INDEX IF NOT EXISTS idx_tickets_user ON tickets (user_id);
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL, who TEXT NOT NULL, author TEXT DEFAULT '', text TEXT NOT NULL,
+        ts TEXT NOT NULL, read_user INTEGER DEFAULT 0, read_support INTEGER DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_ticket ON messages (ticket_id);
+      CREATE TABLE IF NOT EXISTS knowledge (
+        user_id INTEGER NOT NULL, doc TEXT NOT NULL, json TEXT NOT NULL, updated_at TEXT NOT NULL, day TEXT NOT NULL,
+        PRIMARY KEY (user_id, doc)
+      );
+      CREATE TABLE IF NOT EXISTS compat_checks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts TEXT NOT NULL, day TEXT NOT NULL,
+        other_birth TEXT NOT NULL, total INTEGER NOT NULL, rings TEXT NOT NULL, you TEXT NOT NULL, other TEXT NOT NULL, text TEXT NOT NULL
+      );`);
+    addColumn(db, 'push_queue', 'endpoint', "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, 'media', 'archived', 'INTEGER DEFAULT 0'); addColumn(db, 'media', 'archived_at', "TEXT DEFAULT ''");
+    addColumn(db, 'knowledge', 'rev', 'INTEGER DEFAULT 0');
+    for (const col of ['text_key', 'text', 'question', 'theme']) addColumn(db, 'daily_sets', col, "TEXT NOT NULL DEFAULT ''");
+  } },
+  { v: 24, name: 'ссылки к задачам', up(db) {
+    db.exec(`CREATE TABLE IF NOT EXISTS task_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      url TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL, created_at TEXT NOT NULL,
+      UNIQUE(task_id, url)
+    )`);
+  } },
+  { v: 25, name: 'очередь Telegram для бэклога', up(db) {
+    db.exec(`CREATE TABLE backlog_telegram_outbox (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+      next_at INTEGER NOT NULL DEFAULT 0, sent_at INTEGER, last_error TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX idx_backlog_telegram_pending ON backlog_telegram_outbox(state, id);
+    CREATE TRIGGER backlog_telegram_created AFTER INSERT ON tasks BEGIN
+      INSERT INTO backlog_telegram_outbox(payload) VALUES(json_object('kind','created','task_id',NEW.id,'title',NEW.title,'role',NEW.role,'status',NEW.status));
+    END;
+    CREATE TRIGGER backlog_telegram_status AFTER UPDATE OF status ON tasks WHEN OLD.status <> NEW.status BEGIN
+      INSERT INTO backlog_telegram_outbox(payload) VALUES(json_object('kind','status','task_id',NEW.id,'title',NEW.title,'role',NEW.role,'status',NEW.status,'old_status',OLD.status));
+    END;
+    CREATE TRIGGER backlog_telegram_link AFTER INSERT ON task_links BEGIN
+      INSERT INTO backlog_telegram_outbox(payload)
+        SELECT json_object('kind','link','task_id',t.id,'title',t.title,'role',t.role,'url',NEW.url,'link_title',NEW.title) FROM tasks t WHERE t.id=NEW.task_id;
+    END;`);
+  } },
+];
+MIGRATIONS.push({ v: 26, name: 'персональная память и очередь удаления векторов', up(db) {
+  db.exec(`
+    CREATE TABLE rag_state (user_id INTEGER PRIMARY KEY, namespace TEXT NOT NULL UNIQUE, rev INTEGER NOT NULL DEFAULT -1, catalog TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT '');
+    CREATE TABLE rag_chunks (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL, source_key TEXT NOT NULL, label TEXT NOT NULL, kind TEXT NOT NULL, day TEXT NOT NULL, text_enc TEXT NOT NULL);
+    CREATE INDEX idx_rag_chunks_user ON rag_chunks(user_id);
+    CREATE TABLE rag_purges (namespace TEXT PRIMARY KEY);
+    CREATE TRIGGER rag_delete_namespace AFTER DELETE ON rag_state BEGIN
+      INSERT OR IGNORE INTO rag_purges(namespace) VALUES (OLD.namespace);
+    END;
+    CREATE TABLE rag_turns (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, request_id TEXT NOT NULL, day TEXT NOT NULL, ts TEXT NOT NULL, question TEXT NOT NULL, answer TEXT NOT NULL, sources TEXT NOT NULL, model TEXT NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0, UNIQUE(user_id, request_id));
+    CREATE INDEX idx_rag_turns_user ON rag_turns(user_id,id);
+    CREATE TABLE rag_usage (user_id INTEGER NOT NULL, day TEXT NOT NULL, requests INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,day));
+  `);
+}});
+MIGRATIONS.push({ v: 27, name: 'очистка персональной памяти при любом удалении аккаунта', up(db) {
+  db.exec(`CREATE TRIGGER rag_user_deleted AFTER DELETE ON users BEGIN
+    DELETE FROM rag_chunks WHERE user_id=OLD.id;
+    DELETE FROM rag_state WHERE user_id=OLD.id;
+    DELETE FROM rag_turns WHERE user_id=OLD.id;
+    DELETE FROM rag_usage WHERE user_id=OLD.id;
+  END;`);
+}});
+MIGRATIONS.push({ v: 28, name: 'цифровая карта и каталог нумерологии', up(db) {
+  addColumn(db, 'users', 'numerology_data', "TEXT NOT NULL DEFAULT ''");
+  db.exec(`CREATE TABLE numerology_texts (
+    content_version TEXT NOT NULL, namespace TEXT NOT NULL, section TEXT NOT NULL,
+    number INTEGER NOT NULL CHECK(number BETWEEN 1 AND 9), payload TEXT NOT NULL,
+    PRIMARY KEY(content_version, namespace, section, number)
+  )`);
+  seedNumerology(db);
+}});
+/* Неверные коды копятся на адрес и новым кодом не обнуляются (консилиум 16.10, безопасность): раньше каждый новый код давал
+   еще 5 попыток, и на один адрес выходило ~2160 угадываний в сутки. fails — неверных подряд с последнего входа, fails_at — когда последняя */
+MIGRATIONS.push({ v: 29, name: 'накопительный счетчик неверных кодов на адрес', up(db) {
+  addColumn(db, 'login_codes', 'fails', 'INTEGER NOT NULL DEFAULT 0');
+  addColumn(db, 'login_codes', 'fails_at', "TEXT NOT NULL DEFAULT ''");
+}});
+export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].v;
+
+/* Что обязано быть в базе после миграций — проверяется до старта HTTP-сервера (и отдельными процессами перед работой).
+   Границы у миграций и проверки одни (F12): все, от чего зависят операции, — здесь, включая users.data_rev и knowledge.rev */
+export const REQUIRED = {
+  numerology_texts: ['content_version', 'namespace', 'section', 'number', 'payload'],
+  rag_state: ['user_id','namespace','rev','catalog'], rag_chunks: ['id','user_id','text_enc','source_key'], rag_turns: ['user_id','request_id','question','answer','sources'], rag_usage: ['user_id','day','requests'], rag_purges: ['namespace'],
+  backlog_telegram_outbox: ['payload', 'state', 'attempts', 'next_at', 'sent_at', 'last_error'],
+  users: ['email', 'onboarded', 'ref_code', 'invited_by', 'bonus_until', 'photo', 'photo_ts', 'lat', 'lon', 'tz', 'city_region', 'preferences', 'email_at', 'utm_source', 'first_ref', 'data_rev', 'numerology_data'],
+  sessions: ['token_hash', 'user_id', 'created_at', 'last_seen'],
+  entries: ['data'], journal: ['kind', 'title'], askesis: ['until'], habits: ['rule', 'rule_text', 'start_day', 'tz'], wishes: ['photo', 'photo_ts'],
+  events: ['user_id', 'day', 'type', 'age_band'], sync_receipts: ['user_id', 'operation_id', 'payload_hash', 'response_json'], push_subs: ['endpoint', 'user_id'], login_codes: ['code_hash', 'expires_at', 'purpose', 'fails', 'fails_at'],
+  daily_sets: ['user_id', 'day', 'idx', 'text_key', 'text', 'question', 'theme'],
+  moods: ['user_id', 'day', 'mood'], mood_marks: ['user_id', 'day', 'mood'], week_echoes: ['user_id', 'day', 'verdict'], day_photos: ['user_id', 'day', 'thumb', 'full'],
+  knowledge: ['user_id', 'doc', 'json', 'updated_at', 'day', 'rev'], compat_checks: ['user_id', 'other_birth', 'rings', 'text'],
+  staff: ['email', 'roles'], costs: ['month', 'name', 'amount'], errors: ['ts', 'day', 'path', 'message'], cabinet_settings: ['key', 'value'],
+  reminders: ['user_id', 'feature', 'enabled', 'time', 'freq', 'weekday', 'tz', 'next_at'], push_queue: ['user_id', 'feature', 'title', 'body', 'endpoint'], push_shown: ['item_id', 'endpoint'],
+  campaigns: ['name', 'source', 'created_at'], materials: ['kind', 'section', 'status'], materials_versions: ['material_id', 'json'], media: ['name', 'file', 'archived', 'archived_at'],
+  ai_providers: ['provider', 'key_enc'], task_links: ['task_id', 'url', 'title', 'created_by', 'created_at'], tasks: ['title', 'role', 'status'], tickets: ['user_id', 'status', 'last_at'], messages: ['ticket_id', 'who', 'text'],
+};
+export const REQUIRED_INDEXES = ['idx_users_email', 'idx_sessions_user', 'idx_entries_user', 'idx_events_day', 'idx_events_user', 'idx_journal_user', 'idx_journal_user_day', 'idx_wishes_user',
+  'idx_habits_user', 'idx_askesis_user', 'idx_events_user_ts', 'idx_receipts_created', 'idx_errors_day', 'idx_reminders_due', 'idx_tickets_user', 'idx_messages_ticket'];
+
+/* Провести базу до текущей версии. Возвращает номер версии; бросает ошибку, если шаг не прошел. */
+export function migrate(db, log = console.log) {
+  db.exec('PRAGMA journal_mode = WAL');   // вне транзакции: внутри нее режим журнала не меняется
+  let current = db.prepare('PRAGMA user_version').get().user_version;
+  /* База новее кода — так бывает после отката выпуска (rollback.sh). Шаги только добавляют колонки и индексы
+     (удалять — отдельным выпуском, когда код их уже не читает), поэтому прежний код работает на новой базе как есть:
+     номер не понижаем, миграции не трогаем, verifySchema() ниже проверит нужное. */
+  if (current > SCHEMA_VERSION) { log(`База: схема ${current} новее кода (${SCHEMA_VERSION}) — работаю на ней как есть, миграции не запускаются`); return current; }
+  const from = current;
+  for (const m of MIGRATIONS) {
+    if (m.v <= current) continue;
+    db.exec('BEGIN');
+    try { m.up(db); db.exec(`PRAGMA user_version = ${m.v}`); db.exec('COMMIT'); }
+    catch (e) { db.exec('ROLLBACK'); throw new Error(`миграция ${m.v} «${m.name}» не прошла, база оставлена на версии ${current}: ${e.message}`); }
+    current = m.v;
+  }
+  if (current !== from) log(`База: схема ${from} → ${current}`);
+  return current;
+}
+
+/* Обязательные таблицы и колонки на месте — иначе ошибка с точным именем, а не 500 на первом запросе */
+export function verifySchema(db) {
+  const missing = [];
+  for (const [table, cols] of Object.entries(REQUIRED)) {
+    const have = columns(db, table);
+    if (!have.length) { missing.push(`${table} (таблицы нет)`); continue; }
+    for (const c of cols) if (!have.includes(c)) missing.push(`${table}.${c}`);
+  }
+  const have = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all().map((r) => r.name));
+  for (const idx of REQUIRED_INDEXES) if (!have.has(idx)) missing.push('индекс ' + idx);
+  if (missing.length) throw new Error('схема базы неполная: ' + missing.join(', '));
+  return true;
+}

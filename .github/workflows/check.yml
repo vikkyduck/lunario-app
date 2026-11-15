@@ -1,0 +1,24 @@
+# Проверки перед выпуском — ровно те же, что запускает deploy.sh: один runner tools/check-all.mjs (аудит v98, F21).
+# Без секретов и без настоящих данных: проверки поднимают настоящий сервер во временной папке. Тексты приложения в git не лежат —
+# здесь проверки идут на тестовых текстах tools/fixtures/content, города — справочник на одну строку (tools/fixtures.mjs);
+# deploy.sh перед выпуском гоняет тот же набор на настоящих текстах (LUNARIO_CHECK_CONTENT=real).
+name: Проверки
+on:
+  push:   # любая ветка: правки проверяются до слияния в desktop, а не после
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Playwright — регрессии в браузере входят в обязательный набор (аудит v112, R15)
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Один набор проверок — тот же, что перед выпуском (tools/check-all.mjs)
+        run: node tools/check-all.mjs
