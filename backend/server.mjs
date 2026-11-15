@@ -1326,7 +1326,7 @@ const server = createServer(async (req, res) => {
         if (q.length < 10 || !/\s/.test(q)) return json(res, 400, { ok: false, error: 'short_question' });
         const row = db.prepare('SELECT spreads FROM usage WHERE user_id=? AND day=?').get(u.id, d);
         const used = row ? row.spreads : 0;
-        if (used >= 2) return json(res, 429, { ok: false, error: 'limit' });
+        if (used >= spreadLimit(u)) return json(res, 429, { ok: false, error: 'limit' });   // раньше здесь стояло число 2: Плюс и бонус за приглашение не действовали
         /* карты выпадают случайно и не повторяются внутри расклада; любой расклад — один разбор из дневного лимита */
         const L = Object.hasOwn(C.LAYOUTS.tarot, b.layout) ? b.layout : 'three';
         const pos = C.LAYOUTS.tarot[L].pos;
